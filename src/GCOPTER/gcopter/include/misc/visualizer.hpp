@@ -33,7 +33,7 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr meshPub;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr edgePub;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spherePub;
-
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr uavMeshPub;
 public:
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr speedPub;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr thrPub;
@@ -50,6 +50,7 @@ public:
         meshPub = nh->create_publisher<visualization_msgs::msg::Marker>("/visualizer/mesh", 1000);
         edgePub = nh->create_publisher<visualization_msgs::msg::Marker>("/visualizer/edge", 1000);
         spherePub = nh->create_publisher<visualization_msgs::msg::Marker>("/visualizer/spheres", 1000);
+        uavMeshPub = nh->create_publisher<visualization_msgs::msg::Marker>("/visualizer/uav_traj", 10);
         speedPub = nh->create_publisher<std_msgs::msg::Float64>("/visualizer/speed", 1000);
         thrPub = nh->create_publisher<std_msgs::msg::Float64>("/visualizer/total_thrust", 1000);
         tiltPub = nh->create_publisher<std_msgs::msg::Float64>("/visualizer/tilt_angle", 1000);
@@ -94,7 +95,6 @@ public:
         trajMarker.color.r = 0.00;
         trajMarker.color.g = 0.50;
         trajMarker.color.b = 1.00;
-        trajMarker.scale.x = 0.30;
 
         if (route.size() > 0)
         {
@@ -289,6 +289,36 @@ public:
 
         spherePub->publish(sphereDeleter);
         spherePub->publish(sphereMarkers);
+    }
+
+    // Visualize uav attitude trajectory
+    inline void visualizeUAVTraj(const Eigen::Vector3d &pos,
+                                const Eigen::Vector4d &quat, double scale = 1.0)
+    {
+        visualization_msgs::msg::Marker uavMarker;
+
+        uavMarker.id = 0;
+        uavMarker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
+        uavMarker.header.stamp = nh->get_clock()->now();
+        uavMarker.header.frame_id = "odom";
+        uavMarker.pose.position.x = pos(0);
+        uavMarker.pose.position.y = pos(1);
+        uavMarker.pose.position.z = pos(2);
+        uavMarker.pose.orientation.w = quat(0);
+        uavMarker.pose.orientation.x = quat(1);
+        uavMarker.pose.orientation.y = quat(2);
+        uavMarker.pose.orientation.z = quat(3);
+        uavMarker.action = visualization_msgs::msg::Marker::ADD;
+        uavMarker.ns = "uav_traj";
+        uavMarker.color.r = 0.00;
+        uavMarker.color.g = 0.00;
+        uavMarker.color.b = 1.00;
+        uavMarker.color.a = 1.00;
+        uavMarker.scale.x = scale;
+        uavMarker.scale.y = scale;
+        uavMarker.scale.z = scale;
+
+        uavMeshPub->publish(uavMarker);
     }
 
     inline void visualizeStartGoal(const Eigen::Vector3d &center,

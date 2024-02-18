@@ -43,6 +43,7 @@ struct Config
     double smoothingEps;
     int integralIntervs;
     double relCostTol;
+    double uavScale;
 
     Config(rclcpp::Node *node)
     {
@@ -64,6 +65,7 @@ struct Config
         parasDrag = node->declare_parameter("ParasDrag", 1.0);
         speedEps = node->declare_parameter("SpeedEps", 1.0);
         weightT = node->declare_parameter("WeightT", 1.0);
+        uavScale = node->declare_parameter("UavScale", 1.0);
         chiVec = node->declare_parameter("ChiVec", std::vector<double>({1.0e+4, 1.0e+4, 1.0e+4, 1.0e+4, 1.0e+5}));
         smoothingEps = node->declare_parameter("SmoothingEps", 1.0);
         integralIntervs = node->declare_parameter("IntegralIntervs", 1);
@@ -94,6 +96,7 @@ struct Config
         node->get_parameter("SmoothingEps", smoothingEps);
         node->get_parameter("IntegralIntervs", integralIntervs);
         node->get_parameter("RelCostTol", relCostTol);
+        node->get_parameter("UavScale", uavScale);
     }
 };
 

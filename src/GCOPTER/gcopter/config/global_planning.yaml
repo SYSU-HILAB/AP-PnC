@@ -43,3 +43,5 @@
     IntegralIntervs: 16
 
     RelCostTol: 1.0e-5
+
+    UavScale: 1.0
