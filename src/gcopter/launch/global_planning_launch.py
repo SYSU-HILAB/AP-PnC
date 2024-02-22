@@ -13,6 +13,18 @@ def generate_launch_description():
         'config',
         'perlin3d.yaml'
         )
+    
+    gcopter_rviz = os.path.join(
+        get_package_share_directory('gcopter'),
+        'config',
+        'gcopter.rviz'
+        )
+    gcopter_plt = os.path.join(
+        get_package_share_directory('gcopter'),
+        'config',
+        'pltjuggler.xml'
+        )
+    print(gcopter_rviz)
     print(f"gcopter_params {gcopter_params}") # the result shows that in install folder
     print(f"mockamap_params {mockamap_params}") # the result shows that in install folder
     return launch.LaunchDescription([
@@ -32,10 +44,26 @@ def generate_launch_description():
             name='mockamap',
             parameters=[mockamap_params]  
         ),
+        # launch_ros.actions.Node(
+        #     package='rqt_plot', 
+        #     executable='rqt_plot', 
+        #     name='pos_vel_plot',
+        #     arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
+        # ),
         launch_ros.actions.Node(
             package='rqt_plot', 
             executable='rqt_plot', 
-            name='pos_vel_plot',
-            arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
+            arguments=['/xxxSpeed'],
+        ),
+        # launch_ros.actions.Node(
+        #     package='plotjuggler',
+        #     executable='plotjuggler',
+        #     # arguments=['--start_listener', '--config', gcopter_plt],
+        # ),
+        launch_ros.actions.Node(
+            package='rviz2', 
+            executable='rviz2', 
+            name='mincoRviz',
+            arguments=['-d', gcopter_rviz],
         ),
     ])

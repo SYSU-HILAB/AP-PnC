@@ -1,0 +1,813 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="swan_k1_hwing">
+    <pose>0 0 0.3 0 -1.57096 -1.1</pose>
+    <!-- <pose>0 0 0.3 0 -1.57096 -1.1</pose> -->
+    <static>0</static>
+
+    <link name="base_link">` <!-- \todo provide proper inertial : actual mass 1.75 kg -->
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1.5</mass>
+        <inertia>
+          <ixx>0.023609000000000</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.004513000000000</iyy>
+          <iyz>0</iyz>
+          <izz>0.023220000000000</izz>
+        </inertia>
+      </inertial>
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>model://swan_k1_hwing/meshes/swan_k1_hwing_fuselage.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual
+        name="fuselage_visual">
+        <geometry>
+          <mesh>
+            <uri>model://swan_k1_hwing/meshes/swan_k1_hwing_fuselage.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1 1 1</ambient>
+          <diffuse>1 1 1</diffuse>
+          <specular>0.5 0.5 0.5</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://swan_k1_hwing/materials/textures/foxmap.tga</albedo_map>
+              <roughness>0.5</roughness>
+              <metalness>0.5</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+
+      <!-- debug visuals for leg collisions -->
+      <!-- <visual name="leg1_visual">
+        <pose>-0.26 -0.25 -0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0 0 1 1</ambient>
+          <diffuse>0 0 1 1</diffuse>
+          <emissive>0 0 1 1</emissive>
+          <specular>0 0 1 1</specular>
+        </material>
+      </visual>
+      <visual name="leg2_visual">
+        <pose>-0.26 0.25 0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>1 0 0 1</ambient>
+          <diffuse>1 0 0 1</diffuse>
+          <emissive>1 0 0 1</emissive>
+          <specular>1 0 0 1</specular>
+        </material>
+      </visual>
+      <visual name="leg3_visual">
+        <pose>-0.26 0.25 -0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>1 1 0 1</ambient>
+          <diffuse>1 1 0 1</diffuse>
+          <emissive>1 1 0 1</emissive>
+          <specular>1 1 0 1</specular>
+        </material>
+      </visual>
+      <visual name="leg4_visual">
+        <pose>-0.26 -0.25 0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>0 1 0 1</diffuse>
+          <emissive>0 1 0 1</emissive>
+          <specular>0 1 0 1</specular>
+        </material>
+      </visual> -->
+
+      <collision
+        name="leg1_collision">
+        <pose>-0.26 -0.25 -0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <collision
+        name="leg2_collision">
+        <pose>-0.26 0.25 0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <collision
+        name="leg3_collision">
+        <pose>-0.26 0.25 -0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <collision
+        name="leg4_collision">
+        <pose>-0.26 -0.25 0.16 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+      </collision>
+
+      <!-- box visual and collision for horizontal calibration -->
+      <!-- <visual name="box_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.6 0.6 0.6</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0 1 0 0.9</ambient>
+          <diffuse>0 1 0 0.9</diffuse>
+          <specular>0 1 0 0.9</specular>
+        </material>
+      </visual> -->
+      <!-- <collision name="box_collision">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.6 0.6 0.6</size>
+          </box>
+        </geometry>
+      </collision> -->
+
+      <!-- debug visuals for lift-drag -->
+      <!-- <visual name="cp_wing_visual">
+        <pose>-0.025 0 0 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.045</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0 0 1</ambient>
+          <diffuse>0 0 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+      <visual name="cp_left_winglet_visual">
+        <pose>-0.14 0.59 0.035 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>1 0 0 1</ambient>
+          <diffuse>1 0 0 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+      <visual name="cp_right_winglet_visual">
+        <pose>-0.14 -0.59 0.035 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>0 1 0 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+      <visual name="cp_left_vstab_visual">
+        <pose>-0.07 0.25 0 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.02</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>1 0 0</ambient>
+          <diffuse>1 0 0</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+      <visual name="cp_right_vstab_visual">
+        <pose>-0.07 -0.25 0 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.02</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0 1 0</ambient>
+          <diffuse>0 1 0</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual> -->
+      <sensor
+        name="air_pressure_sensor" type="air_pressure">
+        <always_on>1</always_on>
+        <update_rate>50</update_rate>
+        <air_pressure>
+          <pressure>
+            <noise type="gaussian">
+              <mean>0</mean>
+              <stddev>0.01</stddev>
+            </noise>
+          </pressure>
+        </air_pressure>
+      </sensor>
+
+      <sensor
+        name="imu_sensor" type="imu">
+        <pose>0 0 0 0 1.57096 0</pose>
+        <always_on>1</always_on>
+        <update_rate>250</update_rate>
+      </sensor>
+    </link>
+
+
+
+    <!-- https://ardupilot.org/plane/docs/guide-tailsitter.html#nyt-quad-x-motor-tailsitter -->
+    <!-- CCW -->
+    <link name="rotor_0_link">
+      <pose relative_to="rotor_0_joint">0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.025</mass>
+        <inertia>
+          <ixx>0.000130417</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000130417</iyy>
+          <iyz>0</iyz>
+          <izz>0.000260417</izz>
+        </inertia>
+      </inertial>
+      <collision name="motor_collision">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="prop_collision">
+        <pose>0 0 0.022 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.13</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <!-- debug visuals for motor identification -->
+      <!-- <visual name="motor_visual">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0 0 1 1</ambient>
+          <diffuse>0 0 1 1</diffuse>
+          <specular>0 0 1 1</specular>
+        </material>
+      </visual> -->
+      <visual name="motor_visual">
+        <pose>0 0 -0.008 0 -1.5707963 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://swan_k1_hwing/meshes/swan_k1_hwing_motor.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1 1 1</ambient>
+          <diffuse>1 1 1</diffuse>
+          <specular>1 1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_metallic.jpg</metalness_map>
+              <normal_map>model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <visual name='prop_visual'>
+        <pose>0 0 0.015 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://swan_k1_hwing/meshes/iris_prop_ccw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <diffuse>1.0 1.0 1.0</diffuse>
+          <specular>1.0 1.0 1.0</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_metallic.jpg</metalness_map>
+              <normal_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <joint name='rotor_0_joint' type='revolute'>
+      <!-- <pose relative_to="base_link">-0.015 -0.25 -0.16 0.174532925 1.396263402 0</pose> -->
+      <pose relative_to="base_link">-0.015 -0.25 -0.16 0 1.5708 0</pose>
+      <child>rotor_0_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.004</damping>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!-- CCW -->
+    <link name="rotor_1_link">
+      <pose relative_to="rotor_1_joint">0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.025</mass>
+        <inertia>
+          <ixx>0.000130417</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000130417</iyy>
+          <iyz>0</iyz>
+          <izz>0.000260417</izz>
+        </inertia>
+      </inertial>
+      <collision name="motor_collision">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="prop_collision">
+        <pose>0 0 0.022 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.13</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <!-- debug visuals for motor identification -->
+      <!-- <visual name="motor_visual">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 0 0 1</ambient>
+          <diffuse>1 0 0 1</diffuse>
+          <specular>1 0 0 1</specular>
+        </material>
+      </visual> -->
+      <visual name="motor_visual">
+        <pose>0 0 -0.008 0 -1.5707963 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://swan_k1_hwing/meshes/swan_k1_hwing_motor.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1 1 1</ambient>
+          <diffuse>1 1 1</diffuse>
+          <specular>1 1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_metallic.jpg</metalness_map>
+              <normal_map>model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <visual name='prop_visual'>
+        <pose>0 0 0.015 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://swan_k1_hwing/meshes/iris_prop_ccw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <diffuse>1.0 1.0 1.0</diffuse>
+          <specular>1.0 1.0 1.0</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_metallic.jpg</metalness_map>
+              <normal_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <joint name='rotor_1_joint' type='revolute'>
+      <pose relative_to="base_link">-0.015 0.25 0.16 0 1.5708 0</pose>
+      <child>rotor_1_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.004</damping>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!-- CW -->
+    <link name="rotor_2_link">
+      <pose relative_to="rotor_2_joint">0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.025</mass>
+        <inertia>
+          <ixx>0.000130417</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000130417</iyy>
+          <iyz>0</iyz>
+          <izz>0.000260417</izz>
+        </inertia>
+      </inertial>
+      <collision name="motor_collision">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="prop_collision">
+        <pose>0 0 0.022 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.13</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <!-- debug visuals for motor identification -->
+      <!-- <visual name="motor_visual">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 0 1</ambient>
+          <diffuse>1 1 0 1</diffuse>
+          <specular>1 1 0 1</specular>
+        </material>
+      </visual> -->
+      <visual name="motor_visual">
+        <pose>0 0 -0.008 0 -1.5707963 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://swan_k1_hwing/meshes/swan_k1_hwing_motor.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1 1 1</ambient>
+          <diffuse>1 1 1</diffuse>
+          <specular>1 1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_metallic.jpg</metalness_map>
+              <normal_map>model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <visual name='prop_visual'>
+        <pose>0 0 0.015 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://swan_k1_hwing/meshes/iris_prop_cw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <diffuse>1.0 1.0 1.0</diffuse>
+          <specular>1.0 1.0 1.0</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_metallic.jpg</metalness_map>
+              <normal_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <joint name='rotor_2_joint' type='revolute'>
+      <pose relative_to="base_link">-0.015 0.25 -0.16 0 1.5708 0</pose>
+      <child>rotor_2_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.004</damping>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!-- CW -->
+    <link name="rotor_3_link">
+      <pose relative_to="rotor_3_joint">0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.025</mass>
+        <inertia>
+          <ixx>0.000130417</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000130417</iyy>
+          <iyz>0</iyz>
+          <izz>0.000260417</izz>
+        </inertia>
+      </inertial>
+      <collision name="motor_collision">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="prop_collision">
+        <pose>0 0 0.022 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.13</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <!-- debug visuals for motor identification -->
+      <!-- <visual name="motor_visual">
+        <geometry>
+          <cylinder>
+            <length>0.0178</length>
+            <radius>0.0112</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>0 1 0 1</diffuse>
+          <specular>0 1 0 1</specular>
+        </material>
+      </visual> -->
+      <visual name="motor_visual">
+        <pose>0 0 -0.008 0 -1.5707963 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://swan_k1_hwing/meshes/swan_k1_hwing_motor.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1 1 1</ambient>
+          <diffuse>1 1 1</diffuse>
+          <specular>1 1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_metallic.jpg</metalness_map>
+              <normal_map>model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/blue_metal/blue_metal_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <visual name='prop_visual'>
+        <pose>0 0 0.015 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://swan_k1_hwing/meshes/iris_prop_cw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <diffuse>1.0 1.0 1.0</diffuse>
+          <specular>1.0 1.0 1.0</specular>
+          <pbr>
+            <metal>
+              <albedo_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_basecolor.jpg</albedo_map>
+              <metalness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_metallic.jpg</metalness_map>
+              <normal_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_normal.jpg</normal_map>
+              <roughness_map>
+                model://swan_k1_hwing/materials/textures/metal_graphite/metal_graphite_roughness.jpg</roughness_map>
+              <roughness>1.0</roughness>
+              <metalness>1.0</metalness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <joint name='rotor_3_joint' type='revolute'>
+      <pose relative_to="base_link">-0.015 -0.25 0.16 0 1.5708 0</pose>
+      <child>rotor_3_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+
+      
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_0_joint</jointName>
+      <linkName>rotor_0_link</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <motorNumber>0</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_1_joint</jointName>
+      <linkName>rotor_1_link</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <motorNumber>1</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_2_joint</jointName>
+      <linkName>rotor_2_link</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <motorNumber>2</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_3_joint</jointName>
+      <linkName>rotor_3_link</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <motorNumber>3</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+    <!-- plugins -->
+    <plugin filename="gz-sim-joint-state-publisher-system"
+      name="gz::sim::systems::JointStatePublisher">
+    </plugin>
+
+    <plugin filename="libAerodynamicsPlugin" name="gz::sim::systems::AerodynamicsPlugin">
+      <link_name>base_link</link_name>
+      <area>0.1955</area>
+      <air_density>1.2</air_density>
+      <topic_force>zhang_force</topic_force>
+      <topic_moment>zhang_moment</topic_moment>
+      <if_omit_moment>false</if_omit_moment>
+      <if_omit_force>false</if_omit_force>
+    </plugin>
+
+
+
+
+
+  </model>
+</sdf>

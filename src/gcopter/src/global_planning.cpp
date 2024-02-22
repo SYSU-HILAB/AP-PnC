@@ -265,9 +265,14 @@ public:
             const double zGoal = config.mapBound[4] + config.dilateRadius +
                                  fabs(msg->pose.orientation.z) *
                                      (config.mapBound[5] - config.mapBound[4] - 2 * config.dilateRadius);
-            const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, zGoal);
+            Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, zGoal);
             if (voxelMap.query(goal) == 0)
             {
+                // For simplicity, start point position to (0,0,0)
+                if (startGoal.size() < 1)
+                {
+                    goal = Eigen::Vector3d::Zero();
+                }
                 visualizer.visualizeStartGoal(goal, 0.5, startGoal.size());
                 startGoal.emplace_back(goal);
             }
@@ -322,8 +327,11 @@ public:
                 visualizer.tiltPub->publish(tiltMsg);
                 visualizer.bdrPub->publish(bdrMsg);
 
-                visualizer.visualizeSphere(traj.getPos(delta),
-                                           config.dilateRadius);
+                visualizer.visualizeFloat(speed, "xxxSpeed");
+
+                visualizer.visualizeUAVTraj(traj.getPos(delta), quat);
+                // visualizer.visualizeSphere(traj.getPos(delta),
+                //                            config.dilateRadius);
             }
         }
     }

@@ -1,6 +1,6 @@
 /mockamap:
   ros__parameters:
-    seed: 1024
+    seed: 1025
     update_freq: 1.0
     resolution: 0.25
     x_length: 50

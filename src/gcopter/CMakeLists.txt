@@ -32,7 +32,7 @@ target_link_libraries(
 )
 
 install(DIRECTORY
-    launch config
+    launch config meshes
     DESTINATION share/${PROJECT_NAME}
 )
 

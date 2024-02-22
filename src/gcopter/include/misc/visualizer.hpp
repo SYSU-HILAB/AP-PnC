@@ -16,6 +16,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include <unordered_map>
 using namespace std::chrono_literals;
 
 // Visualizer for the planner
@@ -299,6 +300,7 @@ public:
 
         uavMarker.id = 0;
         uavMarker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
+        uavMarker.mesh_resource = "package://gcopter/meshes/tailsitter/meshes/tailsitter_fuselage.dae";
         uavMarker.header.stamp = nh->get_clock()->now();
         uavMarker.header.frame_id = "odom";
         uavMarker.pose.position.x = pos(0);
@@ -358,6 +360,33 @@ public:
         }
         spherePub->publish(sphereMarkers);
     }
+
+    inline void visualizeFloat(double data, const std::string topic)
+    {
+        static std::unordered_map<std::string, std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> > pubContainer;
+        static std_msgs::msg::Float64 msg_float;
+
+        std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>>  pub_ptr;
+    
+        auto it = pubContainer.find(topic);
+        if (it == pubContainer.end())
+        {
+            pub_ptr = nh->create_publisher<std_msgs::msg::Float64>(topic, 10);
+            pubContainer[topic] = pub_ptr;
+        }
+        else
+        {
+            pub_ptr = it->second;
+        }
+        
+
+        msg_float.data = data;
+        
+        pub_ptr->publish(msg_float);
+    }
+
 };
+
+
 
 #endif

@@ -8,8 +8,15 @@ Panels:
         - /Status1
         - /Axes1
         - /PointCloud21
-        - /Visualizer1
+        - /Visualizer1/Marker1
         - /Visualizer1/Marker1/Status1
+        - /Visualizer1/Marker2
+        - /Visualizer1/Marker3
+        - /Visualizer1/Marker4
+        - /Visualizer1/Marker5
+        - /Visualizer1/Marker6
+        - /Visualizer1/Marker7
+        - /Grid1
       Splitter Ratio: 0.5
     Tree Height: 1198
   - Class: rviz_common/Selection
@@ -35,7 +42,7 @@ Visualization Manager:
   Displays:
     - Class: rviz_default_plugins/Axes
       Enabled: true
-      Length: 5
+      Length: 20
       Name: Axes
       Radius: 0.10000000149011612
       Reference Frame: <Fixed Frame>
@@ -80,7 +87,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            {}
+            StartGoal: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -93,7 +100,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            {}
+            edge: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -106,7 +113,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            {}
+            mesh: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -119,7 +126,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            {}
+            route: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -132,7 +139,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            {}
+            trajectory: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -145,7 +152,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            {}
+            waypoints: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -154,8 +161,39 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /visualizer/waypoints
           Value: true
+        - Class: rviz_default_plugins/Marker
+          Enabled: true
+          Name: Marker
+          Namespaces:
+            uav_traj: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /visualizer/uav_traj
+          Value: true
       Enabled: true
       Name: Visualizer
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 255; 255; 255
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 100
+      Reference Frame: <Fixed Frame>
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 192; 191; 188
@@ -202,25 +240,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 68.14720153808594
+      Distance: 48.4880485534668
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 2.4764676094055176
-        Y: -3.031060218811035
-        Z: 0
+        X: -11.806781768798828
+        Y: -2.412999391555786
+        Z: -2.23921742872335e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.24479737877845764
+      Pitch: 0.05479812994599342
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 5.297391891479492
+      Yaw: 5.601613998413086
     Saved: ~
 Window Geometry:
   Displays:
