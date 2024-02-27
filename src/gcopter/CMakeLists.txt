@@ -17,6 +17,8 @@ find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 find_package(Eigen3 REQUIRED)
 find_package(ompl REQUIRED)
+find_package(autodiff REQUIRED)
+
 
 # Include directories
 
@@ -29,6 +31,7 @@ target_link_libraries(
   ${PROJECT_NAME}_node
   ${OMPL_LIBRARIES}
   Eigen3::Eigen  # Eigen support namespace CMake
+  autodiff::autodiff
 )
 
 install(DIRECTORY

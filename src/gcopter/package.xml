@@ -18,6 +18,7 @@
   <depend>sensor_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend> rclcpp </depend>
+  <depend> tailsitter_df </depend>
   <exec_depend>ros2launch</exec_depend>
 
   <export>

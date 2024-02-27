@@ -36,6 +36,9 @@
 #include <iostream>
 #include <vector>
 
+#include <tailsitter_df/df.hpp> 
+
+
 namespace gcopter
 {
 
@@ -393,6 +396,9 @@ namespace gcopter
                     jer = c.transpose() * beta3;
                     sna = c.transpose() * beta4;
 
+                    auto z = tailsitter_df::init(vel, acc, jer);
+                    tailsitter_df::df_forward(z);
+                    // flat output to thrust, quat, rate
                     flatMap.forward(vel, acc, jer, 0.0, 0.0, thr, quat, omg);
 
                     violaVel = vel.squaredNorm() - velSqrMax;
@@ -823,6 +829,7 @@ namespace gcopter
             lbfgs_params.min_step = 1.0e-32;
             lbfgs_params.g_epsilon = 0.0;
             lbfgs_params.delta = relCostTol;
+            lbfgs_params.s_curv_coeff = 0.999999;
 
             int ret = lbfgs::lbfgs_optimize(x,
                                             minCostFunctional,

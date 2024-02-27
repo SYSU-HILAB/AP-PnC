@@ -19,6 +19,7 @@
 #include <chrono>
 #include <random>
 
+
 struct Config
 {
     std::string mapTopic;
