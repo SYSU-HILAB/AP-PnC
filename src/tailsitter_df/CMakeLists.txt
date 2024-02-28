@@ -5,14 +5,17 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 set(CMAKE_BUILD_TYPE RELEASE)
+list(APPEND CMAKE_PREFIX_PATH "/home/rec/miniconda3")
+
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
-# find_package(Eigen3 REQUIRED)
+find_package(autodiff REQUIRED)
+find_package(Eigen3 REQUIRED)
 ament_auto_find_build_dependencies()
-ament_auto_add_library(tailsitter_df SHARED src/df.cpp)
+ament_auto_add_library(tailsitter_df SHARED  src/df.cpp)
 # ament_auto
 # ament_target_dependencies(df)
-target_link_libraries(tailsitter_df Eigen3::Eigen autodiff::autodiff)
+target_link_libraries(tailsitter_df PUBLIC Eigen3::Eigen autodiff::autodiff)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

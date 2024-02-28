@@ -504,7 +504,7 @@ namespace tailsitter_df
   // VectorXreal df_forward_singularity_gamma(const Vector3real &v, const Vector3real &a, const Vector3real &j)
   // {
   // }
-  VectorXreal df(const VectorXreal &z)
+  VectorXreal df_forward(const VectorXreal &z)
   {
     // Vector3real p = z.segment(0, 3); // the input vector x with 5 variables
     Vector3real v = z.segment(0, 3); // the input vector x with 5 variables
@@ -519,18 +519,5 @@ namespace tailsitter_df
     {
       return df_forward_nominal(v, a, j);
     }
-    // if ()
-    //
-    // cout << p.transpose() << endl;
-    // cout << v.transpose() << endl;
-    // cout << a.transpose() << endl;
-    // cout << j.transpose() << endl;
-
-    // typedef Vector3real realV3;
-    // typedef Matrix3real realM3;
-    // typedef real1st real;
-    // auto adf = g(0);
-    // realV3 adsf = g(0);
-    // cout << "adsf" << adf;
   }
 } // namespace df

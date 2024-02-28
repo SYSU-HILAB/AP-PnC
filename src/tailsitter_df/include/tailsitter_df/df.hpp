@@ -58,7 +58,6 @@ namespace tailsitter_df
   void init(VectorXreal &z);
   void toEigen(const VectorXreal &F, double &acc_thrust, Eigen::Vector3d &omega);
   VectorXreal init(const Eigen::Vector3d &vel, const Eigen::Vector3d &acc, const Eigen::Vector3d &jerk);
-  VectorXreal init(const Eigen::Vector3d &vel, const Eigen::Vector3d &acc, const Eigen::Vector3d &jerk);
   realM3 skew(const realV3 &v);
   Eigen::Vector4<real> computeDotAtAndBodyRates(const Eigen::Matrix<real, 1, 4> &N1, const Eigen::Matrix<real, 3, 4> &N2, const real &h1, const realV3 &h2);
   VectorXreal df_forward_nominal(const Vector3real &v, const Vector3real &a, const Vector3real &j);
