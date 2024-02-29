@@ -21,7 +21,7 @@ find_package(Eigen3 REQUIRED)
 find_package(ompl REQUIRED)
 # sincle autodiff is not easily found
 find_package(autodiff REQUIRED)
-
+find_package(yaml-cpp REQUIRED)
 
 # Include directories
 

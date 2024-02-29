@@ -321,7 +321,7 @@ namespace gcopter
                 return true;
             }
         }
-
+        
         // magnitudeBounds = [v_max, omg_max, theta_max, thrust_min, thrust_max]^T
         // penaltyWeights = [pos_weight, vel_weight, omg_weight, theta_weight, thrust_weight]^T
         // physicalParams = [vehicle_mass, gravitational_acceleration, horitonral_drag_coeff,
@@ -349,6 +349,7 @@ namespace gcopter
             const double weightPos = penaltyWeights(0);
             const double weightVel = penaltyWeights(1);
             const double weightOmg = penaltyWeights(2);
+            // we want to delete tilt angle cost 
             const double weightTheta = penaltyWeights(3);
             const double weightThrust = penaltyWeights(4);
 
@@ -371,7 +372,7 @@ namespace gcopter
             double violaPosPenaD, violaVelPenaD, violaOmgPenaD, violaThetaPenaD, violaThrustPenaD;
             double violaPosPena, violaVelPena, violaOmgPena, violaThetaPena, violaThrustPena;
             double node, pena;
-
+            tailsitter_df::Data::getInstance().reset(tailsitter_df::Model::getInstance());
             const int pieceNum = T.size();
             const double integralFrac = 1.0 / integralResolution;
             for (int i = 0; i < pieceNum; i++)
@@ -397,21 +398,29 @@ namespace gcopter
                     sna = c.transpose() * beta4;
 
                     auto z = tailsitter_df::init(vel, acc, jer);
-                    tailsitter_df::df_forward(z);
+                    tailsitter_df::df_backward_auto(z, thr, omg);
+
+                    // tailsitter_backward to return  [thr, quat, omg]
+                    // grad back
                     // flat output to thrust, quat, rate
-                    flatMap.forward(vel, acc, jer, 0.0, 0.0, thr, quat, omg);
+                    // flatMap.forward(vel, acc, jer, 0.0, 0.0, thr, quat, omg);
 
                     violaVel = vel.squaredNorm() - velSqrMax;
-                    violaOmg = omg.squaredNorm() - omgSqrMax;
-                    cos_theta = 1.0 - 2.0 * (quat(1) * quat(1) + quat(2) * quat(2));
-                    violaTheta = acos(cos_theta) - thetaMax;
-                    violaThrust = (thr - thrustMean) * (thr - thrustMean) - thrustSqrRadi;
+                    violaOmg = omg.squaredNorm();
 
+                    // this is tilt angle 
+                    // cos_theta = 1.0 - 2.0 * (quat(1) * quat(1) + quat(2) * quat(2));
+                    // violaTheta = acos(cos_theta) - thetaMax;
+                    // actually, thrust cost is (T-T_max)(T-T_min)  range cost 
+                    violaThrust = (thr - thrustMean) * (thr - thrustMean) - thrustSqrRadi;
                     gradThr = 0.0;
                     gradQuat.setZero();
                     gradPos.setZero(), gradVel.setZero(), gradOmg.setZero();
+                    totalGradPos.setZero(), totalGradVel.setZero(), totalGradAcc.setZero(), totalGradJer.setZero();
+                    // all penalty terms
                     pena = 0.0;
 
+                    // corridor cost first order
                     L = hIdx(i);
                     K = hPolys[L].rows();
                     for (int k = 0; k < K; k++)
@@ -422,38 +431,53 @@ namespace gcopter
                         {
                             gradPos += weightPos * violaPosPenaD * outerNormal;
                             pena += weightPos * violaPosPena;
+                            totalGradPos += gradPos;
                         }
                     }
 
                     if (smoothedL1(violaVel, smoothFactor, violaVelPena, violaVelPenaD))
                     {
+                        // cost type is v^2 - v_max^2
                         gradVel += weightVel * violaVelPenaD * 2.0 * vel;
                         pena += weightVel * violaVelPena;
+                        totalGradVel += gradVel;
                     }
 
                     if (smoothedL1(violaOmg, smoothFactor, violaOmgPena, violaOmgPenaD))
                     {
                         gradOmg += weightOmg * violaOmgPenaD * 2.0 * omg;
                         pena += weightOmg * violaOmgPena;
+                        auto& Jv = tailsitter_df::get_v_jacobian_omega(); 
+                        auto& Ja = tailsitter_df::get_a_jacobian_omega(); 
+                        auto& Jj = tailsitter_df::get_j_jacobian_omega();
+                        totalGradVel += Jv * gradOmg;
+                        totalGradAcc += Ja * gradOmg;
+                        totalGradJer += Jj * gradOmg;
                     }
 
-                    if (smoothedL1(violaTheta, smoothFactor, violaThetaPena, violaThetaPenaD))
-                    {
-                        gradQuat += weightTheta * violaThetaPenaD /
-                                    sqrt(1.0 - cos_theta * cos_theta) * 4.0 *
-                                    Eigen::Vector4d(0.0, quat(1), quat(2), 0.0);
-                        pena += weightTheta * violaThetaPena;
-                    }
+                    // if (smoothedL1(violaTheta, smoothFactor, violaThetaPena, violaThetaPenaD))
+                    // {
+                    //     gradQuat += weightTheta * violaThetaPenaD /
+                    //                 sqrt(1.0 - cos_theta * cos_theta) * 4.0 *
+                    //                 Eigen::Vector4d(0.0, quat(1), quat(2), 0.0);
+                    //     pena += weightTheta * violaThetaPena;
+                    // }
 
                     if (smoothedL1(violaThrust, smoothFactor, violaThrustPena, violaThrustPenaD))
                     {
                         gradThr += weightThrust * violaThrustPenaD * 2.0 * (thr - thrustMean);
                         pena += weightThrust * violaThrustPena;
+
+                        Eigen::Vector3d tmp_gv, tmp_ga, tmp_gj;
+                        tailsitter_df::jacobian_at(tmp_gv, tmp_ga, tmp_gj);
+                        totalGradVel += tmp_gv * gradThr;
+                        totalGradAcc += tmp_ga * gradThr;
+                        totalGradJer += tmp_gj * gradThr;
                     }
 
-                    flatMap.backward(gradPos, gradVel, gradThr, gradQuat, gradOmg,
-                                     totalGradPos, totalGradVel, totalGradAcc, totalGradJer,
-                                     totalGradPsi, totalGradPsiD);
+                    // flatMap.backward(gradPos, gradVel, gradThr, gradQuat, gradOmg,
+                    //                  totalGradPos, totalGradVel, totalGradAcc, totalGradJer,
+                    //                  totalGradPsi, totalGradPsiD);
 
                     node = (j == 0 || j == integralResolution) ? 0.5 : 1.0;
                     alpha = j * integralFrac;

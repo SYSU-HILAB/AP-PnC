@@ -50,20 +50,20 @@ def generate_launch_description():
         #     name='pos_vel_plot',
         #     arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
         # ),
-        launch_ros.actions.Node(
-            package='rqt_plot', 
-            executable='rqt_plot', 
-            arguments=['/xxxSpeed'],
-        ),
+        # launch_ros.actions.Node(
+        #     package='rqt_plot', 
+        #     executable='rqt_plot', 
+        #     arguments=['/xxxSpeed'],
+        # ),
         # launch_ros.actions.Node(
         #     package='plotjuggler',
         #     executable='plotjuggler',
         #     # arguments=['--start_listener', '--config', gcopter_plt],
         # ),
-        launch_ros.actions.Node(
-            package='rviz2', 
-            executable='rviz2', 
-            name='mincoRviz',
-            arguments=['-d', gcopter_rviz],
-        ),
+        # launch_ros.actions.Node(
+        #     package='rviz2', 
+        #     executable='rviz2', 
+        #     name='mincoRviz',
+        #     arguments=['-d', gcopter_rviz],
+        # ),
     ])

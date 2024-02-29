@@ -19,6 +19,7 @@
   <depend>visualization_msgs</depend>
   <depend> rclcpp </depend>
   <depend> tailsitter_df </depend>
+  <depend> utils </depend>
   <exec_depend>ros2launch</exec_depend>
 
   <export>

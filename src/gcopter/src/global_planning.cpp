@@ -19,7 +19,6 @@
 #include <chrono>
 #include <random>
 
-
 struct Config
 {
     std::string mapTopic;
@@ -310,11 +309,24 @@ public:
                 Eigen::Vector4d quat;
                 Eigen::Vector3d omg;
 
-                flatmap.forward(traj.getVel(delta),
-                                traj.getAcc(delta),
-                                traj.getJer(delta),
-                                0.0, 0.0,
-                                thr, quat, omg);
+                tailsitter_df::Data::getInstance().reset(tailsitter_df::Model::getInstance());
+                autodiff::VectorXreal z;
+                z.resize(9);
+                z << traj.getVel(delta), traj.getAcc(delta), traj.getAcc(delta);
+                auto& tailsitter_data = tailsitter_df::Data::getInstance();
+                tailsitter_data.reset(tailsitter_df::Model::getInstance());
+                tailsitter_df::df_forward(z);
+
+                auto quat_q = tailsitter_data.getQuaternion();
+                quat(0) = quat_q.w();
+                quat(1) = quat_q.x();
+                quat(2) = quat_q.y();
+                quat(3) = quat_q.z();
+                // flatmap.forward(traj.getVel(delta),
+                //                 traj.getAcc(delta),
+                //                 traj.getJer(delta),
+                //                 0.0, 0.0,
+                //                 thr, quat, omg);
                 double speed = traj.getVel(delta).norm();
                 double bodyratemag = omg.norm();
                 double tiltangle = acos(1.0 - 2.0 * (quat(1) * quat(1) + quat(2) * quat(2)));

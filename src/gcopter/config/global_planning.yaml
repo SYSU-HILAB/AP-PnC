@@ -12,7 +12,7 @@
 
     TimeoutRRT: 0.02
 
-    MaxVelMag: 4.0
+    MaxVelMag: 10.0
 
     MaxBdrMag: 2.1
 
@@ -20,7 +20,7 @@
 
     MinThrust: 2.0
 
-    MaxThrust: 12.0
+    MaxThrust: 20.0
 
     VehicleMass: 0.61
 
@@ -36,7 +36,8 @@
 
     WeightT: 20.0
 
-    ChiVec: [1.0e+4, 1.0e+4, 1.0e+4, 1.0e+4, 1.0e+5]
+# pos,vel,rate,theta,thrust
+    ChiVec: [1.0e+4, 1.0e+4, 1.0e+3, 1.0e+4, 1.0e+5]
 
     SmoothingEps: 1.0e-2
 
