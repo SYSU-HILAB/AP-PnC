@@ -9,7 +9,6 @@ Panels:
         - /Axes1
         - /PointCloud21
         - /Visualizer1/Marker1
-        - /Visualizer1/Marker1/Status1
         - /Visualizer1/Marker2
         - /Visualizer1/Marker3
         - /Visualizer1/Marker4
@@ -87,7 +86,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            StartGoal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -100,7 +99,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            edge: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -113,7 +112,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            mesh: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -126,7 +125,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            route: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -139,7 +138,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            trajectory: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -152,7 +151,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            waypoints: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -165,7 +164,7 @@ Visualization Manager:
           Enabled: true
           Name: Marker
           Namespaces:
-            uav_traj: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -247,18 +246,18 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -11.806781768798828
-        Y: -2.412999391555786
-        Z: -2.23921742872335e-05
+        X: 20.284269332885742
+        Y: 8.230234146118164
+        Z: -1.4762779755983502e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5447981953620911
+      Pitch: 0.5447984337806702
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 1.6966097354888916
+      Yaw: 1.5816097259521484
     Saved: ~
 Window Geometry:
   Displays:

@@ -19,8 +19,7 @@
 #include <chrono>
 #include <random>
 
-struct Config
-{
+struct Config {
     std::string mapTopic;
     std::string targetTopic;
     double dilateRadius;
@@ -45,8 +44,7 @@ struct Config
     double relCostTol;
     double uavScale;
 
-    Config(rclcpp::Node *node)
-    {
+    Config(rclcpp::Node *node) {
         mapTopic = node->declare_parameter("MapTopic", "default_map_topic");
         targetTopic = node->declare_parameter("TargetTopic", "default_target_topic");
         dilateRadius = node->declare_parameter("DilateRadius", 1.0);
@@ -70,10 +68,10 @@ struct Config
         smoothingEps = node->declare_parameter("SmoothingEps", 1.0);
         integralIntervs = node->declare_parameter("IntegralIntervs", 1);
         relCostTol = node->declare_parameter("RelCostTol", 1.0);
+
     }
 
-    void UpdateConfig(const rclcpp::Node *node)
-    {
+    void UpdateConfig(const rclcpp::Node *node) {
         node->get_parameter("MapTopic", mapTopic);
         node->get_parameter("TargetTopic", targetTopic);
         node->get_parameter("DilateRadius", dilateRadius);
@@ -100,8 +98,7 @@ struct Config
     }
 };
 
-class GlobalPlanner : public rclcpp::Node
-{
+class GlobalPlanner : public rclcpp::Node {
 private:
     Config config;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mapSub;
@@ -117,11 +114,10 @@ private:
 
 public:
     GlobalPlanner()
-        : Node("global_planning_node"),
-          config(this),
-          mapInitialized(false),
-          visualizer(this)
-    {
+            : Node("global_planning_node"),
+              config(this),
+              mapInitialized(false),
+              visualizer(this) {
         const Eigen::Vector3i xyz((config.mapBound[1] - config.mapBound[0]) / config.voxelWidth,
                                   (config.mapBound[3] - config.mapBound[2]) / config.voxelWidth,
                                   (config.mapBound[5] - config.mapBound[4]) / config.voxelWidth);
@@ -132,26 +128,26 @@ public:
         config.UpdateConfig(this);
 
 
-        mapSub = this->create_subscription<sensor_msgs::msg::PointCloud2>(config.mapTopic, 1, std::bind(&GlobalPlanner::mapCallBack, this, std::placeholders::_1));
+        mapSub = this->create_subscription<sensor_msgs::msg::PointCloud2>(config.mapTopic, 1,
+                                                                          std::bind(&GlobalPlanner::mapCallBack, this,
+                                                                                    std::placeholders::_1));
 
-        targetSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(config.targetTopic, 1, std::bind(&GlobalPlanner::targetCallBack, this, std::placeholders::_1));
+        targetSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(config.targetTopic, 1,
+                                                                               std::bind(&GlobalPlanner::targetCallBack,
+                                                                                         this, std::placeholders::_1));
     }
 
-    inline void mapCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
-    {
-        if (!mapInitialized)
-        {
+    inline void mapCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+        if (!mapInitialized) {
             size_t cur = 0;
             const size_t total = msg->data.size() / msg->point_step;
-            float *fdata = (float *)(&msg->data[0]);
-            for (size_t i = 0; i < total; i++)
-            {
+            float *fdata = (float *) (&msg->data[0]);
+            for (size_t i = 0; i < total; i++) {
                 cur = msg->point_step / sizeof(float) * i;
 
                 if (std::isnan(fdata[cur + 0]) || std::isinf(fdata[cur + 0]) ||
                     std::isnan(fdata[cur + 1]) || std::isinf(fdata[cur + 1]) ||
-                    std::isnan(fdata[cur + 2]) || std::isinf(fdata[cur + 2]))
-                {
+                    std::isnan(fdata[cur + 2]) || std::isinf(fdata[cur + 2])) {
                     continue;
                 }
                 voxelMap.setOccupied(Eigen::Vector3d(fdata[cur + 0],
@@ -165,10 +161,12 @@ public:
         }
     }
 
-    inline void plan()
-    {
-        if (startGoal.size() == 2)
-        {
+    inline void plan() {
+#ifdef  STATIC_GO
+
+        RCLCPP_WARN_STREAM(this->get_logger(), "goal point is " << startGoal[startGoal.size() - 1]);
+#endif
+        if (startGoal.size() == 2) {
             std::vector<Eigen::Vector3d> route;
             sfc_gen::planPath<voxel_map::VoxelMap>(startGoal[0],
                                                    startGoal[1],
@@ -189,8 +187,7 @@ public:
                                  hPolys);
             sfc_gen::shortCut(hPolys);
 
-            if (route.size() > 1)
-            {
+            if (route.size() > 1) {
                 visualizer.visualizePolytope(hPolys);
 
                 Eigen::Matrix3d iniState;
@@ -235,18 +232,15 @@ public:
                                    quadratureRes,
                                    magnitudeBounds,
                                    penaltyWeights,
-                                   physicalParams))
-                {
+                                   physicalParams)) {
                     return;
                 }
 
-                if (std::isinf(gcopter.optimize(traj, config.relCostTol)))
-                {
+                if (std::isinf(gcopter.optimize(traj, config.relCostTol))) {
                     return;
                 }
 
-                if (traj.getPieceNum() > 0)
-                {
+                if (traj.getPieceNum() > 0) {
                     trajStamp = this->get_clock()->now().seconds();
                     visualizer.visualize(traj, route);
                 }
@@ -254,31 +248,33 @@ public:
         }
     }
 
-    inline void targetCallBack(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
-    {
-        if (mapInitialized)
-        {
-            if (startGoal.size() >= 2)
-            {
+    inline void targetCallBack(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+        if (mapInitialized) {
+            if (startGoal.size() >= 2) {
                 startGoal.clear();
             }
             const double zGoal = config.mapBound[4] + config.dilateRadius +
                                  fabs(msg->pose.orientation.z) *
-                                     (config.mapBound[5] - config.mapBound[4] - 2 * config.dilateRadius);
+                                 (config.mapBound[5] - config.mapBound[4] - 2 * config.dilateRadius);
             Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, zGoal);
-            if (voxelMap.query(goal) == 0)
-            {
+            if (voxelMap.query(goal) == 0) {
                 // For simplicity, start point position to (0,0,0)
-                if (startGoal.size() < 1)
-                {
-                    goal = Eigen::Vector3d::Zero();
-                }
-                visualizer.visualizeStartGoal(goal, 0.5, startGoal.size());
+
+#ifdef  STATIC_GO
+
+                auto start = Eigen::Vector3d::Zero();
+                goal = (Eigen::Vector3d() << 44.0, -11.4689, 0.551743).finished();
+                visualizer.visualizeStartGoal(goal, 0.2, startGoal.size());
+                startGoal.emplace_back(start);
                 startGoal.emplace_back(goal);
-            }
-            else
-            {
-                RCLCPP_WARN(this->get_logger(),"Infeasible Position Selected !!!\n");
+#else
+                auto start = Eigen::Vector3d::Zero();
+                visualizer.visualizeStartGoal(goal, 0.2, startGoal.size());
+                startGoal.emplace_back(start);
+                startGoal.emplace_back(goal);
+#endif
+            } else {
+                RCLCPP_WARN(this->get_logger(), "Infeasible Position Selected !!!\n");
             }
 
             plan();
@@ -286,8 +282,7 @@ public:
         return;
     }
 
-    inline void process()
-    {
+    inline void process() {
         Eigen::VectorXd physicalParams(6);
         physicalParams(0) = config.vehicleMass;
         physicalParams(1) = config.gravAcc;
@@ -296,69 +291,58 @@ public:
         physicalParams(4) = config.parasDrag;
         physicalParams(5) = config.speedEps;
 
-        flatness::FlatnessMap flatmap;
-        flatmap.reset(physicalParams(0), physicalParams(1), physicalParams(2),
-                      physicalParams(3), physicalParams(4), physicalParams(5));
 
-        if (traj.getPieceNum() > 0)
-        {
+        auto &tailsitter_data = tailsitter_df::Data::getInstance();
+        auto &tailsitter_model = tailsitter_df::Model::getInstance();
+        tailsitter_data.reset(tailsitter_model);
+        if (traj.getPieceNum() > 0) {
             const double delta = this->get_clock()->now().seconds() - trajStamp;
-            if (delta > 0.0 && delta < traj.getTotalDuration())
-            {
-                double thr;
+            if (delta > 0.0 && delta < traj.getTotalDuration()) {
                 Eigen::Vector4d quat;
                 Eigen::Vector3d omg;
 
-                tailsitter_df::Data::getInstance().reset(tailsitter_df::Model::getInstance());
                 autodiff::VectorXreal z;
                 z.resize(9);
                 z << traj.getVel(delta), traj.getAcc(delta), traj.getAcc(delta);
-                auto& tailsitter_data = tailsitter_df::Data::getInstance();
-                tailsitter_data.reset(tailsitter_df::Model::getInstance());
                 tailsitter_df::df_forward(z);
 
-                auto quat_q = tailsitter_data.getQuaternion();
+                auto quat_df = tailsitter_data.getQuaternion();
+                Eigen::Quaterniond q_b1_b2(0, 0.707, 0, 0.707);
+                auto quat_q = quat_df * q_b1_b2;
                 quat(0) = quat_q.w();
                 quat(1) = quat_q.x();
                 quat(2) = quat_q.y();
                 quat(3) = quat_q.z();
-                // flatmap.forward(traj.getVel(delta),
-                //                 traj.getAcc(delta),
-                //                 traj.getJer(delta),
-                //                 0.0, 0.0,
-                //                 thr, quat, omg);
+
+#ifdef  DEBUG_VIZ
+                double alpha = tailsitter_data.alpha.val() * 180 / M_PI;
+                visualizer.visualizeFloat(alpha, "alpha");
+                double thr = tailsitter_data.at.norm().val();
                 double speed = traj.getVel(delta).norm();
-                double bodyratemag = omg.norm();
-                double tiltangle = acos(1.0 - 2.0 * (quat(1) * quat(1) + quat(2) * quat(2)));
-                std_msgs::msg::Float64 speedMsg, thrMsg, tiltMsg, bdrMsg;
-                speedMsg.data = speed;
-                thrMsg.data = thr;
-                tiltMsg.data = tiltangle;
-                bdrMsg.data = bodyratemag;
-                visualizer.speedPub->publish(speedMsg);
-                visualizer.thrPub->publish(thrMsg);
-                visualizer.tiltPub->publish(tiltMsg);
-                visualizer.bdrPub->publish(bdrMsg);
 
-                visualizer.visualizeFloat(speed, "xxxSpeed");
 
+                visualizer.visualizeFloat(speed, "speed");
+                visualizer.visualizeFloat(thr, "at");
+#endif
                 visualizer.visualizeUAVTraj(traj.getPos(delta), quat);
+
                 // visualizer.visualizeSphere(traj.getPos(delta),
                 //                            config.dilateRadius);
             }
+        } else {
+            tailsitter_data.reset(tailsitter_df::Model::getInstance());
+
         }
     }
 };
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
     auto global_planner = std::make_shared<GlobalPlanner>();
 
 
     rclcpp::Rate lr(1000);
-    while (rclcpp::ok())
-    {
+    while (rclcpp::ok()) {
         global_planner->process();
         rclcpp::spin_some(global_planner);
         lr.sleep();

@@ -1,4 +1,6 @@
 .vscode/
+.idea/
+compile_commands.json
 build/
 install/
 acados*

@@ -17,14 +17,14 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <unordered_map>
+
 using namespace std::chrono_literals;
 
 // Visualizer for the planner
-class Visualizer 
-{
+class Visualizer {
 private:
     // config contains the scale for some markers
-    rclcpp::Node* nh;
+    rclcpp::Node *nh;
     // These are publishers for path, waypoints on the trajectory,
     // the entire trajectory, the mesh of free-space polytopes,
     // the edge of free-space polytopes, and spheres for safety radius
@@ -42,9 +42,8 @@ public:
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr bdrPub;
 
 public:
-    explicit Visualizer(rclcpp::Node* nh_)
-        : nh(nh_)
-    {
+    explicit Visualizer(rclcpp::Node *nh_)
+            : nh(nh_) {
         routePub = nh->create_publisher<visualization_msgs::msg::Marker>("/visualizer/route", 10);
         wayPointsPub = nh->create_publisher<visualization_msgs::msg::Marker>("/visualizer/waypoints", 10);
         trajectoryPub = nh->create_publisher<visualization_msgs::msg::Marker>("/visualizer/trajectory", 10);
@@ -59,10 +58,9 @@ public:
     }
 
     // Visualize the trajectory and its front-end path
-    template <int D>
+    template<int D>
     inline void visualize(const Trajectory<D> &traj,
-                          const std::vector<Eigen::Vector3d> &route)
-    {
+                          const std::vector<Eigen::Vector3d> &route) {
         visualization_msgs::msg::Marker routeMarker, wayPointsMarker, trajMarker;
 
         routeMarker.id = 0;
@@ -97,14 +95,11 @@ public:
         trajMarker.color.g = 0.50;
         trajMarker.color.b = 1.00;
 
-        if (route.size() > 0)
-        {
+        if (route.size() > 0) {
             bool first = true;
             Eigen::Vector3d last;
-            for (auto it : route)
-            {
-                if (first)
-                {
+            for (auto it: route) {
+                if (first) {
                     first = false;
                     last = it;
                     continue;
@@ -125,11 +120,9 @@ public:
             routePub->publish(routeMarker);
         }
 
-        if (traj.getPieceNum() > 0)
-        {
+        if (traj.getPieceNum() > 0) {
             Eigen::MatrixXd wps = traj.getPositions();
-            for (int i = 0; i < wps.cols(); i++)
-            {
+            for (int i = 0; i < wps.cols(); i++) {
                 geometry_msgs::msg::Point point;
                 point.x = wps.col(i)(0);
                 point.y = wps.col(i)(1);
@@ -140,12 +133,10 @@ public:
             wayPointsPub->publish(wayPointsMarker);
         }
 
-        if (traj.getPieceNum() > 0)
-        {
+        if (traj.getPieceNum() > 0) {
             double T = 0.01;
             Eigen::Vector3d lastX = traj.getPos(0.0);
-            for (double t = T; t < traj.getTotalDuration(); t += T)
-            {
+            for (double t = T; t < traj.getTotalDuration(); t += T) {
                 geometry_msgs::msg::Point point;
                 Eigen::Vector3d X = traj.getPos(t);
                 point.x = lastX(0);
@@ -163,34 +154,30 @@ public:
     }
 
     // Visualize some polytopes in H-representation
-    inline void visualizePolytope(const std::vector<Eigen::MatrixX4d> &hPolys)
-    {
+    inline void visualizePolytope(const std::vector<Eigen::MatrixX4d> &hPolys) {
 
         // Due to the fact that H-representation cannot be directly visualized
         // We first conduct vertex enumeration of them, then apply quickhull
         // to obtain triangle meshs of polyhedra
-        for (size_t id = 0; id < hPolys.size(); id++)
-        {
-            std::cout << id  << "\n" << hPolys[id] << "\n";
+        for (size_t id = 0; id < hPolys.size(); id++) {
+            std::cout << id << "\n" << hPolys[id] << "\n";
         }
 
         Eigen::Matrix3Xd mesh(3, 0), curTris(3, 0), oldTris(3, 0);
-        for (size_t id = 0; id < hPolys.size(); id++)
-        {
+        for (size_t id = 0; id < hPolys.size(); id++) {
             oldTris = mesh;
             Eigen::Matrix<double, 3, -1, Eigen::ColMajor> vPoly;
             geo_utils::enumerateVs(hPolys[id], vPoly);
 
             std::cout << "vPoly\n" << vPoly << "\n";
-            
+
             quickhull::QuickHull<double> tinyQH;
             const auto polyHull = tinyQH.getConvexHull(vPoly.data(), vPoly.cols(), false, true);
             const auto &idxBuffer = polyHull.getIndexBuffer();
             int hNum = idxBuffer.size() / 3;
 
             curTris.resize(3, hNum * 3);
-            for (int i = 0; i < hNum * 3; i++)
-            {
+            for (int i = 0; i < hNum * 3; i++) {
                 curTris.col(i) = vPoly.col(idxBuffer[i]);
             }
             mesh.resize(3, oldTris.cols() + curTris.cols());
@@ -229,18 +216,15 @@ public:
 
         int ptnum = mesh.cols();
 
-        for (int i = 0; i < ptnum; i++)
-        {
+        for (int i = 0; i < ptnum; i++) {
             point.x = mesh(0, i);
             point.y = mesh(1, i);
             point.z = mesh(2, i);
             meshMarker.points.push_back(point);
         }
 
-        for (int i = 0; i < ptnum / 3; i++)
-        {
-            for (int j = 0; j < 3; j++)
-            {
+        for (int i = 0; i < ptnum / 3; i++) {
+            for (int j = 0; j < 3; j++) {
                 point.x = mesh(0, 3 * i + j);
                 point.y = mesh(1, 3 * i + j);
                 point.z = mesh(2, 3 * i + j);
@@ -260,8 +244,7 @@ public:
 
     // Visualize all spheres with centers sphs and the same radius
     inline void visualizeSphere(const Eigen::Vector3d &center,
-                                const double &radius)
-    {
+                                const double &radius) {
         visualization_msgs::msg::Marker sphereMarkers, sphereDeleter;
 
         sphereMarkers.id = 0;
@@ -294,8 +277,7 @@ public:
 
     // Visualize uav attitude trajectory
     inline void visualizeUAVTraj(const Eigen::Vector3d &pos,
-                                const Eigen::Vector4d &quat, double scale = 1.0)
-    {
+                                 const Eigen::Vector4d &quat, double scale = 3.0) {
         visualization_msgs::msg::Marker uavMarker;
 
         uavMarker.id = 0;
@@ -312,8 +294,8 @@ public:
         uavMarker.pose.orientation.z = quat(3);
         uavMarker.action = visualization_msgs::msg::Marker::ADD;
         uavMarker.ns = "uav_traj";
-        uavMarker.color.r = 0.00;
-        uavMarker.color.g = 0.00;
+        uavMarker.color.r = 1.00;
+        uavMarker.color.g = 1.00;
         uavMarker.color.b = 1.00;
         uavMarker.color.a = 1.00;
         uavMarker.scale.x = scale;
@@ -325,8 +307,7 @@ public:
 
     inline void visualizeStartGoal(const Eigen::Vector3d &center,
                                    const double &radius,
-                                   const int sg)
-    {
+                                   const int sg) {
         visualization_msgs::msg::Marker sphereMarkers, sphereDeleter;
 
         sphereMarkers.id = sg;
@@ -352,8 +333,7 @@ public:
         point.y = center(1);
         point.z = center(2);
         sphereMarkers.points.push_back(point);
-        if (sg == 0)
-        {
+        if (sg == 0) {
             spherePub->publish(sphereDeleter);
             rclcpp::sleep_for(std::chrono::duration_cast<std::chrono::nanoseconds>(1ns));
             sphereMarkers.header.stamp = nh->get_clock()->now();
@@ -361,32 +341,27 @@ public:
         spherePub->publish(sphereMarkers);
     }
 
-    inline void visualizeFloat(double data, const std::string topic)
-    {
-        static std::unordered_map<std::string, std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> > pubContainer;
+    inline void visualizeFloat(double data, const std::string topic) {
+        static std::unordered_map<std::string, std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>>> pubContainer;
         static std_msgs::msg::Float64 msg_float;
 
-        std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>>  pub_ptr;
-    
+        std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_ptr;
+
         auto it = pubContainer.find(topic);
-        if (it == pubContainer.end())
-        {
+        if (it == pubContainer.end()) {
             pub_ptr = nh->create_publisher<std_msgs::msg::Float64>(topic, 10);
             pubContainer[topic] = pub_ptr;
-        }
-        else
-        {
+        } else {
             pub_ptr = it->second;
         }
-        
+
 
         msg_float.data = data;
-        
+
         pub_ptr->publish(msg_float);
     }
 
 };
-
 
 
 #endif

@@ -8,7 +8,7 @@
 
     VoxelWidth: 0.25
 
-    MapBound: [-25.0, 25.0, -25.0, 25.0, 0.0, 5.0]
+    MapBound: [ -50.0, 50.0, -50.0, 50.0, 0.0, 5.0 ]
 
     TimeoutRRT: 0.02
 
@@ -18,7 +18,7 @@
 
     MaxTiltAngle: 1.05
 
-    MinThrust: 2.0
+    MinThrust: 1.0
 
     MaxThrust: 20.0
 
@@ -36,13 +36,13 @@
 
     WeightT: 20.0
 
-# pos,vel,rate,theta,thrust
-    ChiVec: [1.0e+4, 1.0e+4, 1.0e+3, 1.0e+4, 1.0e+5]
+    # pos,vel,rate,theta,thrust
+    ChiVec: [ 1.0e+4, 1.0e+4, 1.0e+3, 1.0e+4, 1.0e+5 ]
 
     SmoothingEps: 1.0e-2
 
     IntegralIntervs: 16
 
-    RelCostTol: 1.0e-5
+    RelCostTol: 1.0e-4
 
     UavScale: 1.0
