@@ -6,11 +6,6 @@
 #include "gcopter/voxel_map.hpp"
 #include "gcopter/sfc_gen.hpp"
 
-#include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/point.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -18,6 +13,18 @@
 #include <memory>
 #include <chrono>
 #include <random>
+
+#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+//#include <interface/msg/
+#include "interface/msg/trajectory_control.hpp"
+#include "interface/msg/ref_trajectory.hpp"
+//# CHANGE ANOTHER NAME MAY BETTER
+using namespace interface::msg;
+
+using RefTrajecotryMsg = interface::msg::RefTrajectory;
 
 struct Config {
     std::string mapTopic;
@@ -43,6 +50,9 @@ struct Config {
     int integralIntervs;
     double relCostTol;
     double uavScale;
+// trajectory publish time resolution;
+    double traj_pub_rsl = 0.02;
+    std::string trajTopic = "control_traj";
 
     Config(rclcpp::Node *node) {
         mapTopic = node->declare_parameter("MapTopic", "default_map_topic");
@@ -103,11 +113,12 @@ private:
     Config config;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mapSub;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr targetSub;
-
+    rclcpp::Publisher<RefTrajecotryMsg>::SharedPtr trajPub;
     bool mapInitialized;
     voxel_map::VoxelMap voxelMap;
     Visualizer visualizer;
     std::vector<Eigen::Vector3d> startGoal;
+    RefTrajecotryMsg control_traj_msg;
 
     Trajectory<5> traj;
     double trajStamp;
@@ -135,6 +146,17 @@ public:
         targetSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(config.targetTopic, 1,
                                                                                std::bind(&GlobalPlanner::targetCallBack,
                                                                                          this, std::placeholders::_1));
+        trajPub = this->create_publisher<RefTrajecotryMsg>(config.trajTopic, 2);
+
+        auto pub_traj = [this]() {
+//            if (this->control_traj_msg.size > 10)
+//            trajPub->publish(this->control_traj_msg);
+        };
+        auto timer = this->create_wall_timer(
+                500ms, pub_traj);
+
+//        auto timer_ = this->create_wall_timer(std::chrono::milliseconds(5), std::bind(&GlobalPlanner::process,
+//                                                                                         this, std::placeholders::_1));
     }
 
     inline void mapCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
@@ -243,6 +265,25 @@ public:
                 if (traj.getPieceNum() > 0) {
                     trajStamp = this->get_clock()->now().seconds();
                     visualizer.visualize(traj, route);
+                    control_traj_msg.header.stamp = this->get_clock()->now();
+                    TrajectoryPoint temp_point;
+                    int size = 0;
+                    control_traj_msg.points.clear();
+                    for (double t = 0.0; t <= traj.getTotalDuration(); t += config.traj_pub_rsl) {
+                        auto p = traj.getPos(t);
+                        temp_point.p[0] = p[0];
+                        temp_point.p[1] = p[1];
+                        temp_point.p[2] = p[2];
+                        auto v = traj.getVel(t);
+                        temp_point.v[0] = v[0];
+                        temp_point.v[1] = v[1];
+                        temp_point.v[2] = v[2];
+                        size += 1;
+                        control_traj_msg.points.emplace_back(temp_point);
+                        control_traj_msg.size = size;
+//                        std::cerr << "size " << size << " " << traj.getPos(t).transpose() << "\n";
+                    }
+
                 }
             }
         }
@@ -326,9 +367,13 @@ public:
 #endif
                 visualizer.visualizeUAVTraj(traj.getPos(delta), quat);
 
+                trajPub->publish(this->control_traj_msg);
+
                 // visualizer.visualizeSphere(traj.getPos(delta),
                 //                            config.dilateRadius);
             }
+
+
         } else {
             tailsitter_data.reset(tailsitter_df::Model::getInstance());
 
@@ -341,7 +386,7 @@ int main(int argc, char **argv) {
     auto global_planner = std::make_shared<GlobalPlanner>();
 
 
-    rclcpp::Rate lr(1000);
+    rclcpp::Rate lr(100);
     while (rclcpp::ok()) {
         global_planner->process();
         rclcpp::spin_some(global_planner);

@@ -1,0 +1,5 @@
+uint8 POS_START_INDEX=0
+uint8 VEL_START_INDEX=3
+uint8 RATE_START_INDEX=6
+float64[9] point
+

@@ -1,0 +1,4 @@
+/tailsitter_simulator_hover:
+  ros__parameters:
+    # target_position
+    target_position: [0.0, 0.0, 20.0]

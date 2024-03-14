@@ -1,4 +1,6 @@
 .vscode/
+.xmake/
+src/ompl
 .idea/
 compile_commands.json
 build/
