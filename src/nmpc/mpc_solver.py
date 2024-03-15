@@ -82,8 +82,11 @@ class MpcSolver:
 
         self.mpc_predicts = np.ndarray((self.Nodes, self.nx))
 
+        for stage in range(self.Nodes + 1):
+            self.__acados_ocp_solver.set(stage, "x", np.zeros((self.nx,)))
 
-
+        for stage in range(self.Nodes):
+            self.__acados_ocp_solver.set(stage, "u", np.zeros(self.nu,))
 
 
     def setRefPath(self, xTarget):

@@ -1,3 +1,26 @@
+# BUILD ACADOS WITH OPENMP
+## install acados
+```shell
+
+git clone https://github.com/acados/acados.git
+cd acados
+git submodule update --recursive --init
+
+```
+
+```shell
+mkdir -p build
+cd build
+cmake -DACADOS_WITH_OSQP=ON -DACADOS_WITH_OPENMP=ON ..
+# add more optional arguments e.g. -DACADOS_WITH_OSQP=OFF/ON -DACADOS_INSTALL_DIR=<path_to_acados_installation_folder> above
+make install -j4
+```
+
+## install acados python interface
+Follow link (https://docs.acados.org/python_interface/index.html)[acados python interface installation]
+
+
+
 # parameter independent of ROS/ROS2
 ## jbeder/yaml-cpp
 ### INSTALL
