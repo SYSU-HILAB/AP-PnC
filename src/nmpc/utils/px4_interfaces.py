@@ -23,7 +23,7 @@ from rclpy.node import Node
 from px4_msgs.msg import OffboardControlMode, VehicleCommand
 from px4_msgs.msg import VehicleOdometry, VehicleRatesSetpoint
 from px4_msgs.msg import VehicleThrustAccSetpoint
-from interfaces.msg import Controls, State
+from interface.msg import Controls, State
 from nav_msgs.msg import Odometry
 
 from config.config import PX4Interface
@@ -94,10 +94,8 @@ class PX4InterfaceNode(Node):
         px4_msg = VehicleThrustAccSetpoint()
         px4_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         px4_msg.thrust_acc_sp = float(mpc_controls.total_thrust)
-        if MpcConfig.airframe == MpcConfig.Airframe.Quadrotor:
-            px4_msg.rates_sp = FLUtoFRD(mpc_controls.rates_sp).astype(np.float32)
-        if MpcConfig.airframe == MpcConfig.Airframe.Tailsitter:
-            px4_msg.rates_sp = FLUtoFRD(tailsitter_rate(mpc_controls.rates_sp)).astype(np.float32)
+        
+        px4_msg.rates_sp = FLUtoFRD(mpc_controls.rates_sp).astype(np.float32)
         self.vehicle_thrust_acc_pub.publish(px4_msg)
         self.last_run_mpc = px4_msg.timestamp
 
@@ -287,7 +285,6 @@ class StableOdometryNode(Node):
         if self.last_stamp is None:
             return
         td = self.last_stamp + self.incremental_time_us - cur_stamp
-        # if MpcConfig.airframe == MpcConfig.Airframe.Quadrotor:
         self.set_next_step_state(NEDtoENU(vo.position), canonical_quaternion(NEDtoENU(vo.q)), NEDtoENU(vo.velocity), FRDtoFLU(vo.angular_velocity), td * 1e-6)
         ## self.state is local FLU world, body is FLU.
         ## we only translate it to mpc solver, visualize things keep not changed.

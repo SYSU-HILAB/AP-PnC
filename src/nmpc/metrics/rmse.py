@@ -18,7 +18,7 @@ import rclpy
 from rclpy.node import Node
 from utils.quaternions import *
 from utils.qos_setting import reliable_qos
-from interfaces.msg import Metrics
+from interface.msg import Metrics
 from utils.terminal_color import *
 
 def calculate_rmse(new_data_point, current_mean, n):

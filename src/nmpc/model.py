@@ -15,6 +15,7 @@ import casadi as cs
 def tailsitter_flu():
     model_name = "tailsitter_flu"
     # c_tau = cs.DM(0.016)
+    mass = cs.DM(1.5)
     c_tau = cs.DM(0.013)
     J_data = np.array([0.0216666667, 0.0216666667, .04])
     # J_data = cs.DM([0.04000000000000001, 0.02166666666666667, 0.02166666666666667])
@@ -56,9 +57,45 @@ def tailsitter_flu():
     # dynamics
     f_expl = vertcat(
         v,
-        v_dot_q(tb,q) + g,
+        v_dot_q(tb,q)/mass + g,
         cs.mtimes(cs.inv(J), (tau_b - cs.cross(r, cs.mtimes(J, r)))),
         1 / 2 * cs.mtimes(skew_symmetric(r), q)
+    )
+    f_impl = x_dot - f_expl
+
+    model = AcadosModel()
+
+    model.f_impl_expr = f_impl
+    model.f_expl_expr = f_expl
+    model.x = x
+    model.xdot = x_dot
+    model.u = u
+    # model.z = z
+    model.p = p
+    model.name = model_name
+
+    return model
+
+
+def odometry_model():
+    model_name = "odometry_model"
+    p = MX.sym('p',3)
+    v = MX.sym('v',3)
+    r = MX.sym('r',3)
+    q = MX.sym('q',4)
+
+    x = vertcat(p,q)
+    
+    # xdot
+    p_dot = MX.sym("p_dot",3,1)
+    q_dot = MX.sym("q_dot",4,1)
+    x_dot = cs.vertcat(p_dot,q_dot)
+    u = cs.vertcat(v, r)
+    p = []
+    # dynamics
+    f_expl = vertcat(
+        v,
+        1 / 2 * cs.mtimes(skew_symmetric(r), q),
     )
     f_impl = x_dot - f_expl
 

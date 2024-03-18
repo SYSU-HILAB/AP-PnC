@@ -16,7 +16,6 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
 from utils.qos_setting import *
 from utils.visualizations import *
-from config.config import Simulator
 from mpc_solver import MpcSolver
 
 import threading
@@ -25,26 +24,43 @@ import copy
 import numpy as np
 
 from utils.stat_plot import plot_density
-from utils.simple_simulator import SimNode
-traj_bullet = RefTrajectoryBullet()
+
+import threading
 
 
+cond_of_set_ref = threading.Condition()
+mpc_solver = MpcSolver(cython=True)
+
+ref_states = np.zeros((MpcConfig.nodes, 3+3+3))
 
 
-class MpcNode(Node):
+class MpcRefNode(Node):
     def __init__(self):
-        super().__init__('mpc_solver')
+        super().__init__('MpcRefNode')
+        self.create_subscription(RefTrajectoryBullet, "ref_trajecotry_bullet", self.traj_bullet_cb, reliable_qos)
 
-        self.mpc_solver = MpcSolver(cython=True)
-        # self.mpc_solver.setRefTrajectory()
+        self.init = False
+#   this function reads the reference trajectory from the message and sets it to the mpc solver
+    def traj_bullet_cb(self, msg):
+        global ref_states
+        global cond_of_set_ref
+        ref_states = np.array([point.point for point in msg.points])
+        with cond_of_set_ref:
+            cond_of_set_ref.notify_all()
+
+
+class MpcOptNode(Node):
+    def __init__(self):
+        super().__init__('MpcOptNode')
+
         # TODO change to TrajectoryControl
-        self.create_subscription(RefTrajectoryBullet, "ref_trajecotry_bullet", self.traj_bullet_cb, keep_last_qos)
-        self.create_subscription(State, "cur_state", self.state_cb, keep_last_qos)
+        self.create_subscription(State, "cur_state", self.state_cb, reliable_qos)
         self.controls_pub = self.create_publisher(Controls, "mpc_controls", reliable_qos)
         self.pred_traj_pub = self.create_publisher(Path, "mpc_pred_traj", keep_last_qos)
         self.controls = Controls()
-        
         # self.metrics_pub = self.create_publisher(Metrics, "mpc_metrics", reliable_qos)
+
+        self.ref_can_set_pub = self.create_publisher(Bool, "ref_can_set", reliable_qos)
 
         self.x0 = np.zeros((13,), dtype=np.float64)
         self.u = np.zeros((4,), dtype=np.float64)
@@ -54,26 +70,14 @@ class MpcNode(Node):
         self.init = False
 
         self.ref_q = np.zeros((3,))
-        self.ref_states = np.zeros((MpcConfig.nodes, 3+3+3))
     
-#   this function reads the reference trajectory from the message and sets it to the mpc solver
-    def traj_bullet_cb(self, msg):
-        traj_bullet:RefTrajectoryBullet = msg
-        traj_bullet.timestamp = self.get_clock().now().to_msg()
-        i = 0
-        for point in traj_bullet.points:
-            self.ref_states[i] = point.point
-            i = i + 1
-        assert i == MpcConfig.nodes
-
-        self.mpc_solver.setRefPath(self.ref_states)
-
+            
     def run_optimization(self):
         # for i in range(5):
         self.start = time.time()
-        self.mpc_solver.solve(self.x0)
+        mpc_solver.solve(self.x0)
 
-        self.u = self.mpc_solver.u
+        self.u = mpc_solver.u
         self.pub_controls()
         self.end = time.time()
 
@@ -81,10 +85,10 @@ class MpcNode(Node):
 
     def pub_predict_traj(self):
         self.controls.motors_u = self.u
-        # self.controls.rates_sp = self.mpc_solver.sim_one_step()[10:]
+        # self.controls.rates_sp = mpc_solver.sim_one_step()[10:]
         self.controls.total_thrust = np.sum(self.controls.motors_u)
         self.controls_pub.publish(self.controls)
-        rsts = self.mpc_solver.sim_traj()
+        rsts = mpc_solver.sim_traj()
         msg = Path()
         msg.header.frame_id = "world"
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -103,60 +107,40 @@ class MpcNode(Node):
         
     @property
     def opt_time(self):
-        return self.mpc_solver.solve_time
+        return mpc_solver.solve_time
 
-    def state_cb(self, state:State):
+    def pub_ref_can_set(self):
+        msg = Bool()
+        msg.data = True
+        self.ref_can_set_pub.publish(msg)
+
+    def state_cb(self, state: State):
+        global ref_states
+        global cond_of_set_ref
+        global mpc_solver
         self.x0 = state.mpc_state
-        # if MpcConfig.Metrics == True:
-        #     metrics_msg = Metrics()
-        #     metrics_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        #     metrics_msg.cur_p = self.x0[:3]
-        #     metrics_msg.cur_q = self.x0[3:7]
-        #     metrics_msg.ref_p = self.ref_p
-        #     metrics_msg.ref_v_norm = self.ref_v_norm
-        #     metrics_msg.cur_v_norm = np.linalg.norm(self.x0[7:10], 2)
-        #     self.metrics_pub.publish(metrics_msg)
-        # self.opt_thread.start()
+        with cond_of_set_ref:
+            self.pub_ref_can_set()
+            cond_of_set_ref.wait()
+        mpc_solver.setRefPath(ref_states)          
         self.run_optimization()
-        print(self.x0[9:])
-        # self.pub_predict_traj()
         
-
     def pub_controls(self):
         self.controls.motors_u = self.u
-        # self.controls.rates_sp = self.mpc_solver.sim_one_step_rate()
+        # self.controls.rates_sp = mpc_solver.sim_one_step_rate()
         self.controls.total_thrust = np.sum(self.controls.motors_u)
         self.controls_pub.publish(self.controls)
 
 
 def main():
     rclpy.init()
-    mpc_node = MpcNode()
-    mpc_executor = SingleThreadedExecutor()
-    mpc_executor.add_node(mpc_node)
-    mpc_executor.spin()
+    mpc_node = MpcOptNode()
+    ref_set_node = MpcRefNode()
+    executror = MultiThreadedExecutor(num_threads=2)
+    executror.add_node(mpc_node)
+    executror.add_node(ref_set_node)
+    executror.spin()
     
-    # time = np.array(mpc_node.time_seq)
-    
-    # print("***********")
-    # print(f"mean time: {np.mean(time)}, max time: {np.max(time)}")
-    # plot_density(time)
-
-    # try:
-    #     while True:
-    #     # 你的代码逻辑放在这里
-    #         pass
-    # except KeyboardInterrupt:
-        
-    #     time = np.array(mpc_node.time_seq)
-    #     print("***********")
-    #     print(f"mean time: {np.mean(time)}, max time: {np.max(time)}")
-    #     plot_density(time)
-
-
-
-
-
 
 if __name__ == "__main__":
     main()

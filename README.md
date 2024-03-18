@@ -4,6 +4,7 @@
 
 git clone https://github.com/acados/acados.git
 cd acados
+git checkout v0.3.0
 git submodule update --recursive --init
 
 ```

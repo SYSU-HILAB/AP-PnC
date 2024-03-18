@@ -271,17 +271,18 @@ public:
                     control_traj_msg.points.clear();
                     for (double t = 0.0; t <= traj.getTotalDuration(); t += config.traj_pub_rsl) {
                         auto p = traj.getPos(t);
-                        temp_point.p[0] = p[0];
-                        temp_point.p[1] = p[1];
-                        temp_point.p[2] = p[2];
+                        temp_point.point[TrajectoryPoint::POS_START_INDEX] = p[0];
+                        temp_point.point[TrajectoryPoint::POS_START_INDEX + 1] = p[1];
+                        temp_point.point[TrajectoryPoint::POS_START_INDEX + 2] = p[2];
+
                         auto v = traj.getVel(t);
-                        temp_point.v[0] = v[0];
-                        temp_point.v[1] = v[1];
-                        temp_point.v[2] = v[2];
+                        temp_point.point[TrajectoryPoint::VEL_START_INDEX] = v[0];
+                        temp_point.point[TrajectoryPoint::VEL_START_INDEX + 1] = v[1];
+                        temp_point.point[TrajectoryPoint::VEL_START_INDEX + 2] = v[2];
+
                         size += 1;
                         control_traj_msg.points.emplace_back(temp_point);
                         control_traj_msg.size = size;
-//                        std::cerr << "size " << size << " " << traj.getPos(t).transpose() << "\n";
                     }
 
                 }

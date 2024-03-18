@@ -1,4 +1,5 @@
 #include "tailsitter_simulator/Tailsitter.hpp"
+
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Geometry>
@@ -11,10 +12,9 @@ namespace odeint = boost::numeric::odeint;
 
 namespace TailsitterSimulator {
 
-
 // Eigen::Matrix3d R = q.toRotationMatrix();
 void sim_aerodynamics(const Eigen::Vector3d &V_b, Eigen::Vector3d &F_b,
-                  Eigen::Vector3d &M_b, double& alpha, double& beta) {
+                      Eigen::Vector3d &M_b, double &alpha, double &beta) {
   // Aerodynamics(V_b, F_b, M_b, alpha, beta);
   // const Eigen::Matrix3d Rot_frame = Eigen::Matrix3d::
   Eigen::Quaterniond q_frame_trans = Eigen::Quaterniond(0, 1, 0, 1);
@@ -26,20 +26,21 @@ void sim_aerodynamics(const Eigen::Vector3d &V_b, Eigen::Vector3d &F_b,
   double f_b[3] = {0, 0, 0};
   double m_b[3] = {0, 0, 0};
   Aerodynamics(v_b, f_b, m_b, &alpha, &beta);
-  F_b = R_frame_trans *  Eigen::Vector3d(f_b[0], f_b[1], f_b[2]);
+  F_b = R_frame_trans * Eigen::Vector3d(f_b[0], f_b[1], f_b[2]);
   M_b = R_frame_trans * Eigen::Vector3d(m_b[0], m_b[1], m_b[2]);
 }
 
 Tailsitter::Tailsitter(void) {
-  YAML::Node config =
-      YAML::LoadFile(utils::files::get_config_file_path("tailsitter_simulator", "simulator_config.yaml"));
+  YAML::Node config = YAML::LoadFile(utils::files::get_config_file_path(
+      "tailsitter_simulator", "simulator_config.yaml"));
   g_ = 9.81;
-  mass_ = config["mass"].as<double>();  
+  mass_ = config["mass"].as<double>();
 
-  J_ = (Eigen::Vector3d() << config["inertia"][0].as<double>(), config["inertia"][1].as<double>(), config["inertia"][2].as<double>()).finished().asDiagonal();
+  J_ = (Eigen::Vector3d() << config["inertia"][0].as<double>(),
+        config["inertia"][1].as<double>(), config["inertia"][2].as<double>())
+           .finished()
+           .asDiagonal();
   kf_ = config["kf"].as<double>();
-  
-
 
   km_ = config["tau"].as<double>() * kf_;
 
@@ -92,13 +93,14 @@ void Tailsitter::step(double dt) {
   Eigen::Matrix3d R = state_.R * P.inverse();
   state_.R = R;
 
-  // Don't go below zero, simulate floor, and set all state to default "zero" value, and return, don't step further
+  // Don't go below zero, simulate floor, and set all state to default "zero"
+  // value, and return, don't step further
   if (state_.p(2) < 0.0 && state_.v(2) < 0) {
     state_.p = Eigen::Vector3d(0, 0, 0);
     state_.v = Eigen::Vector3d(0, 0, 0);
     state_.R = Eigen::Matrix3d::Identity();
     state_.omega = Eigen::Vector3d(0, 0, 0);
-    std::cerr << "Crash detected, resetting state to zero" << std::endl;
+    // std::cerr << "Crash detected, resetting state to zero" << std::endl;
   }
   updateInternalState();
 
@@ -148,20 +150,19 @@ void Tailsitter::operator()(const Tailsitter::InternalState &x,
   // TODO more flexible parameter to config the rotors configuration
   // x configuration of the rotors, Assuming the inter-motors vertex consistutes
   // a square.
-  double factor = arm_length_ / sqrt(2);
+  double factor = arm_length_ / sqrt(2) * kf_;
   // double totalF = kf_ * motor_rpm_sq.sum();
   double thrust = kf_ * motor_rpm_sq.sum();
-
   // Propeller dynamics
   Eigen::Vector3d moments_prop;
   Eigen::Vector3d moments_aero;
   Eigen::Vector3d moments;
-  moments_prop(0) = factor * (-motor_rpm_sq(0) - motor_rpm_sq(1) + motor_rpm_sq(2) +
-                         motor_rpm_sq(3));
-  moments_prop(1) = factor * (-motor_rpm_sq(0) + motor_rpm_sq(1) + motor_rpm_sq(2) -
-                         motor_rpm_sq(3));
-  moments_prop(2) = km_ * (-motor_rpm_sq(0) + motor_rpm_sq(1) - motor_rpm_sq(2) -
-                      motor_rpm_sq(3));
+  moments_prop(0) = factor * (-motor_rpm_sq(0) - motor_rpm_sq(1) +
+                              motor_rpm_sq(2) + motor_rpm_sq(3));
+  moments_prop(1) = factor * (-motor_rpm_sq(0) + motor_rpm_sq(1) +
+                              motor_rpm_sq(2) - motor_rpm_sq(3));
+  moments_prop(2) = km_ * (-motor_rpm_sq(0) + motor_rpm_sq(1) -
+                           motor_rpm_sq(2) + motor_rpm_sq(3));
   // Aerodynamics
   Eigen::Vector3d F_aero;
   Eigen::Vector3d vb = cur_state.R.transpose() * cur_state.v;
@@ -170,16 +171,17 @@ void Tailsitter::operator()(const Tailsitter::InternalState &x,
   sim_aerodynamics(vb, F_aero, moments_aero, alpha, beta);
   // TODO change it to aerodynamics of the wing
   // F_aero = Eigen::Vector3d(0, 0, 0);
-  if (!aero_moment_on_)
-  moments_aero = Eigen::Vector3d(0, 0, 0);
+  if (!aero_moment_on_) moments_aero = Eigen::Vector3d(0, 0, 0);
   moments = moments_prop + moments_aero;
 
   vnorm = cur_state.v;
 
   x_dot = cur_state.v;
   v_dot = -Eigen::Vector3d(0, 0, g_) + thrust * R.col(2) / mass_ +
-          external_force_ / mass_  + F_aero / mass_;
-
+          external_force_ / mass_ + F_aero / mass_;
+  // std::cerr << "v_dot: " << v_dot.transpose() << std::endl;
+  // std::cerr << "thrust_acc: " << (thrust * R.col(2) / mass_).transpose() << std::endl;
+  // std::cerr << "aero_acc: " << (F_aero / mass_).transpose() << std::endl;
   acc_ = v_dot;
   //  acc_[2] = -acc_[2]; // to NED
 
@@ -213,13 +215,16 @@ void Tailsitter::setInput(double u1, double u2, double u3, double u4) {
   input_(1) = u2;
   input_(2) = u3;
   input_(3) = u4;
+
   for (int i = 0; i < 4; i++) {
     if (std::isnan(input_(i))) {
       input_(i) = (max_rpm_ + min_rpm_) / 2;
       std::cout << "NAN input ";
     }
-    if (input_(i) > max_rpm_)
+    if (input_(i) > max_rpm_){
       input_(i) = max_rpm_;
+      std::cerr << "Input " << i << " is larger than max_rpm, setting to max_rpm" << std::endl;
+    }
     else if (input_(i) < min_rpm_)
       input_(i) = min_rpm_;
   }
@@ -230,10 +235,10 @@ void Tailsitter::setControl(const TailsitterSimulator::Control &control) {
   assert(control.thrust_vec[2] >= 0);
   assert(control.thrust_vec[3] >= 0);
 
-  setInput(std::sqrt(control.thrust_vec[0]) / kf_,
-           std::sqrt(control.thrust_vec[1]) / kf_,
-           std::sqrt(control.thrust_vec[2]) / kf_,
-           std::sqrt(control.thrust_vec[3]) / kf_);
+  setInput(std::sqrt(control.thrust_vec[0] / kf_),
+           std::sqrt(control.thrust_vec[1] / kf_),
+           std::sqrt(control.thrust_vec[2] / kf_),
+           std::sqrt(control.thrust_vec[3] / kf_));
 }
 
 const Tailsitter::State &Tailsitter::getState(void) const { return state_; }
@@ -282,8 +287,6 @@ void Tailsitter::setArmLength(double d) {
 
   arm_length_ = d;
 }
-
-
 
 double Tailsitter::getPropellerThrustCoefficient(void) const { return kf_; }
 

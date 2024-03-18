@@ -5,8 +5,8 @@ mass: 1.5
 tau: 0.013
 kf: 8.98132e-9
 arm_length: 0.24607
-motor_time: 0.3333
-min_rpm: 1200
+motor_time: 1e-3
+min_rpm: 0
 max_rpm: 35000
 
 aero_moment_on: false

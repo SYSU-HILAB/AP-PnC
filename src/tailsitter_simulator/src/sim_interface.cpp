@@ -41,8 +41,10 @@ Eigen::Vector4d &rotToQuat(const Eigen::Matrix3d &R) {
 class SimulatorInterface : public rclcpp::Node {
  private:
   std::mutex control_mutex_;
+  bool is_control_updated_ = false;
 
-  double sim_time_step_;
+  double sim_time_step_ = 0.0;
+  int count_ = 0;
   TailsitterSimulator::Tailsitter tailsitter_simulator_;
   TailsitterSimulator::Control control_;
 
@@ -53,13 +55,14 @@ class SimulatorInterface : public rclcpp::Node {
 
  private:
   void declareParams() {
-    this->declare_parameter("sim_time_step", 0.001);
+    this->declare_parameter("sim_time_step_count", 20);
     this->declare_parameter("init_p", std::vector<double>{0, 0, 10});
     this->declare_parameter("init_v", std::vector<double>{12, 0, 0});
     this->declare_parameter("init_q", std::vector<double>{1, 0, 0, 0});
   }
   void updateParams() {
-    sim_time_step_ = this->get_parameter("sim_time_step").as_double();
+    count_ = this->get_parameter("sim_time_step_count").as_int();
+    sim_time_step_ = count_ * 1e-3;
   }
 
  public:
@@ -71,14 +74,16 @@ class SimulatorInterface : public rclcpp::Node {
         "/mpc_controls", 10,
         std::bind(&SimulatorInterface::controlCallback, this,
                   std::placeholders::_1));
-    mpc_state_publisher_ = this->create_publisher<MpcStateMsg>("cur_state", 10);
+    // set reliabe qos
+    mpc_state_publisher_ = this->create_publisher<MpcStateMsg>(
+        "cur_state", rclcpp::QoS(1).reliable().durability(
+                         RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL).keep_last(1));
     odometry_publisher_ =
         this->create_publisher<OdometryMsg>("cur_state_odom", 10);
-
-    sim_time_step_ = this->get_parameter("sim_time_step").as_double();
-    timer_ = this->create_wall_timer(
-        std::chrono::duration<double>(sim_time_step_),
-        std::bind(&SimulatorInterface::simulatorCallback, this));
+    updateParams();
+    // timer_ = this->create_wall_timer(
+    //     std::chrono::duration<double>(sim_time_step_),
+    //     std::bind(&SimulatorInterface::simulatorCallback, this));
 
     initState();
   }
@@ -99,6 +104,14 @@ class SimulatorInterface : public rclcpp::Node {
     state.v = Eigen::Vector3d(v[0], v[1], v[2]);
     state.R = quat.toRotationMatrix();
     tailsitter_simulator_.setState(state);
+    publishMpcState();
+    publishOdometry();
+  }
+
+  void simulation() {
+    for (int i = 0; i < count_; i++) {
+      tailsitter_simulator_.step(1e-3);
+    }
   }
 
   void controlCallback(const ControlMsg::SharedPtr msg) {
@@ -112,9 +125,29 @@ class SimulatorInterface : public rclcpp::Node {
       control_.thrust_vec[2] = msg->motors_u[2];
       control_.thrust_vec[3] = msg->motors_u[3];
     }
-    RCLCPP_INFO(this->get_logger(), "MPC controls: [%f %f %f %f]",
-                control_.thrust_vec[0], control_.thrust_vec[1],
-                control_.thrust_vec[2], control_.thrust_vec[3]);
+    is_control_updated_ = true;
+    {
+      std::lock_guard<std::mutex> lock(control_mutex_);
+      tailsitter_simulator_.setControl(control_);
+    }
+
+    if (is_control_updated_) {
+      RCLCPP_INFO(this->get_logger(), "MPC controls: [%f %f %f %f]",
+                  control_.thrust_vec[0], control_.thrust_vec[1],
+                  control_.thrust_vec[2], control_.thrust_vec[3]);
+
+      simulation();
+      static SimState sim_state;
+      sim_state = tailsitter_simulator_.getState();
+      RCLCPP_INFO(this->get_logger(), "p: [%f %f %f]", sim_state.p(0),
+                  sim_state.p(1), sim_state.p(2));
+      RCLCPP_INFO(this->get_logger(), "v: [%f %f %f]", sim_state.v(0),
+                  sim_state.v(1), sim_state.v(2));
+
+      publishMpcState();
+      publishOdometry();
+      is_control_updated_ = false;
+    }
   }
 
   void simulatorCallback() {
@@ -123,7 +156,20 @@ class SimulatorInterface : public rclcpp::Node {
       tailsitter_simulator_.setControl(control_);
     }
 
-    tailsitter_simulator_.step(sim_time_step_);
+    if (is_control_updated_) {
+      RCLCPP_INFO(this->get_logger(), "MPC controls: [%f %f %f %f]",
+                  control_.thrust_vec[0], control_.thrust_vec[1],
+                  control_.thrust_vec[2], control_.thrust_vec[3]);
+
+      simulation();
+      static SimState sim_state;
+      sim_state = tailsitter_simulator_.getState();
+      RCLCPP_INFO(this->get_logger(), "p: [%f %f %f]", sim_state.p(0),
+                  sim_state.p(1), sim_state.p(2));
+      RCLCPP_INFO(this->get_logger(), "v: [%f %f %f]", sim_state.v(0),
+                  sim_state.v(1), sim_state.v(2));
+      is_control_updated_ = false;
+    }
     publishMpcState();
     publishOdometry();
   }

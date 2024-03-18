@@ -94,7 +94,7 @@ class MpcSolver:
        change ref_states(trajectory) for mpc
 
        Args:
-           xTarget: Nx13D (pos, vel, rate, attitude)
+           xTarget: Nx13D (pos, vel, rate)
        """
         while xTarget.shape[0] < self.Nodes + 1: ## finally its shape[0] becomes self.Nodes + 1
             xTarget = np.concatenate([xTarget, np.expand_dims(xTarget[-1,:], 0)], 0)
@@ -102,16 +102,8 @@ class MpcSolver:
 
         for j in range(self.Nodes): 
             ref = xTarget[j,:]
-            if j == 0:
-                yref = np.concatenate([ref, uTarget])
-                self.__acados_ocp_solver.set(j, "yref", yref)
-            else:
-                # yref = np.concatenate([ref, uTarget, np.zeros((1,))])
-                yref = np.concatenate([ref, uTarget])
-                if MpcConfig.Contrainst.CoordinateFlight:
-                    yref = np.concatenate((yref, np.zeros((1,))))
-                # yref = np.concatenate([ref, uTarget])
-                self.__acados_ocp_solver.set(j, "yref", yref)
+            yref = np.concatenate([ref, uTarget])
+            self.__acados_ocp_solver.set(j, "yref", yref)
         self.__acados_ocp_solver.set(self.Nodes, "yref", xTarget[self.Nodes,:])
 
 
