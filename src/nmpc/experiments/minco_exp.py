@@ -63,6 +63,7 @@ class MpcOptNode(Node):
         self.ref_can_set_pub = self.create_publisher(Bool, "ref_can_set", reliable_qos)
 
         self.x0 = np.zeros((13,), dtype=np.float64)
+        self.x0[9] = 1.0
         self.u = np.zeros((4,), dtype=np.float64)
         self.start = time.time()
         self.end = time.time()
@@ -118,6 +119,7 @@ class MpcOptNode(Node):
         global ref_states
         global cond_of_set_ref
         global mpc_solver
+        print("entering")
         self.x0 = state.mpc_state
         with cond_of_set_ref:
             self.pub_ref_can_set()

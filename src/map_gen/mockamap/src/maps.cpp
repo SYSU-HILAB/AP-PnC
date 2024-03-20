@@ -85,7 +85,7 @@ Maps::pcl2ros()
     std::cout << "cloud.height() = " << (*info.cloud).height << std::endl;
     std::cout << "cloud.width() = " << (*info.cloud).width << std::endl;
   pcl::toROSMsg(*info.cloud, *info.output);
-  info.output->header.frame_id = "odom";
+  info.output->header.frame_id = "world";
   RCLCPP_INFO(this->node_->get_logger(),
               "finish: infill %lf%%",
               100.0 * info.cloud->width /

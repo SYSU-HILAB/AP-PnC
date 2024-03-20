@@ -713,7 +713,7 @@ namespace gcopter {
             rho = timeWeight;
             headPVA = initialPVA;
             tailPVA = terminalPVA;
-            tailPVA.col(1) << 8, 0, 0;
+            tailPVA.col(1) << 10, 0, 0;
             hPolytopes = safeCorridor;
             for (size_t i = 0; i < hPolytopes.size(); i++) {
                 const Eigen::ArrayXd norms =

@@ -3,10 +3,10 @@ mass: 1.5
 
 # factor of the propeller force over propeller moment coefficient
 tau: 0.013
-kf: 8.98132e-9
+kf: 8.54858e-6
 arm_length: 0.24607
-motor_time: 1e-3
-min_rpm: 0
-max_rpm: 35000
+motor_time: 0.0125
+min_rpm: 60
+max_rpm: 1000
 
 aero_moment_on: false

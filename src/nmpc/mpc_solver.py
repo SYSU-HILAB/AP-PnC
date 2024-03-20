@@ -66,6 +66,7 @@ class MpcSolver:
         self.nx = self.__ocp.model.x.size()[0]
         self.nu = self.__ocp.model.u.size()[0]
         self.ny = self.nx + self.nu
+        # self.__acados_ocp_solver.dump_last_qp_to_json()
         # if MpcConfig.airframe == MpcConfig.Airframe.Tailsitter:
         #     self.__sim = crea
         self.__sim = create_sim_solver_with_model_defined(

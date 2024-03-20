@@ -146,14 +146,10 @@ public:
         targetSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(config.targetTopic, 1,
                                                                                std::bind(&GlobalPlanner::targetCallBack,
                                                                                          this, std::placeholders::_1));
-        trajPub = this->create_publisher<RefTrajecotryMsg>(config.trajTopic, 2);
+        trajPub = this->create_publisher<RefTrajecotryMsg>(config.trajTopic, 
+            rclcpp::QoS(11).transient_local().reliable().keep_last(1)
+        );
 
-        auto pub_traj = [this]() {
-//            if (this->control_traj_msg.size > 10)
-//            trajPub->publish(this->control_traj_msg);
-        };
-        auto timer = this->create_wall_timer(
-                500ms, pub_traj);
 
 //        auto timer_ = this->create_wall_timer(std::chrono::milliseconds(5), std::bind(&GlobalPlanner::process,
 //                                                                                         this, std::placeholders::_1));
@@ -265,9 +261,8 @@ public:
                 if (traj.getPieceNum() > 0) {
                     trajStamp = this->get_clock()->now().seconds();
                     visualizer.visualize(traj, route);
-                    control_traj_msg.header.stamp = this->get_clock()->now();
+                    control_traj_msg.timestamp = this->get_clock()->now();
                     TrajectoryPoint temp_point;
-                    int size = 0;
                     control_traj_msg.points.clear();
                     for (double t = 0.0; t <= traj.getTotalDuration(); t += config.traj_pub_rsl) {
                         auto p = traj.getPos(t);
@@ -280,9 +275,7 @@ public:
                         temp_point.point[TrajectoryPoint::VEL_START_INDEX + 1] = v[1];
                         temp_point.point[TrajectoryPoint::VEL_START_INDEX + 2] = v[2];
 
-                        size += 1;
                         control_traj_msg.points.emplace_back(temp_point);
-                        control_traj_msg.size = size;
                     }
 
                 }

@@ -12,7 +12,7 @@
 
     TimeoutRRT: 0.02
 
-    MaxVelMag: 10.0
+    MaxVelMag: 15.0
 
     MaxBdrMag: 2.1
 

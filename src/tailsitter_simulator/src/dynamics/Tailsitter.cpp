@@ -51,10 +51,10 @@ Tailsitter::Tailsitter(void) {
 
   aero_moment_on_ = config["aero_moment_on"].as<bool>();
   external_force_.setZero();
-
+  state_.motor_rpm = Eigen::Array4d::Ones() * sqrt(mass_ * g_ / (4 * kf_));
   updateInternalState();
 
-  input_ = Eigen::Array4d::Zero();
+  input_ = Eigen::Array4d::Ones() * sqrt(mass_ * g_ / (4 * kf_));
 }
 
 void Tailsitter::step(double dt) {
@@ -95,8 +95,8 @@ void Tailsitter::step(double dt) {
 
   // Don't go below zero, simulate floor, and set all state to default "zero"
   // value, and return, don't step further
-  if (state_.p(2) < 0.0 && state_.v(2) < 0) {
-    state_.p = Eigen::Vector3d(0, 0, 0);
+  if (state_.p(2) < -10.0 && state_.v(2) < 0) {
+    state_.p = Eigen::Vector3d(0, 0, -10);
     state_.v = Eigen::Vector3d(0, 0, 0);
     state_.R = Eigen::Matrix3d::Identity();
     state_.omega = Eigen::Vector3d(0, 0, 0);

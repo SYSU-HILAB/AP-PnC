@@ -14,7 +14,7 @@ class MeshPublisher(Node):
 
     def timer_callback(self):
         marker = Marker()
-        marker.header.frame_id = "odom"
+        marker.header.frame_id = "world"
         marker.type = marker.MESH_RESOURCE
         marker.action = marker.ADD
         marker.pose.position.x = 20.0

@@ -1,3 +1,2 @@
-std_msgs/Header header
-uint64 size
+builtin_interfaces/Time timestamp
 TrajectoryPoint[]  points

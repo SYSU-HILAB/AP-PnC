@@ -59,6 +59,12 @@ def v_dot_q(v, q):
 
     return cs.mtimes(rot_mat, v)
 
+def v_dot_q_inverse(v, q):
+    rot_mat = q_to_rot_mat(q)
+    if isinstance(q, np.ndarray):
+        return np.transpose(rot_mat).dot(v)
+
+    return cs.mtimes(rot_mat.T, v)
 
 def vec_dot_xb_yb(v, xb, yb):
     # if isinstance(q, np.ndarray):

@@ -26,7 +26,7 @@ def ocp_nls() -> AcadosOcp:
     sym_p = model.x[:3]
     sym_v = model.x[3:6]
     sym_r = model.x[6:9]
-
+    sym_q = model.x[9:13]
     sym_u = model.u
     cost_x = cs.vertcat(
         sym_p,
@@ -44,6 +44,7 @@ def ocp_nls() -> AcadosOcp:
         sym_u
     )
     model.cost_y_expr_e = cost_x
+
 
     ny = cost_x_size + nu
 
@@ -86,19 +87,48 @@ def ocp_nls() -> AcadosOcp:
     ocp.constraints.ubu = np.array(MpcConfig.ub_u)
     ocp.constraints.Jbu = np.eye(nu)
 
+# extra constraints
+    vb = v_dot_q_inverse(sym_v, sym_q)
+    ocp.model.con_h_expr = cs.vertcat(
+        vb[1])
+    ocp.dims.nh = 1
+    ocp.dims.nsh = 1
+    ocp.dims.ns = 1
+    ocp.constraints.lh = np.array([0])
+    ocp.constraints.uh = np.array([0])
+    slack_L1_penalty = 1
+    slack_L2_penalty = 1
+    ocp.cost.zu = slack_L1_penalty * np.ones((ocp.dims.ns,))
+    ocp.cost.zl = slack_L1_penalty * np.ones((ocp.dims.ns,))
+    #松弛变量slack的二次罚
+    ocp.cost.Zu = slack_L2_penalty * np.ones((ocp.dims.ns,))
+    ocp.cost.Zl = slack_L2_penalty * np.ones((ocp.dims.ns,))
 
+    nolinear_slack_lower_bound = 0.1
+    nolinear_slack_upper_bound = 0.1
+    ocp.constraints.lsh = nolinear_slack_lower_bound*np.ones(ocp.dims.nsh)
+    ocp.constraints.ush = nolinear_slack_upper_bound*np.ones(ocp.dims.nsh)
+    ocp.constraints.idxsh = np.array([0])
+
+    print(ocp.dims)
     # set options
     ocp.solver_options.qp_solver = "FULL_CONDENSING_HPIPM"  # FULL_CONDENSING_QPOASES
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"  # 'GAUSS_NEWTON', 'EXACT'
     ocp.solver_options.integrator_type = "ERK"
     ocp.solver_options.nlp_solver_type = "SQP_RTI"  # SQP_RTI, SQP
+    # ocp.solver_options.nlp_solver_ext_qp_res = 1
+    # ocp.solver_options.nlp_solver_max_iter = 1000
     # ocp.solver_options.nlp_solver_max_iter = 20
     ocp.solver_options.qp_solver_iter_max = 50
-
-    # ocp.solver_options.levenberg_marquardt = 1e4
+    # ocp.solver_options.print_level = 1
+    ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
+    ocp.solver_options.line_search_use_sufficient_descent = 1
+    # ocp.solver_options.levenberg_marquardt = 1e2
+    #newton step
+    ocp.solver_options.nlp_solver_step_length = 1.0
     ocp.solver_options.hpipm_mode = "ROBUST"
     # ocp.dims.nh_0 = 1
-
+    ocp.solver_options.regularize_method = "CONVEXIFY"
     # 4-order ERK
     ocp.solver_options.sim_method_num_stages = 4
     # ocp.

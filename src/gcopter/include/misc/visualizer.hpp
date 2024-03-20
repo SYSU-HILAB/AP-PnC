@@ -66,7 +66,7 @@ public:
         routeMarker.id = 0;
         routeMarker.type = visualization_msgs::msg::Marker::LINE_LIST;
         routeMarker.header.stamp = nh->get_clock()->now();
-        routeMarker.header.frame_id = "odom";
+        routeMarker.header.frame_id = "world";
         routeMarker.pose.orientation.w = 1.00;
         routeMarker.action = visualization_msgs::msg::Marker::ADD;
         routeMarker.ns = "route";
@@ -88,7 +88,7 @@ public:
         wayPointsMarker.scale.z = 0.35;
 
         trajMarker = routeMarker;
-        trajMarker.header.frame_id = "odom";
+        trajMarker.header.frame_id = "world";
         trajMarker.id = 0;
         trajMarker.ns = "trajectory";
         trajMarker.color.r = 0.00;
@@ -190,7 +190,7 @@ public:
 
         meshMarker.id = 0;
         meshMarker.header.stamp = nh->get_clock()->now();
-        meshMarker.header.frame_id = "odom";
+        meshMarker.header.frame_id = "world";
         meshMarker.pose.orientation.w = 1.00;
         meshMarker.action = visualization_msgs::msg::Marker::ADD;
         meshMarker.type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
@@ -250,7 +250,7 @@ public:
         sphereMarkers.id = 0;
         sphereMarkers.type = visualization_msgs::msg::Marker::SPHERE_LIST;
         sphereMarkers.header.stamp = nh->get_clock()->now();
-        sphereMarkers.header.frame_id = "odom";
+        sphereMarkers.header.frame_id = "world";
         sphereMarkers.pose.orientation.w = 1.00;
         sphereMarkers.action = visualization_msgs::msg::Marker::ADD;
         sphereMarkers.ns = "spheres";
@@ -284,7 +284,7 @@ public:
         uavMarker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
         uavMarker.mesh_resource = "package://gcopter/meshes/tailsitter/meshes/tailsitter_fuselage.dae";
         uavMarker.header.stamp = nh->get_clock()->now();
-        uavMarker.header.frame_id = "odom";
+        uavMarker.header.frame_id = "world";
         uavMarker.pose.position.x = pos(0);
         uavMarker.pose.position.y = pos(1);
         uavMarker.pose.position.z = pos(2);
@@ -313,7 +313,7 @@ public:
         sphereMarkers.id = sg;
         sphereMarkers.type = visualization_msgs::msg::Marker::SPHERE_LIST;
         sphereMarkers.header.stamp = nh->get_clock()->now();
-        sphereMarkers.header.frame_id = "odom";
+        sphereMarkers.header.frame_id = "world";
         sphereMarkers.pose.orientation.w = 1.00;
         sphereMarkers.action = visualization_msgs::msg::Marker::ADD;
         sphereMarkers.ns = "StartGoal";
