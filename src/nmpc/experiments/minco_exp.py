@@ -32,7 +32,7 @@ cond_of_set_ref = threading.Condition()
 mpc_solver = MpcSolver(cython=True)
 
 ref_states = np.zeros((MpcConfig.nodes, 3+3+3))
-
+cz_predict = np.zeros((MpcConfig.nodes, 1))
 
 class MpcRefNode(Node):
     def __init__(self):
@@ -44,7 +44,9 @@ class MpcRefNode(Node):
     def traj_bullet_cb(self, msg):
         global ref_states
         global cond_of_set_ref
+        global cz_predict
         ref_states = np.array([point.point for point in msg.points])
+        cz_predict = np.array([point.cz_prediction for point in msg.points]).reshape(-1, 1)
         with cond_of_set_ref:
             cond_of_set_ref.notify_all()
 
@@ -119,14 +121,28 @@ class MpcOptNode(Node):
         global ref_states
         global cond_of_set_ref
         global mpc_solver
+        global cz_predict
         print("entering")
         self.x0 = state.mpc_state
+        
+        # v = state.mpc_state[3:6]
+        # q = state.mpc_state[9:13]
+        # vb = v_dot_q_inverse(v, q)
+        # # v_norm 
+    
+        # alpha = np.arctan2(vb[2], vb[0])
+
+
         with cond_of_set_ref:
             self.pub_ref_can_set()
             cond_of_set_ref.wait()
-        mpc_solver.setRefPath(ref_states)          
+        # print(cz_predict.T)
+        # print(ref_states)
+        start = time.time()
+        mpc_solver.setRefPath(ref_states, cz_predict)          
         self.run_optimization()
-        
+        end = time.time()
+        print(end - start)
     def pub_controls(self):
         self.controls.motors_u = self.u
         # self.controls.rates_sp = mpc_solver.sim_one_step_rate()

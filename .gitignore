@@ -1,4 +1,6 @@
 .vscode/
+plot_scripts/*
+*.csv
 .xmake/
 log*
 src/ompl

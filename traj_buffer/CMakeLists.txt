@@ -21,7 +21,10 @@ ament_auto_add_executable(vis_controls src/vis_controls.cpp)
 target_link_libraries(
   Eigen3::Eigen
 )
-
+ament_auto_add_library(calculate_cz src/calculate_cz.cpp)
+target_link_libraries(
+  Eigen3::Eigen
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

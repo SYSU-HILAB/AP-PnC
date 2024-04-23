@@ -1,12 +1,14 @@
-inertia: [0.0216666667, 0.0216666667, .04]
+inertia: [ 0.0216666667, 0.0216666667, .04 ]
 mass: 1.5
 
 # factor of the propeller force over propeller moment coefficient
 tau: 0.013
 kf: 8.54858e-6
-arm_length: 0.24607
+arm_length: 1.0
 motor_time: 0.0125
-min_rpm: 60
+# motor_time: 0.0125
+min_rpm: 0
 max_rpm: 1000
 
 aero_moment_on: false
+aero_force_on: true

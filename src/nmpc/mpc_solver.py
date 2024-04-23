@@ -90,7 +90,7 @@ class MpcSolver:
             self.__acados_ocp_solver.set(stage, "u", np.zeros(self.nu,))
 
 
-    def setRefPath(self, xTarget):
+    def setRefPath(self, xTarget, cz_predict = None):
         """
        change ref_states(trajectory) for mpc
 
@@ -105,7 +105,12 @@ class MpcSolver:
             ref = xTarget[j,:]
             yref = np.concatenate([ref, uTarget])
             self.__acados_ocp_solver.set(j, "yref", yref)
+            if cz_predict is not None:
+                self.__acados_ocp_solver.set(j, "p", cz_predict[j])
+            else:
+                self.__acados_ocp_solver.set(j, "p", MpcConfig.cz)
         self.__acados_ocp_solver.set(self.Nodes, "yref", xTarget[self.Nodes,:])
+        # self.__acados_ocp_solver.set(self.Nodes, "p", MpcConfig.cz)
 
 
     def solve(self, x0: np.ndarray) -> int:

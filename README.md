@@ -12,7 +12,7 @@ git submodule update --recursive --init
 ```shell
 mkdir -p build
 cd build
-cmake -DACADOS_WITH_OSQP=ON -DACADOS_WITH_OPENMP=ON ..
+cmake -DACADOS_WITH_OSQP=ON -DACADOS_WITH_OPENMP=ON -DACADOS_WITH_QPOASES=ON ..
 # add more optional arguments e.g. -DACADOS_WITH_OSQP=OFF/ON -DACADOS_INSTALL_DIR=<path_to_acados_installation_folder> above
 make install -j4
 ```
@@ -70,9 +70,14 @@ colcon build --symlink-install --cmake-args CMAKE_BUILD_TYPE Release
 source install/setup.bash
 ```
 
-## Launch
 
 
+
+
+# START SIMULATION
+First, generate the ref_trajecotry `control_traj`
 ```shell
-ros2 launch gcopter global_planning_launch.py 
+ros2 launch trajectory_server planning.launch.py
 ```
+
+Second, 

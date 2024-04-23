@@ -50,6 +50,7 @@ Tailsitter::Tailsitter(void) {
   max_rpm_ = config["max_rpm"].as<double>();
 
   aero_moment_on_ = config["aero_moment_on"].as<bool>();
+  aero_force_on_ = config["aero_force_on"].as<bool>();
   external_force_.setZero();
   state_.motor_rpm = Eigen::Array4d::Ones() * sqrt(mass_ * g_ / (4 * kf_));
   updateInternalState();
@@ -131,7 +132,7 @@ void Tailsitter::operator()(const Tailsitter::InternalState &x,
   Eigen::Matrix3d P = llt.matrixL();
   Eigen::Matrix3d R = cur_state.R * P.inverse();
 
-  Eigen::Vector3d x_dot, v_dot, omega_dot;
+  Eigen::Vector3d p_dot, v_dot, omega_dot;
   Eigen::Matrix3d R_dot;
   Eigen::Array4d motor_rpm_dot;
   Eigen::Vector3d vnorm;
@@ -172,13 +173,15 @@ void Tailsitter::operator()(const Tailsitter::InternalState &x,
   // TODO change it to aerodynamics of the wing
   // F_aero = Eigen::Vector3d(0, 0, 0);
   if (!aero_moment_on_) moments_aero = Eigen::Vector3d(0, 0, 0);
+  if (!aero_force_on_) F_aero = Eigen::Vector3d(0, 0, 0);
   moments = moments_prop + moments_aero;
-
+  // F_aero(1) = 0.0; // no side force
+  // if (!)
   vnorm = cur_state.v;
 
-  x_dot = cur_state.v;
+  p_dot = cur_state.v;
   v_dot = -Eigen::Vector3d(0, 0, g_) + thrust * R.col(2) / mass_ +
-          external_force_ / mass_ + F_aero / mass_;
+          external_force_ / mass_ + R * (F_aero / mass_);
   // std::cerr << "v_dot: " << v_dot.transpose() << std::endl;
   // std::cerr << "thrust_acc: " << (thrust * R.col(2) / mass_).transpose() << std::endl;
   // std::cerr << "aero_acc: " << (F_aero / mass_).transpose() << std::endl;
@@ -192,7 +195,7 @@ void Tailsitter::operator()(const Tailsitter::InternalState &x,
   motor_rpm_dot = (input_ - cur_state.motor_rpm) / motor_time_constant_;
 
   for (int i = 0; i < 3; i++) {
-    dxdt[0 + i] = x_dot(i);
+    dxdt[0 + i] = p_dot(i);
     dxdt[3 + i] = v_dot(i);
     dxdt[6 + i] = R_dot(i, 0);
     dxdt[9 + i] = R_dot(i, 1);

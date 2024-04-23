@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(gcopter)
+project(trajectory_server)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 add_definitions(-DSTATIC_GO=1)
@@ -31,6 +31,7 @@ find_package(yaml-cpp REQUIRED)
 # only global_planning.cpp
 file(GLOB ${PROJECT_NAME}_SRCS src/*.cpp)
 # Declare a C++ executable
+# include_directories(include/gcopter)
 include_directories(${OMPL_INCLUDE_DIRS})
 ament_auto_add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_SRCS}) # Add other source files as needed
 target_link_libraries(

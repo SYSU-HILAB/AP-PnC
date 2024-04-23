@@ -2,18 +2,18 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 
 <package format="3">
-    <name>gcopter</name>
+    <name>trajectory_server</name>
     <version>0.1.0</version>
-    <description>the gcopter package</description>
+    <description>the trajectory_server</description>
     <maintainer email="rongerch@mail2.sysu.edu.cn.com">Warrior Hanamy</maintainer>
     <license>BSD</license>
 
-    <author email="wangzhepei@live.com">Zhepei Wang</author>
 
 
     <buildtool_depend>ament_cmake</buildtool_depend>
 
     <depend>std_msgs</depend>
+    <depend>basic_trajectorys</depend>
     <depend>geometry_msgs</depend>
     <depend>sensor_msgs</depend>
     <depend>visualization_msgs</depend>

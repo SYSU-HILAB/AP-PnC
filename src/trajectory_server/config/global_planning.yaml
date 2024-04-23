@@ -1,0 +1,89 @@
+/global_planning_node:
+  ros__parameters:
+    MapTopic: "/voxel_map"
+
+    TargetTopic: "/move_base_simple/goal"
+
+    DilateRadius: 0.5
+
+    VoxelWidth: 0.25
+
+    MapBound: [ -50.0, 50.0, -50.0, 50.0, 0.0, 5.0 ]
+
+    TimeoutRRT: 0.02
+
+    MaxVelMag: 15.0
+
+    MaxBdrMag: 2.1
+
+    MaxTiltAngle: 1.05
+
+    MinThrust: 1.0
+
+    MaxThrust: 20.0
+
+    VehicleMass: 1.5
+
+    GravAcc: 9.8
+
+    ParasDrag: 0.01
+
+    SpeedEps: 0.0001
+
+    # 时间惩罚大，则alpha在振荡，这是不想要打，而避障过，还是稳一点好，并且也拟合不好
+    # 室内避障6m左右是在30-60
+    #
+    WeightT: 200.0
+
+    # pos,vel,rate,theta,thrust
+    ChiVec: [ 1.0e+4, 1.0e+4, 1.0e+3, 1.0e+4, 1.0e+5 ]
+
+    SmoothingEps: 1.0e-2
+
+    IntegralIntervs: 30
+
+    RelCostTol: 1.0e-3
+
+    UavScale: 1.0
+
+    PieceN: 10
+
+    Frame: 'world'
+
+    BoxMin: [ -3.5, -3.0, -2.0 ]
+    BoxMax: [ 3.5,  3.0, 3.0 ]
+
+    v_max: 12.0
+    omg_x_max: 0.5
+    omg_y_max: 0.25
+    omg_z_max: 0.5
+    acc_max: 14.0
+    thrust_max: 20.0
+    thrust_min: 2.0
+    thrust_weight: 500.0
+    vel_weight: 1000.0
+    acc_weight: 0.0
+    omg_x_weight: 20000.0
+    omg_y_weight: 50000.0
+    omg_z_weight: 20000.0
+    omg_consistent_weight: 0.0
+    time_weight: 10000.0
+
+    BoxSideInsideLength: 1.0
+    BoxSideOutsideLength: 1.0
+    BoxDownLength: 0.5
+    BoxUpLength: 2.0
+    BoxFrontLength: 2.0
+    BoxBackLength: .0
+
+    # 1: Lemniscate
+    # 2: Circle
+    # 3: Sigmoid
+    # 4: Line
+    BasicTrajectoryType: 1
+
+    BasicTrajectoryRadius: 15.0
+    BasicTrajectoryRate: 0.8
+
+    traj_pub_rsl: 0.02
+    trajTopic: "/control_traj"

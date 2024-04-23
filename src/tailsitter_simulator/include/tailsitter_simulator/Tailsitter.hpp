@@ -124,5 +124,6 @@ namespace TailsitterSimulator {
 
         InternalState internal_state_;
         bool aero_moment_on_;
+        bool aero_force_on_;
     };
 }

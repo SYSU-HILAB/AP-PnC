@@ -17,7 +17,7 @@ typedef autodiff::Matrix3real realM3;
 constexpr int size_Models = 3;
 constexpr double error_alpha = 100;
 const realV3 g = (realV3() << 0, 0, -9.8).finished();
-constexpr real vThreshold = 2;
+constexpr real vThreshold = 0.5;
 constexpr real gammaThreshold = 5 * M_PI / 180;
 
 class Model {
@@ -34,6 +34,15 @@ class Model {
  public:
   static Model &getInstance();
   realM3 &getPhi();
+
+  // return the body_z row Phi as vector 
+  Eigen::Vector3d& Phi_z();
+  // now Assuming there is no bias
+  double aeroForceZ(const Eigen::Vector3d& vb);
+  double dAeroForceZ(const Eigen::Vector3d& vb, const Eigen::Vector3d& acc);
+
+  // Eigen::Vector3d& getPartialDfzOverV(const Eigen::Vector3d vb, ); 
+  // Eigen::Vector3d& getPartialDfzOverA(); 
   realV3 &getBias();
   realV3 getAeroForceB(const realV3 &vb);
   realM3 getPartialDerivativeOfFbOverVb(const realV3 &vb);
@@ -76,8 +85,8 @@ class Data {
   Eigen::Matrix<real, 3, 4> N2;
   Eigen::Matrix<real, 4, 1> magic;
   bool tri_success;
-  realV3 yb_prev = (realV3() << 0, -1, 0).finished();
-  realV3 zb_fixed = (realV3() << 1, 0, 0).finished();
+  realV3 yb_prev = (realV3() << 1, 0, 0).finished();
+  realV3 zb_fixed = (realV3() << 0, 1, 0).finished();
 
   // 删除拷贝构造函数和赋值操作符
   Data(const Data &) = delete;
@@ -90,8 +99,8 @@ class Data {
   }
 
   void reset(Model &model) {
-    yb_prev = (realV3() << 0, -1, 0).finished();
-    zb_fixed = (realV3() << 1, 0, 0).finished();
+    yb_prev = (realV3() << 1, 0, 0).finished();
+    zb_fixed = (realV3() << 0, 1, 0).finished();
     yb_prev.normalize();
     zb_fixed.normalize();
     model.alpha_rad_ = 0 * M_PI / 180;

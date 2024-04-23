@@ -221,6 +221,27 @@ def caculate_f_in_body_SX(vB):
     F_b = cs.mtimes(R_bv, F_s) 
     # print("f_in_trans  ",F_b)
     return F_b
+
+
+def fit_cz(alpha):
+    # rho S
+    factor = 1/2 * 1.225 * 0.25
+    w = 1.0;
+    a0 = -11.8;
+    a1 = -1.099;
+    b1 = 22.35;
+    a2 = 13.05;
+    b2 = 1.314;
+    a3 = 0.788;
+    b3 = -5.099;
+    a4 = -1.015;
+    b4 = -0.2115;
+    Cz = a0 + a1 * cs.cos(w * alpha) + b1 * cs.sin(w * alpha) + \
+        a2 * cs.cos(2 * w * alpha) + b2 * cs.sin(2 * w * alpha) + \
+        a3 * cs.cos(3 * w * alpha) + b3 * cs.sin(3 * w * alpha) + \
+        a4 * cs.cos(4 * w * alpha) + b4 * cs.sin(4 * w * alpha)
+    return factor * Cz
+
 def simple_f_body_sx(vB):
     # vb_norm=cs.sqrt(vB[2]*vB[2]+vB[1]*vB[1]+vB[0]*vB[0])
     vb_norm=cs.norm_2(vB) + 1e-1
@@ -268,22 +289,24 @@ def simple_f_body_sx(vB):
     # F_b = vB
     # print("f_in_trans  ",F_b)
     return F_b
-# q = cs.SX.sym('q',4)
-# # velocity [m/s]
-# v = cs.SX.sym('v',3)#v_in_FLU_world
-# q=[-0.707,0,0,-0.707]
-# v =[0,10,0]
-# linear_v_in_body = v_dot_q_inverse(v,q) 
-# print(type(linear_v_in_body))
-# # vB = cs.vertcat(cs.DM(50.0),cs.DM(35.0),cs.DM(10.0))
-# F_b= simple_f_body_sx(linear_v_in_body)
-# print(type(linear_v_in_body))
-# #[w 0    x 1   y 0   z 0]  绕x转180
-# q_frd2flu=np.array([0 ,1, 0, 0])
-# R_frd2flu = q_to_rot_mat(q_frd2flu)
-# print("R_frd2flu type  ",type( cs.SX(R_frd2flu)))
-# print("R_frd2flu   ", R_frd2flu)
-# F_b_flu = cs.mtimes(cs.SX(R_frd2flu), F_b)
 
-# v_dot_q(F_b_flu/2,q)
-# print("v_dot_q(F_b_flu/2,q)",v_dot_q(F_b_flu/2,q))
+
+def fit_aero_body_sx(vB):
+    # vb_norm=cs.sqrt(vB[2]*vB[2]+vB[1]*vB[1]+vB[0]*vB[0])
+    vb_norm=cs.norm_2(vB) + 1e-1
+    vb_sq=vb_norm*vb_norm
+    va_body_z=vB[2]
+    va_body_y=vB[1]
+    va_body_x = vB[0]
+
+    alpha=cs.atan2(va_body_z, va_body_x)
+    beta = cs.asin(va_body_y / vb_norm)
+
+    
+    F_b = cs.SX(3, 1)
+    F_b[0] = 0
+    F_b[1] = 0
+    F_b[2] = -fit_cz(alpha=alpha) * vb_sq
+    # F_b = vB
+    # print("f_in_trans  ",F_b)
+    return F_b

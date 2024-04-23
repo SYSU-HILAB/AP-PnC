@@ -1,0 +1,444 @@
+#include <chrono>
+#include <cmath>
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <iostream>
+#include <memory>
+#include <random>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <string>
+#include <vector>
+
+#include "gcopter/firi.hpp"
+#include "gcopter/flatness.hpp"
+#include "gcopter/gcopter.hpp"
+#include "gcopter/sfc_gen.hpp"
+#include "gcopter/trajectory.hpp"
+#include "gcopter/voxel_map.hpp"
+#include "interface/msg/ref_trajectory.hpp"
+#include "interface/msg/trajectory_control.hpp"
+#include "misc/CSVWriter.hpp"
+#include "misc/visualizer.hpp"
+// #include "geometry_msgs/msg/vis
+// writing data to csv
+#include <ostream>
+
+using RefTrajectory = interface::msg::RefTrajectory;
+using TrajectoryPoint = interface::msg::TrajectoryPoint;
+
+#include <basic_trajectorys/circle.hpp>
+#include <basic_trajectorys/lemniscate.hpp>
+#include <basic_trajectorys/line.hpp>
+#include <basic_trajectorys/sigmoid.hpp>
+
+struct Config {
+  double smoothingEps;
+  int integralIntervs;
+  double relCostTol;
+  double uavScale;
+  // trajectory publish time resolution;
+  double traj_pub_rsl = 0.02;
+  std::string trajTopic = "control_traj";
+  std::vector<double> finVel;
+  int pieceN = 20;  // 20 piece meaning 21 points including start and end, and
+                    // that is to say, only pieceN - 1 control points
+  int controlPoints = pieceN - 1;
+
+  double box_side_inside_length = 1;
+  double box_side_outside_length = 1;
+  double box_up_length = 1;
+  double box_down_length = 0.1;
+  double box_front_length = 1;
+  double box_back_length = 1;
+
+  std::string frame = "world";
+  // basic trajectory set
+  double basic_trajectory_rate = 0.8;
+  double basic_trajectory_radius = 10;
+  double basic_trajectory_height = 5;
+  int basic_trajectory_type = 1;
+
+  gcopter::CostConfig &cost_config;
+
+  Config(rclcpp::Node *node) : cost_config(gcopter::CostConfig::getInstance()) {
+    frame = node->declare_parameter("Frame", "world");
+
+    uavScale = node->declare_parameter("UavScale", 1.0);
+
+    smoothingEps = node->declare_parameter("SmoothingEps", 1e-2);
+    integralIntervs = node->declare_parameter("IntegralIntervs", 16);
+    relCostTol = node->declare_parameter("RelCostTol", 1e-4);
+    pieceN = node->declare_parameter("PieceN", 10);
+
+    box_side_inside_length =
+        node->declare_parameter("BoxSideInsideLength", 0.1);
+    box_side_outside_length =
+        node->declare_parameter("BoxSideOutsideLength", 1.0);
+    box_down_length = node->declare_parameter("BoxDownLength", 0.1);
+    box_up_length = node->declare_parameter("BoxUpLength", 0.5);
+    box_front_length = node->declare_parameter("BoxFrontLength", 1.5);
+    box_back_length = node->declare_parameter("BoxBackLength", 1.5);
+
+    basic_trajectory_rate = node->declare_parameter("BasicTrajectoryRate", 0.8);
+    basic_trajectory_radius =
+        node->declare_parameter("BasicTrajectoryRadius", 10.0);
+    basic_trajectory_height =
+        node->declare_parameter("BasicTrajectoryHeight", 5.0);
+    basic_trajectory_type = node->declare_parameter("BasicTrajectoryType", 1);
+    // pub config
+    traj_pub_rsl = node->declare_parameter("traj_pub_rsl", 0.02);
+    trajTopic = node->declare_parameter("trajTopic", "control_traj");
+    // cost_config
+    cost_config.v_max = node->declare_parameter("v_max", 10.0);
+    cost_config.omg_x_max = node->declare_parameter("omg_x_max", 3.0);
+    cost_config.omg_y_max = node->declare_parameter("omg_y_max", 3.0);
+    cost_config.omg_z_max = node->declare_parameter("omg_z_max", 3.0);
+
+    cost_config.thrust_max = node->declare_parameter("thrust_max", 20.0);
+    cost_config.thrust_min = node->declare_parameter("thrust_min", 1.0);
+    cost_config.acc_max = node->declare_parameter("acc_max", 1.0);
+
+    cost_config.thrust_weight = node->declare_parameter("thrust_weight", 1e5);
+    cost_config.vel_weight = node->declare_parameter("vel_weight", 1e4);
+    cost_config.acc_weight = node->declare_parameter("acc_weight", 1e4);
+    cost_config.omg_x_weight = node->declare_parameter("omg_x_weight", 1e3);
+    cost_config.omg_y_weight = node->declare_parameter("omg_y_weight", 1e3);
+    cost_config.omg_z_weight = node->declare_parameter("omg_z_weight", 1e3);
+    cost_config.time_weight = node->declare_parameter("time_weight", 1e2 * 5);
+    cost_config.omg_consistent_weight =
+        node->declare_parameter("omg_consistent_weight", 1e3);
+  }
+
+  void UpdateConfig(const rclcpp::Node *node) {
+    node->get_parameter("SmoothingEps", smoothingEps);
+    node->get_parameter("IntegralIntervs", integralIntervs);
+    node->get_parameter("RelCostTol", relCostTol);
+    node->get_parameter("UavScale", uavScale);
+
+    node->get_parameter("FinVel", finVel);
+    node->get_parameter("PieceN", pieceN);
+
+    node->get_parameter("BoxSideInsideLength", box_side_inside_length);
+    node->get_parameter("BoxSideOutsideLength", box_side_outside_length);
+    node->get_parameter("BoxUpLength", box_up_length);
+    node->get_parameter("BoxDownLength", box_down_length);
+    node->get_parameter("BoxFrontLength", box_front_length);
+    node->get_parameter("BoxBackLength", box_back_length);
+
+    node->get_parameter("Frame", frame);
+
+    node->get_parameter("BasicTrajectoryRate", basic_trajectory_rate);
+    node->get_parameter("BasicTrajectoryRadius", basic_trajectory_radius);
+    node->get_parameter("BasicTrajectoryHeight", basic_trajectory_height);
+    node->get_parameter("BasicTrajectoryType", basic_trajectory_type);
+
+    // update cost_config
+    node->get_parameter("v_max", cost_config.v_max);
+    node->get_parameter("omg_x_max", cost_config.omg_x_max);
+    node->get_parameter("omg_y_max", cost_config.omg_y_max);
+    node->get_parameter("omg_z_max", cost_config.omg_z_max);
+    node->get_parameter("thrust_max", cost_config.thrust_max);
+    node->get_parameter("thrust_min", cost_config.thrust_min);
+    node->get_parameter("acc_max", cost_config.acc_max);
+    node->get_parameter("thrust_weight", cost_config.thrust_weight);
+    node->get_parameter("vel_weight", cost_config.vel_weight);
+    node->get_parameter("omg_x_weight", cost_config.omg_x_weight);
+    node->get_parameter("omg_y_weight", cost_config.omg_y_weight);
+    node->get_parameter("omg_z_weight", cost_config.omg_z_weight);
+    node->get_parameter("time_weight", cost_config.time_weight);
+    node->get_parameter("acc_weight", cost_config.acc_weight);
+    node->get_parameter("omg_consistent_weight",
+                        cost_config.omg_consistent_weight);
+
+    node->get_parameter("traj_pub_rsl", traj_pub_rsl);
+    node->get_parameter("trajTopic", trajTopic);
+  }
+};
+
+class GlobalPlanner : public rclcpp::Node {
+ private:
+  Config config;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr targetSub;
+  Visualizer visualizer;
+  RefTrajectory control_traj_msg;
+  Trajectory<5> traj;
+  double trajStamp;
+  std::unique_ptr<basic_trajectorys::Trajectory> basic_traj;
+  rclcpp::TimerBase::SharedPtr timer;
+  rclcpp::Publisher<RefTrajectory>::SharedPtr trajPub;
+  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr trajVizPub;
+
+  bool init_setup = false;
+
+ public:
+  GlobalPlanner()
+      : Node("global_planning_node"), config(this), visualizer(this) {
+    config.UpdateConfig(this);
+    auto reliable_qos =
+        rclcpp::QoS(10).transient_local().reliable().keep_last(1);
+    trajVizPub = this->create_publisher<geometry_msgs::msg::PoseArray>(
+        "traj_viz", reliable_qos);
+    // HERE to trigger the plan method function
+    // targetSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    //     config.targetTopic, 1,
+    //     std::bind(&GlobalPlanner::targetCallBack, this,
+    //     std::placeholders::_1));
+    trajPub =
+        this->create_publisher<RefTrajectory>(config.trajTopic, reliable_qos);
+
+    init_basic_trajectory_type(config.basic_trajectory_type);
+    timer = this->create_wall_timer(2s, std::bind(&GlobalPlanner::plan, this));
+
+    RCLCPP_INFO(this->get_logger(), "Planning");
+  }
+
+  void init_basic_trajectory_type(const int type) {
+    // basic_trajniscate
+    if (type == 1) {
+      basic_traj = std::make_unique<basic_trajectorys::Lemniscate>(
+          config.basic_trajectory_radius, config.basic_trajectory_rate,
+          config.basic_trajectory_height);
+      return;
+    }
+    if (type == 2) {
+      basic_traj = std::make_unique<basic_trajectorys::Circle>(
+          config.basic_trajectory_radius, config.basic_trajectory_rate,
+          config.basic_trajectory_height);
+      return;
+    }
+    if (type == 3) {
+      basic_traj = std::make_unique<basic_trajectorys::Sigmoid>(
+          config.basic_trajectory_radius, config.basic_trajectory_rate,
+          config.basic_trajectory_height);
+      return;
+    }
+    if (type == 4) {
+      basic_traj = std::make_unique<basic_trajectorys::Line>(
+          config.basic_trajectory_radius, config.basic_trajectory_rate,
+          config.basic_trajectory_height);
+      return;
+    } else {
+      RCLCPP_ERROR(this->get_logger(), "The trajecotry type is not supported!");
+    }
+  }
+  void create_basic_trajecotry_sfc(std::vector<Eigen::MatrixX4d> &hPolys) {
+    Eigen::RowVector4d h1, h2, h3, h4, h5, h6;
+
+    Eigen::MatrixX4d H;
+    H.resize(6, 4);
+
+    std::cerr << "H\n" << H << std::endl;
+    auto route = basic_traj->samplingPointArray(config.pieceN);
+
+    auto traj_vis_msg = basic_traj->toMsg();
+    traj_vis_msg.header.frame_id = config.frame;
+    traj_vis_msg.header.stamp = this->get_clock()->now();
+    this->trajVizPub->publish(traj_vis_msg);
+
+    Eigen::Vector3d pc, v_direction, u_direction;
+    for (int i = 1; i < route.size() - 1; i++) {
+      auto point = route[i];
+      pc = point.col(0);
+      v_direction = point.col(1);
+      v_direction.normalize();
+      u_direction =
+          (Eigen::Vector3d() << -v_direction(1), v_direction(0), 0).finished();
+      u_direction.normalize();
+      if (pc[0] >= 0) {
+        // u_direction = -u_direction;
+        u_direction = -u_direction;
+      }
+      h1 << v_direction.transpose(),
+          -v_direction.dot(pc) - config.box_front_length;
+      h2 << -v_direction.transpose(),
+          v_direction.dot(pc) - config.box_back_length;
+      h3 << u_direction.transpose(),
+          -u_direction.dot(pc) - config.box_side_outside_length;
+      h4 << -u_direction.transpose(),
+          u_direction.dot(pc) - config.box_side_inside_length;
+      h5 << 0, 0, 1, -pc.z() - config.box_up_length;
+      h6 << 0, 0, -1, pc.z() - config.box_down_length;
+      H << h1, h2, h3, h4, h5, h6;
+      hPolys.push_back(H);
+    }
+  }
+
+  inline void plan() {
+    if (init_setup) {
+      return;
+    }
+    std::vector<Eigen::MatrixX4d> hPolys;
+    RCLCPP_INFO(this->get_logger(), "Planning");
+    create_basic_trajecotry_sfc(hPolys);
+    visualizer.visualizePolytope(hPolys);
+
+    // std::cerr << "iniState: " << iniState << std::endl;
+    // std::cerr << "finState: " << finState << std::endl;
+    // finState << route.back(), Eigen::Vector3d::Zero(),
+    // Eigen::Vector3d::Zero();
+    Eigen::Matrix3d iniState, finState;
+    auto route = basic_traj->samplingPointArray(config.pieceN);
+    iniState << route.front().col(0), Eigen::Vector3d::Zero(),
+        Eigen::Vector3d::Zero();
+    finState << route.back().col(0), Eigen::Vector3d::Zero(),
+        Eigen::Vector3d::Zero();
+    gcopter::GCOPTER_PolytopeSFC gcopter;
+
+    traj.clear();
+    Eigen::VectorXd initTime;
+    initTime.resize(config.pieceN);
+    initTime.setConstant(2 * M_PI / config.basic_trajectory_rate /
+                         config.pieceN);
+
+    Eigen::Matrix3Xd initPointsPos(3, config.pieceN - 1);
+    for (int i = 0; i < config.pieceN - 1; i++) {
+      Eigen::Vector3d v = route[i].col(1);
+      v.normalize();
+      Eigen::Vector3d u = v.cross(Eigen::Vector3d::UnitZ());
+      initPointsPos.col(i) =
+          route[i + 1].col(0) + u * config.box_side_outside_length * 0.8;
+    }
+    // print config . cost_config
+    std::cerr << "v_max: " << config.cost_config.v_max << std::endl;
+    std::cerr << "thrust_max: " << config.cost_config.thrust_max << std::endl;
+    std::cerr << "thrust_min: " << config.cost_config.thrust_min << std::endl;
+    std::cerr << "thrust_weight: " << config.cost_config.thrust_weight
+              << std::endl;
+    std::cerr << "vel_weight: " << config.cost_config.vel_weight << std::endl;
+
+    // print initTime and init Pos
+    std::cerr << "initTime: " << initTime.transpose() << std::endl;
+    std::cerr << "initPointsPos: \n" << initPointsPos << std::endl;
+    // print size of time and pos
+    std::cerr << "initTime size: " << initTime.size() << std::endl;
+    std::cerr << "initPointsPos size: " << initPointsPos.size() << std::endl;
+    // return ;
+    if (!init_setup) {
+      if (!gcopter.setup_basic_trajectory(
+              iniState, finState, initTime, initPointsPos, hPolys,
+              config.smoothingEps, config.integralIntervs)) {
+        return;
+      }
+      if (std::isinf(gcopter.optimize(traj, config.relCostTol))) {
+        return;
+      }
+      init_setup = true;
+
+      CSVWriter csv;
+      csv.newRow() << "Time"
+                   << "Pos_x"
+                   << "Pos_y"
+                   << "Pos_z"
+                   << "Vel_x"
+                   << "Vel_y"
+                   << "Vel_z"
+                   << "Vel_norm"
+                   << "Acc_x"
+                   << "Acc_y"
+                   << "Acc_z"
+                   << "Acc_norm"
+                   << "Thrust"
+                   << "Omg_x"
+                   << "Omg_y"
+                   << "Omg_z"
+                   << "Omg_norm"
+                   << "Alpha"
+                   << "Quat_w"
+                   << "Quat_x"
+                   << "Quat_y"
+                   << "Quat_z"
+                   << "Yaw"
+                   << "Pitch"
+                   << "Roll";
+
+      auto route_msg = basic_traj->toMsg(100);
+      route_msg.header.frame_id = config.frame;
+      route_msg.header.stamp = this->get_clock()->now();
+      this->trajVizPub->publish(route_msg);
+
+      auto &tailsitter_data = tailsitter_df::Data::getInstance();
+      auto &tailsitter_model = tailsitter_df::Model::getInstance();
+      tailsitter_data.reset(tailsitter_model);
+      control_traj_msg.points.clear();
+
+      for (double t = 0.0; t <= traj.getTotalDuration() + FLT_EPSILON;
+           t += config.traj_pub_rsl) {
+        // get model attitude and thrust and omg
+        Eigen::Vector4d quat;
+        Eigen::Vector3d omg;
+        autodiff::VectorXreal z;
+        z.resize(9);
+        z << traj.getVel(t), traj.getAcc(t), traj.getAcc(t);
+        double thrust;
+        tailsitter_df::df_backward_auto(z, thrust, omg);
+        auto quat_df = tailsitter_data.getQuaternion();
+        Eigen::Quaterniond q_b1_b2(0, 0.707, 0, 0.707);
+        auto quat_q = quat_df * q_b1_b2;
+        // to euler angles ZYX
+        Eigen::Vector3d euler = quat_q.toRotationMatrix().eulerAngles(2, 0, 1);
+        quat(0) = quat_q.w();
+        quat(1) = quat_q.x();
+        quat(2) = quat_q.y();
+        quat(3) = quat_q.z();
+        if (quat(0) < 0 - FLT_EPSILON) {
+          quat = -quat;
+        }
+
+        double alpha = tailsitter_data.alpha.val() * 180 / M_PI;
+
+        auto p = traj.getPos(t);
+        auto v = traj.getVel(t);
+        auto a = traj.getAcc(t);
+
+        csv.newRow() << t << p[0] << p[1] << p[2] << v[0] << v[1] << v[2]
+                     << v.norm() << a[0] << a[1] << a[2] << a.norm() << thrust
+                     << omg[0] << omg[1] << omg[2] << omg.norm() << alpha
+                     << quat(0) << quat(1) << quat(2) << quat(3)
+                     << euler(0) * 180 / M_PI << euler(1) * 180 / M_PI
+                     << euler(2) * 180 / M_PI;
+        //
+        auto yb_df = -tailsitter_data.yb;
+        Eigen::Vector3d YB = (Eigen::Vector3d() << yb_df.x().val(),
+                              yb_df.y().val(), yb_df.z().val())
+                                 .finished();
+
+        control_traj_msg.timestamp = this->get_clock()->now();
+        auto traj_point = TrajectoryPoint();
+        traj_point.point[TrajectoryPoint::POS_START_INDEX] = p[0];
+        traj_point.point[TrajectoryPoint::POS_START_INDEX + 1] = p[1];
+        traj_point.point[TrajectoryPoint::POS_START_INDEX + 2] = p[2];
+        traj_point.point[TrajectoryPoint::VEL_START_INDEX] = v[0];
+        traj_point.point[TrajectoryPoint::VEL_START_INDEX + 1] = v[1];
+        traj_point.point[TrajectoryPoint::VEL_START_INDEX + 2] = v[2];
+        traj_point.point[TrajectoryPoint::YB_START_INDEX] = YB[0];
+        traj_point.point[TrajectoryPoint::YB_START_INDEX + 1] = YB[1];
+        traj_point.point[TrajectoryPoint::YB_START_INDEX + 2] = YB[2];
+        // default set to zero
+        control_traj_msg.points.push_back(traj_point);
+      }
+
+      csv.writeToFile("traj.csv");
+      trajPub->publish(control_traj_msg);
+      RCLCPP_WARN(this->get_logger(), "Trajectory Published !!!\n");
+      std::vector<Eigen::Vector3d> route_path;
+      for (int i = 0; i < config.pieceN; i++) {
+        route_path.emplace_back(route[i].col(0));
+      }
+      if (traj.getPieceNum() > 0) {
+        trajStamp = this->get_clock()->now().seconds();
+        visualizer.visualize(traj, route_path);
+      }
+    }
+  }
+};
+
+int main(int argc, char **argv) {
+  rclcpp::init(argc, argv);
+  auto global_planner = std::make_shared<GlobalPlanner>();
+  rclcpp::spin(global_planner);
+  rclcpp::shutdown();
+
+  return 0;
+}
