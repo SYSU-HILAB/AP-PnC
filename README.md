@@ -46,7 +46,11 @@ colcon build --packages-select tailsitter_df
 ```
 
 ## default.yaml to set your default colcon build 
-Typically, when building ROS2 packages with colcon, it is beneficial to enable 'symlink-install' and use CMake arguments to export compile_commands.json. Additionally, setting the build type to 'Release' can optimize performance. To streamline this process, you can create a configuration file in your home directory. Start by making a .colcon directory in your home folder. Within this directory, create a file named defaults.yaml. For instance:
+Typically, when building ROS2 packages with colcon, it is beneficial to enable 'symlink-install' and use CMake arguments to export compile_commands.json. Additionally, setting the build type to 'Release' can optimize performance. To streamline this process, you can create a configuration file in your home directory. Start by making a `.colcon` directory in your home folder. Within this directory, create a file named `defaults.yaml`. For instance:
+```shell
+mkdir ~/.colcon && vim ~/.colcon/defaults.yaml
+```
+paste the following to your file.
 ```yaml
 build:
   cmake-args:
