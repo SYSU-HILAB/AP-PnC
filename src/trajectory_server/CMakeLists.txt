@@ -15,7 +15,8 @@ if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif ()
 
 # some package installed by miniconda
-list(APPEND CMAKE_PREFIX_PATH "/home/rec/miniconda3")
+set(HOME $ENV{HOME})
+list(APPEND CMAKE_PREFIX_PATH "${HOME}/miniconda3")
 
 # Find dependencies
 find_package(ament_cmake_auto REQUIRED)

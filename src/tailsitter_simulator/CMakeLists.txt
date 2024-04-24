@@ -32,12 +32,7 @@ target_include_directories(
 )
 
 
-ament_auto_add_executable(test_zhang src/MatlabGenerated/testZhang/main.cpp)
-target_link_libraries(
-  test_zhang
-  ${PROJECT_NAME}_aerodynamics_lib
-  rt_nonfinite_matlab
-)
+
 #ament_auto_add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_SRCS}) # Add other source files as needed
 ament_auto_add_library(${PROJECT_NAME}_lib src/dynamics/Tailsitter.cpp)
 target_link_libraries(${PROJECT_NAME}_lib 
@@ -61,8 +56,8 @@ ament_auto_add_executable(${PROJECT_NAME}_interface src/sim_interface.cpp) # Add
 # )
 
 
-ament_auto_add_executable(${PROJECT_NAME}_test_node src/test_dynamics/test_dynamics.cpp) # Add other source files as needed
-target_link_libraries(${PROJECT_NAME}_test_node ${PROJECT_NAME}_lib)
+# ament_auto_add_executable(${PROJECT_NAME}_test_node src/test_dynamics/test_dynamics.cpp) # Add other source files as needed
+# target_link_libraries(${PROJECT_NAME}_test_node ${PROJECT_NAME}_lib)
 
 
 

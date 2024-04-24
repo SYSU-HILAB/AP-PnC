@@ -5,7 +5,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
-list(APPEND CMAKE_PREFIX_PATH "/home/rec/miniconda3")
+set(HOME $ENV{HOME})
+list(APPEND CMAKE_PREFIX_PATH "${HOME}/miniconda3")
 
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)

@@ -1,3 +1,45 @@
+# Preliminary
+## install miniconda
+[miniconda install](https://docs.anaconda.com/free/miniconda/miniconda-install/)
+Be sure to install miniconda at `$HOME/miniconda3`
+```shell
+bash Miniconda3-latest-Linux-x86_64.sh
+```
+All `yes` to enable conda `python`, it will look like this
+
+```shell
+(base) root@DESKTOP-FEB761L:~/minco-ros2 #
+``` 
+
+## install autodiff
+```shell
+conda install conda-forge::autodiff
+``` 
+
+## set miniconda not activate on startup  or you can conda deactivate every time
+```shell
+echo 'conda config --set auto_activate_base false' >> ~/.bashrc
+
+echo 'export PYTHONPATH=$PYTHONPATH:/usr/lib/python3/dist-packages' >> ~/.bashrc
+```
+
+## install yaml-cpp
+```shell
+cd ~
+git clone https://github.com/jbeder/yaml-cpp.git
+cd yaml-cpp
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+
+## install ompl
+```shell
+sudo apt install ros-humble-ompl
+```
+
 # BUILD ACADOS WITH OPENMP
 ## install acados
 ```shell
