@@ -40,6 +40,13 @@ sudo make install
 sudo apt install ros-humble-ompl
 ```
 
+# Clone the repository
+Notice that generally you are root in docker container and $USER in normal case. Then the $HOME is always pointed to the right place.
+```shell
+git clone git@github.com:SYSU-HILAB/minco-ros2.git ~/pnc_tail-sitter
+```
+
+
 # BUILD ACADOS WITH OPENMP
 ## install acados
 ```shell
