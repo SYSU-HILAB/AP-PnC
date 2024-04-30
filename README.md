@@ -1,4 +1,10 @@
 # Preliminary
+## install Ccache
+Ccache is a compiler cache that can significantly speed up recompilation by caching previous compilations and reusing them when the same compilation is being done again. It's highly recommended for developers looking to optimize their build times, unless there's a specific reason to avoid it.
+(https://autowarefoundation.github.io/autoware-documentation/main/how-to-guides/others/advanced-usage-of-colcon/)[Ccache]
+```shell
+sudo apt update && sudo apt install ccache
+```
 ## install miniconda
 [miniconda install](https://docs.anaconda.com/free/miniconda/miniconda-install/)
 Be sure to install miniconda at `$HOME/miniconda3`

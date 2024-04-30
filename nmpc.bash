@@ -1,23 +1,27 @@
+export CC="/usr/lib/ccache/gcc"
+export CXX="/usr/lib/ccache/g++"
+export CCACHE_DIR="$HOME/.cache/ccache/"
+
 if [ $ROS_VERSION == 1 ] || [ $ROS_DISTRO == 'foxy' ]; then
   echo "ROS_DISTRO is $ROS_DISTRO! DON'T SETUP ACADOS"
-  export TAILSITTER_PLANNING_DIR="/home/$USER/pnc_tailsitter"
+  export TAILSITTER_PLANNING_DIR="/home/$USER/pnc_tail-sitter"
   export NMPC_DIR="$TAILSITTER_PLANNING_DIR/src/nmpc"
   export PATH=$PATH:$NMPC_DIR/scripts/
   export PYTHONPATH="$PYTHONPATH:$NMPC_DIR"
 
 ## ROS2 setting, that is can run code without docker environment
-else [ -n "$USER" ]; then
+else
   export ACADOS_SOURCE_DIR="$HOME/acados"
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$ACADOS_SOURCE_DIR/lib"
 
   if [ -f "$HOME/env/bin/activate" ]; then
   echo "You are in a host machine, running acados in virtual python environment."
+  source $HOME/env/bin/activate
   else
   echo "You are in a container or WSL machine, running acados in intrinsic python environment."
-  source $HOME/env/bin/activate
   fi
 
-  export TAILSITTER_PLANNING_DIR="$HOME/pnc_tailsitter"
+  export TAILSITTER_PLANNING_DIR="$HOME/pnc_tail-sitter"
   export NMPC_DIR="$TAILSITTER_PLANNING_DIR/src/nmpc"
   export PYTHONPATH="$PYTHONPATH:$NMPC_DIR"
 
