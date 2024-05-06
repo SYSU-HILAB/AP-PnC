@@ -1,14 +1,14 @@
 uint64 timestamp 
-# state is for visualize or ROS-type understanding odometry 
-float64[13] state
-
-
-# mpc_state is used for mpc opitmization
 # p,v,r,q
 uint8 POS_START_INDEX=0
 uint8 VEL_START_INDEX=3
 uint8 RATE_START_INDEX=6
 uint8 QUAT_START_INDEX=9
+# state is for visualize or ROS-type understanding odometry 
+float64[13] state
+
+# mpc_state is used for mpc opitmization
+
 float64[13] mpc_state
 
 float64 cur_cz

@@ -7,17 +7,32 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(px4_msgs REQUIRED)
-add_executable(offboard_control src/offboard_control.cpp)
-# ament_auto_add_executable(offboard_control src/offboard_control.cpp)
+ament_auto_find_build_dependencies()
+# find_package(interface REQUIRED)
+# add_executable(offboard_control src/offboard_control.cpp)
+ament_auto_add_executable(offboard_control src/offboard_control.cpp)
 
-ament_target_dependencies(
-  offboard_control
-  rclcpp
-  px4_msgs
+# ament_target_dependencies(
+#   offboard_control
+#   rclcpp
+#   px4_msgs
+# )
 
+ament_auto_add_executable(px4_interface src/px4_interface.cpp)
+target_link_libraries(
+  px4_interface
+  Eigen3::Eigen
 )
+# ament_target_dependencies(
+#   px4_interface
+#   rclcpp
+#   px4_msgs
+# )
+
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -37,4 +52,4 @@ install(TARGETS
 )
 
 
-ament_package()
+ament_auto_package()

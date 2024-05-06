@@ -4,7 +4,7 @@ export CCACHE_DIR="$HOME/.cache/ccache/"
 
 if [ $ROS_VERSION == 1 ] || [ $ROS_DISTRO == 'foxy' ]; then
   echo "ROS_DISTRO is $ROS_DISTRO! DON'T SETUP ACADOS"
-  export TAILSITTER_PLANNING_DIR="/home/$USER/pnc_tail-sitter"
+  export TAILSITTER_PLANNING_DIR="/home/$USER/minco-ros2"
   export NMPC_DIR="$TAILSITTER_PLANNING_DIR/src/nmpc"
   export PATH=$PATH:$NMPC_DIR/scripts/
   export PYTHONPATH="$PYTHONPATH:$NMPC_DIR"
@@ -21,7 +21,7 @@ else
   echo "You are in a container or WSL machine, running acados in intrinsic python environment."
   fi
 
-  export TAILSITTER_PLANNING_DIR="$HOME/pnc_tail-sitter"
+  export TAILSITTER_PLANNING_DIR="$HOME/minco-ros2"
   export NMPC_DIR="$TAILSITTER_PLANNING_DIR/src/nmpc"
   export PYTHONPATH="$PYTHONPATH:$NMPC_DIR"
 
@@ -35,5 +35,5 @@ fi
 alias conn='python $NMPC_DIR/utils/px4_interfaces.py'
 alias exp='python $NMPC_DIR/experiments/minco_exp.py'
 alias print_metrics='python $NMPC_DIR/metrics/rmse.py'
-export PATH=$PATH:$NMPC_DIR/scripts/
+export PATH=$PATH:$NMPC_DIR/scripts/:$TAILSITTER_PLANNING_DIR/scripts
 alias dds_serial='MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600'
