@@ -16,7 +16,6 @@ endif ()
 
 # some package installed by miniconda
 set(HOME $ENV{HOME})
-list(APPEND CMAKE_PREFIX_PATH "${HOME}/miniconda3")
 
 # Find dependencies
 find_package(ament_cmake_auto REQUIRED)
@@ -24,8 +23,6 @@ ament_auto_find_build_dependencies()
 find_package(Eigen3 REQUIRED)
 find_package(ompl REQUIRED)
 # sincle autodiff is not easily found
-find_package(autodiff REQUIRED)
-find_package(yaml-cpp REQUIRED)
 
 # Include directories
 
@@ -35,6 +32,9 @@ file(GLOB ${PROJECT_NAME}_SRCS src/*.cpp)
 # include_directories(include/gcopter)
 include_directories(${OMPL_INCLUDE_DIRS})
 ament_auto_add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_SRCS}) # Add other source files as needed
+list(APPEND CMAKE_PREFIX_PATH "${HOME}/miniconda3")
+find_package(autodiff REQUIRED)
+find_package(yaml-cpp REQUIRED)
 target_link_libraries(
         ${PROJECT_NAME}_node
         ${OMPL_LIBRARIES}
