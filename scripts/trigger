@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "No topic name provided. Using default '/trigger'."
+    topic_name="/trigger"
+else
+    topic_name=$1
+fi
+
+# Publish a single Boolean message
+ros2 topic pub $topic_name std_msgs/msg/Bool "data: true" -1
