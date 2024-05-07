@@ -149,6 +149,35 @@ class StableOdometryNode(Node):
         self.mpc_state[9:9+4] = self.state[3:7]
 
 
+class StableOdometryNode(Node):
+    def __init__(self):
+        super().__init__('stable_odometry_node')
+        self.px4_odometry_pub = self.create_publisher(
+            VehicleOdometry, "/fmu/out/vehicle_odometry", keep_last_qos)
+        
+        self.msg = VehicleOdometry()
+        #p,v,r,xb,yb
+        self.p = np.zeros((3,),dtype=np.float32)
+        self.v = np.zeros((3,), dtype=np.float32)
+        self.r = np.zeros((3,), dtype=np.float32)
+        self.q = np.zeros((4,), dtype=np.float32)
+
+        self.timer = self.create_timer(0.01, self.timer_cb)
+
+    def timer_cb(self):
+        # self.px4_odometry_pub.publish(self.get_odometry())
+        self.msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+        self.p[1] = 1.0
+        self.v[1] = 1.0
+        self.r[2] = 1.0
+        self.q[0] = 1.0
+        self.msg.position = self.p
+        self.msg.velocity = self.v
+        self.msg.angular_velocity = self.r
+        self.msg.q = self.q
+        self.px4_odometry_pub.publish(self.msg)
+
+
 
 def main(args=None) -> None:
 
@@ -156,7 +185,7 @@ def main(args=None) -> None:
     rclpy.init(args=args)
     # rclpy.Executor()
     executor = MultiThreadedExecutor(1)
-    fmu_in_node = PX4InterfaceNode()
+    fmu_in_node = StableOdometryNode()
     # rclpy.spin(fmu_in_node)
     executor.add_node(fmu_in_node)
     executor.spin()

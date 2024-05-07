@@ -58,7 +58,7 @@ class Transcribe {
   Eigen::Vector3d v;
   Eigen::Vector3d r;
   Eigen::Quaterniond q;
-  Eigen::Quaterniond q_flu_frd = Eigen::Quaterniond(0, 1, 0, 1);
+  Eigen::Quaterniond q_flu_frd = Eigen::Quaterniond(0, 1, 0, 0);
 
   public:
 
@@ -95,6 +95,7 @@ public:
   {
 
     offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("/fmu/in/offboard_control_mode", 10);
+    state_publisher_ = this->create_publisher<interface::msg::State>("/cur_state", 10);
     // Init sub VehicleOdometry Controls; pub vehicle_thrust_setpoint State
     auto keep_last_qos = rclcpp::SensorDataQoS().keep_last(1);
     vehicle_odometry_subscriber_ = this->create_subscription<VehicleOdometry>("/fmu/out/vehicle_odometry", keep_last_qos, std::bind(&PX4Interface::vehicle_odometry_callback, this, std::placeholders::_1));
@@ -104,7 +105,7 @@ public:
       };
     // set paramter to decide the control frequency, i.e 1/control_interval.
     // the unit of control_interval is second 
-    this->declare_parameter("control_interval", 0.01);
+    this->declare_parameter("control_interval", 0.02);
     control_interval_ = this->get_parameter("control_interval").as_double();
     // std::chrono::duration<double>(control_interval_)
     heartbeat_timer_ = this->create_wall_timer(100ms, heartbeat_callback);
@@ -155,15 +156,18 @@ void PX4Interface::vehicle_odometry_callback(const px4_msgs::msg::VehicleOdometr
     is_init_ = true;
     // state_pub_timer_ = this->create_wall_timer(100ms, std::bind(&PX4Interface::publish_state, this));
     // use control_interval_ to set pub_timer_
-    state_pub_timer_ = this->create_wall_timer(std::chrono::duration<double>(control_interval_), std::bind(&PX4Interface::publish_state, this));
+    state_pub_timer_ = this->create_wall_timer(20ms, std::bind(&PX4Interface::publish_state, this));
   }
   this->to_flu(msg->position, msg->velocity, msg->angular_velocity , msg->q, state_);
 }
 
 void PX4Interface::publish_state()
 {
+  std::cout << "State publish" << state_.timestamp << std::endl;
+
   state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
   state_publisher_->publish(state_);
+
 }
 
 /**
