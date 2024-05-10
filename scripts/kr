@@ -1,0 +1,11 @@
+#!/bin/bash
+
+PIDS=$(pgrep -f "gz sim")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
+pkill px4_interface
+pkill MicroXRCEAgent
+pkill ruby
+

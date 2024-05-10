@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(px4_msgs REQUIRED)
+
 ament_auto_find_build_dependencies()
 # find_package(interface REQUIRED)
 # add_executable(offboard_control src/offboard_control.cpp)
@@ -26,6 +27,16 @@ target_link_libraries(
   px4_interface
   Eigen3::Eigen
 )
+
+
+# set(QUADROTOR True)
+
+ament_auto_add_executable(traj_buffer src/traj_buffer.cpp)
+target_link_libraries(
+  traj_buffer
+  Eigen3::Eigen
+)
+target_compile_definitions(traj_buffer PRIVATE QUADROTOR="True")
 # ament_target_dependencies(
 #   px4_interface
 #   rclcpp
@@ -51,5 +62,9 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(DIRECTORY
+        launch 
+        DESTINATION share/${PROJECT_NAME}
+)
 
 ament_auto_package()

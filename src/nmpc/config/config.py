@@ -25,6 +25,7 @@ class MpcConfig:
     qPos = np.array([ 12,  12,  20]) * 1 * 1.0 
 
     qYB = np.array([1e2, 1e2, 1e2]) * 1.0 * 0.1 
+    qYB = np.array([1e2, 1e2, 1e2]) * 1.0 * 0.0
     qvelh = 1.0 # 5.0
     qvelv = 1.0
 
@@ -34,7 +35,7 @@ class MpcConfig:
     wz=0.5
     qAngV = np.array([wx, wy, wz]) 
     qDynamicVel = np.zeros((1,))
-    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3
+    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-1
 
     Metrics = False
 

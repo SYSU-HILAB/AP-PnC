@@ -25,6 +25,7 @@ link_directories(${TAILSITTER_PLANNING_DIR}/c_generated_code)
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(spdlog REQUIRED)
 
 ament_auto_find_build_dependencies()
 
@@ -41,6 +42,7 @@ target_link_libraries(
         acados
         hpipm
         blasfeo
+        spdlog::spdlog
 )
 
 

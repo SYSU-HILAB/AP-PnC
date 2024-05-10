@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python nmpc_impl/fixed_point.py

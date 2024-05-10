@@ -40,8 +40,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <Eigen/Geometry>
 #include <std_msgs/msg/bool.hpp>
-// #include <interface/msg/
-// #include 
+
 #include <rclcpp/rclcpp.hpp>
 #include <stdint.h>
 
@@ -94,10 +93,13 @@ public:
   PX4Interface() : Node("px4_interface")
   {
 
-    offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("/fmu/in/offboard_control_mode", 10);
-    state_publisher_ = this->create_publisher<interface::msg::State>("/cur_state", 10);
-    // Init sub VehicleOdometry Controls; pub vehicle_thrust_setpoint State
+    auto reliable_qos = rclcpp::ParametersQoS().keep_last(1).transient_local();
     auto keep_last_qos = rclcpp::SensorDataQoS().keep_last(1);
+
+    offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("/fmu/in/offboard_control_mode", 10);
+
+    state_publisher_ = this->create_publisher<interface::msg::State>("/cur_state", reliable_qos);
+    // Init sub VehicleOdometry Controls; pub vehicle_thrust_setpoint State
     vehicle_odometry_subscriber_ = this->create_subscription<VehicleOdometry>("/fmu/out/vehicle_odometry", keep_last_qos, std::bind(&PX4Interface::vehicle_odometry_callback, this, std::placeholders::_1));
 
     auto heartbeat_callback = [this]() -> void {
@@ -159,6 +161,7 @@ void PX4Interface::vehicle_odometry_callback(const px4_msgs::msg::VehicleOdometr
     state_pub_timer_ = this->create_wall_timer(20ms, std::bind(&PX4Interface::publish_state, this));
   }
   this->to_flu(msg->position, msg->velocity, msg->angular_velocity , msg->q, state_);
+  std::copy(state_.state.begin(), state_.state.end(), state_.mpc_state.begin());
 }
 
 void PX4Interface::publish_state()

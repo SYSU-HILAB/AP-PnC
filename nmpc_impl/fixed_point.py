@@ -30,9 +30,14 @@ import threading
 
 mpc_solver = MpcSolver(cython=True)
 
-ref_states = np.zeros((MpcConfig.nodes, 3+3+3))
+# p,v,r,yb
+ref_states = np.zeros((MpcConfig.nodes, 3+3+3+3))
 cz_predict = np.zeros((MpcConfig.nodes, 1))
 
+ref_states[9] = 0.0
+
+ref_states[0] = 0.0
+ref_states[2] = 1
 
 
 
@@ -43,11 +48,9 @@ class MpcOptNode(Node):
         # TODO change to TrajectoryControl
         self.create_subscription(State, "cur_state", self.state_cb, reliable_qos)
         self.controls_pub = self.create_publisher(Controls, "mpc_controls", reliable_qos)
-        self.pred_traj_pub = self.create_publisher(Path, "mpc_pred_traj", keep_last_qos)
+        self.pred_traj_pub = self.create_publisher(Path, "mpc_pred_traj", reliable_qos)
         self.controls = Controls()
-        # self.metrics_pub = self.create_publisher(Metrics, "mpc_metrics", reliable_qos)
 
-        self.ref_can_set_pub = self.create_publisher(Bool, "ref_can_set", reliable_qos)
 
         self.x0 = np.zeros((13,), dtype=np.float64)
         self.x0[9] = 1.0
@@ -72,10 +75,6 @@ class MpcOptNode(Node):
         self.time_seq.append(self.end-self.start)
 
     def pub_predict_traj(self):
-        self.controls.motors_u = self.u
-        # self.controls.rates_sp = mpc_solver.sim_one_step()[10:]
-        self.controls.total_thrust = np.sum(self.controls.motors_u)
-        self.controls_pub.publish(self.controls)
         rsts = mpc_solver.sim_traj()
         msg = Path()
         msg.header.frame_id = "world"
@@ -97,39 +96,24 @@ class MpcOptNode(Node):
     def opt_time(self):
         return mpc_solver.solve_time
 
-    def pub_ref_can_set(self):
-        msg = Bool()
-        msg.data = True
-        self.ref_can_set_pub.publish(msg)
 
     def state_cb(self, state: State):
         global ref_states
-        global cond_of_set_ref
         global mpc_solver
         global cz_predict
         self.x0 = state.mpc_state
-        
-        # v = state.mpc_state[3:6]
-        # q = state.mpc_state[9:13]
-        # vb = v_dot_q_inverse(v, q)
-        # # v_norm 
-    
-        # alpha = np.arctan2(vb[2], vb[0])
-
-
-        with cond_of_set_ref:
-            self.pub_ref_can_set()
-            cond_of_set_ref.wait()
-        # print(cz_predict.T)
-        # print(ref_states)
         start = time.time()
         mpc_solver.setRefPath(ref_states, cz_predict)          
         self.run_optimization()
         end = time.time()
-        print(end - start)
+
+        self.pub_predict_traj()
+
+        print(f"Opt time: {end-start}")
+
     def pub_controls(self):
         self.controls.motors_u = self.u
-        # self.controls.rates_sp = mpc_solver.sim_one_step_rate()
+        self.controls.rates_sp = mpc_solver.sim_one_step_rate_ocp()
         self.controls.total_thrust = np.sum(self.controls.motors_u)
         self.controls_pub.publish(self.controls)
 
@@ -137,10 +121,8 @@ class MpcOptNode(Node):
 def main():
     rclpy.init()
     mpc_node = MpcOptNode()
-    ref_set_node = MpcRefNode()
     executror = MultiThreadedExecutor(num_threads=2)
     executror.add_node(mpc_node)
-    executror.add_node(ref_set_node)
     executror.spin()
     
 

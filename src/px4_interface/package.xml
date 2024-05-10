@@ -4,7 +4,7 @@
   <name>px4_interface</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="632029496@qq.com">root</maintainer>
+  <maintainer email="rongerch@mail2.sysu.edu.cn">root</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -14,6 +14,7 @@
   <depend>interface</depend>
   <depend>nav_msgs</depend>
   <depend>Eigen3</depend>
+  <depend>visualization_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

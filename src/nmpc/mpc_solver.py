@@ -192,7 +192,11 @@ class MpcSolver:
         x1 = self.__acados_sim_solver.simulate(x=x0, u=self.u)
         
         return x1[6:9]
-
+    
+    def sim_one_step_rate_ocp(self):
+        
+        x1 = self.simX[1, :]        
+        return x1[6:9]
     # def setHorizon(self, T):
     #     self.__acados_ocp_solver.set("")
         
