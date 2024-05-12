@@ -116,9 +116,9 @@ namespace simulator_interface {
     auto v = this->get_parameter("init_v").as_double_array();
     auto q = this->get_parameter("init_q").as_double_array();
     Eigen::Quaterniond quat(q[0], q[1], q[2], q[3]);
-    std::cout << "init_p: " << p[0] << " " << p[1] << " " << p[2] << std::endl;
-    std::cout << "init_v: " << v[0] << " " << v[1] << " " << v[2] << std::endl;
-    std::cout << "init_q: " << q[0] << " " << q[1] << " " << q[2] << " " << q[3]
+    std::cerr << "init_p: " << p[0] << " " << p[1] << " " << p[2] << std::endl;
+    std::cerr << "init_v: " << v[0] << " " << v[1] << " " << v[2] << std::endl;
+    std::cerr << "init_q: " << q[0] << " " << q[1] << " " << q[2] << " " << q[3]
       << std::endl;
     quat.normalize();
     state.p = Eigen::Vector3d(p[0], p[1], p[2]);
@@ -141,6 +141,8 @@ namespace simulator_interface {
     mpc_state_eigen_array << sim_state.p.array(), sim_state.v.array(),
       sim_state.omega.array(), rotToQuat(sim_state.R).array();
 
+    std::copy(mpc_state_msg.mpc_state.begin(), mpc_state_msg.mpc_state.end(),
+      mpc_state_msg.state.begin());
     mpc_state_publisher_->publish(mpc_state_msg);
   };
 

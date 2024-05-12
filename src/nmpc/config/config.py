@@ -5,7 +5,7 @@ from enum import Enum
 class ControlConfig:
     control_time = 0.02
     control_frequency = 1 / control_time
-    nodes = 20
+    nodes = 40
     T = control_time * nodes
 
 
@@ -17,7 +17,7 @@ class MpcConfig:
     nodes = ControlConfig.nodes
     T_horizon = ControlConfig.T
 
-    cz = 0.25 * np.zeros((1,))
+    cz = 0.0 * np.zeros((1,))
     # TODO keep sync with MpcConfig
     lb_u = np.array([0.5, 0.5, 0.5, 0.5]) * 1
     ub_u = np.array([10., 10., 10., 10.]) * 1.0

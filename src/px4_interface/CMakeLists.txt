@@ -36,7 +36,14 @@ target_link_libraries(
   traj_buffer
   Eigen3::Eigen
 )
-target_compile_definitions(traj_buffer PRIVATE QUADROTOR="True")
+
+ament_auto_add_executable(fixed_ref src/fixed_ref.cpp)
+target_link_libraries(
+  fixed_ref
+  Eigen3::Eigen
+)
+
+# target_compile_definitions(traj_buffer PRIVATE QUADROTOR="True")
 # ament_target_dependencies(
 #   px4_interface
 #   rclcpp

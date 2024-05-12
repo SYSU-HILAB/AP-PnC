@@ -55,6 +55,7 @@ private:
   std::function<int(void*)> set_current_state_lbx;
   std::function<int(void*)> set_current_state_ubx;
   std::function<void(void*)> get_nlp_out_u;
+  std::function<void(void*)> get_nlp_out_x_next;
   tailsitter_flu_solver_capsule* acados_ocp_capsule =
     tailsitter_flu_acados_create_capsule();
 
@@ -107,6 +108,8 @@ private:
         std::placeholders::_1, std::placeholders::_2, 1);
     get_nlp_out_u = std::bind(ocp_nlp_out_get, nlp_config, nlp_dims, nlp_out, 0,
       "u", std::placeholders::_1);
+    get_nlp_out_x_next = std::bind(ocp_nlp_out_get, nlp_config, nlp_dims, nlp_out,
+      1, "x", std::placeholders::_1);
     // ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, 0, "u", &u_current);
   };
 
@@ -139,9 +142,10 @@ public:
     set_current_state_ubx(x_current);
   }
 
-  int solve(void* u_sol) {
+  int solve(void* u_sol, void* x_next) {
     status = tailsitter_flu_acados_solve(acados_ocp_capsule);
     get_nlp_out_u(u_sol);
+    get_nlp_out_x_next(x_next);
     return status;
   }
 };
@@ -186,7 +190,14 @@ private:
   std::chrono::_V2::system_clock::time_point t_end_;
 
   AcadosInterface& acados = AcadosInterface::getInstance();
-  std::array<double, 4> u_sol;
+
+
+  constexpr static int controls_size = 4;
+  constexpr static int state_size = 13;
+  constexpr static int rate_start_index = 6;
+  std::array<double, controls_size> u_sol;
+  // p,v,r,q
+  std::array<double, state_size> x_next;
 };
 
 void NMPC::initSubsPubs() {
@@ -206,8 +217,7 @@ void NMPC::initSubsPubs() {
 void NMPC::solve() {
   // calculate the solve function time
   // LOG 
-  t_start_ = std::chrono::high_resolution_clock::now();
-  status = acados.solve(u_sol.data());
+  status = acados.solve(u_sol.data(), x_next.data());
   switch (status)
   {
   case AcadosInterface::return_values::ACADOS_SUCCESS:
@@ -232,6 +242,7 @@ void NMPC::solve() {
 
   ControlMsg ctrl_msg;
   ctrl_msg.motors_u = { u_sol[0], u_sol[1], u_sol[2], u_sol[3] };
+  ctrl_msg.rates_sp = { x_next[rate_start_index], x_next[rate_start_index + 1], x_next[rate_start_index + 2] };
   ctrl_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
   ctrl_pub_->publish(ctrl_msg);
   t_end_ = std::chrono::high_resolution_clock::now();
@@ -255,52 +266,25 @@ void NMPC::referenceCallback(const ReferenceMsg& msg) {
     acados.setReference(refs.points[i].point.data(),
       &refs.points[i].cz_prediction, i);
   }
+  spdlog::info("The parameter is {}", refs.points[0].cz_prediction);
   acados.setReference(refs.points[acados.N].point.data(), acados.N);
   solve();
 
 }
 
 void NMPC::stateCallback(const StateMsg& msg) {
+  t_start_ = std::chrono::high_resolution_clock::now();
   msg.mpc_state.data();
   acados.setState(const_cast<double*>(msg.mpc_state.data()));
-  //print state
-  // printf("state: \n");
-  // for (int i = 0; i < msg.mpc_state.size(); i++) {
-  //   printf("%f ", msg.mpc_state[i]);
-  // }
   using interface::msg::State;
   // init a quaterniond 
   Eigen::Quaterniond q(msg.mpc_state[State::QUAT_START_INDEX], msg.mpc_state[State::QUAT_START_INDEX + 1],
     msg.mpc_state[State::QUAT_START_INDEX + 2], msg.mpc_state[State::QUAT_START_INDEX + 3]);
-  //print quaternion marked by w,x,y,z
-  // printf("quaternion: %f %f %f %f\n", q.w(), q.x(), q.y(), q.z());
-  //print rotation matrix
-  // Eigen::Matrix3d rot = q.toRotationMatrix();
-  // printf("rotation matrix: \n");
-  // for (int i = 0; i < 3; i++) {
-  //   for (int j = 0; j < 3; j++) {
-  //     printf("%f ", rot(i, j));
-  //   }
-  //   printf("\n");
-  // }
+
   std_msgs::msg::Bool ready_msg;
   ready_msg.data = true;
   ready_pub_->publish(ready_msg);
-  // double p = 0.0f;
-  // // rclcpp info
-  // RCLCPP_INFO(this->get_logger(), "stage nums %d", acados.N);
-  // for (int i = 0; i < acados.N; i++) {
-  //   acados.setReference(y_ref_.data(), &p, i);
-  // }
-  // // acados.setReference(y_ref.data(), &p, 0);
 
-  // NMPC::solve();
-  // // acados.solve(u_sol.data());
-  // // // print u_sol
-  // // printf("u_sol: \n");
-  // for (int i = 0; i < 4; i++) {
-  //   printf("%f ", u_sol[i]);
-  // }
 }
 
 NMPC::NMPC() : Node("NMPC") {
@@ -318,9 +302,11 @@ NMPC::~NMPC() {
   for (int i = 0; i < time_statistic.size(); i++) {
     time_record[i] = time_statistic[i];
   }
-  spdlog::info("average estimation time {} ms", time_record.mean());
-  spdlog::info("max estimation time {} ms", time_record.maxCoeff());
-  spdlog::info("min estimation time {} ms", time_record.minCoeff());
+  spdlog::info("Time Statistics of State to Control");
+  spdlog::info("Num of timepoints {} ", time_record.size());
+  spdlog::info("Average time {} ms", time_record.mean());
+  spdlog::info("Max time {} ms", time_record.maxCoeff());
+  spdlog::info("Min time {} ms", time_record.minCoeff());
 }
 
 

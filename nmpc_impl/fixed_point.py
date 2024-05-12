@@ -34,10 +34,10 @@ mpc_solver = MpcSolver(cython=True)
 ref_states = np.zeros((MpcConfig.nodes, 3+3+3+3))
 cz_predict = np.zeros((MpcConfig.nodes, 1))
 
-ref_states[9] = 0.0
+# ref_states[9] = 0.0
 
-ref_states[0] = 0.0
-ref_states[2] = 1
+ref_states[:,0] = 1.0
+ref_states[:,2] = 2.0
 
 
 
@@ -108,10 +108,12 @@ class MpcOptNode(Node):
         end = time.time()
 
         self.pub_predict_traj()
-
+        print(ref_states)
+        print(self.x0)
         print(f"Opt time: {end-start}")
 
     def pub_controls(self):
+        self.controls.timestamp = (int) (self.get_clock().now().nanoseconds/1000)
         self.controls.motors_u = self.u
         self.controls.rates_sp = mpc_solver.sim_one_step_rate_ocp()
         self.controls.total_thrust = np.sum(self.controls.motors_u)
