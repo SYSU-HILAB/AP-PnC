@@ -25,15 +25,12 @@ link_directories(${TAILSITTER_PLANNING_DIR}/c_generated_code)
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(spdlog REQUIRED)
-
+find_package(fmt REQUIRED)
 ament_auto_find_build_dependencies()
 
-file(GLOB ${PROJECT_NAME}_SRCS src/c_nmpc.cpp)
-ament_auto_add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_SRCS}) # Add other source files as needed
+ament_auto_add_executable(${PROJECT_NAME}_node src/c_nmpc.cpp) # Add other source files as needed
 
-ament_auto_add_executable(intras src/intras.cpp) # Add other source files as needed
-
+find_package(spdlog REQUIRED)
 target_link_libraries(
         ${PROJECT_NAME}_node
         Eigen3::Eigen  # Eigen support namespace CMake
@@ -42,9 +39,10 @@ target_link_libraries(
         acados
         hpipm
         blasfeo
-        spdlog::spdlog
+        fmt::fmt
 )
 
+ament_auto_add_executable(intras src/intras.cpp) # Add other source files as needed
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
