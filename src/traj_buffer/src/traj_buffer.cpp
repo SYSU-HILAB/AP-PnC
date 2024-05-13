@@ -162,7 +162,7 @@ class TrajectoryBuffer : public rclcpp::Node {
  public:
   TrajectoryBuffer() : Node("trajectory_buffer") {
     auto reliabe_qos_keep_last =
-        rclcpp::QoS(1)
+        rclcpp::QoS(10)
             .reliable()
             .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
             .keep_last(1);

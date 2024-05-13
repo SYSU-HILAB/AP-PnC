@@ -161,7 +161,7 @@ public:
   rclcpp::Publisher<ControlMsg>::SharedPtr ctrl_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub_;
   const  rclcpp::QoS reliabe_qos_keep_last =
-    rclcpp::QoS(1)
+    rclcpp::QoS(10)
     .reliable()
     .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
     .keep_last(1);
@@ -177,7 +177,7 @@ private:
   void initSubsPubs() override;
   void stateCallback(const StateMsg& msg) override;
   void referenceCallback(const ReferenceMsg& msg) override;
-
+  double mass_;
   void solve();
 
 public:
@@ -244,11 +244,14 @@ void NMPC::solve() {
   ctrl_msg.motors_u = { u_sol[0], u_sol[1], u_sol[2], u_sol[3] };
   ctrl_msg.rates_sp = { x_next[rate_start_index], x_next[rate_start_index + 1], x_next[rate_start_index + 2] };
   ctrl_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+  ctrl_msg.total_thrust = u_sol[0] + u_sol[1] + u_sol[2] + u_sol[3];
+  ctrl_msg.thrust_acc_sp = ctrl_msg.total_thrust / mass_;
   ctrl_pub_->publish(ctrl_msg);
+
   t_end_ = std::chrono::high_resolution_clock::now();
   time_statistic.emplace_back(
     std::chrono::duration<double, std::milli>(t_end_ - t_start_).count());
-  spdlog::debug("control msg {}", ctrl_msg.motors_u[0]);
+  spdlog::debug("control msg {} {} {} {}", ctrl_msg.motors_u[0], ctrl_msg.motors_u[1], ctrl_msg.motors_u[2], ctrl_msg.motors_u[3]);
 }
 
 
@@ -289,7 +292,8 @@ void NMPC::stateCallback(const StateMsg& msg) {
 
 NMPC::NMPC() : Node("NMPC") {
   // Initialize the reference
-
+  this->declare_parameter("mass", 1.5);
+  this->get_parameter("mass", mass_);
   initSubsPubs();
   time_statistic.reserve(10000);
   // NMPC setup code here (not shown, specific to your application)

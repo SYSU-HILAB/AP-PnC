@@ -15,6 +15,7 @@ ament_auto_find_build_dependencies()
 # find_package(interface REQUIRED)
 # add_executable(offboard_control src/offboard_control.cpp)
 ament_auto_add_executable(offboard_control src/offboard_control.cpp)
+ament_auto_add_executable(offboard_mode src/offboard_mode.cpp)
 
 # ament_target_dependencies(
 #   offboard_control

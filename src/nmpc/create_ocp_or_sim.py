@@ -138,15 +138,15 @@ def ocp_nls() -> AcadosOcp:
     ocp.solver_options.integrator_type = "ERK"
     ocp.solver_options.nlp_solver_type = "SQP"  # SQP_RTI, SQP
     # ocp.solver_options.nlp_solver_ext_qp_res = 1
-    ocp.solver_options.nlp_solver_max_iter = 6
+    ocp.solver_options.nlp_solver_max_iter = 10
     # ocp.solver_options.nlp_solver_max_iter = 20
-    ocp.solver_options.qp_solver_iter_max = 50
+    ocp.solver_options.qp_solver_iter_max = 5
     # ocp.solver_options.eps_sufficient_descent = 1e-8
     # ocp.solver_options.qp_tol_eq = 1e-04
     # ocp.solver_options.qp_solver_tol_stat = 1e-02
     # ocp.solver_options.print_level = 1
-    ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
-    ocp.solver_options.line_search_use_sufficient_descent = 1
+    # ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
+    # ocp.solver_options.line_search_use_sufficient_descent = 1
     # ocp.solver_options.alpha_reduction = 0.9
 
     # ocp.solver_options.alpha_min = 0.001
@@ -154,13 +154,13 @@ def ocp_nls() -> AcadosOcp:
     # ocp.solver_options.qp_solver_cond_ric_alg = 0
     # ocp.solver_options.globalization_use_SOC = 1
     # ocp.solver_options.levenberg_marquardt = 1e3
-    ocp.solver_options.nlp_solver_ext_qp_res = 1
+    # ocp.solver_options.nlp_solver_ext_qp_res = 1
     # newton step
-    ocp.solver_options.nlp_solver_step_length = 1.0
-    ocp.solver_options.hpipm_mode = "ROBUST"
+    # ocp.solver_options.nlp_solver_step_length = 1.0
+    ocp.solver_options.hpipm_mode = "SPEED_ABS"
     # SPEED_ABS SPEED BALANCE ROBUST
     # ocp.dims.nh_0 = 1
-    ocp.solver_options.regularize_method = "CONVEXIFY"  # "MIRROR" #"CONVEXIFY"
+    # ocp.solver_options.regularize_method = "CONVEXIFY"  # "MIRROR" #"CONVEXIFY"
     # 4-order ERK
     ocp.solver_options.sim_method_num_stages = 4
     # ocp.

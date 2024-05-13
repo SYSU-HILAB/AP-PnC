@@ -11,6 +11,7 @@ cd $PX4_ROOT
 
 # start px4_interface
 ros2 run px4_interface px4_interface &
+ros2 run px4_interface fixed_ref &
 # start communication 
 micro-xrce-dds-agent udp4 -p 8888 &
 

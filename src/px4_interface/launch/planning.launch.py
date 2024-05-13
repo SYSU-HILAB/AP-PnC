@@ -19,7 +19,7 @@ def generate_launch_description():
     print(sim_params)
 
     fixed_point = False
-    fixed_point = True
+    # fixed_point = True
     
     if not fixed_point:
         return launch.LaunchDescription([
@@ -57,7 +57,7 @@ def generate_launch_description():
                 name='fixed_ref',
                 parameters=[
                     {
-                        "pos": [15.0, 0.0, 2.0],
+                        "pos": [15.0, 0.0, 5.0],
                     }
                 ]
                 # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']

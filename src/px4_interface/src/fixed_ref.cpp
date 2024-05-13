@@ -25,7 +25,7 @@ public:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr bool_sub_;
   rclcpp::Publisher<TrajecotryBullet>::SharedPtr publisher_;
   const rclcpp::QoS reliabe_qos_keep_last =
-    rclcpp::QoS(1)
+    rclcpp::QoS(10)
     .reliable()
     .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
     .keep_last(1);
@@ -79,7 +79,7 @@ void FixedRef::updateParameter() {
       point.point[i] = 0.0;
     }
 
-    point.point[kYbStartIndex] = 1.0; // 1,0,0,  Yaw 90
+    point.point[kYbStartIndex+1] = 1.0; // 1,0,0,  Yaw 90
   }
 }
 

@@ -46,7 +46,7 @@ namespace simulator_interface {
     rclcpp::Publisher<MpcStateMsg>::SharedPtr mpc_state_publisher_;
     rclcpp::Publisher<OdometryMsg>::SharedPtr odometry_publisher_;
     const  rclcpp::QoS reliabe_qos_keep_last =
-      rclcpp::QoS(1)
+      rclcpp::QoS(10)
       .reliable()
       .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
       .keep_last(1);

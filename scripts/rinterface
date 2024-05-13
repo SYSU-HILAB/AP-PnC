@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ros2 run px4_interface px4_interface
