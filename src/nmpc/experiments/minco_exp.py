@@ -29,7 +29,7 @@ import threading
 
 
 cond_of_set_ref = threading.Condition()
-mpc_solver = MpcSolver(cython=True)
+mpc_solver = MpcSolver()
 
 ref_states = np.zeros((MpcConfig.nodes, 3+3+3))
 cz_predict = np.zeros((MpcConfig.nodes, 1))

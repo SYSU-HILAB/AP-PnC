@@ -22,46 +22,17 @@ class MpcSolver:
     """mpc solver 
     """
 
-    def __init__(self, cython=False) -> None:
+    def __init__(self) -> None:
         # super().__init__('MpcSolver')
         # self.mode = mode
         # Acados settting
         # TODO your ocp is tlightly coupled with your ocp create, we may not need model
 
         self.__ocp: AcadosOcp = ocp_nls()
-            
-        warmstart_ocp = ocp_nls()
-        warmstart_ocp.solver_options.nlp_solver_type = "SQP"
-        if cython:
-            AcadosOcpSolver.generate(
-                self.__ocp, json_file="acados_ocp_" + self.__ocp.model.name + ".json"
-            )
-            AcadosOcpSolver.build(
-                self.__ocp.code_export_directory, with_cython=True
-            )
-            self.__acados_ocp_solver: AcadosOcpSolver = AcadosOcpSolver.create_cython_solver(
-                "acados_ocp_" + self.__ocp.model.name + ".json")
-            
-            # For now, only cython enable warmstart.
-            # move config to config 
-            AcadosOcpSolver.generate(
-                warmstart_ocp, json_file="warm_start_ocp_" + warmstart_ocp.model.name + ".json"
-            )
-            AcadosOcpSolver.build(
-                warmstart_ocp.code_export_directory, with_cython=True
-            )
-            self.warm_ocp_solver: AcadosOcpSolver = AcadosOcpSolver.create_cython_solver(
-                "warm_start_ocp_" + warmstart_ocp.model.name + ".json"
-            )
-        else:
-            self.__acados_ocp_solver:AcadosOcpSolver = AcadosOcpSolver(
-                self.__ocp, json_file="acados_ocp_" + self.__ocp.model.name + ".json"
-            )
-            print(warmstart_ocp)
-            self.warm_ocp_solver: AcadosOcpSolver = AcadosOcpSolver(
-                warmstart_ocp, json_file= "warm_start_ocp_" + warmstart_ocp.model.name + ".json"
-            )
-        self.warmstart = False
+        self.__acados_ocp_solver:AcadosOcpSolver = AcadosOcpSolver(
+            self.__ocp, json_file="acados_ocp_" + self.__ocp.model.name + ".json"
+        )
+
         self.Nodes = MpcConfig.nodes
         self.nx = self.__ocp.model.x.size()[0]
         self.nu = self.__ocp.model.u.size()[0]
@@ -71,11 +42,8 @@ class MpcSolver:
         #     self.__sim = crea
         self.__sim = create_sim_solver_with_model_defined(
             Nodes= self.Nodes, T=MpcConfig.T_horizon)
-        AcadosSimSolver.generate(
-            self.__sim, json_file="acados_sim_" + self.__sim.model.name + ".json"
-        )
-        AcadosSimSolver.build(self.__sim.code_export_directory, with_cython=True)
-        self.__acados_sim_solver = AcadosSimSolver.create_cython_solver('acados_sim_' + self.__sim.model.name + '.json')
+
+        self.__acados_sim_solver = AcadosSimSolver(self.__sim, json_file='acados_sim_' + self.__sim.model.name + '.json')
 
 
         self.simX = np.ndarray((self.Nodes+1, self.nx))
