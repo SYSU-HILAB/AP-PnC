@@ -73,7 +73,7 @@ git submodule update --recursive --init
 ```shell
 mkdir -p build
 cd build
-cmake -DACADOS_WITH_OSQP=ON -DACADOS_WITH_OPENMP=ON -DACADOS_WITH_QPOASES=ON ..
+cmake -DACADOS_WITH_OPENMP=ON -DACADOS_WITH_QPOASES=ON ..
 # add more optional arguments e.g. -DACADOS_WITH_OSQP=OFF/ON -DACADOS_INSTALL_DIR=<path_to_acados_installation_folder> above
 make install -j4
 ```
