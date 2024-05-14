@@ -43,7 +43,10 @@ target_link_libraries(
 )
 
 ament_auto_add_executable(intras src/intras.cpp) # Add other source files as needed
-
+target_link_libraries(
+  intras 
+  fmt::fmt
+)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

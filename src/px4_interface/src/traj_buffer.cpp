@@ -18,7 +18,7 @@ constexpr int kRefStateDims = 9;
 constexpr int kRefTrajBulletSize = TrajecotryBullet::SIZE;
 constexpr double discount = 0.99;
 bool if_quadrotor = false;
-
+constexpr double kThrustPerRotor = 9.8 * 1.5 / 4;
 class TrajectoryBufferCallbacks {
 public:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr bool_sub_;
@@ -50,7 +50,6 @@ private:
   double cz_predict_ = 0.0;
   Trajectory trajectory_;
   TrajecotryBullet message_;
-  TrajecotryPoint point_;
 
 private:
   void initSubsPubs();
@@ -62,7 +61,6 @@ public:
   TrajectoryBuffer();
 };
 TrajectoryBuffer::TrajectoryBuffer() : Node("trajectory_buffer") {
-  auto sensor_qos = rclcpp::SensorDataQoS().keep_last(1);
   initSubsPubs();
 }
 
@@ -155,6 +153,13 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg) {
     trajectory_.points.clear();
     // copy msg to trajectory_
     trajectory_.points = msg->points;
+    // change ref_thrust to gravity force.
+    for (auto& point : trajectory_.points) {
+      point.point[TrajecotryPoint::THR_START_INDEX] = kThrustPerRotor;
+      point.point[TrajecotryPoint::THR_START_INDEX + 1] = kThrustPerRotor;
+      point.point[TrajecotryPoint::THR_START_INDEX + 2] = kThrustPerRotor;
+      point.point[TrajecotryPoint::THR_START_INDEX + 3] = kThrustPerRotor;
+    }
     init_traj_set_ = true;
     RCLCPP_INFO(this->get_logger(), "trajectory_ size %d",
                 trajectory_.points.size());

@@ -1,7 +1,7 @@
 #include <thread>
 
 #include "rclcpp/rclcpp.hpp"
-
+#include "spdlog/spdlog.h"
 class HeavyComputationNode : public rclcpp::Node {
  public:
   HeavyComputationNode() : Node("heavy_computation_node") {
@@ -54,6 +54,16 @@ class HeavyComputationNode : public rclcpp::Node {
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
+  const int* a;
+  const int b = 1;
+  const int c = 2;
+  int d = 4;
+  a = &b;
+  a = &c;
+  a = &d;
+  // *a = 5;
+  spdlog::info("a:{}", *a);
+
   auto node = std::make_shared<HeavyComputationNode>();
   rclcpp::spin(node);
   rclcpp::shutdown();
