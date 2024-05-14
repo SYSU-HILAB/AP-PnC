@@ -96,21 +96,6 @@ class MpcSolver:
         xCur = x0.copy()
         xCur[9:] = xCur[9:] / np.linalg.norm(xCur[9:])
 
-        if not self.warmstart:
-            print(f'{TerminalColor.OKCYAN} WarmStart Begins!')
-            self.warm_ocp_solver.set(0, "lbx", xCur)
-            self.warm_ocp_solver.set(0, "ubx", xCur)
-            status = self.warm_ocp_solver.solve()
-            if status not in [0,2]:
-                self.__acados_ocp_solver.print_statistics()
-                raise Exception(
-                    f"acados acados_ocp_solver returned status {status} with x current {xCur}"
-                )
-            for i in range(self.Nodes + 1):
-                self.__acados_ocp_solver.set(i, "x", self.warm_ocp_solver.get(i, 'x'))
-                self.__acados_ocp_solver.set(i, "u", self.warm_ocp_solver.get(i, 'u'))
-                self.warmstart = True
-            print(f'WarmStart Ends! {TerminalColor.ENDC}')
         # return
         self.__acados_ocp_solver.set(0, "lbx", xCur)
         self.__acados_ocp_solver.set(0, "ubx", xCur)

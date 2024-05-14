@@ -153,7 +153,7 @@ def ocp_nls() -> AcadosOcp:
     # ocp.solver_options.ext_cost_num_hess = 1
     # ocp.solver_options.qp_solver_cond_ric_alg = 0
     # ocp.solver_options.globalization_use_SOC = 1
-    # ocp.solver_options.levenberg_marquardt = 1e3
+    # ocp.solver_options.levenberg_marquardt = 1e1
     # ocp.solver_options.nlp_solver_ext_qp_res = 1
     # newton step
     # ocp.solver_options.nlp_solver_step_length = 1.0

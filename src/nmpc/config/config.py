@@ -5,7 +5,7 @@ from enum import Enum
 class ControlConfig:
     control_time = 0.02
     control_frequency = 1 / control_time
-    nodes = 25
+    nodes = 20
     T = control_time * nodes
 
 
@@ -20,7 +20,7 @@ class MpcConfig:
     cz = 0.0 * np.zeros((1,))
     # TODO keep sync with MpcConfig
     lb_u = np.array([0.5, 0.5, 0.5, 0.5]) * 1
-    ub_u = np.array([10., 10., 10., 10.]) * 1.0
+    ub_u = np.array([10., 10., 10., 10.]) * 0.6
     # 1e1 15 15 20 OK
     qPos = np.array([ 12,  12,  20]) * 1 * 1.0 
 
@@ -35,7 +35,7 @@ class MpcConfig:
     wz=0.5
     qAngV = np.array([wx, wy, wz]) * 1 
     qDynamicVel = np.zeros((1,))
-    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-1
+    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 10
 
     Metrics = False
 

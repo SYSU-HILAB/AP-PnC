@@ -28,7 +28,7 @@ from utils.stat_plot import plot_density
 import threading
 
 
-mpc_solver = MpcSolver(cython=True)
+mpc_solver = MpcSolver()
 
 # p,v,r,yb
 ref_states = np.zeros((MpcConfig.nodes, 3+3+3+3))

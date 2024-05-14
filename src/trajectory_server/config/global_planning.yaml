@@ -53,7 +53,7 @@
     BoxMin: [ -3.5, -3.0, -2.0 ]
     BoxMax: [ 3.5,  3.0, 3.0 ]
 
-    v_max: 2.0
+    v_max: 10.0
     omg_x_max: 0.5
     omg_y_max: 0.25
     omg_z_max: 0.5
