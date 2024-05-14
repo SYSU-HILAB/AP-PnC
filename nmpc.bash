@@ -32,6 +32,7 @@ else
   alias tailstart='python $TAILSITTER_PLANNING_DIR/src/nmpc/autostart.py'
   
 fi
+export LD_LIBRARY_PATH=$TAILSITTER_PLANNING_DIR/c_generated_code:$LD_LIBRARY_PATH
 alias conn='python $NMPC_DIR/utils/px4_interfaces.py'
 alias exp='python $NMPC_DIR/experiments/minco_exp.py'
 alias print_metrics='python $NMPC_DIR/metrics/rmse.py'
