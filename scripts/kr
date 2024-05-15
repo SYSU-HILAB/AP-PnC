@@ -5,6 +5,10 @@ if [ -n "$PIDS" ]; then
   echo $PIDS | xargs kill
 fi
 
+PIDS=$(pgrep -f "micro-xrce-dds")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
 pkill px4_interface
 pkill MicroXRCEAgent
 pkill ruby

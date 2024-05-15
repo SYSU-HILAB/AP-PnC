@@ -1,4 +1,9 @@
 # Preliminary
+## Install MavProxy
+
+```shell
+pip install MAVProxy
+```
 ## Install spdlog
 ```shell
 sudo apt update

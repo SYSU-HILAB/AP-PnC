@@ -38,3 +38,4 @@ alias exp='python $NMPC_DIR/experiments/minco_exp.py'
 alias print_metrics='python $NMPC_DIR/metrics/rmse.py'
 export PATH=$PATH:$NMPC_DIR/scripts/:$TAILSITTER_PLANNING_DIR/scripts
 alias dds_serial='MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600'
+export PATH=$PATH:$PX4_ROOT/Tools/
