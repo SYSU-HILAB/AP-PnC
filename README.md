@@ -146,3 +146,15 @@ ros2 launch trajectory_server planning.launch.py
 ```
 
 Second, 
+
+
+# Experiments
+## Fixed point
+### simulation
+```shell
+ros2 launch px4_interface fixed_point_exp.launch.py target_position:=[15.0,0.0,10.0]
+```
+
+```shell
+ros2 launch tailsitter_simulator sim_interface.launch.py
+```
