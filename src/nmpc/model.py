@@ -17,13 +17,13 @@ import casadi as cs
 def tailsitter_flu():
     model_name = "tailsitter_flu"
     # c_tau = cs.DM(0.016)
-    mass = cs.DM(1.5)
+    mass = cs.DM(1.152)
     c_tau = cs.DM(0.013)
-    J_data = np.array([0.0216666667, 0.0216666667, .04])
+    J_data = np.array([0.00715066, 0.00818037, 0.00987597])
     # J_data = cs.DM([0.04000000000000001, 0.02166666666666667, 0.02166666666666667])
     J = cs.diag(J_data)
-    dx = cs.DM(0.707)
-    dy = cs.DM(0.707)
+    dx = cs.DM(0.08838834764831845)
+    dy = cs.DM(0.08838834764831845)
     # set up states & controls
     p = SX.sym('p', 3)
     v = SX.sym('v', 3)

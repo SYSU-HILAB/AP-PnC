@@ -115,7 +115,7 @@ public:
         "/fmu/out/vehicle_odometry", keep_last_qos,
         std::bind(&PX4Interface::vehicle_odometry_callback, this,
                   std::placeholders::_1));
-    vehicle_thrust_setpoint_publisher_ =
+    vehicle_thrust_acc_setpoint_publisher_ =
         this->create_publisher<VehicleThrustAccSetpoint>(
             "/fmu/in/vehicle_thrust_acc_setpoint", 10);
     controls_subscriber_ = this->create_subscription<interface::msg::Controls>(
@@ -147,7 +147,7 @@ private:
   // vehicle_thrust_setpoint
   // State
   rclcpp::Publisher<VehicleThrustAccSetpoint>::SharedPtr
-      vehicle_thrust_setpoint_publisher_;
+      vehicle_thrust_acc_setpoint_publisher_;
   rclcpp::Publisher<interface::msg::State>::SharedPtr state_publisher_;
   rclcpp::Publisher<OffboardControlMode>::SharedPtr
       offboard_control_mode_publisher_;
@@ -181,7 +181,7 @@ void PX4Interface::controls_callback(
   px4_control.rates_sp = trans_->toFRD(px4_control.rates_sp);
   px4_control.timestamp = this->get_clock()->now().nanoseconds() / 1000;
   px4_control.thrust_acc_sp = msg->thrust_acc_sp;
-  vehicle_thrust_setpoint_publisher_->publish(px4_control);
+  vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
   // publish_px4_control();
 }
 

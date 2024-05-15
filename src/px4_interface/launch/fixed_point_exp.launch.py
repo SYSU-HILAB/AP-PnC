@@ -34,6 +34,9 @@ def generate_launch_description():
             package=f'{pkg_name}', 
             executable=f'{pkg_name}_node', 
             name=f'{pkg_name}_node',
+            parameters=[{
+                'mass': 1.152,
+            }]
             # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
         ),
 

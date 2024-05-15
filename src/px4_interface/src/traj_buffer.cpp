@@ -18,7 +18,7 @@ constexpr int kRefStateDims = 9;
 constexpr int kRefTrajBulletSize = TrajecotryBullet::SIZE;
 constexpr double discount = 0.99;
 bool if_quadrotor = false;
-constexpr double kThrustPerRotor = 9.8 * 1.5 / 4;
+constexpr double kThrustPerRotor = 9.8 * 1.152 / 4;
 class TrajectoryBufferCallbacks {
 public:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr bool_sub_;
