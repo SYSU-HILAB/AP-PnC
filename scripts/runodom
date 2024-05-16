@@ -1,12 +1,12 @@
 #! /usr/bin/bash
-PIDS=$(pgrep -f "micro-xrce-dds")
+PIDS=$(pgrep -f "MicroXRCEAgent")
 if [ -n "$PIDS" ]; then
   echo $PIDS | xargs kill
 fi
 
 if [ -z "$1" ]; then
-  echo "Usage: $0 <device_path>"
-  echo "Example: $0 /dev/ttyACM0"
+  echo "Usage: $0 <device_path> <nokov_rigidbody>"
+  echo "Example: $0 /dev/ttyACM0 vtolquad"
   exit 1
 fi
 
@@ -17,5 +17,5 @@ if [ -z "$2" ]; then
 fi
 DEVICE_PATH=$1
 RIGID_BODY=$2
-micro-xrce-dds-agent serial -b 921600 --dev $DEVICE_PATH &
+MicroXRCEAgent serial -b 921600 --dev $DEVICE_PATH &
 ros2 launch  frame_transform mocap_px4.launch.yaml rb:=$RIGID_BODY
