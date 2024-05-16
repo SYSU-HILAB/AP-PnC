@@ -16,10 +16,11 @@ def generate_launch_description():
     )
     position = LaunchConfiguration('target_position')
     
+    px4_interface = "px4_interface"
     return launch.LaunchDescription([
         position_arg,
         launch_ros.actions.Node(
-            package='px4_interface', 
+            package=f'{px4_interface}', 
             executable='fixed_ref', 
             name='fixed_ref',
             parameters=[
@@ -39,5 +40,10 @@ def generate_launch_description():
             }]
             # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
         ),
-
+        # launch_ros.actions.Node(
+        #     package=f'{px4_interface}', 
+        #     executable=f'{px4_interface}', 
+        #     name=f'{px4_interface}',
+        #     # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
+        # ),
         ])

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ros2 topic echo /fmu/out/hover_thrust_estimate

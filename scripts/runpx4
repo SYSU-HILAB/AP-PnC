@@ -1,5 +1,15 @@
 #!/bin/bash
 
+PIDS=$(pgrep -f "gz sim")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
+PIDS=$(pgrep -f "micro-xrce-dds")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
 if [ -z "$1" ]; then
     echo "No GUI Required, HEADLESS=1."
     HEADLESSVal=1
@@ -11,9 +21,9 @@ cd $PX4_ROOT
 
 # start px4_interface
 ros2 run px4_interface px4_interface &
-ros2 run px4_interface fixed_ref &
+# ros2 run px4_interface fixed_ref &
 # start communication 
-micro-xrce-dds-agent udp4 -p 8888 &
+MicroXRCEAgent udp4 -p 8888 &
 
 # Start the PX4 SITL
 if [ $HEADLESSVal -eq 1 ]; then

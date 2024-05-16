@@ -1,4 +1,23 @@
 # Preliminary
+## Install micro-xrce-dds-agent
+```shell
+sudo snap remove micro-xrce-dds-agent
+sudo snap install core
+sudo snap refresh
+sudo snap install micro-xrce-dds-agent
+snap list micro-xrce-dds-agent
+```
+Or
+```shell
+ git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+ cd Micro-XRCE-DDS-Agent
+  mkdir build && cd build
+  cmake ..
+  make
+  sudo make install
+  sudo ldconfig /usr/local/lib/
+```
+
 ## Install MavProxy
 
 ```shell
