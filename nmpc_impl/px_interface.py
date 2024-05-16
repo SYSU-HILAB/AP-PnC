@@ -71,10 +71,12 @@ def main(args=None) -> None:
 
     print('Starting PX4 interface')
     rclpy.init(args=args)
-    rclpy.Executor()
+    # rclpy.Executor()
+    executor = MultiThreadedExecutor(1)
     fmu_in_node = PX4InterfaceNode()
-    rclpy.spin(fmu_in_node)
-
+    # rclpy.spin(fmu_in_node)
+    executor.add_node(fmu_in_node)
+    executor.spin()
     fmu_in_node.destroy_node()
     rclpy.shutdown()
     # sys.stdout = original_stdout # R
