@@ -5,7 +5,7 @@ mass: 1.152
 tau: 0.013
 kf: 8.54858e-6
 arm_length: 0.125
-motor_time: 0.025
+motor_time: 0.035
 # motor_time: 0.0125
 min_rpm: 0
 max_rpm: 1000

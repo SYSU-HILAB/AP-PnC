@@ -11,7 +11,7 @@ def generate_launch_description():
 
     position_arg = DeclareLaunchArgument(
         'target_position',
-        default_value='[0.0, 0.0, 2.0]',
+        default_value='[0.0, 0.0, 1.0]',
         description='Target Position parameter as a double array'
     )
     position = LaunchConfiguration('target_position')
