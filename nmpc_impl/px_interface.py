@@ -49,7 +49,10 @@ class PX4InterfaceNode(Node):
         )
 
         self.timer = self.create_timer(0.1, self.timer_callback)
-
+        # offboard mode publisher
+        self.offboard_control_mode_pub = self.create_publisher(
+            OffboardControlMode, '/fmu/in/offboard_control_mode', keep_last_qos
+        )
 
     def directly_pub_px4control_test(self):            
         px4_msg = VehicleThrustAccSetpoint()
@@ -59,11 +62,21 @@ class PX4InterfaceNode(Node):
         print("px4_msg.thrust_acc_sp: ", px4_msg.thrust_acc_sp)
         self.vehicle_thrust_acc_pub.publish(px4_msg)
 
+    def pubOffboard_mode(self):
+        offboard_control_mode = OffboardControlMode()
+        offboard_control_mode.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+        offboard_control_mode.position = False
+        offboard_control_mode.velocity = False
+        offboard_control_mode.acceleration = False
+        offboard_control_mode.attitude = False
+        offboard_control_mode.body_rate = True
+        self.offboard_control_mode_pub.publish(offboard_control_mode)
 
     def timer_callback(self) -> None:
         """Callback function for the timer."""
+        self.pubOffboard_mode()
         self.directly_pub_px4control_test()
-
+    
 
 
 
