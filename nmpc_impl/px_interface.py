@@ -43,139 +43,27 @@ class PX4InterfaceNode(Node):
         super().__init__('offboard_control_takeoff_and_land')
 
         # Create publishers
-        self.offboard_control_mode_publisher = self.create_publisher(
-            OffboardControlMode, '/fmu/in/offboard_control_mode', keep_last_qos)
+
         self.vehicle_thrust_acc_pub = self.create_publisher(
             VehicleThrustAccSetpoint, '/fmu/in/vehicle_thrust_acc_setpoint', keep_last_qos
         )
-        # Create subscribers
-        self.mpc_ctrls_sub = self.create_subscription(
-            Controls, '/mpc_controls', self.convert_to_px4_controls, keep_last_qos
-        )
-        self.last_run_mpc = int(0);
+
+        self.timer = self.create_timer(0.1, self.timer_callback)
 
 
-    def convert_to_px4_controls(self, control_msg):            
-        mpc_controls:Controls = control_msg
+    def directly_pub_px4control_test(self):            
         px4_msg = VehicleThrustAccSetpoint()
         px4_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        px4_msg.thrust_acc_sp = float(mpc_controls.total_thrust)
-        
-        px4_msg.rates_sp = FLUtoFRD(mpc_controls.rates_sp).astype(np.float32)
+        px4_msg.thrust_acc_sp = float(20.0)
+        #print
+        print("px4_msg.thrust_acc_sp: ", px4_msg.thrust_acc_sp)
         self.vehicle_thrust_acc_pub.publish(px4_msg)
-        self.last_run_mpc = px4_msg.timestamp
-
-
-
-    def publish_offboard_control_heartbeat_signal(self):
-        """Publish the offboard control mode."""
-        timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        if (self.last_run_mpc and timestamp - self.last_run_mpc > MpcConfig.mpc_timeout * 1e5):
-            return
-            
-        msg = OffboardControlMode()
-        msg.position = False
-        msg.velocity = False
-        msg.acceleration = False
-        msg.attitude = False
-        msg.body_rate = True
-        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-
-
-
-        self.offboard_control_mode_publisher.publish(msg)
-
-
 
 
     def timer_callback(self) -> None:
         """Callback function for the timer."""
-        self.arm()
-        self.engage_offboard_mode()
-        self.publish_offboard_control_heartbeat_signal()
-        # self.nm_pub()
-        #TODO status check
-        self.heartbeat_connect_on = True
+        self.directly_pub_px4control_test()
 
-class StableOdometryNode(Node):
-    def __init__(self):
-        super().__init__('stable_odometry_node')
-        self.px4_odometry_sub = self.create_subscription(
-            VehicleOdometry, "/fmu/out/vehicle_odometry", self.update_state, keep_last_qos)
-        
-
-        #p,v,r,xb,yb
-        self.p = np.zeros((3,))
-        self.v = np.zeros((3,))
-        self.r = np.zeros((3,))
-        self.xb = np.zeros((3,))
-        self.yb = np.zeros((3,))
-
-        # publisher
-        self.state_pub = self.create_publisher(State, "cur_state", keep_last_qos)
-        self.cur_odom_pub = self.create_publisher(Odometry, "cur_state_odom", reliable_qos)
-        
-    def stably_pub_state(self):
-        msg = State()
-        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        msg.state = self.state
-        msg.mpc_state = self.mpc_state
-        msg.p = self.p 
-        msg.v = self.v 
-        msg.r = self.r
-        msg.xb = self.xb
-        msg.yb = self.yb
-        self.state_pub.publish(msg)
-
-        odom = Odometry()
-        odom.header.frame_id = "world"
-        odom.header.stamp = self.get_clock().now().to_msg()
-        odom.pose.pose.position.x = self.state[0]
-        odom.pose.pose.position.y = self.state[1]
-        odom.pose.pose.position.z = self.state[2]
-        odom.pose.pose.orientation.w = self.state[3]
-        odom.pose.pose.orientation.x = self.state[4]
-        odom.pose.pose.orientation.y = self.state[5]
-        odom.pose.pose.orientation.z = self.state[6]
-        self.cur_odom_pub.publish(odom)
-
-    def update_state(self, msg):
-        vehicle_odom:VehicleOdometry = msg
-        cur_stamp = int(self.get_clock().now().nanoseconds / 1000)
-        mpc_state = self.mpc_state
-        self.mpc_state[:3] = self.state[:3]
-        self.mpc_state[3:6] = self.state[7:10]
-        self.mpc_state[6:9] = self.state[10:13]
-        self.mpc_state[9:9+4] = self.state[3:7]
-
-
-class StableOdometryNode(Node):
-    def __init__(self):
-        super().__init__('stable_odometry_node')
-        self.px4_odometry_pub = self.create_publisher(
-            VehicleOdometry, "/fmu/out/vehicle_odometry", keep_last_qos)
-        
-        self.msg = VehicleOdometry()
-        #p,v,r,xb,yb
-        self.p = np.zeros((3,),dtype=np.float32)
-        self.v = np.zeros((3,), dtype=np.float32)
-        self.r = np.zeros((3,), dtype=np.float32)
-        self.q = np.zeros((4,), dtype=np.float32)
-
-        self.timer = self.create_timer(0.01, self.timer_cb)
-
-    def timer_cb(self):
-        # self.px4_odometry_pub.publish(self.get_odometry())
-        self.msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        self.p[1] = 1.0
-        self.v[1] = 1.0
-        self.r[2] = 1.0
-        self.q[0] = 1.0
-        self.msg.position = self.p
-        self.msg.velocity = self.v
-        self.msg.angular_velocity = self.r
-        self.msg.q = self.q
-        self.px4_odometry_pub.publish(self.msg)
 
 
 
@@ -183,12 +71,10 @@ def main(args=None) -> None:
 
     print('Starting PX4 interface')
     rclpy.init(args=args)
-    # rclpy.Executor()
-    executor = MultiThreadedExecutor(1)
-    fmu_in_node = StableOdometryNode()
-    # rclpy.spin(fmu_in_node)
-    executor.add_node(fmu_in_node)
-    executor.spin()
+    rclpy.Executor()
+    fmu_in_node = PX4InterfaceNode()
+    rclpy.spin(fmu_in_node)
+
     fmu_in_node.destroy_node()
     rclpy.shutdown()
     # sys.stdout = original_stdout # R
