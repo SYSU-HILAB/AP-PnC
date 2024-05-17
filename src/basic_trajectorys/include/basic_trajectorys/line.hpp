@@ -10,7 +10,7 @@
 namespace basic_trajectorys {
 
 class Line : public Trajectory {
- public:
+public:
   Line(/* args */) = delete;
   // in Line Setting, a is the total length, 2pi/w is the vel
   explicit Line(double a, double w, double height = 5);

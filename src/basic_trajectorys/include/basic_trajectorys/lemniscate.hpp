@@ -10,7 +10,7 @@
 namespace basic_trajectorys {
 
 class Lemniscate : public Trajectory {
- public:
+public:
   Lemniscate(/* args */) = delete;
   explicit Lemniscate(double a, double w, double height = 5);
   Vec3E pos(double t) override;

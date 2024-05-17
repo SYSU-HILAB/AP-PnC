@@ -10,7 +10,7 @@
 namespace basic_trajectorys {
 
 class Circle : public Trajectory {
- public:
+public:
   Circle(/* args */) = delete;
   explicit Circle(double a, double w, double height = 5);
   Vec3E pos(double t) override;

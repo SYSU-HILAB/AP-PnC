@@ -10,7 +10,7 @@
 namespace basic_trajectorys {
 
 class Sigmoid : public Trajectory {
- public:
+public:
   Sigmoid(/* args */) = delete;
   explicit Sigmoid(double a, double w, double height = 5);
   Vec3E pos(double t) override;

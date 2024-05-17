@@ -12,7 +12,7 @@ double b1, b2, b3, b4;
 double kPho = 1.225;
 double kS = 0.25;
 
-void constexpr init() {
+void init() {
   w = 1.0;
   a0 = -11.8;
   a1 = -1.099;
@@ -38,7 +38,7 @@ double get_cz_from_vb(const Eigen::Vector3d &vb) {
   if (alpha < 0.0) {
     std::cerr << "Sing" << std::endl;
 
-    return 1 / 2 * fit_data::kPho * fit_data::kS * 0.0;
+    return .5 * fit_data::kPho * fit_data::kS * 0.0;
   } else {
     std::cerr << "Case3" << std::endl;
 

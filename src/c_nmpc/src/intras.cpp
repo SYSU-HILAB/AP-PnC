@@ -1,9 +1,12 @@
+#include <chrono>
 #include <thread>
 
-#include "rclcpp/rclcpp.hpp"
+// #include "rclcpp/rclcpp.hpp"
+#include <rclcpp/rclcpp.hpp>
+
 #include "spdlog/spdlog.h"
 class HeavyComputationNode : public rclcpp::Node {
- public:
+public:
   HeavyComputationNode() : Node("heavy_computation_node") {
     // 在构造函数中启动线程
     // computation_thread_ =
@@ -21,7 +24,7 @@ class HeavyComputationNode : public rclcpp::Node {
     computation_thread2_.join();
   }
 
- private:
+private:
   std::thread computation_thread_;
   std::thread computation_thread2_;
   // timer
@@ -33,14 +36,16 @@ class HeavyComputationNode : public rclcpp::Node {
     computation_thread_ =
         std::thread(&HeavyComputationNode::heavy_computation, this);
     computation_thread_.detach();
-    computation_thread2_ =  std::thread(&HeavyComputationNode::heavy_computation2, this);
+    computation_thread2_ =
+        std::thread(&HeavyComputationNode::heavy_computation2, this);
     computation_thread2_.detach();
   }
   void heavy_computation() {
     static int count = 0;
     int var = count;
     RCLCPP_INFO(this->get_logger(), "111111111 started. %d ", count++);
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));  // 模拟耗时操作
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(5000));  // 模拟耗时操作
     RCLCPP_INFO(this->get_logger(), "111111111 finished. %d", var);
   }
   void heavy_computation2() {

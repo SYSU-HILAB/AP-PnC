@@ -13,8 +13,8 @@
 using TrajecotryPoint = interface::msg::TrajectoryPoint;
 using TrajecotryBullet = interface::msg::RefTrajectoryBullet;
 using Trajectory = interface::msg::RefTrajectory;
-constexpr double kUpdateIncrementTime = 0.02;
-constexpr int kRefStateDims = 9;
+// constexpr double kUpdateIncrementTime = 0.02;
+// constexpr int kRefStateDims = 9;
 constexpr int kRefTrajBulletSize = TrajecotryBullet::SIZE;
 constexpr double discount = 0.99;
 bool if_quadrotor = false;
@@ -45,14 +45,14 @@ public:
 class TrajectoryBuffer : public rclcpp::Node,
                          private TrajectoryBufferCallbacks {
 private:
-  int index_ = 0;
+  size_t index_ = 0;
   bool init_traj_set_ = false;
   double cz_predict_ = 0.0;
   Trajectory trajectory_;
   TrajecotryBullet message_;
 
 private:
-  void initSubsPubs();
+  void initSubsPubs() override;
   void stateCallback(const interface::msg::State::SharedPtr msg) override;
   void refTrajectoryBulletPublish(std_msgs::msg::Bool::SharedPtr msg) override;
   void updateTrajCallback(const Trajectory::SharedPtr msg) override;
@@ -94,10 +94,10 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
   }
   if (msg->data) {
     RCLCPP_INFO(this->get_logger(), "refTrajectoryBulletPublish");
-    RCLCPP_INFO(this->get_logger(), "index_ %d", index_);
+    RCLCPP_INFO(this->get_logger(), "index_ %d", static_cast<int>(index_));
     auto vis_msg = visualization_msgs::msg::MarkerArray();
     double now_discount = 1.0;
-    for (int i = index_; i < index_ + kRefTrajBulletSize; i++) {
+    for (size_t i = index_; i < index_ + kRefTrajBulletSize; i++) {
       if (i < trajectory_.points.size()) {
         message_.points[i - index_] = trajectory_.points[i];
       } else {
@@ -161,13 +161,13 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg) {
       point.point[TrajecotryPoint::THR_START_INDEX + 3] = kThrustPerRotor;
     }
     init_traj_set_ = true;
-    RCLCPP_INFO(this->get_logger(), "trajectory_ size %d",
+    RCLCPP_INFO(this->get_logger(), "trajectory_ size %zu",
                 trajectory_.points.size());
   }
   // print trajectory. point is an array {p[0], p[1], p[2], v[0], v[1], v[2],
   // r[0], r[1], r[2]}
-  for (int i = 0; i < trajectory_.points.size(); i++) {
-    RCLCPP_INFO(this->get_logger(), "point %d: %f %f %f %f %f %f %f %f %f", i,
+  for (size_t i = 0; i < trajectory_.points.size(); i++) {
+    RCLCPP_INFO(this->get_logger(), "point %zu: %f %f %f %f %f %f %f %f %f", i,
                 trajectory_.points[i].point[0], trajectory_.points[i].point[1],
                 trajectory_.points[i].point[2], trajectory_.points[i].point[3],
                 trajectory_.points[i].point[4], trajectory_.points[i].point[5],

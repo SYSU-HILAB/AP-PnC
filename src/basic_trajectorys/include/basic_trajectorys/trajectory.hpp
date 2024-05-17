@@ -12,10 +12,10 @@ namespace basic_trajectorys {
 using PoseArray = geometry_msgs::msg::PoseArray;
 using Vec3E = Eigen::Vector3d;
 using Mat3x4 = Eigen::Matrix<double, 3, 4>;
-enum class Type { UNDIFINED = 0, INIT};
+enum class Type { UNDIFINED = 0, INIT };
 
 class Trajectory {
- protected:
+protected:
   double a = 2;
   double w = sqrt(2);
   double height = 5;
@@ -24,11 +24,11 @@ class Trajectory {
 
   // pos vel jerk snap
 
- public:
+public:
   PoseArray& toMsg(int resolution = 50);
   std::vector<Mat3x4> samplingPointArray(int num = 20);
 
- public:
+public:
   Trajectory();
   virtual Vec3E pos(double t) = 0;
   virtual Vec3E vel(double t) = 0;

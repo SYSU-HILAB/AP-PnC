@@ -1,5 +1,5 @@
-#include <iostream>
 #include <basic_trajectorys/trajectory.hpp>
+
 namespace basic_trajectorys {
 
 Trajectory::Trajectory() { __type = Type::UNDIFINED; }
@@ -13,7 +13,7 @@ Mat3x4 Trajectory::point(double t) {
   return point;
 }
 
-PoseArray& Trajectory::toMsg(int resolution ) {
+PoseArray& Trajectory::toMsg(int resolution) {
   static PoseArray msg;
   msg.poses.clear();
   double totaltime = 2 * M_PI / w;

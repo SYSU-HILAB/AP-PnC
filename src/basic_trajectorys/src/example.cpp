@@ -1,6 +1,6 @@
+#include <basic_trajectorys/lemniscate.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <basic_trajectorys/lemniscate.hpp>
 
 using namespace std::chrono_literals;
 
@@ -8,15 +8,15 @@ using namespace std::chrono_literals;
  * member function as a callback from the timer. */
 
 class MinimalPublisher : public rclcpp::Node {
- private:
+private:
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr publisher_;
   size_t count_;
   std::unique_ptr<basic_trajectorys::Lemniscate> lem;
 
- public:
+public:
   MinimalPublisher() : Node("minimal_publisher"), count_(0) {
-    publisher_ = 
+    publisher_ =
         this->create_publisher<geometry_msgs::msg::PoseArray>("basic_traj", 10);
     timer_ = this->create_wall_timer(
         500ms, std::bind(&MinimalPublisher::timer_callback, this));
@@ -24,12 +24,12 @@ class MinimalPublisher : public rclcpp::Node {
 
     auto arr = lem->samplingPointArray(50);
     // print  arr
-    for (auto &p : arr) {
+    for (auto& p : arr) {
       std::cout << p << std::endl;
     }
   }
 
- private:
+private:
   void timer_callback() {
     auto message = lem->toMsg(50);
     message.header.frame_id = "world";
