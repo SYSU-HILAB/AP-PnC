@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+import rosbag2_py
+import pandas as pd
+import os
+import argparse
+from rclpy.serialization import deserialize_message
+from rosidl_runtime_py.utilities import get_message
+
+def bag_to_csv(bag_path, output_dir):
+    storage_options = rosbag2_py.StorageOptions(uri=bag_path, storage_id='sqlite3')
+    converter_options = rosbag2_py.ConverterOptions('', '')
+
+    reader = rosbag2_py.SequentialReader()
+    reader.open(storage_options, converter_options)
+
+    topic_types = reader.get_all_topics_and_types()
+    topics = {topic.name: topic.type for topic in topic_types}
+
+    data = {}
+
+    while reader.has_next():
+        (topic, msg, t) = reader.read_next()
+        if topic not in data:
+            data[topic] = []
+
+        msg_type = topics[topic]
+        msg_class = get_message(msg_type)
+        msg_decoded = deserialize_message(msg, msg_class)
+        data[topic].append((t, msg_decoded))
+        
+    for topic, messages in data.items():
+        # Convert the decoded messages to a dictionary for easier conversion to DataFrame
+        msg_dicts = [{'timestamp': t, 'message': msg} for t, msg in messages]
+        df = pd.DataFrame(msg_dicts)
+        csv_filename = os.path.join(output_dir, topic.replace('/', '_') + '.csv')
+        df.to_csv(csv_filename, index=False)
+
+    print(f"Bag file {bag_path} has been converted to CSV files in {output_dir}")
+
+if __name__ == "__main__":
+    # Get the bag path and output directory from the environment variable
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Convert ROS 2 bag files to CSV.')
+    parser.add_argument('-b', help='Path to the ROS 2 bag file')
+    args = parser.parse_args()
+    bag_path = args.b
+    
+    base_dir = os.getenv('TAILSITTER_PLANNING_DIR')
+    if not base_dir:
+        raise EnvironmentError("Environment variable `TAILSITTER_PLANNING_DIR` is not set")
+
+    output_dir = os.path.join(base_dir, 'output_csv')
+
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Convert the bag to CSV
+    bag_to_csv(bag_path, output_dir)

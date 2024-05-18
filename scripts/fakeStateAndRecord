@@ -14,4 +14,4 @@ fakeMocap &
 
 ros2 run px4_interface px4_interface &
 
-ros2 bag record  -a
+bag_record

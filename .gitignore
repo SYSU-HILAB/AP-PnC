@@ -37,3 +37,4 @@ src/spdlog/
 
 # bags
 bags/
+output_csv/
