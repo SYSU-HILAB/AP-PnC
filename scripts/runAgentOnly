@@ -9,4 +9,5 @@ if [ -z "$1" ]; then
   echo "Example: $0 /dev/ttyACM0"
   exit 1
 fi
+DEVICE_PATH=$1
 MicroXRCEAgent serial -b 921600 --dev $DEVICE_PATH 

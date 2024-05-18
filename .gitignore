@@ -34,3 +34,6 @@ src/spdlog/
 
 #cland
 .cache/
+
+# bags
+bags/
