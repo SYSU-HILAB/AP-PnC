@@ -1,0 +1,44 @@
+#!/usr/bin/python
+
+import rclpy
+from rclpy.node import Node
+from px4_msgs.msg import VehicleOdometry
+from time import time
+import numpy as np
+
+
+class OdometryPublisher(Node):
+    def __init__(self):
+        super().__init__('mocap_publisher')
+        self.publisher_ = self.create_publisher(VehicleOdometry, '/fmu/in/vehicle_visual_odometry', 10)
+        self.timer = self.create_timer(0.01, self.publish_message)  # 100Hz
+        self.reset_counter = 0
+        self.quality = 0
+    
+    def publish_message(self):
+        msg = VehicleOdometry()
+        msg.timestamp_sample = int(self.get_clock().now().nanoseconds / 1000)
+        # msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)  # microseconds
+        msg.pose_frame = VehicleOdometry.POSE_FRAME_NED
+        msg.position = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        msg.q = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        msg.velocity_frame = VehicleOdometry.VELOCITY_FRAME_NED
+        msg.velocity = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        msg.angular_velocity = np.array([0.00, 0.00, 0.00], dtype=np.float32)
+        msg.position_variance = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        msg.orientation_variance = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        msg.velocity_variance = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        msg.reset_counter = self.reset_counter
+        msg.quality = self.quality
+
+        self.publisher_.publish(msg)
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = OdometryPublisher()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
