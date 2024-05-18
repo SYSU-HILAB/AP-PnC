@@ -70,8 +70,8 @@ public:
   }
 
   template <typename T>
-  std::array<T, 3>& toFRD(const std::array<T, 3>& rate) {
-    static std::array<T, 3> rate_frd;
+  std::array<float, 3>& toFRD(const std::array<T, 3>& rate) {
+    static std::array<float, 3> rate_frd;
 
     r = Eigen::Vector3d(rate[0], rate[1], rate[2]);
 
@@ -178,8 +178,8 @@ void PX4Interface::controls_callback(
     const interface::msg::Controls::SharedPtr msg) {
   static px4_msgs::msg::VehicleThrustAccSetpoint px4_control;
   std::cout << "Controls received: " << msg->timestamp << std::endl;
-  px4_control.rates_sp = trans_->toFRD(px4_control.rates_sp);
   px4_control.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+  px4_control.rates_sp = trans_->toFRD(msg->rates_sp);
   px4_control.thrust_acc_sp = msg->thrust_acc_sp;
   vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
   // publish_px4_control();
