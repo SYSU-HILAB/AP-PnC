@@ -1,3 +1,9 @@
 #!/bin/bash
+PIDS=$(pgrep -f "c_nmpc")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
+
 
 ros2 launch px4_interface fixed_point_exp.launch.py
