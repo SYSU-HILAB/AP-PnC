@@ -1,7 +1,17 @@
 #!/usr/bin/bash
 
+PIDS=$(pgrep -f "fakeMocap")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
+PIDS=$(pgrep -f "px4_interface")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
 fakeMocap &
 
 ros2 run px4_interface px4_interface &
 
-ros2 bag record -a -o $TAILSITTER_PLANNING_DIR/bags
+ros2 bag record -a -o $TAILSITTER_PLANNING_DIR/bags/$(date date +%H-%M_%d)
