@@ -18,4 +18,3 @@ ReflowComments: true
 SortIncludes: true
 NamespaceIndentation: All
 PointerAlignment: Right
-Standard: Cpp20
