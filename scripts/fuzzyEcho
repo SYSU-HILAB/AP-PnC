@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# List of available ROS2 topics
+topics=(
+    "/cur_state"
+    "/cur_state_odom"
+    "/fmu/in/offboard_control_mode"
+    "/fmu/in/vehicle_command"
+    "/fmu/in/vehicle_thrust_acc_setpoint"
+    "/fmu/in/vehicle_visual_odometry"
+    "/fmu/in/vel_pitch_notification"
+    "/fmu/out/timesync_status"
+    "/fmu/out/vehicle_acceleration"
+    "/fmu/out/vehicle_angular_velocity"
+    "/fmu/out/vehicle_control_mode"
+    "/fmu/out/vehicle_odometry"
+    "/fmu/out/vehicle_thrust_setpoint"
+    "/fmu/out/vehicle_torque_setpoint"
+    "/mpc_controls"
+    "/parameter_events"
+    "/ref_can_set"
+    "/ref_trajectory_bullet"
+    "/rosout"
+)
+
+# Use fzf to select a topic
+selected_topic=$(printf "%s\n" "${topics[@]}" | fzf --prompt="Select a topic: ")
+
+if [ -n "$selected_topic" ]; then
+    echo "Selected topic: $selected_topic"
+    echo "Executing: ros2 topic echo $selected_topic"
+    ros2 topic echo "$selected_topic"
+else
+    echo "No topic selected."
+fi
