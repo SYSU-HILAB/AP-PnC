@@ -96,7 +96,7 @@ private:
   // std::atomic<uint64_t> timestamp_;  //!< common synced timestamped
 
   uint64_t
-      offboard_setpoint_counter_;  //!< counter for the number of setpoints sent
+      offboard_setpoint_counter_; //!< counter for the number of setpoints sent
 
   void publish_offboard_control_mode();
   void publish_vehicle_command(uint16_t command, float param1 = 0.0,

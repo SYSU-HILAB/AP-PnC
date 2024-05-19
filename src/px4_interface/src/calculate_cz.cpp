@@ -25,7 +25,7 @@ void init() {
   b4 = -0.2115;
 }
 
-};  // namespace fit_data
+}; // namespace fit_data
 
 double get_cz_from_vb(const Eigen::Vector3d &vb) {
   double v = vb.norm();

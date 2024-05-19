@@ -1,8 +1,10 @@
 #include <Eigen/Dense>
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <interface/msg/ref_trajectory.hpp>
 #include <interface/msg/ref_trajectory_bullet.hpp>
 #include <interface/msg/state.hpp>
 #include <interface/msg/trajectory_point.hpp>
+#include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <visualization_msgs/msg/marker.hpp>
@@ -15,13 +17,13 @@ using TrajecotryBullet = interface::msg::RefTrajectoryBullet;
 using Trajectory = interface::msg::RefTrajectory;
 constexpr int kRefPointDims = 16;
 constexpr int kYbStartIndex = 9;
-
 bool if_quadrotor = false;
 
 class FixedRefCallbacks {
 public:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr bool_sub_;
   rclcpp::Publisher<TrajecotryBullet>::SharedPtr publisher_;
+
   const rclcpp::QoS reliabe_qos_keep_last =
       rclcpp::QoS(10)
           .reliable()
@@ -30,8 +32,8 @@ public:
 
 public:
   virtual void initSubsPubs() = 0;
-  virtual void refTrajectoryBulletPublish(
-      std_msgs::msg::Bool::SharedPtr msg) = 0;
+  virtual void
+  refTrajectoryBulletPublish(std_msgs::msg::Bool::SharedPtr msg) = 0;
 };
 
 class FixedRef : public rclcpp::Node, private FixedRefCallbacks {
@@ -66,7 +68,7 @@ void FixedRef::updateParameter() {
   this->get_parameter("pos", pos_);
   RCLCPP_INFO(this->get_logger(), "Vector param: [%f, %f, %f]", pos_[0],
               pos_[1], pos_[2]);
-  for (auto& point : message_.points) {
+  for (auto &point : message_.points) {
     point.point[0] = pos_[0];
     point.point[1] = pos_[1];
     point.point[2] = pos_[2];
@@ -75,13 +77,14 @@ void FixedRef::updateParameter() {
       point.point[i] = 0.0;
     }
 
-    point.point[kYbStartIndex + 1] = 1.0;  // 1,0,0,  Yaw 90
+    point.point[kYbStartIndex + 1] = 1.0; // 1,0,0,  Yaw 90
   }
 }
 
 void FixedRef::refTrajectoryBulletPublish(std_msgs::msg::Bool::SharedPtr msg) {
   if (msg->data) {
-    // interface::msg::TrajectoryPoint point = trajectory_.points[index_];
+    // interface::msg::TrajectoryPoint point =
+    // trajectory_.points[index_];
     publisher_->publish(message_);
   }
 };
@@ -96,10 +99,11 @@ void FixedRef::initSubsPubs() {
                                                         reliabe_qos_keep_last);
 };
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
 #ifdef QUADROTOR
   if_quadrotor = true;
 #endif
+
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<FixedRef>());
   rclcpp::shutdown();

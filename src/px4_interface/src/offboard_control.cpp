@@ -92,10 +92,10 @@ private:
       trajectory_setpoint_publisher_;
   rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
 
-  std::atomic<uint64_t> timestamp_;  //!< common synced timestamped
+  std::atomic<uint64_t> timestamp_; //!< common synced timestamped
 
   uint64_t
-      offboard_setpoint_counter_;  //!< counter for the number of setpoints sent
+      offboard_setpoint_counter_; //!< counter for the number of setpoints sent
 
   void publish_offboard_control_mode();
   void publish_trajectory_setpoint();
@@ -126,7 +126,7 @@ void OffboardControl::publish_offboard_control_mode() {
 void OffboardControl::publish_trajectory_setpoint() {
   TrajectorySetpoint msg{};
   msg.position = {0.0, 0.0, -0.5};
-  msg.yaw = 0.0;  // [-PI:PI]
+  msg.yaw = 0.0; // [-PI:PI]
   msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
   trajectory_setpoint_publisher_->publish(msg);
 }

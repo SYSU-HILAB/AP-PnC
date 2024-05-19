@@ -131,7 +131,7 @@ public:
     heartbeat_timer_ = this->create_wall_timer(100ms, heartbeat_callback);
   }
 
-private:
+public:
   std::unique_ptr<Transcribe> trans_;
   double control_interval_;
   bool is_init_ = false;
