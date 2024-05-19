@@ -83,20 +83,24 @@ void FixedRef::updateParameter()
     this->get_parameter("pos", pos_);
     this->get_parameter("quat", quat_);
     quat_eigen_ = Eigen::Quaterniond(quat_[0], quat_[1], quat_[2], quat_[3]);
+    quat_eigen_.normalize();
     RCLCPP_INFO(this->get_logger(), "Vector param: [%f, %f, %f]", pos_[0],
                 pos_[1], pos_[2]);
     RCLCPP_INFO(this->get_logger(), "quat param, (w,x,y,z): [%f, %f, %f, %f]",
                 quat_[0], quat_[1], quat_[2], quat_[3]);
     // Reminder: only w,z is allowed to adjusted. That is only yaw operates.
-    if (abs(quat_[1]) <= FLT_EPSILON || abs(quat_[2]) <= FLT_EPSILON)
+    if (quat_[0] >= 0 && abs(quat_[1]) <= FLT_EPSILON &&
+        abs(quat_[2]) <= FLT_EPSILON)
     {
         yb_eigen_ = quat_eigen_.toRotationMatrix().col(1);
-        // print yb_eigen
+        auto yaw  = 2 * std::atan2(quat_eigen_.z(), quat_eigen_.w());
         RCLCPP_INFO(this->get_logger(), "Yb: [%f, %f, %f]", yb_eigen_[0],
                     yb_eigen_[1], yb_eigen_[2]);
+        RCLCPP_INFO(this->get_logger(), "Yaw: %f", yaw);
     }
     else
     {
+        RCLCPP_ERROR(this->get_logger(), "Ensuring w >=0");
         RCLCPP_ERROR(this->get_logger(), "Only yaw is allowed to be adjusted");
         std::exit(1);
     }

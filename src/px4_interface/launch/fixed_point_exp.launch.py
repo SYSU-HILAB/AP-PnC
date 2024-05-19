@@ -14,11 +14,18 @@ def generate_launch_description():
         default_value='[0.0, 0.0, 1.0]',
         description='Target Position parameter as a double array'
     )
+    quat_arg = DeclareLaunchArgument(
+        'target_quat',
+        default_value='[1.0, 0.0, 0.0, 0.0]',
+        description='Target Quat parameter as a double array'
+    )
     position = LaunchConfiguration('target_position')
+    quat = LaunchConfiguration('target_quat')
     
     px4_interface = "px4_interface"
     return launch.LaunchDescription([
         position_arg,
+        quat_arg,
         launch_ros.actions.Node(
             package=f'{px4_interface}', 
             executable='fixed_ref', 
@@ -26,6 +33,7 @@ def generate_launch_description():
             parameters=[
                 {
                     "pos": position,
+                    "quat": quat
                 }
             ]
             # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
