@@ -3,7 +3,7 @@ from enum import Enum
 
 
 class ControlConfig:
-    control_time = 0.02
+    control_time = 0.05
     control_frequency = 1 / control_time
     nodes = 20
     T = control_time * nodes

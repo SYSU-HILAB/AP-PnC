@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+mavlink_shell.py udp:127.0.0.1:14540

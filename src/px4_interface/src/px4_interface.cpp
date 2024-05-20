@@ -10,6 +10,7 @@
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
 #include <px4_msgs/msg/vehicle_thrust_acc_setpoint.hpp>
+#include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 
@@ -61,10 +62,6 @@ class Transcribe
         r = q_flu_frd * r;
         q = q_transform * q * q_flu_frd;
         q.normalize();
-        if (q.w() < 0)
-        {
-            q.coeffs() = -q.coeffs();
-        }
         using interface::msg::State;
         std::copy(p.data(), p.data() + 3,
                   state.state.begin() + State::POS_START_INDEX);
@@ -108,6 +105,7 @@ class PX4Interface : public rclcpp::Node
             "NED");
         std::string world_frame =
             this->get_parameter("world_frame").as_string();
+        RCLCPP_WARN(this->get_logger(), "world frame: %s", world_frame.c_str());
         if (world_frame == "NED")
         {
             trans_ =
@@ -217,10 +215,6 @@ void PX4Interface::controls_callback(
 void PX4Interface::vehicle_odometry_callback(
     const px4_msgs::msg::VehicleOdometry::SharedPtr msg)
 {
-    std::cout << "Odometry "
-                 "received:"
-                 " "
-              << msg->timestamp << std::endl;
     if (!is_init_)
     {
         is_init_         = true;
@@ -235,10 +229,6 @@ void PX4Interface::vehicle_odometry_callback(
 
 void PX4Interface::publish_state()
 {
-    std::cout << "State "
-                 "publish"
-              << state_.timestamp << std::endl;
-
     state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     state_publisher_->publish(state_);
     nav_msgs::msg::Odometry odom;
@@ -248,12 +238,6 @@ void PX4Interface::publish_state()
     odom.pose.pose.position.x    = state_.state[State::POS_START_INDEX];
     odom.pose.pose.position.y    = state_.state[State::POS_START_INDEX + 1];
     odom.pose.pose.position.z    = state_.state[State::POS_START_INDEX + 2];
-    odom.twist.twist.linear.x    = state_.state[State::VEL_START_INDEX];
-    odom.twist.twist.linear.y    = state_.state[State::VEL_START_INDEX + 1];
-    odom.twist.twist.linear.z    = state_.state[State::VEL_START_INDEX + 2];
-    odom.twist.twist.angular.x   = state_.state[State::RATE_START_INDEX];
-    odom.twist.twist.angular.y   = state_.state[State::RATE_START_INDEX + 1];
-    odom.twist.twist.angular.z   = state_.state[State::RATE_START_INDEX + 2];
     odom.pose.pose.orientation.w = state_.state[State::QUAT_START_INDEX];
     odom.pose.pose.orientation.x = state_.state[State::QUAT_START_INDEX + 1];
     odom.pose.pose.orientation.y = state_.state[State::QUAT_START_INDEX + 2];
