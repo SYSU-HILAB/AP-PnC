@@ -80,7 +80,7 @@
     # 2: Circle
     # 3: Sigmoid
     # 4: Line
-    BasicTrajectoryType: 2
+    BasicTrajectoryType: 1
 
     BasicTrajectoryRadius: 15.0
     BasicTrajectoryRate: 0.8

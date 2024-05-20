@@ -26,11 +26,11 @@ def generate_launch_description():
             output='screen',          # 日志输出到屏幕
             parameters=[sim_params]  # 参数列表，根据需要添加或修改
         ),
-        Node(
-            package=f'{traj_buffer_pkg}',     # 替换为你的包名
-            executable=f'{traj_buffer_pkg}_node',     # 替换为你的节点名
-            name=f'{traj_buffer_pkg}_node',      # 节点的运行时名称，可以自定义
-            output='screen',          # 日志输出到屏幕
-            # parameters=[hover_param]  # 参数列表，根据需要添加或修改
-        )
+        # Node(
+        #     package=f'{traj_buffer_pkg}',     # 替换为你的包名
+        #     executable=f'{traj_buffer_pkg}_node',     # 替换为你的节点名
+        #     name=f'{traj_buffer_pkg}_node',      # 节点的运行时名称，可以自定义
+        #     output='screen',          # 日志输出到屏幕
+        #     # parameters=[hover_param]  # 参数列表，根据需要添加或修改
+        # )
     ])
