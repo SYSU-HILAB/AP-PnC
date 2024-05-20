@@ -8,7 +8,7 @@
 
     VoxelWidth: 0.25
 
-    MapBound: [ -50.0, 50.0, -50.0, 50.0, 0.0, 5.0 ]
+    MapBound: [-50.0, 50.0, -50.0, 50.0, 0.0, 5.0]
 
     TimeoutRRT: 0.02
 
@@ -36,7 +36,7 @@
     WeightT: 200.0
 
     # pos,vel,rate,theta,thrust
-    ChiVec: [ 1.0e+4, 1.0e+4, 1.0e+3, 1.0e+4, 1.0e+5 ]
+    ChiVec: [1.0e+4, 1.0e+4, 1.0e+3, 1.0e+4, 1.0e+5]
 
     SmoothingEps: 1.0e-2
 
@@ -48,10 +48,10 @@
 
     PieceN: 10
 
-    Frame: 'world'
+    Frame: "world"
 
-    BoxMin: [ -3.5, -3.0, -2.0 ]
-    BoxMax: [ 3.5,  3.0, 3.0 ]
+    BoxMin: [-3.5, -3.0, -2.0]
+    BoxMax: [3.5, 3.0, 3.0]
 
     v_max: 10.0
     omg_x_max: 0.5
@@ -85,5 +85,6 @@
     BasicTrajectoryRadius: 15.0
     BasicTrajectoryRate: 0.8
 
-    traj_pub_rsl: 0.02
+    # TimeUnit
+    traj_pub_rsl: 0.04
     trajTopic: "/control_traj"
