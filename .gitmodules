@@ -1,4 +1,4 @@
 [submodule "src/px4_msgs/msg"]
 	path = src/px4_msgs/msg
 	url = git@github.com:SYSU-HILAB/VTOL-px4-msgs.git
-	branch = main
+	branch = offboard
