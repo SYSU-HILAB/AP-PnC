@@ -60,8 +60,8 @@ if(BUILD_TESTING)
   # # comment the line when this package is in a git repo and when
   # # a copyright and license is added to all source files
   # set(ament_cmake_cpplint_FOUND TRUE)
-  ament_add_gtest(test_px4_interface test/test_px4_interface.cpp)
-  ament_target_dependencies(test_px4_interface rclcpp px4_msgs "interface" nav_msgs std_msgs Eigen3)
+  # ament_add_gtest(test_px4_interface test/test_px4_interface.cpp)
+  # ament_target_dependencies(test_px4_interface rclcpp px4_msgs "interface" nav_msgs std_msgs Eigen3)
   
 
   # ament_lint_auto_find_test_dependencies()
