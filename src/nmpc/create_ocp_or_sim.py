@@ -15,21 +15,24 @@ def ocp_nls() -> AcadosOcp:
     model = tailsitter_flu()
 
     ocp.model = model
-    nx = model.x.size()[0]
+    nx_aug = model.x.size()[0]
+    nx = nx_aug - model.u.size()[0]
     nu = model.u.size()[0]
     nparam = model.p.size()[0]
-    print(model.x)
-    print(nx)
-    print(nu)
+
     ocp.cost.cost_type_0 = 'NONLINEAR_LS'
     ocp.cost.cost_type_e = 'NONLINEAR_LS'
     ocp.cost.cost_type = 'NONLINEAR_LS'
-
     sym_p = model.x[:3]
     sym_v = model.x[3:6]
     sym_r = model.x[6:9]
     sym_q = model.x[9:13]
+    
+    # du    = model.u
     sym_u = model.u
+
+    
+    
     qw = sym_q[0]
     qx = sym_q[1]
     qy = sym_q[2]
@@ -39,7 +42,6 @@ def ocp_nls() -> AcadosOcp:
         1 - 2 * (qx ** 2 + qz ** 2),
         2 * (qy * qz + qw * qx),
     )
-    print(sym_yb)
     cost_x = cs.vertcat(
         sym_p,
         sym_v,
@@ -59,17 +61,17 @@ def ocp_nls() -> AcadosOcp:
     model.cost_y_expr_e = cost_x
 
     ny = cost_x_size + nu
-    print(ny)
-    # set dimensions
-    ocp.dims.nx = nx
-    ocp.dims.nu = nu
-    ocp.dims.np = nparam
+    # set dimensions , if not set, it will auotmatically set finally
+    # ocp.dims.nx = nx_aug
+    # ocp.dims.nu = nu
+    # ocp.dims.np = nparam
 
     ocp.cost.yref_0 = np.zeros((ny))
     ocp.cost.yref = np.zeros((ny))
     ocp.cost.yref_e = np.zeros((cost_x_size))
     ocp.parameter_values = np.zeros((nparam))
-    assert nx == 3 + 3 + 3 + 4
+    print(nx)
+    assert nx == 3 + 3 + 3 + 4 
     assert nu == 4
 
     Q_list = np.hstack((
@@ -101,33 +103,18 @@ def ocp_nls() -> AcadosOcp:
     ocp.dims.N = MpcConfig.nodes
     ocp.solver_options.tf = MpcConfig.T_horizon
     ocp.solver_options.exact_hess_cost = False
-    ocp.constraints.x0 = np.zeros(nx)
-    ocp.constraints.lbu = np.array(MpcConfig.lb_u)
-    ocp.constraints.ubu = np.array(MpcConfig.ub_u)
+    
+    ocp.constraints.x0 = np.zeros((nx_aug))
+    # bound part of x
+    
+    ocp.constraints.idxbx = np.array([13,14,15,16])
+    ocp.constraints.lbx = MpcConfig.lb_u
+    ocp.constraints.ubx = MpcConfig.ub_u
+    
     ocp.constraints.Jbu = np.eye(nu)
-
-    # extra constraints
-    # vb = v_dot_q_inverse(sym_v, sym_q)
-    # ocp.model.con_h_expr = cs.vertcat(
-    #     vb[1])
-    # ocp.dims.nh = 1
-    # ocp.dims.nsh = 1
-    # ocp.dims.ns = 1
-    # ocp.constraints.lh = np.array([0])
-    # ocp.constraints.uh = np.array([0])
-    # slack_L1_penalty = 0.5 * 1 * 2 * 2
-    # slack_L2_penalty = 0.25 * 1 * 2 * 2
-    # ocp.cost.zu = slack_L1_penalty * np.ones((ocp.dims.ns,))
-    # ocp.cost.zl = slack_L1_penalty * np.ones((ocp.dims.ns,))
-    # # 松弛变量slack的二次罚
-    # ocp.cost.Zu = slack_L2_penalty * np.ones((ocp.dims.ns,))
-    # ocp.cost.Zl = slack_L2_penalty * np.ones((ocp.dims.ns,))
-
-    # nolinear_slack_lower_bound = 0.0
-    # nolinear_slack_upper_bound = 0.0
-    # ocp.constraints.lsh = nolinear_slack_lower_bound * np.ones(ocp.dims.nsh)
-    # ocp.constraints.ush = nolinear_slack_upper_bound * np.ones(ocp.dims.nsh)
-    # ocp.constraints.idxsh = np.array([0])
+    ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1
+    ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1
+    
 
     print(ocp.dims)
     # set options
@@ -180,13 +167,14 @@ def create_sim_solver_with_model_defined(Nodes, T):
     return sim
 
 
+
+
 def main():
     ocp = ocp_nls()
-    # acados_ocp_solver:AcadosOcpSolver = AcadosOcpSolver(
-    #     ocp, json_file="acados_nls_ocp" + ocp.model.name + ".json"
-    # )
-
-    # acados_ocp_solver.set()
+    ocp: AcadosOcp = ocp_nls()
+    acados_ocp_solver:AcadosOcpSolver = AcadosOcpSolver(
+        ocp, json_file="acados_ocp_" + ocp.model.name + ".json"
+    )
 
 
 if __name__ == "__main__":

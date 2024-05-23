@@ -99,20 +99,18 @@ class PX4Interface : public rclcpp::Node
    public:
     PX4Interface() : Node("px4_interface")
     {
-        this->declare_parameter(
-            "world_"
-            "frame",
-            "NED");
+        this->declare_parameter("world_frame", "NED");
         std::string world_frame =
             this->get_parameter("world_frame").as_string();
-        RCLCPP_WARN(this->get_logger(), "world frame: %s", world_frame.c_str());
         if (world_frame == "NED")
         {
+            RCLCPP_WARN(this->get_logger(), "world frame: NED");
             trans_ =
                 std::make_unique<Transcribe>(Transcribe::E_World_Frame::NED);
         }
         else
         {
+            RCLCPP_WARN(this->get_logger(), "world frame: FRD");
             trans_ =
                 std::make_unique<Transcribe>(Transcribe::E_World_Frame::FRD);
         }
