@@ -112,8 +112,8 @@ def ocp_nls() -> AcadosOcp:
     ocp.constraints.ubx = MpcConfig.ub_u
     
     ocp.constraints.Jbu = np.eye(nu)
-    ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1
-    ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1
+    ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1.0
+    ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1.0
     
 
     print(ocp.dims)

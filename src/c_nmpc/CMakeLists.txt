@@ -35,7 +35,6 @@ target_link_libraries(
         ${PROJECT_NAME}_node
         Eigen3::Eigen  # Eigen support namespace CMake
         acados_ocp_solver_${MODEL}
-        acados_sim_solver_${MODEL}_sim
         acados
         hpipm
         blasfeo
