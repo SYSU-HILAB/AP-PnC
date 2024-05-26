@@ -53,7 +53,7 @@
     BoxMin: [-3.5, -3.0, -2.0]
     BoxMax: [3.5, 3.0, 3.0]
 
-    v_max: 10.0
+    v_max: 2.0
     omg_x_max: 0.5
     omg_y_max: 0.25
     omg_z_max: 0.5
@@ -82,9 +82,9 @@
     # 4: Line
     BasicTrajectoryType: 2
 
-    BasicTrajectoryRadius: 15.0
+    BasicTrajectoryRadius: 2.0
     BasicTrajectoryRate: 0.8
-
+    BasicTrajectoryHeight: 1.0
     # TimeUnit
     traj_pub_rsl: 0.04
     trajTopic: "/control_traj"
