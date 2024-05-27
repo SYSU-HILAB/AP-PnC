@@ -1,24 +1,20 @@
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <interface/msg/ref_trajectory.hpp>
+#include <interface/msg/trajectory_control.hpp>
 #include <iostream>
 #include <memory>
-#include <random>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <string>
 #include <vector>
 
-#include "gcopter/firi.hpp"
-#include "gcopter/flatness.hpp"
 #include "gcopter/gcopter.hpp"
-#include "gcopter/sfc_gen.hpp"
 #include "gcopter/trajectory.hpp"
-#include "gcopter/voxel_map.hpp"
-#include "interface/msg/ref_trajectory.hpp"
-#include "interface/msg/trajectory_control.hpp"
 #include "misc/CSVWriter.hpp"
 #include "misc/visualizer.hpp"
 // #include "geometry_msgs/msg/vis
@@ -28,10 +24,10 @@
 using RefTrajectory   = interface::msg::RefTrajectory;
 using TrajectoryPoint = interface::msg::TrajectoryPoint;
 
-#include <basic_trajectorys/circle.hpp>
-#include <basic_trajectorys/lemniscate.hpp>
-#include <basic_trajectorys/line.hpp>
-#include <basic_trajectorys/sigmoid.hpp>
+#include <basic_trajectories/circle.hpp>
+#include <basic_trajectories/lemniscate.hpp>
+#include <basic_trajectories/line.hpp>
+#include <basic_trajectories/sigmoid.hpp>
 
 struct Config
 {
@@ -170,12 +166,12 @@ class GlobalPlanner : public rclcpp::Node
     Config                                                           config;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr targetSub;
     Visualizer                                                       visualizer;
-    RefTrajectory                                  control_traj_msg;
-    Trajectory<5>                                  traj;
-    double                                         trajStamp;
-    std::unique_ptr<basic_trajectorys::Trajectory> basic_traj;
-    rclcpp::TimerBase::SharedPtr                   timer;
-    rclcpp::Publisher<RefTrajectory>::SharedPtr    trajPub;
+    RefTrajectory                                   control_traj_msg;
+    Trajectory<5>                                   traj;
+    double                                          trajStamp;
+    std::unique_ptr<basic_trajectories::Trajectory> basic_traj;
+    rclcpp::TimerBase::SharedPtr                    timer;
+    rclcpp::Publisher<RefTrajectory>::SharedPtr     trajPub;
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr trajVizPub;
 
     bool init_setup = false;
@@ -210,28 +206,28 @@ class GlobalPlanner : public rclcpp::Node
         // basic_trajniscate
         if (type == 1)
         {
-            basic_traj = std::make_unique<basic_trajectorys::Lemniscate>(
+            basic_traj = std::make_unique<basic_trajectories::Lemniscate>(
                 config.basic_trajectory_radius, config.basic_trajectory_rate,
                 config.basic_trajectory_height);
             return;
         }
         if (type == 2)
         {
-            basic_traj = std::make_unique<basic_trajectorys::Circle>(
+            basic_traj = std::make_unique<basic_trajectories::Circle>(
                 config.basic_trajectory_radius, config.basic_trajectory_rate,
                 config.basic_trajectory_height);
             return;
         }
         if (type == 3)
         {
-            basic_traj = std::make_unique<basic_trajectorys::Sigmoid>(
+            basic_traj = std::make_unique<basic_trajectories::Sigmoid>(
                 config.basic_trajectory_radius, config.basic_trajectory_rate,
                 config.basic_trajectory_height);
             return;
         }
         if (type == 4)
         {
-            basic_traj = std::make_unique<basic_trajectorys::Line>(
+            basic_traj = std::make_unique<basic_trajectories::Line>(
                 config.basic_trajectory_radius, config.basic_trajectory_rate,
                 config.basic_trajectory_height);
             return;
@@ -258,7 +254,7 @@ class GlobalPlanner : public rclcpp::Node
         this->trajVizPub->publish(traj_vis_msg);
 
         Eigen::Vector3d pc, v_direction, u_direction;
-        for (int i = 1; i < route.size() - 1; i++)
+        for (size_t i = 1; i < route.size() - 1; i++)
         {
             auto point  = route[i];
             pc          = point.col(0);

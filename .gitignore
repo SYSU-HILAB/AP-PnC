@@ -32,9 +32,12 @@ colcon*
 
 src/spdlog/
 
-#cland
+#clangd
 .cache/
 
 # bags
 bags/
 output_csv/
+
+# docs
+docs/
