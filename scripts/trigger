@@ -8,4 +8,4 @@ else
 fi
 
 # Publish a single Boolean message
-ros2 topic pub $topic_name std_msgs/msg/Bool "data: true" -r 1
+ros2 topic pub $topic_name std_msgs/msg/Bool "data: true" -1

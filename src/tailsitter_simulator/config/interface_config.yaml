@@ -2,7 +2,7 @@
   ros__parameters:
     # The time step of the simulation
     # if step is 0.02, then the count is 20, i.e. 20 * 1e-3
-    sim_time_step_count: 40
+    sim_time_step_count: 20
 
     init_v: [0.0, 0.0, 0.0]
     # w,x,y,z

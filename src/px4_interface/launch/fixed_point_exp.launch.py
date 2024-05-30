@@ -10,17 +10,17 @@ def generate_launch_description():
     pkg_name = "c_nmpc"
 
     position_arg = DeclareLaunchArgument(
-        'target_position',
+        'tgt_pos',
         default_value='[0.0, 0.0, 1.0]',
         description='Target Position parameter as a double array'
     )
     quat_arg = DeclareLaunchArgument(
-        'target_quat',
+        'tgt_quat',
         default_value='[1.0, 0.0, 0.0, 0.0]',
         description='Target Quat parameter as a double array'
     )
-    position = LaunchConfiguration('target_position')
-    quat = LaunchConfiguration('target_quat')
+    position = LaunchConfiguration('tgt_pos')
+    quat = LaunchConfiguration('tgt_quat')
     
     px4_interface = "px4_interface"
     return launch.LaunchDescription([

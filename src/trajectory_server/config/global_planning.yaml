@@ -6,7 +6,7 @@
     UavScale: 1.0
     PieceN: 10
     Frame: "world"
-    traj_pub_rsl: 0.04
+    traj_pub_rsl: 0.02
     trajTopic: "/control_traj"
 
     BoxSideInsideLength: 1.0
