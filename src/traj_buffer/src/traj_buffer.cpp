@@ -1,6 +1,9 @@
+
+#include <array>
 #include <cassert>
 #include <cfloat>
 #include <cstddef>
+#include <interface/msg/detail/trajectory_point__struct.hpp>
 #include <rclcpp/logging.hpp>
 #include <traj_buffer/traj_buffer.hpp>
 
@@ -127,14 +130,24 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
 
 void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
 {
+    static std::array<double, 3> init_pos = {0.0, 0.0, 0.0};
     if (init_traj_set_ == false)
     {
         trajectory_.points.clear();
         // copy msg to trajectory_
         trajectory_.points = msg->points;
+        init_pos[0] =
+            trajectory_.points[0]
+                .point[interface::msg::TrajectoryPoint::POS_START_INDEX];
+        init_pos[1] =
+            trajectory_.points[0]
+                .point[interface::msg::TrajectoryPoint::POS_START_INDEX + 1];
+
         // change ref_thrust to gravity force.
         for (auto& point : trajectory_.points)
         {
+            point.point[TrajecotryPoint::POS_START_INDEX] -= init_pos[0];
+            point.point[TrajecotryPoint::POS_START_INDEX + 1] -= init_pos[1];
             point.point[TrajecotryPoint::THR_START_INDEX]     = kThrustPerRotor;
             point.point[TrajecotryPoint::THR_START_INDEX + 1] = kThrustPerRotor;
             point.point[TrajecotryPoint::THR_START_INDEX + 2] = kThrustPerRotor;
@@ -185,9 +198,10 @@ void TrajectoryBuffer::updateParameters()
         Eigen::Quaterniond(fixed_point_quat_[0], fixed_point_quat_[1],
                            fixed_point_quat_[2], fixed_point_quat_[3]);
     quat_eigen_.normalize();
-    RCLCPP_INFO(this->get_logger(), "Vector param: [%f, %f, %f]",
+    RCLCPP_INFO(this->get_logger(), "FixedPoint Pos: [%f, %f, %f]",
                 fixed_point_pos_[0], fixed_point_pos_[1], fixed_point_pos_[2]);
-    RCLCPP_INFO(this->get_logger(), "quat param, (w,x,y,z): [%f, %f, %f, %f]",
+    RCLCPP_INFO(this->get_logger(),
+                "FixedPoint Quat (w,x,y,z): [%f, %f, %f, %f]",
                 fixed_point_quat_[0], fixed_point_quat_[1],
                 fixed_point_quat_[2], fixed_point_quat_[3]);
     // Reminder: only w,z is allowed to adjusted. That is only yaw operates.

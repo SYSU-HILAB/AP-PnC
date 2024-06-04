@@ -1,253 +1,235 @@
 #include <Eigen/Geometry>
-#include <chrono>
+#include <interface/msg/controls.hpp>
+#include <interface/msg/state.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <tailsitter_simulator/Tailsitter.hpp>
 
-#include "interface/msg/controls.hpp"
-#include "interface/msg/state.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/imu.hpp"
-#include "std_msgs/msg/string.hpp"
+namespace simulator_interface
+{
+    using namespace std::chrono_literals;
 
-namespace simulator_interface {
-  using namespace std::chrono_literals;
+    using MpcStateMsg = interface::msg::State;
+    using OdometryMsg = nav_msgs::msg::Odometry;
+    using ControlMsg  = interface::msg::Controls;
 
-  using MpcStateMsg = interface::msg::State;
-  using OdometryMsg = nav_msgs::msg::Odometry;
-  using ControlMsg = interface::msg::Controls;
+    using SimState = TailsitterSimulator::Tailsitter::State;
 
-  using SimState = TailsitterSimulator::Tailsitter::State;
-
-
-  Eigen::Vector4d& rotToQuat(const Eigen::Matrix3d& R) {
-    Eigen::Quaterniond q(R);  // 从旋转矩阵构造四元数
-    q.normalize();            // 确保四元数是单位四元数
-
-    // 如果 w 小于 0，取反四元数
-    if (q.w() < 0) {
-      q.coeffs() = -q.coeffs();
-    }
-
-    static Eigen::Vector4d quat;
-    quat[0] = q.w();
-    quat[1] = q.x();
-    quat[2] = q.y();
-    quat[3] = q.z();
-
-    return quat;
-  }
-
-  class SimulatorInterfaceCallbacks {
-  public:
-    virtual void controlCallback(const ControlMsg::SharedPtr msg) = 0;
-    virtual void initSubsPubs() = 0;
-  public:
-    rclcpp::Subscription<ControlMsg>::SharedPtr control_subscriber_;
-    rclcpp::Publisher<MpcStateMsg>::SharedPtr mpc_state_publisher_;
-    rclcpp::Publisher<OdometryMsg>::SharedPtr odometry_publisher_;
-    const  rclcpp::QoS reliabe_qos_keep_last =
-      rclcpp::QoS(10)
-      .reliable()
-      .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
-      .keep_last(1);
-  };
-
-  class SimulatorInterface : public rclcpp::Node, public SimulatorInterfaceCallbacks {
-  private:
-    std::mutex control_mutex_;
-    bool is_control_updated_ = false;
-    double sim_time_step_ = 0.0;
-    int count_ = 0;
-    TailsitterSimulator::Tailsitter tailsitter_simulator_;
-    TailsitterSimulator::Control control_;
-
-  private:
-    void initSubsPubs();
-    void controlCallback(const ControlMsg::SharedPtr msg) override;
-
-    void declareParams();
-    void updateParams();
-
-    void initState();
-
-    void simulation();
-    void simulatorCallback();
-
-    void publishMpcState();
-    void publishOdometry();
-  public:
-    SimulatorInterface();
-  };
-
-    SimulatorInterface::SimulatorInterface() : Node("simulator_interface") {
-      // parameters declaration
-      declareParams();
-      updateParams();
-      initSubsPubs();
-      initState();
-    }
-
-
-  // definition initSubsPubs
-  void SimulatorInterface::initSubsPubs() {
-    control_subscriber_ = this->create_subscription<ControlMsg>(
-      "/mpc_controls", reliabe_qos_keep_last,
-      std::bind(&SimulatorInterface::controlCallback, this,
-        std::placeholders::_1));
-    mpc_state_publisher_ = this->create_publisher<MpcStateMsg>(
-      "/cur_state", reliabe_qos_keep_last);
-    odometry_publisher_ =
-      this->create_publisher<OdometryMsg>("/cur_state_odom", 10);
-  };
-  void SimulatorInterface::declareParams() {
-    this->declare_parameter("sim_time_step_count", 20);
-    this->declare_parameter("init_p", std::vector<double>{0, 0, 10});
-    this->declare_parameter("init_v", std::vector<double>{12, 0, 0});
-    this->declare_parameter("init_q", std::vector<double>{1, 0, 0, 0});
-  };
-  void SimulatorInterface::updateParams() {
-    count_ = this->get_parameter("sim_time_step_count").as_int();
-    sim_time_step_ = count_ * 1e-3;
-  };
-
-  void SimulatorInterface::initState() {
-    SimState state;
-    auto p = this->get_parameter("init_p").as_double_array();
-    auto v = this->get_parameter("init_v").as_double_array();
-    auto q = this->get_parameter("init_q").as_double_array();
-    Eigen::Quaterniond quat(q[0], q[1], q[2], q[3]);
-    std::cerr << "init_p: " << p[0] << " " << p[1] << " " << p[2] << std::endl;
-    std::cerr << "init_v: " << v[0] << " " << v[1] << " " << v[2] << std::endl;
-    std::cerr << "init_q: " << q[0] << " " << q[1] << " " << q[2] << " " << q[3]
-      << std::endl;
-    quat.normalize();
-    state.p = Eigen::Vector3d(p[0], p[1], p[2]);
-    state.v = Eigen::Vector3d(v[0], v[1], v[2]);
-    state.R = quat.toRotationMatrix();
-    tailsitter_simulator_.setState(state);
-    publishMpcState();
-    publishOdometry();
-  };
-
-  void SimulatorInterface::publishMpcState() {
-    static SimState sim_state;
-    static MpcStateMsg mpc_state_msg;
-    // now, only update mpc_state_msg 中的 mpc_state
-    sim_state = tailsitter_simulator_.getState();
-    auto& msg_array = mpc_state_msg.mpc_state;  // p v r q
-    auto mpc_state_eigen_array =
-      Eigen::Map<Eigen::Array<double, 13, 1>>(msg_array.data());
-
-    mpc_state_eigen_array << sim_state.p.array(), sim_state.v.array(),
-      sim_state.omega.array(), rotToQuat(sim_state.R).array();
-
-    std::copy(mpc_state_msg.mpc_state.begin(), mpc_state_msg.mpc_state.end(),
-      mpc_state_msg.state.begin());
-    mpc_state_publisher_->publish(mpc_state_msg);
-  };
-
-  void SimulatorInterface::simulatorCallback() {
+    Eigen::Vector4d rotToQuat(const Eigen::Matrix3d& R)
     {
-      std::lock_guard<std::mutex> lock(control_mutex_);
-      tailsitter_simulator_.setControl(control_);
+        Eigen::Quaterniond q(R);  // 从旋转矩阵构造四元数
+        q.normalize();            // 确保四元数是单位四元数
+
+        Eigen::Vector4d quat{q.w(), q.x(), q.y(), q.z()};
+        return quat;
     }
 
-    if (is_control_updated_) {
-      RCLCPP_INFO(this->get_logger(), "MPC controls: [%f %f %f %f]",
-        control_.thrust_vec[0], control_.thrust_vec[1],
-        control_.thrust_vec[2], control_.thrust_vec[3]);
-
-      simulation();
-      static SimState sim_state;
-      sim_state = tailsitter_simulator_.getState();
-      RCLCPP_INFO(this->get_logger(), "p: [%f %f %f]", sim_state.p(0),
-        sim_state.p(1), sim_state.p(2));
-      RCLCPP_INFO(this->get_logger(), "v: [%f %f %f]", sim_state.v(0),
-        sim_state.v(1), sim_state.v(2));
-      is_control_updated_ = false;
-    }
-    publishMpcState();
-    publishOdometry();
-  };
-
-  void SimulatorInterface::publishOdometry() {
-    static SimState sim_state;
-    static OdometryMsg odometry_msg;
-    sim_state = tailsitter_simulator_.getState();
-    odometry_msg.header.stamp = this->now();
-    odometry_msg.header.frame_id = "world";
-    odometry_msg.child_frame_id = "base_link";
-    odometry_msg.pose.pose.position.x = sim_state.p(0);
-    odometry_msg.pose.pose.position.y = sim_state.p(1);
-    odometry_msg.pose.pose.position.z = sim_state.p(2);
-    // sim_state's member is position p and velocity v, rotation matrix R,
-    // angular velocity omega
-    Eigen::Quaterniond q(sim_state.R);
-    odometry_msg.pose.pose.orientation.w = q.w();
-    odometry_msg.pose.pose.orientation.x = q.x();
-    odometry_msg.pose.pose.orientation.y = q.y();
-    odometry_msg.pose.pose.orientation.z = q.z();
-
-    odometry_publisher_->publish(odometry_msg);
-  };
-
-  void SimulatorInterface::controlCallback(const ControlMsg::SharedPtr msg) {
-    // 从 msg 中获取控制量
-    // 设置到 tailsitter_simulator_ 中
-    // lock_guard for the variable Control
+    class SimulatorInterfaceCallbacks
     {
-      std::lock_guard<std::mutex> lock(control_mutex_);
-      control_.thrust_vec[0] = msg->motors_u[0];
-      control_.thrust_vec[1] = msg->motors_u[1];
-      control_.thrust_vec[2] = msg->motors_u[2];
-      control_.thrust_vec[3] = msg->motors_u[3];
-    }
-    is_control_updated_ = true;
+       public:
+        virtual void controlCallback(const ControlMsg::SharedPtr msg) = 0;
+        virtual void initSubsPubs()                                   = 0;
+
+       public:
+        rclcpp::Subscription<ControlMsg>::SharedPtr control_subscriber_;
+        rclcpp::Publisher<MpcStateMsg>::SharedPtr   mpc_state_publisher_;
+        rclcpp::Publisher<OdometryMsg>::SharedPtr   odometry_publisher_;
+        const rclcpp::QoS                           reliabe_qos_keep_last =
+            rclcpp::QoS(10)
+                .reliable()
+                .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
+                .keep_last(1);
+    };
+
+    class SimulatorInterface : public rclcpp::Node,
+                               public SimulatorInterfaceCallbacks
     {
-      std::lock_guard<std::mutex> lock(control_mutex_);
-      tailsitter_simulator_.setControl(control_);
+       private:
+        std::mutex                      control_mutex_;
+        bool                            is_control_updated_ = false;
+        double                          sim_time_step_      = 0.0;
+        int                             count_              = 0;
+        TailsitterSimulator::Tailsitter tailsitter_simulator_;
+        TailsitterSimulator::Control    control_;
+
+       private:
+        void initSubsPubs() override;
+        void controlCallback(const ControlMsg::SharedPtr msg) override;
+
+        void declareParams();
+        void updateParams();
+
+        void initState();
+
+        void simulation();
+
+        void publishMpcState();
+        void publishOdometry();
+
+       public:
+        SimulatorInterface();
+    };
+
+    SimulatorInterface::SimulatorInterface() : Node("simulator_interface")
+    {
+        // parameters declaration
+        declareParams();
+        updateParams();
+        initSubsPubs();
+        initState();
     }
 
-    if (is_control_updated_) {
-      RCLCPP_INFO(this->get_logger(), "MPC controls: [%f %f %f %f]",
-        control_.thrust_vec[0], control_.thrust_vec[1],
-        control_.thrust_vec[2], control_.thrust_vec[3]);
+    // definition initSubsPubs
+    void SimulatorInterface::initSubsPubs()
+    {
+        control_subscriber_ = this->create_subscription<ControlMsg>(
+            "/mpc_controls", reliabe_qos_keep_last,
+            std::bind(&SimulatorInterface::controlCallback, this,
+                      std::placeholders::_1));
+        mpc_state_publisher_ = this->create_publisher<MpcStateMsg>(
+            "/cur_state", reliabe_qos_keep_last);
+        odometry_publisher_ =
+            this->create_publisher<OdometryMsg>("/cur_state_odom", 10);
+    };
+    void SimulatorInterface::declareParams()
+    {
+        this->declare_parameter("sim_time_step_count", 20);
+        this->declare_parameter("init_p", std::vector<double>{0, 0, 10});
+        this->declare_parameter("init_v", std::vector<double>{12, 0, 0});
+        this->declare_parameter("init_q", std::vector<double>{1, 0, 0, 0});
+    };
+    void SimulatorInterface::updateParams()
+    {
+        count_         = this->get_parameter("sim_time_step_count").as_int();
+        sim_time_step_ = count_ * 1e-3;
+    };
 
-      simulation();
-      static SimState sim_state;
-      sim_state = tailsitter_simulator_.getState();
-      RCLCPP_INFO(this->get_logger(), "p: [%f %f %f]", sim_state.p(0),
-        sim_state.p(1), sim_state.p(2));
-      RCLCPP_INFO(this->get_logger(), "v: [%f %f %f]", sim_state.v(0),
-        sim_state.v(1), sim_state.v(2));
+    void SimulatorInterface::initState()
+    {
+        SimState           state;
+        auto               p = this->get_parameter("init_p").as_double_array();
+        auto               v = this->get_parameter("init_v").as_double_array();
+        auto               q = this->get_parameter("init_q").as_double_array();
+        Eigen::Quaterniond quat(q[0], q[1], q[2], q[3]);
+        std::cerr << "init_p: " << p[0] << " " << p[1] << " " << p[2]
+                  << std::endl;
+        std::cerr << "init_v: " << v[0] << " " << v[1] << " " << v[2]
+                  << std::endl;
+        std::cerr << "init_q: " << q[0] << " " << q[1] << " " << q[2] << " "
+                  << q[3] << std::endl;
+        quat.normalize();
+        state.p = Eigen::Vector3d(p[0], p[1], p[2]);
+        state.v = Eigen::Vector3d(v[0], v[1], v[2]);
+        state.R = quat.toRotationMatrix();
+        tailsitter_simulator_.setState(state);
+        publishMpcState();
+        publishOdometry();
+    };
 
-      publishMpcState();
-      publishOdometry();
-      is_control_updated_ = false;
-    }
-  };
+    void SimulatorInterface::publishMpcState()
+    {
+        static SimState    sim_state;
+        static MpcStateMsg mpc_state_msg;
+        // now, only update mpc_state_msg 中的 mpc_state
+        sim_state       = tailsitter_simulator_.getState();
+        auto& msg_array = mpc_state_msg.mpc_state;  // p v r q
+        auto  mpc_state_eigen_array =
+            Eigen::Map<Eigen::Array<double, 13, 1>>(msg_array.data());
 
+        mpc_state_eigen_array << sim_state.p.array(), sim_state.v.array(),
+            sim_state.omega.array(), rotToQuat(sim_state.R).array();
 
+        std::copy(mpc_state_msg.mpc_state.begin(),
+                  mpc_state_msg.mpc_state.end(), mpc_state_msg.state.begin());
+        mpc_state_publisher_->publish(mpc_state_msg);
+    };
 
-  void SimulatorInterface::simulation() {
-    for (int i = 0; i < count_; i++) {
-      tailsitter_simulator_.step(1e-3);
-    }
-  };
+    void SimulatorInterface::publishOdometry()
+    {
+        static SimState    sim_state;
+        static OdometryMsg odometry_msg;
+        sim_state                         = tailsitter_simulator_.getState();
+        odometry_msg.header.stamp         = this->now();
+        odometry_msg.header.frame_id      = "world";
+        odometry_msg.child_frame_id       = "base_link";
+        odometry_msg.pose.pose.position.x = sim_state.p(0);
+        odometry_msg.pose.pose.position.y = sim_state.p(1);
+        odometry_msg.pose.pose.position.z = sim_state.p(2);
+        // sim_state's member is position p and velocity v, rotation matrix R,
+        // angular velocity omega
+        Eigen::Quaterniond q(sim_state.R);
+        odometry_msg.pose.pose.orientation.w = q.w();
+        odometry_msg.pose.pose.orientation.x = q.x();
+        odometry_msg.pose.pose.orientation.y = q.y();
+        odometry_msg.pose.pose.orientation.z = q.z();
 
-};
+        odometry_publisher_->publish(odometry_msg);
+    };
 
-int main(int argc, char** argv) {
-  rclcpp::init(argc, argv);
+    void SimulatorInterface::controlCallback(const ControlMsg::SharedPtr msg)
+    {
+        // 从 msg 中获取控制量
+        // 设置到 tailsitter_simulator_ 中
+        // lock_guard for the variable Control
+        {
+            std::lock_guard<std::mutex> lock(control_mutex_);
+            control_.thrust_vec[0] = msg->motors_u[0];
+            control_.thrust_vec[1] = msg->motors_u[1];
+            control_.thrust_vec[2] = msg->motors_u[2];
+            control_.thrust_vec[3] = msg->motors_u[3];
+        }
+        is_control_updated_ = true;
+        {
+            std::lock_guard<std::mutex> lock(control_mutex_);
+            tailsitter_simulator_.setControl(control_);
+        }
 
-  // set thread to 2
-  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(),
-    2);
+        if (is_control_updated_)
+        {
+            RCLCPP_INFO(this->get_logger(), "MPC controls: [%f %f %f %f]",
+                        control_.thrust_vec[0], control_.thrust_vec[1],
+                        control_.thrust_vec[2], control_.thrust_vec[3]);
 
-  auto sim_node = std::make_shared<simulator_interface::SimulatorInterface>();
-  // executor.add_node(sim_node);
-  // executor.spin();
-  rclcpp::spin(sim_node);
-  rclcpp::shutdown();
-  return 0;
+            simulation();
+            static SimState sim_state;
+            sim_state = tailsitter_simulator_.getState();
+            RCLCPP_INFO(this->get_logger(), "p: [%f %f %f]", sim_state.p(0),
+                        sim_state.p(1), sim_state.p(2));
+            RCLCPP_INFO(this->get_logger(), "v: [%f %f %f]", sim_state.v(0),
+                        sim_state.v(1), sim_state.v(2));
+            auto qq = rotToQuat(sim_state.R);
+            RCLCPP_INFO(this->get_logger(), "q: [%f %f %f %f]", qq[0], qq[1],
+                        qq[2], qq[3]);
+            publishMpcState();
+            publishOdometry();
+            is_control_updated_ = false;
+        }
+    };
+
+    void SimulatorInterface::simulation()
+    {
+        for (int i = 0; i < count_; i++)
+        {
+            tailsitter_simulator_.step(1e-3);
+        }
+    };
+
+};  // namespace simulator_interface
+
+int main(int argc, char** argv)
+{
+    rclcpp::init(argc, argv);
+
+    // set thread to 2
+    rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(),
+                                                      2);
+
+    auto sim_node = std::make_shared<simulator_interface::SimulatorInterface>();
+    // executor.add_node(sim_node);
+    // executor.spin();
+    rclcpp::spin(sim_node);
+    rclcpp::shutdown();
+    return 0;
 }

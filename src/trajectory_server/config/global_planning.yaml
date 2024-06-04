@@ -9,19 +9,19 @@
     traj_pub_rsl: 0.02
     trajTopic: "/control_traj"
 
-    BoxSideInsideLength: 1.0
-    BoxSideOutsideLength: 1.0
-    BoxDownLength: 0.5
-    BoxUpLength: 2.0
-    BoxFrontLength: 2.0
+    BoxSideInsideLength: 0.1
+    BoxSideOutsideLength: 0.1
+    BoxDownLength: 0.1
+    BoxUpLength: 0.1
+    BoxFrontLength: 0.1
     BoxBackLength: 0.0
 
     BasicTrajectoryType: 2
     BasicTrajectoryRadius: 2.0
     BasicTrajectoryRate: 0.8
-    BasicTrajectoryHeight: 1.0
+    BasicTrajectoryHeight: 2.0
 
-    v_max: 2.0
+    v_max: 0.5
     omg_x_max: 0.5
     omg_y_max: 0.25
     omg_z_max: 0.5
