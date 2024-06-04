@@ -1,0 +1,46 @@
+#!/usr/bin/python3
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Read the CSV file
+df = pd.read_csv('output.csv', delimiter=';')
+
+# Convert necessary columns to numpy arrays
+ref_px = df['ref_px'].values
+ref_py = df['ref_py'].values
+px = df['px'].values
+py = df['py'].values
+time = df['time'].values
+ref_pz = df['ref_pz'].values
+pz = df['pz'].values
+
+# Plot Horizontal view: Ref_xy vs xy
+plt.figure(figsize=(10, 6))
+
+# Plotting ref_px vs ref_py and px vs py
+plt.plot(ref_px, ref_py, label='Ref_xy', color='black')
+plt.plot(px, py, label='xy', color='red')
+plt.xlabel('X Position')
+plt.ylabel('Y Position')
+plt.title('Horizontal view: Ref_xy vs xy')
+plt.legend()
+plt.grid(True)
+plt.xlim([-5, 5])
+plt.ylim([-5, 5])
+plt.show()
+
+# Plot Vertical view: Ref_z vs z
+plt.figure(figsize=(10, 6))
+
+# Plotting ref_pz vs time and pz vs time
+plt.plot(time, ref_pz, label='Ref_z', color='blue')
+plt.plot(time, pz, label='z', color='red')
+
+plt.xlabel('Time')
+plt.ylabel('Z Position')
+plt.title('Vertical view: Ref_z vs z')
+plt.legend()
+plt.grid(True)
+plt.ylim([-5, 5])
+plt.show()

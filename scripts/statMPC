@@ -1,0 +1,95 @@
+#!/usr/bin/python3
+import os
+import yaml
+from ament_index_python.packages import get_package_share_directory
+import argparse
+from interface.msg import State
+from std_msgs.msg import Bool
+from interface.msg import TrajectoryPoint, RefTrajectoryBullet
+import rclpy
+from rclpy.node import Node
+import numpy as np
+import time
+import subprocess
+import pandas as pd
+import datetime
+# ros2 node that subscribe State, std_msgs/msg/Bool， RefTrajectoryBullet
+
+# Define the header
+
+
+# Create a DataFrame with the specified columns
+
+
+class DataRecordNode(Node):
+    def __init__(self):
+        super().__init__('data_record_node')
+        self.state_sub = self.create_subscription(State, '/cur_state', self.state_callback, 10)
+        self.trajectory_sub = self.create_subscription(RefTrajectoryBullet, '/ref_trajectory_bullet', self.trajectory_callback, 10)
+        self.trigger_sub = self.create_subscription(Bool, 'trigger', self.trigger_callback, 10)
+        self.state = State()
+        self.trajectory_bullet = RefTrajectoryBullet()
+        self.trigger = Bool()
+        self.state_received = False
+        self.trajectory_received = False
+        self.trigger_received = False
+        self.init_time = self.get_clock().now().nanoseconds
+        self.data = []
+        self.data.append(['time', 'state', 'trajectory', 'trigger'])
+        columns = ["time", "px", "py", "pz", "ref_px", "ref_py", "ref_pz",
+           "vx", "vy", "vz", "ref_vx", "ref_vy", "ref_vz",
+           "omg_x", "omg_y", "omg_z"]
+        self.max_samples = 50
+        self.csv_file_name = "output.csv"
+        self.df = pd.DataFrame(columns=columns)
+    def state_callback(self, msg):
+        self.state = msg
+        self.state_received = True
+    
+    def trajectory_callback(self, msg):
+        self.trajectory_bullet = msg
+        self.trajectory_received = True
+        self.record_data()
+        
+    def trigger_callback(self, msg):
+        self.trigger = msg
+        self.trigger_received = True
+
+    def record_data(self):
+        cur_time = round((self.get_clock().now().nanoseconds - self.init_time)/1e9, 4)
+        new_row = {
+            "time": cur_time,
+            "px": self.state.state[0],
+            "py": self.state.state[1],
+            "pz": self.state.state[2],
+            "ref_px": self.trajectory_bullet.points[0].point[0],
+            "ref_py": self.trajectory_bullet.points[0].point[1],
+            "ref_pz": self.trajectory_bullet.points[0].point[2],
+            "vx": self.state.state[3],
+            "vy": self.state.state[4],
+            "vz": self.state.state[5],
+            "ref_vx": self.trajectory_bullet.points[0].point[3],
+            "ref_vy": self.trajectory_bullet.points[0].point[4],
+            "ref_vz": self.trajectory_bullet.points[0].point[5],
+            "omg_x": self.state.state[6],
+            "omg_y": self.state.state[7],
+            "omg_z": self.state.state[8]
+        }
+
+        # Append the new row to the DataFrame
+        
+        self.df.loc[len(self.df.index)] = new_row
+        if len(self.df) >= self.max_samples:
+            self.df.to_csv(self.csv_file_name, index=False, sep=';')
+            print(f"Data recorded and saved to '{self.csv_file_name}'.")
+            exit(1)
+        
+def main():
+    # ros2 node 
+    rclpy.init()
+    node = DataRecordNode()
+    rclpy.spin(node)
+    rclpy.shutdown()
+    
+if __name__ == "__main__":
+    main()
