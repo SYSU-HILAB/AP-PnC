@@ -3,6 +3,8 @@
 
 #include <Eigen/Geometry>
 #include <chrono>
+#include <cmath>
+#include <cstdio>
 #include <interface/msg/controls.hpp>
 #include <interface/msg/state.hpp>
 #include <iostream>
@@ -17,6 +19,11 @@
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
+
+inline double inverse_thrust_model(double a, double b, double c)
+{
+    return (-b + std::sqrt(b * b + 4 * a * c)) / (2 * a);
+}
 
 class Transcribe
 {
@@ -200,6 +207,9 @@ void PX4Interface::controls_callback(
     px4_control.timestamp     = this->get_clock()->now().nanoseconds() / 1000;
     px4_control.rates_sp      = trans_->toFRD(msg->rates_sp);
     px4_control.thrust_acc_sp = msg->thrust_acc_sp;
+    px4_control.model_ff =
+        inverse_thrust_model(11.02, 5.38, msg->thrust_acc_sp);
+    printf("model_ff: %f\n", px4_control.model_ff);
     vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
     // publish_px4_control();
 }

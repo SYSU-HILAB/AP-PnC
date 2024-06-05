@@ -1,0 +1,61 @@
+#!/usr/bin/python3
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float64
+import numpy as np
+import time
+from px4_msgs.msg import VehicleThrustAccSetpoint
+#         inline double inverse_thrust_model(double a, double b, double c)
+# {
+#     return (-b + std::sqrt(b * b - 4 * a * c)) / (2 * a);
+# }
+# to python code 
+def inverse_thrust_model(a, b, c):
+    return (-b + np.sqrt(b * b + 4 * a * c)) / (2 * a)
+
+class SinusoidalPublisher(Node):
+    def __init__(self):
+        super().__init__('sinusoidal_publisher')
+        self.publisher_ = self.create_publisher(Float64, 'acceleration', 10)
+        # pub vehile_thrust_acceleration_setpoint named /fmu/in/vehicle_thrust_acceleration_setpoint
+        self.px_publihser_ = self.create_publisher(VehicleThrustAccSetpoint, '/fmu/in/vehicle_thrust_acc_setpoint', 10)
+        
+        self.dt = 0.01
+        self.timer = self.create_timer(self.dt, self.timer_callback)
+        self.start_time = time.time()
+        self.frequency = 0.5  # Hz
+        self.amplitude = 0.2  # m/s^2
+        self.count = 0
+
+    def timer_callback(self):
+        acceleration = self.amplitude * np.sin(2 * np.pi * self.frequency * (self.count * self.dt)) + 12.0
+        self.count = self.count + 1
+        msg = Float64()
+        msg.data = acceleration
+        self.publisher_.publish(msg)
+        self.get_logger().info(f'Publishing: {msg.data}')
+        
+        px_msg = VehicleThrustAccSetpoint()
+        px_msg.timestamp = (int)(self.get_clock().now().nanoseconds / 1000)
+        px_msg.rates_sp[0] = 0.0
+        px_msg.rates_sp[1] = 0.0
+        px_msg.rates_sp[2] = 0.0
+        px_msg.thrust_acc_sp = acceleration
+
+        px_msg.model_ff = inverse_thrust_model(11.02,5.38,acceleration)
+        self.px_publihser_.publish(px_msg)
+        self.get_logger().info(f'Publishing: {px_msg.thrust_acc_sp}')
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = SinusoidalPublisher()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
