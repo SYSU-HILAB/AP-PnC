@@ -25,6 +25,18 @@ inline double inverse_thrust_model(double a, double b, double c)
     return (-b + std::sqrt(b * b + 4 * a * c)) / (2 * a);
 }
 
+// inverse to calcuate linear matrix equation
+Eigen::Vector2d fit_a_b(double hover_estimate)
+{
+    Eigen::Matrix2d A;
+    Eigen::Vector2d b_tilde;
+    A.row(0) << hover_estimate * hover_estimate, hover_estimate;
+    A.row(1) << 2 * hover_estimate, 1;
+    b_tilde << 9.81, hover_estimate;
+    return Eigen::Vector2d(
+        9.81 / (hover_estimate * hover_estimate * hover_estimate), 0);
+}
+
 class Transcribe
 {
     Eigen::Vector3d    p;
@@ -107,6 +119,11 @@ class PX4Interface : public rclcpp::Node
     PX4Interface() : Node("px4_interface")
     {
         this->declare_parameter("world_frame", "NED");
+        this->declare_parameter("hover_estimate", 0.73);
+        hover_estimate_ = this->get_parameter("hover_estimate").as_double();
+        a_b_            = fit_a_b(hover_estimate_);
+        // warn print ab
+        RCLCPP_WARN(this->get_logger(), "a: %f, b: %f", a_b_(0), a_b_(1));
         std::string world_frame =
             this->get_parameter("world_frame").as_string();
         if (world_frame == "NED")
@@ -165,6 +182,9 @@ class PX4Interface : public rclcpp::Node
 
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     rclcpp::TimerBase::SharedPtr state_pub_timer_;
+
+    double          hover_estimate_;
+    Eigen::Vector2d a_b_;
     // sub
     // VehicleOdometry
     // Controls;
@@ -207,8 +227,17 @@ void PX4Interface::controls_callback(
     px4_control.timestamp     = this->get_clock()->now().nanoseconds() / 1000;
     px4_control.rates_sp      = trans_->toFRD(msg->rates_sp);
     px4_control.thrust_acc_sp = msg->thrust_acc_sp;
-    px4_control.model_ff =
-        inverse_thrust_model(11.02, 5.38, msg->thrust_acc_sp);
+    if (msg->thrust_acc_sp > 9.81)
+    {
+        px4_control.model_ff = msg->thrust_acc_sp / 9.81 * hover_estimate_;
+    }
+    else
+    {
+        // cubic inverse
+        px4_control.model_ff =
+            std::pow(msg->thrust_acc_sp / a_b_(0), 1.0 / 3.0);
+    }
+
     printf("model_ff: %f\n", px4_control.model_ff);
     vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
     // publish_px4_control();

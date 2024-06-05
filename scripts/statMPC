@@ -39,7 +39,7 @@ class DataRecordNode(Node):
         columns = ["time", "px", "py", "pz", "ref_px", "ref_py", "ref_pz",
            "vx", "vy", "vz", "ref_vx", "ref_vy", "ref_vz",
            "omg_x", "omg_y", "omg_z"]
-        self.max_samples = 500
+        self.max_samples = 900
         self.csv_file_name = "output.csv"
         self.df = pd.DataFrame(columns=columns)
     def state_callback(self, msg):

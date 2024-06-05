@@ -19,6 +19,13 @@ time = df['time'].values
 ref_pz = df['ref_pz'].values - 0.4
 pz = df['pz'].values
 
+vx = df['vx'].values
+vy = df['vy'].values
+vz = df['vz'].values
+ref_vx = df['ref_vx'].values
+ref_vy = df['ref_vy'].values
+ref_vz = df['ref_vz'].values
+
 # Plot Horizontal view: Ref_xy vs xy
 plt.figure(figsize=(10, 6))
 
@@ -52,5 +59,19 @@ plt.ylim([-5, 5])
 plt.show()
 print(ref_px-px)
 
+# Plotting ref_v_norm vs v_norm
+plt.figure(figsize=(10, 6))
+v_norm = np.sqrt(vx**2 + vy**2 + vz**2)
+ref_v_norm = np.sqrt(ref_vx**2 + ref_vy**2 + ref_vz**2)
+plt.plot(time, ref_v_norm, label='Ref_v_norm', color='blue')
+plt.plot(time, v_norm, label='v_norm', color='red')
+plt.xlabel('Time')
+plt.ylabel('Velocity Norm')
+plt.title('Velocity Norm: Ref_v_norm vs v_norm')
+plt.legend()
+plt.grid(True)
+plt.show()
 # Calculate the distance between the reference and the actual position
 print(f'Batch RMSE: {np.sqrt(np.mean((calculate_distance(ref_px, ref_py, px, py))**2))}')
+# print max RMSE
+print(f'Batch Max RMSE: {np.max(calculate_distance(ref_px, ref_py, px, py))}')
