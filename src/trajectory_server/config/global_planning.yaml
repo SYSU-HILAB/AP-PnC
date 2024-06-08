@@ -17,11 +17,11 @@
     BoxBackLength: 0.0
 
     BasicTrajectoryType: 1
-    BasicTrajectoryRadius: 2.0
+    BasicTrajectoryRadius: 3.0
     BasicTrajectoryRate: 0.8
     BasicTrajectoryHeight: 2.0
 
-    v_max: 1.0
+    v_max: 2.0
     omg_x_max: 0.5
     omg_y_max: 0.25
     omg_z_max: 0.5
