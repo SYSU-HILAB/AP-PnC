@@ -19,8 +19,8 @@ class MpcConfig:
 
     cz = 0.0 * np.zeros((1,))
     # TODO keep sync with MpcConfig
-    lb_u = np.array([0.5, 0.5, 0.5, 0.5]) * 1
-    ub_u = np.array([10., 10., 10., 10.]) * 0.4
+    lb_u = np.array([0.5, 0.5, 0.5, 0.5]) * 3
+    ub_u = np.array([10., 10., 10., 10.]) * 0.5
     # 1e1 15 15 20 OK
     qPos = np.array([ 12,  12,  20]) * 1 * 1.0 
 

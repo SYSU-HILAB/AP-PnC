@@ -14,6 +14,10 @@ import time
 import subprocess
 import pandas as pd
 from tqdm import tqdm
+
+import argparse
+
+
 # ros2 node that subscribe State, std_msgs/msg/Bool， RefTrajectoryBullet
 
 # Define the header
@@ -23,7 +27,7 @@ from tqdm import tqdm
 
 
 class DataRecordNode(Node):
-    def __init__(self):
+    def __init__(self, csv_file_name):
         super().__init__('data_record_node')
         self.state_sub = self.create_subscription(State, '/cur_state', self.state_callback, 10)
         self.trajectory_sub = self.create_subscription(RefTrajectoryBullet, '/ref_trajectory_bullet', self.trajectory_callback, 10)
@@ -46,7 +50,7 @@ class DataRecordNode(Node):
         self.max_samples = 900
         self.pbar = tqdm(total=self.max_samples, desc="Progress", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]")
         
-        self.csv_file_name = "output.csv"
+        self.csv_file_name = f"{csv_file_name}.csv"
         self.df = pd.DataFrame(columns=columns)
     def state_callback(self, msg):
         self.state = msg
@@ -103,9 +107,15 @@ class DataRecordNode(Node):
             exit(1)
         
 def main():
-    # ros2 node 
+    parser = argparse.ArgumentParser(description='Data recording script.')
+
+    parser.add_argument('-f', type=str, required=True, help='Name of the output CSV file')
+
+    args = parser.parse_args()
+
+    csv_file_name = args.f 
     rclpy.init()
-    node = DataRecordNode()
+    node = DataRecordNode(csv_file_name)
     rclpy.spin(node)
     rclpy.shutdown()
     

@@ -3,12 +3,21 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import argparse
 
 def calculate_distance(ref_x, ref_y, x, y):
     return np.sqrt((ref_x - x)**2 + (ref_y - y)**2)
 
+parser = argparse.ArgumentParser(description='Data recording script.')
+
+parser.add_argument('-f', type=str, required=True, help='Name of the output CSV file')
+
+args = parser.parse_args()
+
+csv_file_name = args.f 
+
 # Read the CSV file
-df = pd.read_csv('output.csv', delimiter=';')
+df = pd.read_csv(f'{csv_file_name}.csv', delimiter=';')
 
 # Convert necessary columns to numpy arrays
 ref_px = df['ref_px'].values 
