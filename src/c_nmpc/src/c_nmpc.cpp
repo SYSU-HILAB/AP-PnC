@@ -11,6 +11,7 @@
 #include <interface/msg/controls.hpp>
 #include <interface/msg/ref_trajectory_bullet.hpp>
 #include <interface/msg/state.hpp>
+#include <interface/msg/tracking_info.hpp>
 #include <interface/msg/trajectory_point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
@@ -33,7 +34,7 @@ using StateMsg        = interface::msg::State;
 using ReferenceMsg    = interface::msg::RefTrajectoryBullet;
 using ControlMsg      = interface::msg::Controls;
 using TrajecotryPoint = interface::msg::TrajectoryPoint;
-
+using TrackingInfoMsg = interface::msg::TrackingInfo;
 class AcadosInterface
 {
    public:
@@ -140,6 +141,7 @@ class AcadosInterface
         set_current_state_ubx(x_current);
     }
 
+    // solve result is u_sol & x_next
     int solve(void* u_sol, void* x_next)
     {
         status = tailsitter_flu_acados_solve(acados_ocp_capsule);
@@ -161,6 +163,7 @@ class NmpcCallbacks
     rclcpp::Subscription<ReferenceMsg>::SharedPtr     ref_sub_;
     rclcpp::Publisher<ControlMsg>::SharedPtr          ctrl_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub_;
+    rclcpp::Publisher<TrackingInfoMsg>::SharedPtr     tracking_info_pub_;
     const rclcpp::QoS                                 reliabe_qos_keep_last =
         rclcpp::QoS(10)
             .reliable()
@@ -199,6 +202,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     // p,v,r,q
     // augment the state with the controls
     std::array<double, state_size + controls_size> x_next;
+    // store reference msg
 };
 
 void NMPC::initSubsPubs()
@@ -216,6 +220,9 @@ void NMPC::initSubsPubs()
 
     ready_pub_ = this->create_publisher<std_msgs::msg::Bool>(
         "/ref_can_set", reliabe_qos_keep_last);
+
+    tracking_info_pub_ = this->create_publisher<TrackingInfoMsg>(
+        "/tracking_info", reliabe_qos_keep_last);
 }
 
 void NMPC::solve()
@@ -282,7 +289,33 @@ void NMPC::referenceCallback(const ReferenceMsg& msg)
     // info entering the callback
     RCLCPP_INFO(this->get_logger(), "Entering referenceCallback");
     auto& refs = const_cast<ReferenceMsg&>(msg);
-    int   size = refs.points.size();
+
+    TrackingInfoMsg tracking_info_msg;
+    tracking_info_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+    tracking_info_msg.ref_position = {
+        static_cast<float>(
+            refs.points[0].point[TrajecotryPoint::POS_START_INDEX]),
+        static_cast<float>(
+            refs.points[0].point[TrajecotryPoint::POS_START_INDEX + 1]),
+        static_cast<float>(
+            refs.points[0].point[TrajecotryPoint::POS_START_INDEX + 2])};
+    tracking_info_msg.ref_velocity = {
+        static_cast<float>(
+            refs.points[0].point[TrajecotryPoint::VEL_START_INDEX]),
+        static_cast<float>(
+            refs.points[0].point[TrajecotryPoint::VEL_START_INDEX + 1]),
+        static_cast<float>(
+            refs.points[0].point[TrajecotryPoint::VEL_START_INDEX + 2])};
+    tracking_info_msg.actual_position = {
+        static_cast<float>(x_cur_[TrajecotryPoint::POS_START_INDEX]),
+        static_cast<float>(x_cur_[TrajecotryPoint::POS_START_INDEX + 1]),
+        static_cast<float>(x_cur_[TrajecotryPoint::POS_START_INDEX + 2])};
+    tracking_info_msg.actual_velocity = {
+        static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX]),
+        static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX + 1]),
+        static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX + 2])};
+    tracking_info_pub_->publish(tracking_info_msg);
+    int size = refs.points.size();
     RCLCPP_INFO(this->get_logger(), "size %d, N %d", size, acados.N);
 
     // TODO hahh
@@ -295,6 +328,7 @@ void NMPC::referenceCallback(const ReferenceMsg& msg)
     }
     spdlog::info("The parameter is {}", refs.points[0].cz_prediction);
     acados.setReference(refs.points[acados.N].point.data(), acados.N);
+
     solve();
 }
 

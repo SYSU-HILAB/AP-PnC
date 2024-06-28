@@ -7,12 +7,15 @@
 #include <cstdio>
 #include <interface/msg/controls.hpp>
 #include <interface/msg/state.hpp>
+#include <interface/msg/tracking_info.hpp>
 #include <iostream>
 #include <nav_msgs/msg/odometry.hpp>
 #include <px4_msgs/msg/offboard_control_mode.hpp>
+#include <px4_msgs/msg/tracking_info.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
 #include <px4_msgs/msg/vehicle_thrust_acc_setpoint.hpp>
 #include <rclcpp/logging.hpp>
+#include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 
@@ -146,7 +149,9 @@ class PX4Interface : public rclcpp::Node
         offboard_control_mode_publisher_ =
             this->create_publisher<OffboardControlMode>(
                 "/fmu/in/offboard_control_mode", 10);
-
+        px4_tracking_info_publisher_ =
+            this->create_publisher<px4_msgs::msg::TrackingInfo>(
+                "/fmu/in/tracking_info", 10);
         state_publisher_ = this->create_publisher<interface::msg::State>(
             "/cur_state", reliable_qos);
 
@@ -164,6 +169,11 @@ class PX4Interface : public rclcpp::Node
             this->create_subscription<interface::msg::Controls>(
                 "/mpc_controls", rclcpp::SensorDataQoS(),
                 std::bind(&PX4Interface::controls_callback, this,
+                          std::placeholders::_1));
+        tracking_info_subscriber_ =
+            this->create_subscription<interface::msg::TrackingInfo>(
+                "/tracking_info", keep_last_qos,
+                std::bind(&PX4Interface::tracking_info_cb, this,
                           std::placeholders::_1));
         auto heartbeat_callback = [this]() -> void
         { publish_offboard_control_mode(); };
@@ -194,6 +204,9 @@ class PX4Interface : public rclcpp::Node
     rclcpp::Publisher<VehicleThrustAccSetpoint>::SharedPtr
         vehicle_thrust_acc_setpoint_publisher_;
     rclcpp::Publisher<interface::msg::State>::SharedPtr state_publisher_;
+    rclcpp::Publisher<px4_msgs::msg::TrackingInfo>::SharedPtr
+        px4_tracking_info_publisher_;
+
     rclcpp::Publisher<OffboardControlMode>::SharedPtr
         offboard_control_mode_publisher_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr state_odom_publisher_;
@@ -203,10 +216,14 @@ class PX4Interface : public rclcpp::Node
     rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr
         vehicle_odometry_subscriber_;
 
-    // sub
+    // rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr
+    //     vehicle_odometry_subscriber_;
+    // // sub
     // std
     // bool
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr trigger_subscriber_;
+    rclcpp::Subscription<interface::msg::TrackingInfo>::SharedPtr
+        tracking_info_subscriber_;
     // subscription
     // callbacks
     // above
@@ -217,7 +234,21 @@ class PX4Interface : public rclcpp::Node
     void trigger_cb();
     void publish_offboard_control_mode();
     void publish_state();
+
+    void tracking_info_cb(const interface::msg::TrackingInfo::SharedPtr msg);
 };
+
+void PX4Interface::tracking_info_cb(
+    const interface::msg::TrackingInfo::SharedPtr msg)
+{
+    static px4_msgs::msg::TrackingInfo tracking_info;
+    tracking_info.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+    tracking_info.actual_position = msg->actual_position;
+    tracking_info.actual_velocity = msg->actual_velocity;
+    tracking_info.ref_position    = msg->ref_position;
+    tracking_info.ref_velocity    = msg->ref_velocity;
+    px4_tracking_info_publisher_->publish(tracking_info);
+}
 
 void PX4Interface::controls_callback(
     const interface::msg::Controls::SharedPtr msg)
