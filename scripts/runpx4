@@ -29,9 +29,9 @@ MicroXRCEAgent udp4 -p 8888 &
 # Start the PX4 SITL
 if [ $HEADLESSVal -eq 1 ]; then
     echo "Running PX4 SITL in headless mode."
-    HEADLESS=1 make px4_sitl gz_x500
+    HEADLESS=1 make px4_sitl gz_tailsitter
 else
     echo "Running PX4 SITL with GUI."
-    make px4_sitl gz_x500
+    make px4_sitl gz_tailsitter
 fi
 

@@ -1,0 +1,6 @@
+# /usr/bin/bash
+ls -t *.ulg | head -n 1 | xargs ulog2csv -m tracking_info -o output_csv
+ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_angular_velocity -o output_csv
+ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_rates_setpoint -o output_csv
+ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_thrust_acc_setpoint -o output_csv
+ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_acceleration -o output_csv

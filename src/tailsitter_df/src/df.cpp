@@ -201,7 +201,8 @@ namespace tailsitter_df
         else if (a * a + b * b - c * c >= -0.1)
         {
             data.tri_success = false;
-            std::cout << "warning alpha" << "\n";
+            std::cout << "warning alpha"
+                      << "\n";
             Model::triangleFunctionEquationSolver(1.2 * a, 1.2 * b, c, sol);
         }
         else
