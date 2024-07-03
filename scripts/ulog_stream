@@ -1,7 +1,0 @@
-#! /usr/bin/bash
-if [ -z "$1" ]; then
-  echo "No argument, connects to serial port"
-  mavlink_ulot_streaming.py 
-else
-  mavlink_ulog_streaming.py 0.0.0.0:14550
-fi
