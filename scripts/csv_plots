@@ -44,11 +44,17 @@ ref_vz = df['ref_velocity[2]'].values
 vx = df['actual_velocity[0]'].values
 vy = df['actual_velocity[1]'].values
 vz = df['actual_velocity[2]'].values
+ref_v_norm = np.sqrt(ref_vx**2 + ref_vy**2 + ref_vz**2)
 time = (time - time[0]) * 1e-6
 # 创建包含四个子图的图形
 fig, axs = plt.subplots(2, 2, figsize=(14, 10))
 # 打印 RMSE
-print(f'Batch RMSE: {np.sqrt(np.mean((calculate_distance(ref_px, ref_py, px, py))**2))}')
+# bool_array = ref_v_norm > 0.5
+# ref_px = ref_px[bool_array]
+# ref_py = ref_py[bool_array]
+# px = px[bool_array]
+# py = py[bool_array]
+print(f'Batch RMSE XY: {np.sqrt(np.mean((calculate_distance(ref_px, ref_py, px, py))**2))}')
 # 打印最大 RMSE
 print(f'Batch Max RMSE: {np.max(calculate_distance(ref_px, ref_py, px, py))}')
 
