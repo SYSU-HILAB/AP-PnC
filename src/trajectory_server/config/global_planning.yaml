@@ -19,7 +19,7 @@
     BasicTrajectoryType: 1
     BasicTrajectoryRadius: 3.0
     BasicTrajectoryRate: 0.8
-    BasicTrajectoryHeight: 2.0
+    BasicTrajectoryHeight: 1.5
 
     v_max: 2.0
     omg_x_max: 0.5

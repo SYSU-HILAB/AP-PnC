@@ -24,15 +24,17 @@ class MpcConfig:
     # 1e1 15 15 20 OK
     qPos = np.array([ 12,  12,  20]) * 1 * 1.0 
 
-    qYB = np.array([1e2, 1e2, 1e2]) * 1.0 * 0.1 
-    qYB = np.array([1e2, 1e2, 1e2]) * 1.0 * 0.0
+    qh = 1.5
+    qv = 1.8
+    qYB = np.array([qh*1e2, qh*1e2, qv*1e2]) * 1.0 * 0.1 * 3.5
+    #qYB = np.array([1e2, 1e2, 1e2]) * 1.0 * 0.0
     qvelh = 1.0 # 5.0
     qvelv = 1.0
 
     qVel = np.array([qvelh, qvelh, qvelv]) * 1 * 0.9
     wx=0.5
     wy=0.6
-    wz=0.5
+    wz=0.4
     qAngV = np.array([wx, wy, wz]) * 1 
     qDynamicVel = np.zeros((1,))
     rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 1
