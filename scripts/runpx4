@@ -1,6 +1,6 @@
 #!/bin/bash
-kr
 
+kr
 PIDS=$(pgrep -f "gz sim")
 if [ -n "$PIDS" ]; then
   echo $PIDS | xargs kill
@@ -15,6 +15,11 @@ if [ -z "$1" ]; then
     echo "No GUI Required, HEADLESS=1."
     HEADLESSVal=1
 else
+    if [ "$1" == 2 ]; then
+        TYPE="gz_x500"
+    else
+        TYPE="gz_tailsitter"
+    fi
     HEADLESSVal=0
 fi
 
@@ -22,7 +27,6 @@ cd $PX4_ROOT
 
 # start px4_interface
 ros2 launch px4_interface px4_interface.launch.py frame:=NED&
-# ros2 run px4_interface fixed_ref &
 # start communication 
 MicroXRCEAgent udp4 -p 8888 &
 
@@ -32,6 +36,6 @@ if [ $HEADLESSVal -eq 1 ]; then
     HEADLESS=1 make px4_sitl gz_tailsitter
 else
     echo "Running PX4 SITL with GUI."
-    make px4_sitl gz_tailsitter
+    make px4_sitl $TYPE
 fi
 

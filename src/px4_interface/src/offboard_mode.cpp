@@ -62,7 +62,36 @@ class OffboardControl : public rclcpp::Node
                 "/fmu/in/offboard_control_mode", 10);
         vehicle_command_publisher_ = this->create_publisher<VehicleCommand>(
             "/fmu/in/vehicle_command", 10);
-
+        vehicle_control_mode_sub_ =
+            this->create_subscription<VehicleControlMode>(
+                "/fmu/out/vehicle_control_mode", rclcpp::SensorDataQoS(),
+                [this](VehicleControlMode::UniquePtr msg)
+                {
+                    static bool is_init = false;
+                    if (!is_init)
+                    {
+                        if (msg->flag_control_offboard_enabled)
+                        {
+                            RCLCPP_INFO(this->get_logger(),
+                                        "Current mode is offboard, swithcing "
+                                        "to position mode");
+                            is_offboard_mode_ = true;
+                        }
+                        else
+                        {
+                            RCLCPP_INFO(
+                                this->get_logger(),
+                                "Current mode is not offboard, swithcing to "
+                                "offboard mode");
+                            is_offboard_mode_ = false;
+                        }
+                        is_init = true;
+                    }
+                    else
+                    {
+                        return;
+                    }
+                });
         offboard_setpoint_counter_ = 0;
 
         auto timer_callback = [this]() -> void
@@ -70,11 +99,37 @@ class OffboardControl : public rclcpp::Node
             if (offboard_setpoint_counter_ == 10)
             {
                 // Change to Offboard mode after 10 setpoints
-                this->publish_vehicle_command(
-                    VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+                // print only once?
+                RCLCPP_INFO(
+                    this->get_logger(),
+                    "This is a Switch of  Offboard mode and Position mode");
+                //                     param1 is set to 1 to enable the custom
+                //                     mode.
+                // param2 is set to 6 to indicate the offboard mode.
+                // Other options for param2 include:
+                // param2 = 1 (MANUAL)
+                // param2 = 2 (ALTCTL)
+                // param2 = 3 (POSCTL)
+                // param2 = 4 (AUTO)
+                // param2 = 5 (ACRO)
+                // param2 = 6 (OFFBOARD)
+                // param2 = 7 (STABILIZED)
+                // param2 = 8 (RATTITUDE)
+                if (!is_offboard_mode_)
+                {
+                    this->publish_vehicle_command(
+                        VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-                // Arm the vehicle
-                this->arm();
+                    // Arm the vehicle
+                    this->arm();
+                }
+                else
+                {
+                    this->publish_vehicle_command(
+                        VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 3);
+
+                    // Disarm the vehicle
+                }
             }
 
             // stop the counter after reaching 11
@@ -91,11 +146,12 @@ class OffboardControl : public rclcpp::Node
 
    private:
     rclcpp::TimerBase::SharedPtr timer_;
-
+    bool                         is_offboard_mode_{false};
     rclcpp::Publisher<OffboardControlMode>::SharedPtr
         offboard_control_mode_publisher_;
     rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
-
+    rclcpp::Subscription<VehicleControlMode>::SharedPtr
+        vehicle_control_mode_sub_;
     // std::atomic<uint64_t> timestamp_;  //!< common synced timestamped
 
     uint64_t offboard_setpoint_counter_;  //!< counter for the number of

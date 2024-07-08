@@ -16,11 +16,13 @@ using TrajecotryBullet = interface::msg::RefTrajectoryBullet;
 using Trajectory       = interface::msg::RefTrajectory;
 // constexpr double kUpdateIncrementTime = 0.02;
 // constexpr int kRefStateDims = 9;
-constexpr int    kRefTrajBulletSize = TrajecotryBullet::SIZE;
-constexpr int    kRefPointDims      = TrajecotryPoint::POINT_DIM;
-constexpr int    kYbStartIndex      = TrajecotryPoint::YB_START_INDEX;
-constexpr double discount           = 0.99;
-constexpr double kThrustPerRotor    = 9.8 * 1.152 / 4;
+constexpr int    kRefTrajBulletSize  = TrajecotryBullet::SIZE;
+constexpr int    kDownSamplingFactor = 5;
+constexpr double kControlTime        = 0.1;
+constexpr int    kRefPointDims       = TrajecotryPoint::POINT_DIM;
+constexpr int    kYbStartIndex       = TrajecotryPoint::YB_START_INDEX;
+constexpr double discount            = 0.99;
+constexpr double kThrustPerRotor     = 9.8 * 1.152 / 4;
 class TrajectoryBufferCallbacks
 {
    public:
@@ -72,8 +74,8 @@ class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
     Eigen::Quaterniond  quat_eigen_ = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
     Eigen::Vector3d     yb_eigen_   = Eigen::Vector3d(1.0, 0.0, 0.0);
     double              traj_sampling_time_  = 0.02;
-    double              traj_control_time_   = 0.1;
-    uint                down_sampling_factor = 5;
+    double              traj_control_time_   = kControlTime;
+    uint                down_sampling_factor = kDownSamplingFactor;
 
    private:
     void initSubsPubs() override;

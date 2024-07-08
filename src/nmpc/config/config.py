@@ -19,7 +19,7 @@ class MpcConfig:
 
     cz = 0.0 * np.zeros((1,))
     # TODO keep sync with MpcConfig
-    lb_u = np.array([0.5, 0.5, 0.5, 0.5]) * 2
+    lb_u = np.array([0.5, 0.5, 0.5, 0.5]) * 4
     ub_u = np.array([10., 10., 10., 10.]) * 0.4
     # 1e1 15 15 20 OK
     qPos = np.array([ 12,  12,  20]) * 1 * 1.0 
@@ -35,8 +35,9 @@ class MpcConfig:
     qVel = np.array([qvelh, qvelh, qvelv]) * 1 * 0.9
 
     wx=0.1
+
     wy=0.5
-    wz=0.0
+    wz=0.1
     qAngV = np.array([wx, wy, wz]) * 1 
     qDynamicVel = np.zeros((1,))
     rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 1

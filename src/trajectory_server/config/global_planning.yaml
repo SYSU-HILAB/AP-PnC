@@ -2,7 +2,7 @@
   ros__parameters:
     SmoothingEps: 1.0e-2
     IntegralIntervs: 30
-    RelCostTol: 1.0e-3
+    RelCostTol: 1.0e-5
     UavScale: 1.0
     PieceN: 10
     Frame: "world"
@@ -13,26 +13,26 @@
     BoxSideOutsideLength: 0.1
     BoxDownLength: 0.1
     BoxUpLength: 0.1
-    BoxFrontLength: 0.1
-    BoxBackLength: 0.0
+    BoxFrontLength: 0.3
+    BoxBackLength: 0.3
 
     BasicTrajectoryType: 1
-    BasicTrajectoryRadius: 3.0
+    BasicTrajectoryRadius: 4.5
     BasicTrajectoryRate: 0.8
     BasicTrajectoryHeight: 1.5
 
-    v_max: 2.0
-    omg_x_max: 0.5
-    omg_y_max: 0.25
-    omg_z_max: 0.5
+    v_max: 3.0
+    omg_x_max: 0.8
+    omg_y_max: 0.5
+    omg_z_max: 0.8
     acc_max: 14.0
     thrust_max: 20.0
     thrust_min: 2.0
     thrust_weight: 500.0
-    vel_weight: 1000.0
+    vel_weight: 10000.0
     acc_weight: 0.0
-    omg_x_weight: 20000.0
-    omg_y_weight: 50000.0
-    omg_z_weight: 20000.0
+    omg_x_weight: 10000.0
+    omg_y_weight: 20000.0
+    omg_z_weight: 10000.0
     omg_consistent_weight: 0.0
     time_weight: 10000.0
