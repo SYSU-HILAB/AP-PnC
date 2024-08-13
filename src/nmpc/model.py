@@ -25,7 +25,7 @@ def tailsitter_flu():
     # c_tau = cs.DM(0.016)
     mass = cs.DM(1.152)
     c_tau = cs.DM(0.013)
-    J_data = np.array([0.00715066, 0.00818037, 0.00987597])
+    J_data = np.array([0.01715066, 0.01818037, 0.01987597])
     # J_data = cs.DM([0.04000000000000001, 0.02166666666666667, 0.02166666666666667])
     J = cs.diag(J_data)
     dx = cs.DM(0.08838834764831845)
@@ -68,7 +68,8 @@ def tailsitter_flu():
     # F_aero_b_frd[0] =  -0.02 * cs.dot(v,v) 
     F_aero_b_frd[0] = 0
     F_aero_b_frd[1] = 0
-    F_aero_b_frd[2] =   - cz * cs.dot(v,v) 
+    #F_aero_b_frd[2] =   - cz * cs.dot(v,v) 
+    F_aero_b_frd[2] =   - 0.28 * cs.dot(v,v)
     # F_aero_b_frd[2] =   0
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = q_to_rot_mat(q_tf)
