@@ -24,9 +24,13 @@ void TrajectoryBuffer::stateCallback(const interface::msg::State::SharedPtr msg)
     auto v = Eigen::Vector3d(state[3], state[4], state[5]);
 
     double v_norm = v.norm();
-    if (v_norm < 2.5)
+    // if (v_norm > last_v_norm_ + 0.5)
+    // {
+    discount = 1.0;
+
+    if (v_norm < 0.5)
     {
-        cz_predict_ = 0.0;
+        cz_predict_ = 0.24;
         return;
     }
     auto q = Eigen::Quaterniond(state[9], state[10], state[11], state[12]);
@@ -59,7 +63,24 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
         {
             if (index_ == trajectory_.points.size())
             {
+                auto traj_last_point = trajectory_.points.back();
+                for (auto& point : msg_fixed_point_.points)
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        point.point[TrajecotryPoint::POS_START_INDEX + i] =
+                            traj_last_point
+                                .point[TrajecotryPoint::POS_START_INDEX + i];
+                        point.point[TrajecotryPoint::VEL_START_INDEX + i]  = 0;
+                        point.point[TrajecotryPoint::RATE_START_INDEX + i] = 0;
+                    }
+                    point.point[TrajecotryPoint::YB_START_INDEX]     = 0.0;
+                    point.point[TrajecotryPoint::YB_START_INDEX + 1] = 1.0;
+                    point.point[TrajecotryPoint::YB_START_INDEX]     = 0.0;
+                }
                 index_ = 0;
+                traj_bullet_pub_->publish(msg_fixed_point_);
+                traj_type_ = RefTrajType::FIXED;
             }
             RCLCPP_INFO(this->get_logger(), "refTrajectoryBulletPublish");
             RCLCPP_INFO(this->get_logger(), "index_ %d",
@@ -78,7 +99,7 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
                 {
                     msg_planning_traj_.points[k] = trajectory_.points.back();
                 }
-                now_discount *= discount;
+                now_discount = discount;
                 msg_planning_traj_.points[k].cz_prediction =
                     now_discount * cz_predict_;
 
@@ -159,6 +180,8 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
     }
     // print trajectory. point is an array {p[0], p[1], p[2], v[0], v[1], v[2],
     // r[0], r[1], r[2]}
+
+#if !defined(BUILD_TYPE) || BUILD_TYPE != RELEASE
     for (size_t i = 0; i < trajectory_.points.size(); i++)
     {
         RCLCPP_INFO(
@@ -169,7 +192,7 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
             trajectory_.points[i].point[6], trajectory_.points[i].point[7],
             trajectory_.points[i].point[8]);
     }
-
+#endif
     // Trajectory is received, waiitng for ref_can_set to be true .
     // Warning Print that message.
     RCLCPP_WARN(this->get_logger(),

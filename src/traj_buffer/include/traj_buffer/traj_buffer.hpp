@@ -21,7 +21,7 @@ constexpr int    kDownSamplingFactor = 5;
 constexpr double kControlTime        = 0.1;
 constexpr int    kRefPointDims       = TrajecotryPoint::POINT_DIM;
 constexpr int    kYbStartIndex       = TrajecotryPoint::YB_START_INDEX;
-constexpr double discount            = 0.99;
+double           discount            = 0.99;
 constexpr double kThrustPerRotor     = 9.8 * 1.152 / 4;
 class TrajectoryBufferCallbacks
 {
@@ -34,6 +34,7 @@ class TrajectoryBufferCallbacks
     RefTrajType traj_type_ = RefTrajType::FIXED;
 
    public:
+    double                                                 last_v_norm_ = 0.0;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr   ref_can_set_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr   mode_trigger_sub_;
     rclcpp::Subscription<Trajectory>::SharedPtr            traj_sub_;

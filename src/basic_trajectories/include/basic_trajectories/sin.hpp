@@ -9,12 +9,15 @@
 #include <basic_trajectories/trajectory.hpp>
 namespace basic_trajectories
 {
-
-    class Sigmoid : public Trajectory
+    constexpr double kLenSigmoid   = 8;
+    constexpr double kPieceOfMinco = 10;
+    class Sin : public Trajectory
     {
        public:
-        Sigmoid(/* args */) = delete;
-        explicit Sigmoid(double a, double w, double height = 5);
+        Sin(/* args */) = delete;
+        // a is intuitively thought as the width of the horizontal "S" curve
+        // w is intuitively thought as the yaw rate of the "S" curve
+        explicit Sin(double a, double wave_len = 9.0, double height = 5);
         Vec3E pos(double t) override;
         Vec3E vel(double t) override;
         Vec3E acc(double t) override;

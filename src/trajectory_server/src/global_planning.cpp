@@ -27,7 +27,16 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 #include <basic_trajectories/circle.hpp>
 #include <basic_trajectories/lemniscate.hpp>
 #include <basic_trajectories/line.hpp>
-#include <basic_trajectories/sigmoid.hpp>
+#include <basic_trajectories/sin.hpp>
+
+// create a enum class for the basic trajectory type
+enum class BasicTrajectoryType
+{
+    LEMNISCATE = 1,
+    CIRCLE     = 2,
+    SIN        = 3,
+    LINE       = 4
+};
 
 struct Config
 {
@@ -52,10 +61,12 @@ struct Config
 
     std::string frame = "world";
     // basic trajectory set
-    double basic_trajectory_rate   = 0.8;
-    double basic_trajectory_radius = 10;
-    double basic_trajectory_height = 5;
-    int    basic_trajectory_type   = 1;
+    double basic_trajectory_rate             = 0.8;
+    double basic_trajectory_radius           = 10;
+    double basic_trajectory_height           = 5;
+    int    basic_trajectory_type             = 1;
+    double basic_trajectory_curvature_factor = 0.0;
+    double basic_traj_wave_len               = 10.0;
 
     gcopter::CostConfig &cost_config;
 
@@ -87,6 +98,10 @@ struct Config
             node->declare_parameter("BasicTrajectoryHeight", 5.0);
         basic_trajectory_type =
             node->declare_parameter("BasicTrajectoryType", 1);
+        basic_trajectory_curvature_factor =
+            node->declare_parameter("BasicTrajectoryCurvatureFactor", 0.0);
+        basic_traj_wave_len =
+            node->declare_parameter("BasicTrajectoryWaveLen", 10.0);
         // pub config
         traj_pub_rsl = node->declare_parameter("traj_pub_rsl", 0.02);
         trajTopic    = node->declare_parameter("trajTopic", "control_traj");
@@ -136,7 +151,9 @@ struct Config
         node->get_parameter("BasicTrajectoryRadius", basic_trajectory_radius);
         node->get_parameter("BasicTrajectoryHeight", basic_trajectory_height);
         node->get_parameter("BasicTrajectoryType", basic_trajectory_type);
-
+        node->get_parameter("BasicTrajectoryCurvatureFactor",
+                            basic_trajectory_curvature_factor);
+        node->get_parameter("BasicTrajectoryWaveLen", basic_traj_wave_len);
         // update cost_config
         node->get_parameter("v_max", cost_config.v_max);
         node->get_parameter("omg_x_max", cost_config.omg_x_max);
@@ -185,12 +202,7 @@ class GlobalPlanner : public rclcpp::Node
             rclcpp::QoS(10).transient_local().reliable().keep_last(1);
         trajVizPub = this->create_publisher<geometry_msgs::msg::PoseArray>(
             "traj_viz", reliable_qos);
-        // HERE to trigger the plan method function
-        // targetSub =
-        // this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        //     config.targetTopic, 1,
-        //     std::bind(&GlobalPlanner::targetCallBack, this,
-        //     std::placeholders::_1));
+
         trajPub = this->create_publisher<RefTrajectory>(config.trajTopic,
                                                         reliable_qos);
 
@@ -208,7 +220,8 @@ class GlobalPlanner : public rclcpp::Node
         {
             basic_traj = std::make_unique<basic_trajectories::Lemniscate>(
                 config.basic_trajectory_radius, config.basic_trajectory_rate,
-                config.basic_trajectory_height);
+                config.basic_trajectory_height,
+                config.basic_trajectory_curvature_factor);
             return;
         }
         if (type == 2)
@@ -220,9 +233,10 @@ class GlobalPlanner : public rclcpp::Node
         }
         if (type == 3)
         {
-            basic_traj = std::make_unique<basic_trajectories::Sigmoid>(
-                config.basic_trajectory_radius, config.basic_trajectory_rate,
+            basic_traj = std::make_unique<basic_trajectories::Sin>(
+                config.basic_trajectory_radius, config.basic_traj_wave_len,
                 config.basic_trajectory_height);
+            config.basic_trajectory_rate = basic_traj->getAngularSpeed();
             return;
         }
         if (type == 4)
@@ -322,16 +336,6 @@ class GlobalPlanner : public rclcpp::Node
             initPointsPos.col(i) =
                 route[i + 1].col(0) + u * config.box_side_outside_length * 0.8;
         }
-        // print config . cost_config
-        std::cerr << "v_max: " << config.cost_config.v_max << std::endl;
-        std::cerr << "thrust_max: " << config.cost_config.thrust_max
-                  << std::endl;
-        std::cerr << "thrust_min: " << config.cost_config.thrust_min
-                  << std::endl;
-        std::cerr << "thrust_weight: " << config.cost_config.thrust_weight
-                  << std::endl;
-        std::cerr << "vel_weight: " << config.cost_config.vel_weight
-                  << std::endl;
 
         // print initTime and init Pos
         std::cerr << "initTime: " << initTime.transpose() << std::endl;
@@ -340,6 +344,8 @@ class GlobalPlanner : public rclcpp::Node
         std::cerr << "initTime size: " << initTime.size() << std::endl;
         std::cerr << "initPointsPos size: " << initPointsPos.size()
                   << std::endl;
+        // print end point
+        std::cerr << "finState: \n" << finState << std::endl;
         // return ;
         if (!init_setup)
         {
@@ -356,12 +362,31 @@ class GlobalPlanner : public rclcpp::Node
             init_setup = true;
 
             CSVWriter csv;
-            csv.newRow() << "Time" << "Pos_x" << "Pos_y" << "Pos_z" << "Vel_x"
-                         << "Vel_y" << "Vel_z" << "Vel_norm" << "Acc_x"
-                         << "Acc_y" << "Acc_z" << "Acc_norm" << "Thrust"
-                         << "Omg_x" << "Omg_y" << "Omg_z" << "Omg_norm"
-                         << "Alpha" << "Quat_w" << "Quat_x" << "Quat_y"
-                         << "Quat_z" << "Yaw" << "Pitch" << "Roll";
+            csv.newRow() << "Time"
+                         << "Pos_x"
+                         << "Pos_y"
+                         << "Pos_z"
+                         << "Vel_x"
+                         << "Vel_y"
+                         << "Vel_z"
+                         << "Vel_norm"
+                         << "Acc_x"
+                         << "Acc_y"
+                         << "Acc_z"
+                         << "Acc_norm"
+                         << "Thrust"
+                         << "Omg_x"
+                         << "Omg_y"
+                         << "Omg_z"
+                         << "Omg_norm"
+                         << "Alpha"
+                         << "Quat_w"
+                         << "Quat_x"
+                         << "Quat_y"
+                         << "Quat_z"
+                         << "Yaw"
+                         << "Pitch"
+                         << "Roll";
 
             auto route_msg            = basic_traj->toMsg(100);
             route_msg.header.frame_id = config.frame;

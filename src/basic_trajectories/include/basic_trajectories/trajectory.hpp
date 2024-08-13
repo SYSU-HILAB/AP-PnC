@@ -33,10 +33,17 @@ namespace basic_trajectories
     {
        protected:
         /**
-         * @brief The radius of the trajectory
+         * @brief The radius of the trajectory or named as the length of the
+         * trajectory
          *
          */
         double radius = 2.0;
+
+        /**
+         * @brief The wave length of the trajectory, typically double the width.
+         *
+         */
+        double wave_len = 10.0;
 
         /**
          * @brief The angular speed (rad/s) of the trajectory
@@ -76,7 +83,12 @@ namespace basic_trajectories
 
        public:
         Trajectory();
-
+        /**
+         * @brief Get the rate of the trajector
+         *
+         * @return double
+         */
+        double getAngularSpeed() { return angular_speed; }
         /**
          * @brief Get the position of the trajectory at time t
          *

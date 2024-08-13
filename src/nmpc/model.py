@@ -68,7 +68,7 @@ def tailsitter_flu():
     # F_aero_b_frd[0] =  -0.02 * cs.dot(v,v) 
     F_aero_b_frd[0] = 0
     F_aero_b_frd[1] = 0
-    F_aero_b_frd[2] =   - 0.2 * cs.dot(v,v) 
+    F_aero_b_frd[2] =   - cz * cs.dot(v,v) 
     # F_aero_b_frd[2] =   0
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = q_to_rot_mat(q_tf)

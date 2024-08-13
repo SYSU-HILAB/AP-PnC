@@ -14,11 +14,14 @@ namespace basic_trajectories
     {
        public:
         Lemniscate(/* args */) = delete;
-        explicit Lemniscate(double a, double w, double height = 5);
+        explicit Lemniscate(double a, double w, double height = 5,
+                            double curvature_factor = 0.0);
         Vec3E pos(double t) override;
         Vec3E vel(double t) override;
         Vec3E acc(double t) override;
         Vec3E jerk(double t) override;
+
+        double curvature_factor = 0.0;
     };
 
 }  // namespace basic_trajectories

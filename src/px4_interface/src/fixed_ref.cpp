@@ -13,8 +13,6 @@
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
-#include "calculate_cz.cpp"
-
 using TrajecotryPoint       = interface::msg::TrajectoryPoint;
 using TrajecotryBullet      = interface::msg::RefTrajectoryBullet;
 using Trajectory            = interface::msg::RefTrajectory;

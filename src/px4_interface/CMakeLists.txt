@@ -31,11 +31,11 @@ target_link_libraries(
 
 # set(QUADROTOR True)
 
-ament_auto_add_executable(traj_buffer src/traj_buffer.cpp)
-target_link_libraries(
-  traj_buffer
-  Eigen3::Eigen
-)
+# ament_auto_add_executable(traj_buffer src/traj_buffer.cpp)
+# target_link_libraries(
+#   traj_buffer
+#   Eigen3::Eigen
+# )
 
 ament_auto_add_executable(fixed_ref src/fixed_ref.cpp)
 target_link_libraries(

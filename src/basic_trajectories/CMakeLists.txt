@@ -21,8 +21,8 @@ target_link_libraries(lemniscate Eigen3::Eigen)
 ament_auto_add_library(circle SHARED src/circle.cpp)
 target_link_libraries(circle Eigen3::Eigen)
 
-ament_auto_add_library(sigmoid SHARED src/sigmoid.cpp)
-target_link_libraries(sigmoid Eigen3::Eigen)
+ament_auto_add_library(sin SHARED src/sin.cpp)
+target_link_libraries(sin Eigen3::Eigen)
 
 ament_auto_add_library(line SHARED src/line.cpp)
 target_link_libraries(line Eigen3::Eigen)

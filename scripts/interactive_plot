@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+fig, ax = plt.subplots(figsize=(2, 2), facecolor='lightskyblue',
+                       layout='constrained')
+fig.suptitle('Figure')
+ax.set_title('Axes', loc='left', fontstyle='oblique', fontsize='medium')
+
+plt.show()
+# # Generate sample data
+# x = np.linspace(0, 10, 100)
+# y1 = np.sin(x)
+# y2 = np.cos(x)
+# y3 = np.tan(x)
+
+# # Create the figure and axis
+# fig, ax = plt.subplots()
+
+# # Plot the lines
+# line1, = ax.plot(x, y1, label='Sin')
+# line2, = ax.plot(x, y2, label='Cos')
+# line3, = ax.plot(x, y3, label='Tan')
+# print(line1)
+# # Create a legend
+# leg = ax.legend()
+# print(leg)
+# # Dictionary mapping legend lines to original lines
+# lined = {}
+
+# # Function to toggle visibility of a line
+# def on_pick(event):
+#     # On the pick event, get the original line
+#     legline = event.artist
+#     origline = lined[legline]
+    
+#     # Toggle the visibility
+#     visible = not origline.get_visible()
+#     origline.set_visible(visible)
+    
+#     # Change the alpha on the line in the legend so we can see what lines
+#     # have been toggled
+#     if visible:
+#         legline.set_alpha(1.0)
+#     else:
+#         legline.set_alpha(0.2)
+    
+#     fig.canvas.draw()
+
+# # Populate the lined dictionary
+# for legline, origline in zip(leg.get_lines(), [line1, line2, line3]):
+#     legline.set_picker(5)  # 5 pts tolerance
+#     lined[legline] = origline
+
+# # Connect the pick event to the function
+# fig.canvas.mpl_connect('pick_event', on_pick)
+
+# plt.show()
