@@ -74,9 +74,14 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
                         point.point[TrajecotryPoint::VEL_START_INDEX + i]  = 0;
                         point.point[TrajecotryPoint::RATE_START_INDEX + i] = 0;
                     }
-                    point.point[TrajecotryPoint::YB_START_INDEX]     = 0.0;
-                    point.point[TrajecotryPoint::YB_START_INDEX + 1] = 1.0;
-                    point.point[TrajecotryPoint::YB_START_INDEX]     = 0.0;
+                    point.point[TrajecotryPoint::YB_START_INDEX] =
+                        traj_last_point.point[TrajecotryPoint::YB_START_INDEX];
+                    point.point[TrajecotryPoint::YB_START_INDEX + 1] =
+                        traj_last_point
+                            .point[TrajecotryPoint::YB_START_INDEX + 1];
+                    point.point[TrajecotryPoint::YB_START_INDEX] =
+                        traj_last_point
+                            .point[TrajecotryPoint::YB_START_INDEX + 2];
                 }
                 // index_ = 0;
                 // traj_bullet_pub_->publish(msg_fixed_point_);
