@@ -78,8 +78,8 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
                     point.point[TrajecotryPoint::YB_START_INDEX + 1] = 1.0;
                     point.point[TrajecotryPoint::YB_START_INDEX]     = 0.0;
                 }
-                index_ = 0;
-                traj_bullet_pub_->publish(msg_fixed_point_);
+                // index_ = 0;
+                // traj_bullet_pub_->publish(msg_fixed_point_);
                 traj_type_ = RefTrajType::FIXED;
             }
             RCLCPP_INFO(this->get_logger(), "refTrajectoryBulletPublish");
@@ -102,45 +102,6 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
                 now_discount = discount;
                 msg_planning_traj_.points[k].cz_prediction =
                     now_discount * cz_predict_;
-
-                // auto marker            = visualization_msgs::msg::Marker();
-                // marker.header.frame_id = "world";
-                // marker.header.stamp    = this->now();
-                // marker.action          =
-                // visualization_msgs::msg::Marker::ADD; marker.type =
-                // visualization_msgs::msg::Marker::ARROW; marker.scale.x = 1.0;
-                // marker.scale.y         = 0.1;
-                // marker.scale.z         = 0.1;
-                // marker.color.a         = 0.2;
-                // marker.color.r         = 0.0;
-                // marker.color.g         = 0.0;
-                // marker.color.b         = 1.0;
-                // marker.pose.position.x =
-                //     msg_planning_traj_.points[i - index_].point[0];
-                // marker.pose.position.y =
-                //     msg_planning_traj_.points[i - index_].point[1];
-                // marker.pose.position.z =
-                //     msg_planning_traj_.points[i - index_].point[2];
-                // marker.id = i - index_;
-                // marker.ns = "ref_bullet";
-                // auto yb   = Eigen::Vector3d();
-                // yb(0)     = msg_planning_traj_.points[i - index_]
-                //             .point[TrajecotryPoint::YB_START_INDEX];
-                // yb(1) = msg_planning_traj_.points[i - index_]
-                //             .point[TrajecotryPoint::YB_START_INDEX + 1];
-                // yb(2) = msg_planning_traj_.points[i - index_]
-                //             .point[TrajecotryPoint::YB_START_INDEX + 2];
-
-                // auto rot_axis  = Eigen::Vector3d::UnitX().cross(yb);
-                // auto rot_angle = std::acos(Eigen::Vector3d::UnitX().dot(yb));
-                // // from rot axis and angle to construct quaternion
-                // Eigen::Quaterniond q;
-                // q = Eigen::AngleAxisd(rot_angle, rot_axis.normalized());
-                // marker.pose.orientation.x = q.x();
-                // marker.pose.orientation.y = q.y();
-                // marker.pose.orientation.z = q.z();
-                // marker.pose.orientation.w = q.w();
-                // vis_msg.markers.push_back(marker);
             }
             index_ += 1;
             traj_bullet_pub_->publish(msg_planning_traj_);
@@ -152,6 +113,7 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
 void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
 {
     static std::array<double, 3> init_pos = {0.0, 0.0, 0.0};
+    static std::array<double, 3> init_yb  = {0.0, 1.0, 0.0};
     if (init_traj_set_ == false)
     {
         trajectory_.points.clear();
@@ -174,6 +136,27 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
             point.point[TrajecotryPoint::THR_START_INDEX + 2] = kThrustPerRotor;
             point.point[TrajecotryPoint::THR_START_INDEX + 3] = kThrustPerRotor;
         }
+        for (int i = 0; i < 3; i++)
+        {
+            init_yb[i] =
+                trajectory_.points[0]
+                    .point[interface::msg::TrajectoryPoint::YB_START_INDEX + i];
+        }
+        for (auto& point : msg_fixed_point_.points)
+        {
+            point.point[TrajecotryPoint::POS_START_INDEX] =
+                trajectory_.points[0].point[TrajecotryPoint::POS_START_INDEX];
+            point.point[TrajecotryPoint::POS_START_INDEX + 1] =
+                trajectory_.points[0]
+                    .point[TrajecotryPoint::POS_START_INDEX + 1];
+            point.point[TrajecotryPoint::POS_START_INDEX + 2] =
+                trajectory_.points[0]
+                    .point[TrajecotryPoint::POS_START_INDEX + 2];
+            point.point[TrajecotryPoint::YB_START_INDEX]     = init_yb[0];
+            point.point[TrajecotryPoint::YB_START_INDEX + 1] = init_yb[1];
+            point.point[TrajecotryPoint::YB_START_INDEX + 2] = init_yb[2];
+        }
+
         init_traj_set_ = true;
         RCLCPP_INFO(this->get_logger(), "trajectory_ size %zu",
                     trajectory_.points.size());
@@ -243,16 +226,6 @@ void TrajectoryBuffer::updateParameters()
         RCLCPP_ERROR(this->get_logger(), "Only yaw is allowed to be adjusted");
         std::exit(1);
     }
-    for (auto& point : msg_fixed_point_.points)
-    {
-        point.point[0] = fixed_point_pos_[0];
-        point.point[1] = fixed_point_pos_[1];
-        point.point[2] = fixed_point_pos_[2];
-
-        point.point[kYbStartIndex]     = yb_eigen_[0];
-        point.point[kYbStartIndex + 1] = yb_eigen_[1];
-        point.point[kYbStartIndex + 2] = yb_eigen_[2];
-    }
 }
 
 void TrajectoryBuffer::modeTriggerCallback(std_msgs::msg::Bool::SharedPtr msg)
@@ -308,3 +281,42 @@ int main(int argc, char** argv)
     rclcpp::shutdown();
     return 0;
 }
+
+// auto marker            = visualization_msgs::msg::Marker();
+// marker.header.frame_id = "world";
+// marker.header.stamp    = this->now();
+// marker.action          =
+// visualization_msgs::msg::Marker::ADD; marker.type =
+// visualization_msgs::msg::Marker::ARROW; marker.scale.x = 1.0;
+// marker.scale.y         = 0.1;
+// marker.scale.z         = 0.1;
+// marker.color.a         = 0.2;
+// marker.color.r         = 0.0;
+// marker.color.g         = 0.0;
+// marker.color.b         = 1.0;
+// marker.pose.position.x =
+//     msg_planning_traj_.points[i - index_].point[0];
+// marker.pose.position.y =
+//     msg_planning_traj_.points[i - index_].point[1];
+// marker.pose.position.z =
+//     msg_planning_traj_.points[i - index_].point[2];
+// marker.id = i - index_;
+// marker.ns = "ref_bullet";
+// auto yb   = Eigen::Vector3d();
+// yb(0)     = msg_planning_traj_.points[i - index_]
+//             .point[TrajecotryPoint::YB_START_INDEX];
+// yb(1) = msg_planning_traj_.points[i - index_]
+//             .point[TrajecotryPoint::YB_START_INDEX + 1];
+// yb(2) = msg_planning_traj_.points[i - index_]
+//             .point[TrajecotryPoint::YB_START_INDEX + 2];
+
+// auto rot_axis  = Eigen::Vector3d::UnitX().cross(yb);
+// auto rot_angle = std::acos(Eigen::Vector3d::UnitX().dot(yb));
+// // from rot axis and angle to construct quaternion
+// Eigen::Quaterniond q;
+// q = Eigen::AngleAxisd(rot_angle, rot_axis.normalized());
+// marker.pose.orientation.x = q.x();
+// marker.pose.orientation.y = q.y();
+// marker.pose.orientation.z = q.z();
+// marker.pose.orientation.w = q.w();
+// vis_msg.markers.push_back(marker);

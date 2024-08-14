@@ -22,9 +22,10 @@ namespace basic_trajectories
     {
         Vec3E pos = Vec3E::Zero();
         // Only change first two, i.e., x and y;
-        pos[0] = radius * cos(angular_speed * t);
-        pos[1] = radius * sin(angular_speed * t);
-        pos[2] = height;
+        double phaseshift = M_PI;
+        pos[0]            = radius * cos(angular_speed * t + phaseshift);
+        pos[1]            = radius * sin(angular_speed * t + phaseshift);
+        pos[2]            = height;
         return pos;
     }
 
@@ -32,33 +33,25 @@ namespace basic_trajectories
     {
         Vec3E vel = Vec3E::Zero();
         // Only change first two, i.e., x and y;
-        vel[0] = -radius * angular_speed * sin(angular_speed * t);
+        double phaseshift = M_PI;
+        vel[0] = -radius * angular_speed * sin(angular_speed * t + phaseshift);
         vel[1] = radius * angular_speed *
-                 (cos(angular_speed * t) * cos(angular_speed * t) -
-                  sin(angular_speed * t) * sin(angular_speed * t));
+                 (cos(angular_speed * t + phaseshift) *
+                      cos(angular_speed * t + phaseshift) -
+                  sin(angular_speed * t + phaseshift) *
+                      sin(angular_speed * t + phaseshift));
         return vel;
     }
 
     Vec3E Circle::acc(double t)
     {
         Vec3E acc = Vec3E::Zero();
-        // Only change first two, i.e., x and y;
-        acc[0] =
-            -radius * angular_speed * angular_speed * cos(angular_speed * t);
-        acc[1] = -4 * radius * angular_speed *
-                 (cos(angular_speed * t) * sin(angular_speed * t));
         return acc;
     }
 
     Vec3E Circle::jerk(double t)
     {
         Vec3E jerk = Vec3E::Zero();
-        // Only change first two, i.e., x and y;
-        jerk[0] = radius * angular_speed * angular_speed * angular_speed *
-                  sin(angular_speed * t);
-        jerk[1] = 4 * radius * angular_speed * angular_speed * angular_speed *
-                  (sin(angular_speed * t) * sin(angular_speed * t) -
-                   cos(angular_speed * t) * cos(angular_speed * t));
         return jerk;
     }
 
