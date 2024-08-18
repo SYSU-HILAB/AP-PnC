@@ -1,4 +1,3 @@
-#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <geometry_msgs/msg/point.hpp>
@@ -15,8 +14,8 @@
 
 #include "gcopter/gcopter.hpp"
 #include "gcopter/trajectory.hpp"
-#include "misc/CSVWriter.hpp"
-#include "misc/visualizer.hpp"
+// #include "misc/CSVWriter.hpp"
+// #include "misc/visualizer.hpp"
 // #include "geometry_msgs/msg/vis
 // writing data to csv
 #include <ostream>
@@ -182,7 +181,7 @@ class GlobalPlanner : public rclcpp::Node
    private:
     Config                                                           config;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr targetSub;
-    Visualizer                                                       visualizer;
+    // Visualizer visualizer;
     RefTrajectory                                   control_traj_msg;
     Trajectory<5>                                   traj;
     double                                          trajStamp;
@@ -194,8 +193,7 @@ class GlobalPlanner : public rclcpp::Node
     bool init_setup = false;
 
    public:
-    GlobalPlanner()
-        : Node("global_planning_node"), config(this), visualizer(this)
+    GlobalPlanner() : Node("global_planning_node"), config(this)
     {
         config.UpdateConfig(this);
         auto reliable_qos =
@@ -207,8 +205,6 @@ class GlobalPlanner : public rclcpp::Node
                                                         reliable_qos);
 
         init_basic_trajectory_type(config.basic_trajectory_type);
-        timer =
-            this->create_wall_timer(2s, std::bind(&GlobalPlanner::plan, this));
 
         RCLCPP_INFO(this->get_logger(), "Planning");
     }
@@ -307,7 +303,6 @@ class GlobalPlanner : public rclcpp::Node
         std::vector<Eigen::MatrixX4d> hPolys;
         RCLCPP_INFO(this->get_logger(), "Planning");
         create_basic_trajecotry_sfc(hPolys);
-        visualizer.visualizePolytope(hPolys);
 
         // std::cerr << "iniState: " << iniState << std::endl;
         // std::cerr << "finState: " << finState << std::endl;
@@ -361,33 +356,6 @@ class GlobalPlanner : public rclcpp::Node
             }
             init_setup = true;
 
-            CSVWriter csv;
-            csv.newRow() << "Time"
-                         << "Pos_x"
-                         << "Pos_y"
-                         << "Pos_z"
-                         << "Vel_x"
-                         << "Vel_y"
-                         << "Vel_z"
-                         << "Vel_norm"
-                         << "Acc_x"
-                         << "Acc_y"
-                         << "Acc_z"
-                         << "Acc_norm"
-                         << "Thrust"
-                         << "Omg_x"
-                         << "Omg_y"
-                         << "Omg_z"
-                         << "Omg_norm"
-                         << "Alpha"
-                         << "Quat_w"
-                         << "Quat_x"
-                         << "Quat_y"
-                         << "Quat_z"
-                         << "Yaw"
-                         << "Pitch"
-                         << "Roll";
-
             auto route_msg            = basic_traj->toMsg(100);
             route_msg.header.frame_id = config.frame;
             route_msg.header.stamp    = this->get_clock()->now();
@@ -412,9 +380,7 @@ class GlobalPlanner : public rclcpp::Node
                 auto               quat_df = tailsitter_data.getQuaternion();
                 Eigen::Quaterniond q_b1_b2(0, 0.707, 0, 0.707);
                 auto               quat_q = quat_df * q_b1_b2;
-                // to euler angles ZYX
-                Eigen::Vector3d euler =
-                    quat_q.toRotationMatrix().eulerAngles(2, 0, 1);
+
                 quat(0) = quat_q.w();
                 quat(1) = quat_q.x();
                 quat(2) = quat_q.y();
@@ -424,19 +390,9 @@ class GlobalPlanner : public rclcpp::Node
                     quat = -quat;
                 }
 
-                double alpha = tailsitter_data.alpha.val() * 180 / M_PI;
-
                 auto p = traj.getPos(t);
                 auto v = traj.getVel(t);
-                auto a = traj.getAcc(t);
 
-                csv.newRow() << t << p[0] << p[1] << p[2] << v[0] << v[1]
-                             << v[2] << v.norm() << a[0] << a[1] << a[2]
-                             << a.norm() << thrust << omg[0] << omg[1] << omg[2]
-                             << omg.norm() << alpha << quat(0) << quat(1)
-                             << quat(2) << quat(3) << euler(0) * 180 / M_PI
-                             << euler(1) * 180 / M_PI << euler(2) * 180 / M_PI;
-                //
                 auto            yb_df = -tailsitter_data.yb;
                 Eigen::Vector3d YB    = (Eigen::Vector3d() << yb_df.x().val(),
                                       yb_df.y().val(), yb_df.z().val())
@@ -457,7 +413,6 @@ class GlobalPlanner : public rclcpp::Node
                 control_traj_msg.points.push_back(traj_point);
             }
 
-            csv.writeToFile("traj.csv");
             trajPub->publish(control_traj_msg);
             RCLCPP_WARN(this->get_logger(), "Trajectory Published !!!\n");
             std::vector<Eigen::Vector3d> route_path;
@@ -468,7 +423,6 @@ class GlobalPlanner : public rclcpp::Node
             if (traj.getPieceNum() > 0)
             {
                 trajStamp = this->get_clock()->now().seconds();
-                visualizer.visualize(traj, route_path);
             }
         }
     }
