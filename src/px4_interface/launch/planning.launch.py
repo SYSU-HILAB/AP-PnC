@@ -18,22 +18,8 @@ def generate_launch_description():
         'config',
         'interface_config.yaml'
     )
-    position_arg = DeclareLaunchArgument(
-        'tgt_pos',
-        default_value='[0.0, 0.0, 1.0]',
-        description='Target Position parameter as a double array'
-    )
-    quat_arg = DeclareLaunchArgument(
-        'tgt_quat',
-        default_value='[1.0, 0.0, 0.0, 0.0]',
-        description='Target Quat parameter as a double array'
-    )
-    position = LaunchConfiguration('tgt_pos')
-    quat = LaunchConfiguration('tgt_quat')
     
     return launch.LaunchDescription([
-        position_arg,
-        quat_arg,
         launch_ros.actions.Node(
             package='trajectory_server',
             executable='trajectory_server_node',
@@ -51,8 +37,7 @@ def generate_launch_description():
             name='traj_buffer',
             parameters=[
                 {
-                    "pos": position,
-                    "quat": quat
+                    "circled": False
                 }
             ]            
         ),

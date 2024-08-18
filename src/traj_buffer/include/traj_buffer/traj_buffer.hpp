@@ -7,7 +7,6 @@
 #include <interface/msg/trajectory_point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
-#include <vector>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
@@ -21,7 +20,6 @@ constexpr int    kDownSamplingFactor = 5;
 constexpr double kControlTime        = 0.1;
 constexpr int    kRefPointDims       = TrajecotryPoint::POINT_DIM;
 constexpr int    kYbStartIndex       = TrajecotryPoint::YB_START_INDEX;
-double           discount            = 0.99;
 constexpr double kThrustPerRotor     = 9.8 * 1.152 / 4;
 class TrajectoryBufferCallbacks
 {
@@ -64,19 +62,19 @@ class TrajectoryBufferCallbacks
 class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
 {
    private:
-    size_t              index_         = 0;
-    bool                init_traj_set_ = false;
-    double              cz_predict_    = 0.0;
-    Trajectory          trajectory_;
-    TrajecotryBullet    msg_planning_traj_;
-    TrajecotryBullet    msg_fixed_point_;
-    std::vector<double> fixed_point_pos_  = {0.0, 0.0, 0.5};
-    std::vector<double> fixed_point_quat_ = {1.0, 0.0, 0.0, 0.0};
-    Eigen::Quaterniond  quat_eigen_ = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
-    Eigen::Vector3d     yb_eigen_   = Eigen::Vector3d(1.0, 0.0, 0.0);
-    double              traj_sampling_time_  = 0.02;
-    double              traj_control_time_   = kControlTime;
-    uint                down_sampling_factor = kDownSamplingFactor;
+    size_t index_          = 0;
+    bool   init_traj_set_  = false;
+    bool   tracking_valid_ = false;
+    double cz_predict_     = 0.0;
+    // bool
+    Trajectory       trajectory_;
+    TrajecotryBullet msg_planning_traj_;
+    TrajecotryBullet msg_fixed_point_;
+    Eigen::Vector3d  yb_eigen_            = Eigen::Vector3d(1.0, 0.0, 0.0);
+    double           traj_sampling_time_  = 0.02;
+    double           traj_control_time_   = kControlTime;
+    uint             down_sampling_factor = kDownSamplingFactor;
+    bool             circled_             = false;
 
    private:
     void initSubsPubs() override;
@@ -87,6 +85,8 @@ class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
         std_msgs::msg::Bool::SharedPtr msg) override;
     void modeTriggerCallback(const std_msgs::msg::Bool::SharedPtr msg) override;
     void updateTrajCallback(const Trajectory::SharedPtr msg) override;
+
+    inline bool checkTrajectoryTermination();
 
    public:
     TrajectoryBuffer();

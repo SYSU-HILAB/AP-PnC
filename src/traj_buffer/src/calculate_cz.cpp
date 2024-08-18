@@ -36,16 +36,16 @@ double get_cz_from_vb(const Eigen::Vector3d &vb)
     // atan2 follows the rules of typical angle counterwise
 
     double alpha = std::atan2(vb(0), vb(2));
-    std::cerr << "Alpha" << alpha << std::endl;
     if (alpha < 0.0)
     {
-        std::cerr << "Sing" << std::endl;
+        // std::cerr << "Sing" << std::endl;
 
         return 0.0;
     }
     else
     {
-        std::cerr << "Case3" << std::endl;
+        // normal
+        // std::cerr << "Case3" << std::endl;
 
         using namespace fit_data;
         static bool init = false;
@@ -62,8 +62,8 @@ double get_cz_from_vb(const Eigen::Vector3d &vb)
             a4 * std::cos(4 * w * alpha) + b4 * std::sin(4 * w * alpha);
 
         // factor using rho and area;
-        std::cerr << "Cz" << 0.5 * fit_data::kPho * fit_data::kS * cz
-                  << std::endl;
+        // std::cerr << "Cz" << 0.5 * fit_data::kPho * fit_data::kS * cz
+        //           << std::endl;
         return 0.5 * fit_data::kPho * fit_data::kS * cz / mass;
     }
 }

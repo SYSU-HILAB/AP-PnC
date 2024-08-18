@@ -16,7 +16,7 @@
     BoxFrontLength: 0.3
     BoxBackLength: 0.3
 
-    BasicTrajectoryType: 3
+    BasicTrajectoryType: 1
 
     BasicTrajectoryRadius: 6.0
     BasicTrajectoryRate: 0.8

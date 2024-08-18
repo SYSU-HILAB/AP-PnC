@@ -31,7 +31,7 @@ std::function<void(const T1&)> bindHandler(void (T2::*func)(const T1&), T2* obj)
 }
 
 using StateMsg        = interface::msg::State;
-using ReferenceMsg    = interface::msg::RefTrajectoryBullet;
+using ReferenceBullet = interface::msg::RefTrajectoryBullet;
 using ControlMsg      = interface::msg::Controls;
 using TrajecotryPoint = interface::msg::TrajectoryPoint;
 using TrackingInfoMsg = interface::msg::TrackingInfo;
@@ -154,13 +154,13 @@ class AcadosInterface
 class NmpcCallbacks
 {
    public:
-    virtual void stateCallback(const StateMsg& msg)         = 0;
-    virtual void referenceCallback(const ReferenceMsg& msg) = 0;
-    virtual void initSubsPubs()                             = 0;
+    virtual void stateCallback(const StateMsg& msg)            = 0;
+    virtual void referenceCallback(const ReferenceBullet& msg) = 0;
+    virtual void initSubsPubs()                                = 0;
 
    public:
     rclcpp::Subscription<StateMsg>::SharedPtr         state_sub_;
-    rclcpp::Subscription<ReferenceMsg>::SharedPtr     ref_sub_;
+    rclcpp::Subscription<ReferenceBullet>::SharedPtr  ref_sub_;
     rclcpp::Publisher<ControlMsg>::SharedPtr          ctrl_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub_;
     rclcpp::Publisher<TrackingInfoMsg>::SharedPtr     tracking_info_pub_;
@@ -178,7 +178,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     // std::array<double, 16> y_ref_;
     void   initSubsPubs() override;
     void   stateCallback(const StateMsg& msg) override;
-    void   referenceCallback(const ReferenceMsg& msg) override;
+    void   referenceCallback(const ReferenceBullet& msg) override;
     double mass_;
     void   solve();
 
@@ -211,7 +211,7 @@ void NMPC::initSubsPubs()
         "/cur_state", reliabe_qos_keep_last,
         std::bind(&NMPC::stateCallback, this, std::placeholders::_1));
 
-    ref_sub_ = this->create_subscription<ReferenceMsg>(
+    ref_sub_ = this->create_subscription<ReferenceBullet>(
         "/ref_trajectory_bullet", reliabe_qos_keep_last,
         std::bind(&NMPC::referenceCallback, this, std::placeholders::_1));
     // Initialize publisher
@@ -284,11 +284,12 @@ void NMPC::solve()
                   ctrl_msg.motors_u[3]);
 }
 
-void NMPC::referenceCallback(const ReferenceMsg& msg)
+void NMPC::referenceCallback(const ReferenceBullet& msg)
 {
     // info entering the callback
     RCLCPP_INFO(this->get_logger(), "Entering referenceCallback");
-    auto& refs = const_cast<ReferenceMsg&>(msg);
+    auto& refs           = const_cast<ReferenceBullet&>(msg);
+    bool  tracking_valid = refs.tracking_valid;
 
     TrackingInfoMsg tracking_info_msg;
     tracking_info_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
@@ -314,7 +315,26 @@ void NMPC::referenceCallback(const ReferenceMsg& msg)
         static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX]),
         static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX + 1]),
         static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX + 2])};
-    tracking_info_pub_->publish(tracking_info_msg);
+    tracking_info_msg.actual_vxy = tracking_info_msg.actual_velocity[0] *
+                                       tracking_info_msg.actual_velocity[0] +
+                                   tracking_info_msg.actual_velocity[1] *
+                                       tracking_info_msg.actual_velocity[1];
+    tracking_info_msg.ref_vxy =
+        tracking_info_msg.ref_velocity[0] * tracking_info_msg.ref_velocity[0] +
+        tracking_info_msg.ref_velocity[1] * tracking_info_msg.ref_velocity[1];
+    tracking_info_msg.ref_yb = {
+        static_cast<float>(
+            msg.points[0].point[TrajecotryPoint::YB_START_INDEX]),
+        static_cast<float>(
+            msg.points[0].point[TrajecotryPoint::YB_START_INDEX + 1]),
+        static_cast<float>(
+            msg.points[0].point[TrajecotryPoint::YB_START_INDEX + 2])};
+    Eigen::Quaterniond q_cur(x_cur_[3], x_cur_[4], x_cur_[5], x_cur_[6]);
+
+    if (tracking_valid)
+        tracking_info_pub_->publish(tracking_info_msg);
+
+    // Debug
     int size = refs.points.size();
     RCLCPP_INFO(this->get_logger(), "size %d, N %d", size, acados.N);
 

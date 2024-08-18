@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <geometry_msgs/msg/point.hpp>
@@ -19,7 +20,7 @@
 // #include "geometry_msgs/msg/vis
 // writing data to csv
 #include <ostream>
-
+using std::chrono_literals::operator""s;
 using RefTrajectory   = interface::msg::RefTrajectory;
 using TrajectoryPoint = interface::msg::TrajectoryPoint;
 
@@ -205,6 +206,8 @@ class GlobalPlanner : public rclcpp::Node
                                                         reliable_qos);
 
         init_basic_trajectory_type(config.basic_trajectory_type);
+        timer =
+            this->create_wall_timer(2s, std::bind(&GlobalPlanner::plan, this));
 
         RCLCPP_INFO(this->get_logger(), "Planning");
     }
