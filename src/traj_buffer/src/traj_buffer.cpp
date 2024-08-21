@@ -5,9 +5,8 @@
 #include <cstddef>
 #include <interface/msg/detail/trajectory_point__struct.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <traj_buffer/aerodyn.hpp>
 #include <traj_buffer/traj_buffer.hpp>
-
-#include "calculate_cz.cpp"
 
 TrajectoryBuffer::TrajectoryBuffer() : Node("trajectory_buffer")
 {
@@ -69,7 +68,8 @@ void TrajectoryBuffer::stateCallback(const interface::msg::State::SharedPtr msg)
     auto q = Eigen::Quaterniond(state[9], state[10], state[11], state[12]);
     Eigen::Vector3d vb = q.toRotationMatrix().transpose() * v;
 
-    cz_predict_ = get_cz_from_vb(vb);
+    cz_predict_ =
+        aerodyn::getAeroCz(vb, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
 };
 
 void TrajectoryBuffer::refTrajectoryBulletPublish(

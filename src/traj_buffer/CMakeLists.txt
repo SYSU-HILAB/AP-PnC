@@ -7,43 +7,35 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-add_subdirectory(external)
 
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED)
+add_subdirectory(external)
 
 ament_auto_find_build_dependencies()
 
-# ament_auto_add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cpp)
-# target_link_libraries(
-#   Eigen3::Eigen
-# )
+ament_auto_add_library(aerodyn src/aerodyn.cpp)
+target_link_libraries(aerodyn
+  Eigen3::Eigen
+  main_library
+)
 
-ament_auto_add_executable(vis_controls src/vis_controls.cpp)
-target_link_libraries(
-  Eigen3::Eigen
-)
-ament_auto_add_library(calculate_cz src/calculate_cz.cpp)
-target_link_libraries(
-  Eigen3::Eigen
-)
 
 ament_auto_add_executable(traj_buffer src/traj_buffer.cpp)
-target_link_libraries(
-  traj_buffer
+target_link_libraries(traj_buffer
   Eigen3::Eigen
   fmt::fmt
+  aerodyn
 )
 
-ament_auto_add_executable(aero_poly src/aero_poly.cpp)
+ament_auto_add_executable(aero_test src/aero_test.cpp)
 
-target_link_libraries(
-  aero_poly
+target_link_libraries(aero_test
   # main_libray is bspline library
   main_library
-  )
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
