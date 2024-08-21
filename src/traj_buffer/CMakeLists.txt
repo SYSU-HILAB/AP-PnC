@@ -7,6 +7,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+add_subdirectory(external)
+
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -35,12 +37,13 @@ target_link_libraries(
   fmt::fmt
 )
 
-ament_auto_add_executable(life_cycle src/life_cycle.cpp)
+ament_auto_add_executable(aero_poly src/aero_poly.cpp)
+
 target_link_libraries(
-  life_cycle
-  Eigen3::Eigen
-  fmt::fmt
-)
+  aero_poly
+  # main_libray is bspline library
+  main_library
+  )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

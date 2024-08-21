@@ -2,3 +2,6 @@
 	path = src/px4_msgs/msg
 	url = git@github.com:SYSU-HILAB/VTOL-px4-msgs.git
 	branch = offboard
+[submodule "src/traj_buffer/external"]
+	path = src/traj_buffer/external
+	url = git@github.com:WarriorHanamy/BSplinebasis.git
