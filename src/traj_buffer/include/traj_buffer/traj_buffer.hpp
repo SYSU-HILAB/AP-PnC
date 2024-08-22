@@ -75,6 +75,7 @@ class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
     double                  traj_control_time_   = kControlTime;
     uint                    down_sampling_factor = kDownSamplingFactor;
     bool                    circled_             = false;
+    bool                    real_world_          = false;
     std::vector<double>     sim_coefs_;
     std::vector<double>     exp_coefs_;
     aerodyn::BsplineAeroDyn aero_dyn_;

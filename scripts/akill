@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Find PIDs
+PID1=$(pgrep -f pxinterface)
+PID2=$(pgrep -f mpc)
+PID3=$(pgrep -f syncRunPlanning)
+
+# Terminate processes gracefully
+kill $PID1
+kill $PID2
+kill $PID3

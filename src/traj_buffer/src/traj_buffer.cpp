@@ -60,12 +60,22 @@ void TrajectoryBuffer::stateCallback(const interface::msg::State::SharedPtr msg)
     auto q = Eigen::Quaterniond(state[9], state[10], state[11], state[12]);
     Eigen::Vector3d vb = q.toRotationMatrix().transpose() * v;
 
-    cz_predict_ =
-        aero_dyn_.getAeroCzVb(vb, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
+    if (real_world_)
+    {
+        cz_predict_ = aero_dyn_.getAeroCzVb(
+            vb, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
+    }
+    else
+    {
+        cz_predict_ = aero_dyn_.getAeroCzVb(
+            vb, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
+    }
     static bool first = true;
     if (first)
     {
-        RCLCPP_INFO(this->get_logger(), "cz_predict_ %f", cz_predict_);
+        if (real_world_)
+            RCLCPP_WARN(this->get_logger(), "Caution: Real World Mode");
+        RCLCPP_WARN(this->get_logger(), "cz_predict_ %f", cz_predict_);
         first = false;
     }
 };
@@ -187,6 +197,7 @@ void TrajectoryBuffer::declareParameters()
     this->declare_parameter<double>("traj_control_time", traj_control_time_);
     this->declare_parameter<int>("down_sampling_factor", down_sampling_factor);
     this->declare_parameter<bool>("circled", circled_);
+    this->declare_parameter<bool>("real_world", real_world_);
     this->declare_parameter<std::vector<double>>(
         "exp_coefs",
         {0.08869374325729838, 0.11713376801189856, 0.12567841873810845,
@@ -206,6 +217,7 @@ void TrajectoryBuffer::updateParameters()
     this->get_parameter("traj_control_time", traj_control_time_);
     this->get_parameter("down_sampling_factor", down_sampling_factor);
     this->get_parameter("circled", circled_);
+    this->get_parameter("real_world", real_world_);
     this->get_parameter("exp_coefs", exp_coefs_);
     this->get_parameter("sim_coefs", sim_coefs_);
     assert(std::abs(down_sampling_factor * traj_sampling_time_ -

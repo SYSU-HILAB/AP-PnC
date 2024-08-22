@@ -1,3 +1,0 @@
-#!/bin/bash
-
-ros2 topic echo /mpc_pred_traj --once >> traj.txt

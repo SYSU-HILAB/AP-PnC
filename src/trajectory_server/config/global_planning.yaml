@@ -16,9 +16,9 @@
     BoxFrontLength: 0.3
     BoxBackLength: 0.3
     # type1 : lemniscate have a bug. yb change fast
-    BasicTrajectoryType: 2
+    BasicTrajectoryType: 3
 
-    BasicTrajectoryRadius: 8.0
+    BasicTrajectoryRadius: 3.5
     BasicTrajectoryRate: 0.8
     BasicTrajectoryHeight: 1.5
     BasicTrajectoryWaveLen: 60.0

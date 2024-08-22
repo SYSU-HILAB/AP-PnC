@@ -1,8 +1,8 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    echo "No topic name provided. Using default '/trigger'."
-    topic_name="/trigger"
+    echo "No topic name provided. Using default '/mode'."
+    topic_name="/mode"
 else
     topic_name=$1
 fi

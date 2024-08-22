@@ -287,15 +287,11 @@ void NMPC::solve()
     t_end_ = std::chrono::high_resolution_clock::now();
     time_statistic.emplace_back(
         std::chrono::duration<double, std::milli>(t_end_ - t_start_).count());
-    spdlog::debug("control msg {} {} {} {}", ctrl_msg.motors_u[0],
-                  ctrl_msg.motors_u[1], ctrl_msg.motors_u[2],
-                  ctrl_msg.motors_u[3]);
 }
 
 void NMPC::referenceCallback(const ReferenceBullet& msg)
 {
     // info entering the callback
-    RCLCPP_INFO(this->get_logger(), "Entering referenceCallback");
     auto& refs           = const_cast<ReferenceBullet&>(msg);
     bool  tracking_valid = refs.tracking_valid;
     cz_predict_          = refs.points[0].cz_prediction;
@@ -359,7 +355,6 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
 
     // Debug
     int size = refs.points.size();
-    RCLCPP_INFO(this->get_logger(), "size %d, N %d", size, acados.N);
 
     // TODO hahh
     assert(size >= acados.N + 1);
@@ -369,7 +364,6 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
         acados.setReference(refs.points[i].point.data(),
                             &refs.points[i].cz_prediction, i);
     }
-    spdlog::info("The parameter is {}", refs.points[0].cz_prediction);
     acados.setReference(refs.points[acados.N].point.data(), acados.N);
 
     solve();
