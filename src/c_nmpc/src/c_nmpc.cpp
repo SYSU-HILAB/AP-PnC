@@ -8,6 +8,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <fstream>
 #include <interface/msg/controls.hpp>
 #include <interface/msg/ref_trajectory_bullet.hpp>
 #include <interface/msg/state.hpp>
@@ -176,11 +177,14 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
    private:
     // std::array<double, 4> u_sol_;
     // std::array<double, 16> y_ref_;
-    void   initSubsPubs() override;
-    void   stateCallback(const StateMsg& msg) override;
-    void   referenceCallback(const ReferenceBullet& msg) override;
-    double mass_;
-    void   solve();
+    void          initSubsPubs() override;
+    void          stateCallback(const StateMsg& msg) override;
+    void          referenceCallback(const ReferenceBullet& msg) override;
+    double        mass_;
+    double        cz_predict_;
+    std::ofstream file;
+
+    void solve();
 
    public:
     NMPC();
@@ -192,9 +196,13 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     std::chrono::_V2::system_clock::time_point t_end_;
     AcadosInterface& acados = AcadosInterface::getInstance();
 
-    constexpr static int                           controls_size    = 4;
-    constexpr static int                           state_size       = 13;
-    constexpr static int                           rate_start_index = 6;
+    constexpr static int controls_size    = 4;
+    constexpr static int state_size       = 13;
+    constexpr static int pos_start_index  = 0;
+    constexpr static int vel_start_index  = 3;
+    constexpr static int rate_start_index = 6;
+    constexpr static int q_start_index    = 9;
+
     std::array<double, state_size + controls_size> x_cur_;
     std::array<double, controls_size>              u_;
     // u_sol is now du
@@ -290,7 +298,7 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     RCLCPP_INFO(this->get_logger(), "Entering referenceCallback");
     auto& refs           = const_cast<ReferenceBullet&>(msg);
     bool  tracking_valid = refs.tracking_valid;
-
+    cz_predict_          = refs.points[0].cz_prediction;
     TrackingInfoMsg tracking_info_msg;
     tracking_info_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     tracking_info_msg.ref_position = {
@@ -308,13 +316,13 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
         static_cast<float>(
             refs.points[0].point[TrajecotryPoint::VEL_START_INDEX + 2])};
     tracking_info_msg.actual_position = {
-        static_cast<float>(x_cur_[TrajecotryPoint::POS_START_INDEX]),
-        static_cast<float>(x_cur_[TrajecotryPoint::POS_START_INDEX + 1]),
-        static_cast<float>(x_cur_[TrajecotryPoint::POS_START_INDEX + 2])};
+        static_cast<float>(x_cur_[pos_start_index]),
+        static_cast<float>(x_cur_[pos_start_index + 1]),
+        static_cast<float>(x_cur_[pos_start_index + 2])};
     tracking_info_msg.actual_velocity = {
-        static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX]),
-        static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX + 1]),
-        static_cast<float>(x_cur_[TrajecotryPoint::VEL_START_INDEX + 2])};
+        static_cast<float>(x_cur_[vel_start_index]),
+        static_cast<float>(x_cur_[vel_start_index + 1]),
+        static_cast<float>(x_cur_[vel_start_index + 2])};
     tracking_info_msg.actual_vxy = tracking_info_msg.actual_velocity[0] *
                                        tracking_info_msg.actual_velocity[0] +
                                    tracking_info_msg.actual_velocity[1] *
@@ -329,8 +337,23 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
             msg.points[0].point[TrajecotryPoint::YB_START_INDEX + 1]),
         static_cast<float>(
             msg.points[0].point[TrajecotryPoint::YB_START_INDEX + 2])};
-    Eigen::Quaterniond q_cur(x_cur_[3], x_cur_[4], x_cur_[5], x_cur_[6]);
+    Eigen::Quaterniond q_cur(x_cur_[q_start_index], x_cur_[q_start_index + 1],
+                             x_cur_[q_start_index + 2],
+                             x_cur_[q_start_index + 3]);
+    q_cur.normalize();
+    auto yb_double              = q_cur.toRotationMatrix().col(1);
+    tracking_info_msg.actual_yb = {static_cast<float>(yb_double[0]),
+                                   static_cast<float>(yb_double[1]),
+                                   static_cast<float>(yb_double[2])};
 
+    Eigen::Vector3d vb =
+        q_cur.conjugate().toRotationMatrix() *
+        Eigen::Vector3d(x_cur_[vel_start_index], x_cur_[vel_start_index + 1],
+                        x_cur_[vel_start_index + 2]);
+
+    tracking_info_msg.alpha = static_cast<float>(atan2(vb(0), vb(2)));
+    tracking_info_msg.cz    = static_cast<float>(cz_predict_);
+    // tracking_info_msg.cz =
     if (tracking_valid)
         tracking_info_pub_->publish(tracking_info_msg);
 
@@ -368,7 +391,7 @@ void NMPC::stateCallback(const StateMsg& msg)
     ready_pub_->publish(ready_msg);
 }
 
-NMPC::NMPC() : Node("NMPC")
+NMPC::NMPC() : Node("NMPC"), file("time_record.csv")
 {
     // Initialize the reference
     this->declare_parameter("mass", 1.0);
@@ -388,11 +411,18 @@ NMPC::~NMPC()
     {
         time_record[i] = time_statistic[i];
     }
-    spdlog::info("Time Statistics of State to Control");
-    spdlog::info("Num of timepoints {} ", time_record.size());
-    spdlog::info("Average time {} ms", time_record.mean());
-    spdlog::info("Max time {} ms", time_record.maxCoeff());
-    spdlog::info("Min time {} ms", time_record.minCoeff());
+    // save the time record to a csv file
+    Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, "",
+                              "\n");
+    if (file.is_open())
+    {
+        file << time_record.format(CSVFormat);
+        file.close();
+    }
+    else
+    {
+        RCLCPP_ERROR(this->get_logger(), "Unable to open file");
+    }
 }
 
 int main(int argc, char** argv)

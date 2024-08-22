@@ -62,7 +62,12 @@ void TrajectoryBuffer::stateCallback(const interface::msg::State::SharedPtr msg)
 
     cz_predict_ =
         aero_dyn_.getAeroCzVb(vb, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
-    RCLCPP_INFO(this->get_logger(), "cz_predict_ %f", cz_predict_);
+    static bool first = true;
+    if (first)
+    {
+        RCLCPP_INFO(this->get_logger(), "cz_predict_ %f", cz_predict_);
+        first = false;
+    }
 };
 
 void TrajectoryBuffer::refTrajectoryBulletPublish(
