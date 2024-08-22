@@ -57,19 +57,12 @@ void TrajectoryBuffer::stateCallback(const interface::msg::State::SharedPtr msg)
     auto state = msg->mpc_state;  // p,v,r,q
     // get v and q to eigen
     auto v = Eigen::Vector3d(state[3], state[4], state[5]);
-
-    double v_norm = v.norm();
-
-    if (v_norm < 0.5)
-    {
-        cz_predict_ = 0.24;
-        return;
-    }
     auto q = Eigen::Quaterniond(state[9], state[10], state[11], state[12]);
     Eigen::Vector3d vb = q.toRotationMatrix().transpose() * v;
 
     cz_predict_ =
-        aerodyn::getAeroCz(vb, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
+        aero_dyn_.getAeroCzVb(vb, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
+    RCLCPP_INFO(this->get_logger(), "cz_predict_ %f", cz_predict_);
 };
 
 void TrajectoryBuffer::refTrajectoryBulletPublish(
@@ -175,24 +168,10 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
         }
 
         init_traj_set_ = true;
-        RCLCPP_INFO(this->get_logger(), "trajectory_ size %zu",
-                    trajectory_.points.size());
     }
-    // print trajectory. point is an array {p[0], p[1], p[2], v[0], v[1],
-    // v[2], r[0], r[1], r[2]}
 
-    for (size_t i = 0; i < trajectory_.points.size(); i++)
-    {
-        RCLCPP_INFO(
-            this->get_logger(), "point %zu: %f %f %f %f %f %f %f %f %f", i,
-            trajectory_.points[i].point[0], trajectory_.points[i].point[1],
-            trajectory_.points[i].point[2], trajectory_.points[i].point[3],
-            trajectory_.points[i].point[4], trajectory_.points[i].point[5],
-            trajectory_.points[i].point[6], trajectory_.points[i].point[7],
-            trajectory_.points[i].point[8]);
-    }
-    // Trajectory is received, waiitng for ref_can_set to be true .
-    // Warning Print that message.
+    RCLCPP_WARN(this->get_logger(), "Trajectory points size %zu",
+                trajectory_.points.size());
     RCLCPP_WARN(this->get_logger(),
                 "Trajectory is received, waiitng for /ref_can_set to be true");
 };
@@ -203,6 +182,17 @@ void TrajectoryBuffer::declareParameters()
     this->declare_parameter<double>("traj_control_time", traj_control_time_);
     this->declare_parameter<int>("down_sampling_factor", down_sampling_factor);
     this->declare_parameter<bool>("circled", circled_);
+    this->declare_parameter<std::vector<double>>(
+        "exp_coefs",
+        {0.08869374325729838, 0.11713376801189856, 0.12567841873810845,
+         0.15005373297969835, 0.1324185630496418, 0.24883612641861838,
+         0.20757431730331458, 0.5001433323539398, 0.3877382239367887,
+         0.08974898500006634, 0.14520286916801822, 0.08072293755821285});
+    this->declare_parameter<std::vector<double>>(
+        "sim_coefs",
+        {-0.0008318947521944341, 0.19855584986410266, 0.16605095441849582,
+         0.22746737306109233, 0.22377476306115018, 0.16675851490605675,
+         0.17886373334939626, 0.07910326162993098});
 };
 
 void TrajectoryBuffer::updateParameters()
@@ -211,8 +201,24 @@ void TrajectoryBuffer::updateParameters()
     this->get_parameter("traj_control_time", traj_control_time_);
     this->get_parameter("down_sampling_factor", down_sampling_factor);
     this->get_parameter("circled", circled_);
+    this->get_parameter("exp_coefs", exp_coefs_);
+    this->get_parameter("sim_coefs", sim_coefs_);
     assert(std::abs(down_sampling_factor * traj_sampling_time_ -
                     traj_control_time_) < 1e-9);
+    aero_dyn_.setCoefs(exp_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
+    aero_dyn_.setCoefs(sim_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
+    // print circled, exp_coefs, sim_coefs
+    RCLCPP_INFO(this->get_logger(), "circled: %d", circled_);
+    RCLCPP_INFO(this->get_logger(), "exp_coefs: ");
+    for (auto coef : exp_coefs_)
+    {
+        RCLCPP_INFO(this->get_logger(), "%f", coef);
+    }
+    RCLCPP_INFO(this->get_logger(), "sim_coefs: ");
+    for (auto coef : sim_coefs_)
+    {
+        RCLCPP_INFO(this->get_logger(), "%f", coef);
+    }
 }
 
 void TrajectoryBuffer::modeTriggerCallback(std_msgs::msg::Bool::SharedPtr msg)

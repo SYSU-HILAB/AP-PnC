@@ -5,4 +5,4 @@ if [ -n "$PIDS" ]; then
 fi
 
 ros2 launch tailsitter_simulator sim_interface.launch.py &
-ros2 run c_nmpc c_nmpc_node --ros-args -p mass:=1.152
+ros2 run c_nmpc c_nmpc_node --ros-args -p mass:=1.0

@@ -7,9 +7,9 @@
 #include <interface/msg/trajectory_point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <traj_buffer/aerodyn.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
-
 using TrajecotryPoint  = interface::msg::TrajectoryPoint;
 using TrajecotryBullet = interface::msg::RefTrajectoryBullet;
 using Trajectory       = interface::msg::RefTrajectory;
@@ -20,7 +20,7 @@ constexpr int    kDownSamplingFactor = 5;
 constexpr double kControlTime        = 0.1;
 constexpr int    kRefPointDims       = TrajecotryPoint::POINT_DIM;
 constexpr int    kYbStartIndex       = TrajecotryPoint::YB_START_INDEX;
-constexpr double kThrustPerRotor     = 9.8 * 1.152 / 4;
+constexpr double kThrustPerRotor     = 9.8 * 1.0 / 4;
 class TrajectoryBufferCallbacks
 {
    public:
@@ -67,14 +67,17 @@ class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
     bool   tracking_valid_ = false;
     double cz_predict_     = 0.0;
     // bool
-    Trajectory       trajectory_;
-    TrajecotryBullet msg_planning_traj_;
-    TrajecotryBullet msg_fixed_point_;
-    Eigen::Vector3d  yb_eigen_            = Eigen::Vector3d(1.0, 0.0, 0.0);
-    double           traj_sampling_time_  = 0.02;
-    double           traj_control_time_   = kControlTime;
-    uint             down_sampling_factor = kDownSamplingFactor;
-    bool             circled_             = false;
+    Trajectory              trajectory_;
+    TrajecotryBullet        msg_planning_traj_;
+    TrajecotryBullet        msg_fixed_point_;
+    Eigen::Vector3d         yb_eigen_ = Eigen::Vector3d(1.0, 0.0, 0.0);
+    double                  traj_sampling_time_  = 0.02;
+    double                  traj_control_time_   = kControlTime;
+    uint                    down_sampling_factor = kDownSamplingFactor;
+    bool                    circled_             = false;
+    std::vector<double>     sim_coefs_;
+    std::vector<double>     exp_coefs_;
+    aerodyn::BsplineAeroDyn aero_dyn_;
 
    private:
     void initSubsPubs() override;

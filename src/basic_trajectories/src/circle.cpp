@@ -23,8 +23,8 @@ namespace basic_trajectories
         Vec3E pos = Vec3E::Zero();
         // Only change first two, i.e., x and y;
         double phaseshift = M_PI;
-        pos[0]            = radius * cos(angular_speed * t + phaseshift);
-        pos[1]            = radius * sin(angular_speed * t + phaseshift);
+        pos[0]            = radius * cos(-angular_speed * t + phaseshift);
+        pos[1]            = radius * sin(-angular_speed * t + phaseshift);
         pos[2]            = height;
         return pos;
     }
@@ -34,12 +34,12 @@ namespace basic_trajectories
         Vec3E vel = Vec3E::Zero();
         // Only change first two, i.e., x and y;
         double phaseshift = M_PI;
-        vel[0] = -radius * angular_speed * sin(angular_speed * t + phaseshift);
-        vel[1] = radius * angular_speed *
-                 (cos(angular_speed * t + phaseshift) *
-                      cos(angular_speed * t + phaseshift) -
-                  sin(angular_speed * t + phaseshift) *
-                      sin(angular_speed * t + phaseshift));
+        vel[0] = radius * angular_speed * sin(-angular_speed * t + phaseshift);
+        vel[1] = -radius * angular_speed *
+                 (cos(-angular_speed * t + phaseshift) *
+                      cos(-angular_speed * t + phaseshift) -
+                  sin(-angular_speed * t + phaseshift) *
+                      sin(-angular_speed * t + phaseshift));
         return vel;
     }
 

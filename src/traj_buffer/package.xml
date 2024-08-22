@@ -12,7 +12,6 @@
   <depend>Eigen3</depend>
   <depend>std_msgs</depend>
   <depend>rclcpp</depend>
-  <depend>rclcpp_lifecycle</depend>
   <depend>interface</depend>
   <depend>ament_index_cpp</depend>
   <depend>visualization_msgs</depend>

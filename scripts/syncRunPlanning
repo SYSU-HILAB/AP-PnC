@@ -9,7 +9,7 @@ import subprocess
 def launch_px4_interface(height, quat):
     try:
         process = subprocess.Popen(
-            ['ros2', 'launch', 'px4_interface', 'planning.launch.py', f'tgt_pos:=[0.0,0.0,{height}]',  f'tgt_quat:=[{quat[0]},{quat[1]},{quat[2]},{quat[3]}]'],
+            ['ros2', 'launch', 'px4_interface', 'planning.launch.py'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

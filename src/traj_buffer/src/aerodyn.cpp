@@ -1,23 +1,42 @@
+#include <iostream>
+#include <rcpputils/asserts.hpp>
 #include <traj_buffer/aerodyn.hpp>
 namespace aerodyn
 {
     BsplineAeroDyn::BsplineAeroDyn()
     {
-        const std::vector<double> knots{
+        const std::vector<double> exp_knots{
             0.5235987755982989, 0.5235987755982989, 0.5235987755982989,
             0.5235987755982989, 0.7853981633974483, 0.8726646259971648,
             0.9599310885968813, 1.0471975511965976, 1.1344640137963142,
             1.3089969389957472, 1.8325957145940461, 2.2689280275926285,
             2.617993877991494,  2.617993877991494,  2.617993877991494,
             2.617993877991494};
-        exp_splines_ = bspline::generateBSplines<SPLINE_DEGREE>(knots);
+        exp_splines_ = bspline::generateBSplines<SPLINE_DEGREE>(exp_knots);
         exp_coefs_.resize(exp_splines_.size(), 0.0);
+
+        const std::vector<double> sim_knots{0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.6108652381980153,
+                                            0.9599310885968813,
+                                            2.356194490192345,
+                                            2.6179938779914944,
+                                            3.141592653589793,
+                                            3.141592653589793,
+                                            3.141592653589793,
+                                            3.141592653589793};
+        sim_splines_ = bspline::generateBSplines<SPLINE_DEGREE>(sim_knots);
+        sim_coefs_.resize(sim_splines_.size(), 0.0);
     }
 
     bool BsplineAeroDyn::setCoefs(std::vector<double> coefs, AeroDynType type)
     {
         if (type == AeroDynType::Exp)
         {
+            std::cerr << "Sim aero mode" << std::endl;
+            assert(coefs.size() == exp_coefs_.size());
             if (coefs.size() != exp_coefs_.size())
             {
                 return false;
@@ -27,8 +46,10 @@ namespace aerodyn
                 exp_coefs_[i] = coefs[i];
             }
         }
-        else if (type == AeroDynType::Sim)
+        else
         {
+            std::cerr << "Exp aero mode" << std::endl;
+            assert(coefs.size() == sim_coefs_.size());
             if (coefs.size() != sim_coefs_.size())
             {
                 return false;
@@ -52,7 +73,7 @@ namespace aerodyn
                 val += exp_splines_[i](alpha) * exp_coefs_[i];
             }
         }
-        else if (type == AeroDynType::Sim)
+        else
         {
             for (size_t i = 0; i < sim_splines_.size(); i++)
             {
@@ -62,13 +83,14 @@ namespace aerodyn
         return val;
     }
 
-    double getAeroCz(const Eigen::Vector3d      &vb,
-                     BsplineAeroDyn::AeroDynType type)
+    double BsplineAeroDyn::getAeroCzVb(const Eigen::Vector3d      &vb,
+                                       BsplineAeroDyn::AeroDynType type)
     {
         if (vb.norm() < 0.5)
         {
-            return aero_dyn.getAerodynCz(M_PI_2, type);
+            return getAerodynCz(M_PI_2, type);
         }
+        // quadrotor body frame x forward, z downward
         double alpha = std::atan2(vb(0), vb(2));
         // if alpha in range[pi/6 ~ 5pi/6] use the model, otherwise return 0.0
         // and raise error
@@ -76,9 +98,8 @@ namespace aerodyn
         constexpr double pi_5_6 = 5 * M_PI / 6;
         if (alpha < pi_6 || alpha > pi_5_6)
         {
-            
-            return 0.0;
+            return 0.1;
         }
-        return aero_dyn.getAerodynCz(alpha, type);
+        return getAerodynCz(alpha, type);
     }
 }  // namespace aerodyn

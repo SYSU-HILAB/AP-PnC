@@ -50,15 +50,15 @@ namespace aerodyn
          * @return Cz
          */
         double getAerodynCz(double alpha, AeroDynType type);
-    };
 
-    static BsplineAeroDyn aero_dyn;
+        double getAeroCzVb(const Eigen::Vector3d      &vb,
+                           BsplineAeroDyn::AeroDynType type);
+    };
 
     /*
      * @brief Get the aerodynamic coefficient Cz
      * @param vb Body velocity
      * @return Cz
      */
-    double getAeroCz(const Eigen::Vector3d      &vb,
-                     BsplineAeroDyn::AeroDynType type);
+
 }  // namespace aerodyn

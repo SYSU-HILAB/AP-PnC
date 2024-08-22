@@ -371,7 +371,7 @@ void NMPC::stateCallback(const StateMsg& msg)
 NMPC::NMPC() : Node("NMPC")
 {
     // Initialize the reference
-    this->declare_parameter("mass", 1.152);
+    this->declare_parameter("mass", 1.0);
     this->get_parameter("mass", mass_);
     RCLCPP_INFO(this->get_logger(), "mass: %f", mass_);
     initSubsPubs();
