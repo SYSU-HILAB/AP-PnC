@@ -171,6 +171,34 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
                 }
                 msg_planning_traj_.points[k].cz_prediction = cz_predict_;
             }
+
+            auto v1 = Eigen::Vector3d(
+                msg_planning_traj_.points[0]
+                    .point[interface::msg::TrajectoryPoint::VEL_START_INDEX],
+                msg_planning_traj_.points[0]
+                    .point[interface::msg::TrajectoryPoint::VEL_START_INDEX +
+                           1],
+                msg_planning_traj_.points[0]
+                    .point[interface::msg::TrajectoryPoint::VEL_START_INDEX +
+                           2]);
+            auto v2 = Eigen::Vector3d(
+                msg_planning_traj_.points[1]
+                    .point[interface::msg::TrajectoryPoint::VEL_START_INDEX],
+                msg_planning_traj_.points[1]
+                    .point[interface::msg::TrajectoryPoint::VEL_START_INDEX +
+                           1],
+                msg_planning_traj_.points[1]
+                    .point[interface::msg::TrajectoryPoint::VEL_START_INDEX +
+                           2]);
+
+            if (v1.norm() > v2.norm())
+            {
+                for (auto point : msg_planning_traj_.points)
+                {
+                    point.cz_prediction *= 1.2;
+                }
+            }
+
             index_ += 1;
             traj_bullet_pub_->publish(msg_planning_traj_);
         }

@@ -34,7 +34,7 @@ class MpcConfig:
 
     qVel = np.array([qvelh, qvelh, qvelv]) * 1 * 0.9
 
-    wx=0.4
+    wx=0.2
     wy=0.5
     wz=0.1
     qAngV = np.array([wx, wy, wz]) * 1 

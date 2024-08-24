@@ -1,15 +1,6 @@
 #!/bin/bash
 
-kr
-PIDS=$(pgrep -f "gz sim")
-if [ -n "$PIDS" ]; then
-  echo $PIDS | xargs kill
-fi
 
-PIDS=$(pgrep -f "micro-xrce-dds")
-if [ -n "$PIDS" ]; then
-  echo $PIDS | xargs kill
-fi
 
 if [ -z "$1" ]; then
     echo "No GUI Required, HEADLESS=1."
