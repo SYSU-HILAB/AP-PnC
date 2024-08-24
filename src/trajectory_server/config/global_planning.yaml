@@ -18,12 +18,12 @@
     # type1 : lemniscate have a bug. yb change fast
     BasicTrajectoryType: 1
 
-    BasicTrajectoryRadius: 5.0
+    BasicTrajectoryRadius: 6.0
     BasicTrajectoryRate: 0.8
     BasicTrajectoryHeight: 1.5
     BasicTrajectoryWaveLen: 50.0
     # range from [0, 3.0] is preferred
-    BasicTrajectoryCurvatureFactor: 0.5
+    BasicTrajectoryCurvatureFactor: 1.0
 
     v_max: 3.0
     omg_x_max: 0.8

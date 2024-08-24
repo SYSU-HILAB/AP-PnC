@@ -18,7 +18,7 @@ namespace tailsitter_df
     constexpr int                 size_Models = 3;
     constexpr double              error_alpha = 100;
     const realV3                  g = (realV3() << 0, 0, -9.8).finished();
-    constexpr real                vThreshold     = 0.2;
+    constexpr real                vThreshold     = 0.01;
     constexpr real                gammaThreshold = 5 * M_PI / 180;
 
     class Model
