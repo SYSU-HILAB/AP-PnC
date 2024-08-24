@@ -15,9 +15,9 @@ void push_to_vis(visualization_msgs::msg::MarkerArray& vis, Trajectory& traj)
     marker.header.frame_id = "world";
     marker.action          = visualization_msgs::msg::Marker::ADD;
     marker.type            = visualization_msgs::msg::Marker::ARROW;
-    marker.scale.x         = 1.0;
-    marker.scale.y         = 0.1;
-    marker.scale.z         = 0.1;
+    marker.scale.x         = 0.1;
+    marker.scale.y         = 0.01;
+    marker.scale.z         = 0.01;
     marker.color.a         = 0.2;
     marker.color.r         = 0.0;
     marker.color.g         = 0.0;
