@@ -40,7 +40,7 @@ class TrajectoryBufferCallbacks
 
     rclcpp::Publisher<TrajecotryBullet>::SharedPtr traj_bullet_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
-                      ref_bullet_vis;
+                      ref_vis_pub_;
     const rclcpp::QoS reliabe_qos_keep_last =
         rclcpp::QoS(10)
             .reliable()

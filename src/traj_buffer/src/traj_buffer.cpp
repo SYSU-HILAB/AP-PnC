@@ -7,6 +7,49 @@
 #include <rclcpp/rclcpp.hpp>
 #include <traj_buffer/aerodyn.hpp>
 #include <traj_buffer/traj_buffer.hpp>
+#include <visualization_msgs/msg/detail/marker_array__struct.hpp>
+
+void push_to_vis(visualization_msgs::msg::MarkerArray& vis, Trajectory& traj)
+{
+    auto marker            = visualization_msgs::msg::Marker();
+    marker.header.frame_id = "world";
+    marker.action          = visualization_msgs::msg::Marker::ADD;
+    marker.type            = visualization_msgs::msg::Marker::ARROW;
+    marker.scale.x         = 1.0;
+    marker.scale.y         = 0.1;
+    marker.scale.z         = 0.1;
+    marker.color.a         = 0.2;
+    marker.color.r         = 0.0;
+    marker.color.g         = 0.0;
+    marker.color.b         = 1.0;
+    int index              = 0;
+    for (auto point : traj.points)
+    {
+        marker.pose.position.x = point.point[TrajecotryPoint::POS_START_INDEX];
+        marker.pose.position.y =
+            point.point[TrajecotryPoint::POS_START_INDEX + 1];
+        marker.pose.position.z =
+            point.point[TrajecotryPoint::POS_START_INDEX + 2];
+        vis.markers.push_back(marker);
+        marker.id = index++;
+        marker.ns = "ref_vis";
+        auto yb   = Eigen::Vector3d();
+        yb(0)     = point.point[TrajecotryPoint::YB_START_INDEX];
+        yb(1)     = point.point[TrajecotryPoint::YB_START_INDEX + 1];
+        yb(2)     = point.point[TrajecotryPoint::YB_START_INDEX + 2];
+
+        auto rot_axis  = Eigen::Vector3d::UnitX().cross(yb);
+        auto rot_angle = std::acos(Eigen::Vector3d::UnitX().dot(yb));
+        // from rot axis and angle to construct quaternion
+        Eigen::Quaterniond q;
+        q = Eigen::AngleAxisd(rot_angle, rot_axis.normalized());
+        marker.pose.orientation.x = q.x();
+        marker.pose.orientation.y = q.y();
+        marker.pose.orientation.z = q.z();
+        marker.pose.orientation.w = q.w();
+        vis.markers.push_back(marker);
+    }
+}
 
 TrajectoryBuffer::TrajectoryBuffer() : Node("trajectory_buffer")
 {
@@ -185,6 +228,10 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
         init_traj_set_ = true;
     }
 
+    static auto vis_msg = visualization_msgs::msg::MarkerArray();
+    push_to_vis(vis_msg, trajectory_);
+    ref_vis_pub_->publish(vis_msg);
+
     RCLCPP_WARN(this->get_logger(), "Trajectory points size %zu",
                 trajectory_.points.size());
     RCLCPP_WARN(this->get_logger(),
@@ -276,9 +323,8 @@ void TrajectoryBuffer::initSubsPubs()
         std::bind(&TrajectoryBuffer::stateCallback, this,
                   std::placeholders::_1));
 
-    ref_bullet_vis =
-        this->create_publisher<visualization_msgs::msg::MarkerArray>(
-            "ref_bullet_vis", reliabe_qos_keep_last);
+    ref_vis_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
+        "ref_vis", reliabe_qos_keep_last);
 
     traj_bullet_pub_ = this->create_publisher<TrajecotryBullet>(
         "ref_trajectory_bullet", reliabe_qos_keep_last);

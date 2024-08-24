@@ -30,9 +30,9 @@ target_link_libraries(traj_buffer
   aerodyn
 )
 
-ament_auto_add_executable(aero_test src/aero_test.cpp)
+ament_auto_add_executable(aero_try src/aero_try.cpp)
 
-target_link_libraries(aero_test
+target_link_libraries(aero_try
   # main_libray is bspline library
   main_library
 )
