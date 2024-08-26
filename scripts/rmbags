@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# check environment variable TAILSITTER_PLANNING_DIR if exist
+if [ -z "$TAILSITTER_PLANNING_DIR" ]; then
+  echo "Please set the environment variable TAILSITTER_PLANNING_DIR"
+  exit 1
+fi
+
+# Remove all *.ulg files
+for file in $(find . -type f -name "*.ulg"); do
+    rm -f "$file"
+done
+
+for dir in $(find . -type d -name "rosbag*"); do
+    rm -rf "$dir"
+done
+
+echo "Cleanup completed: removed *.ulg files and rosbag* directories."

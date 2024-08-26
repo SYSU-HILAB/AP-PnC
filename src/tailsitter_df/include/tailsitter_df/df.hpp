@@ -4,9 +4,6 @@
 #include <Eigen/Geometry>
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
-#include <fstream>
-#include <iostream>
-// #include "timer.cpp"
 
 namespace tailsitter_df
 {
@@ -109,10 +106,22 @@ namespace tailsitter_df
             return instance;
         }
 
-        void reset(Model &model)
+        void reset(Model &model, bool circled = true)
         {
-            yb_prev  = (realV3() << 1, 0, 0).finished();
-            zb_fixed = (realV3() << 0, 1, 0).finished();
+            auto xb_init_always = (realV3() << 0, 0, 1).finished();
+            if (circled)
+            {
+                yb_prev  = (realV3() << 1, 0, 0).finished();
+                zb_fixed = (realV3() << 0, 1, 0).finished();
+            }
+            else
+            {
+                yb_prev  = (realV3() << 0, -1, 0).finished();
+                zb_fixed = (realV3() << 1, 0, 0).finished();
+            }
+            // another way to calculate zb
+            zb_fixed = xb_init_always.cross(yb_prev);
+            zb_fixed.normalize();
             yb_prev.normalize();
             zb_fixed.normalize();
             model.alpha_rad_ = 0 * M_PI / 180;
