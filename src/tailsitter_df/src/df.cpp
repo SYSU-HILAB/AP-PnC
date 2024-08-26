@@ -4,8 +4,9 @@
 #include <Eigen/Geometry>
 #include <cassert>
 #include <tailsitter_df/df.hpp>
-#include <utils/utils_files.hpp>
-
+#include <toml++/toml.hpp>
+// #include <
+// #include
 // use abort to signal coredump
 #include <cstdlib>
 
@@ -42,8 +43,11 @@ namespace tailsitter_df
         // tailsitter_df::zb_fixed.normalize();
         type_ = Model::Type::LowAlpha;
         // Update staitc parameter;
-        YAML::Node config =
-            YAML::LoadFile(utils::files::get_config_file_path("tailsitter_df"));
+
+        // TODO: to toml
+        YAML::Node config = YAML::LoadFile(
+            "/home/zhenglong/Projects/df_ws/src/tailsitter_df/"
+            "config/tailsitter.yaml");
         getPhi() << config["phi1"][0].as<double>(),
             config["phi1"][1].as<double>(), config["phi1"][2].as<double>(),
             config["phi2"][0].as<double>(), config["phi1"][1].as<double>(),

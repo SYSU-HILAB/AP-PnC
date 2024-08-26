@@ -5,3 +5,9 @@
 [submodule "src/traj_buffer/external"]
 	path = src/traj_buffer/external
 	url = git@github.com:WarriorHanamy/BSplinebasis.git
+[submodule "src/external_libraries/tomlplusplus"]
+	path = src/external_libraries/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git
+[submodule "src/external_libraries/yamlcpp"]
+	path = src/external_libraries/yamlcpp
+	url = https://github.com/jbeder/yaml-cpp.git

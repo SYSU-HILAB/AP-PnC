@@ -1,4 +1,14 @@
 # Preliminary
+## Clone
+```shell
+git clone git@github.com:SYSU-HILAB/minco-ros2.git --recursive
+```
+
+## Ensure Environment Variables are correctly set
+```shell
+export TAILSITTER_PLANNING_DIR=[this-project-root]
+```
+
 ## Install micro-xrce-dds-agent
 ```shell
 sudo snap remove micro-xrce-dds-agent
@@ -18,11 +28,6 @@ Or
   sudo ldconfig /usr/local/lib/
 ```
 
-## Install MavProxy
-
-```shell
-pip install MAVProxy
-```
 ## Install spdlog
 ```shell
 sudo apt update
@@ -59,25 +64,7 @@ echo 'conda config --set auto_activate_base false' >> ~/.bashrc
 echo 'export PYTHONPATH=$PYTHONPATH:/usr/lib/python3/dist-packages' >> ~/.bashrc
 ```
 
-## install yaml-cpp
-```shell
-cd ~
-git clone https://github.com/jbeder/yaml-cpp.git
-cd yaml-cpp
-mkdir build
-cd build
-cmake ..
-make
-sudo make install
-```
-
-## install ompl
-```shell
-sudo apt install ros-humble-ompl
-```
-
 # Clone the repository
-Notice that generally you are root in docker container and $USER in normal case. Then the $HOME is always pointed to the right place.
 ```shell
 git clone git@github.com:SYSU-HILAB/minco-ros2.git ~/pnc_tail-sitter
 ```
@@ -103,22 +90,7 @@ make install -j4
 ```
 
 ## install acados python interface
-Follow link (https://docs.acados.org/python_interface/index.html)[acados python interface installation]
-
-
-
-# parameter independent of ROS/ROS2
-## jbeder/yaml-cpp
-### INSTALL
-```shell
-git clone https://github.com/jbeder/yaml-cpp.git
-cd yaml-cpp
-mkdir build
-cd build
-cmake ..
-make
-sudo make install
-```
+Follow link [acados python interface installation](https://docs.acados.org/python_interface/index.html)
 
 # BUILD
 ## package specifics
@@ -140,47 +112,34 @@ paste the following to your file.
 build:
   cmake-args:
     - "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+    # - "-DCMAKE_BUILD_TYPE=Release"
   symlink-install: true
 ```
 # GCOPTER ROS2
-
 gcopter is from https://github.com/ZJU-FAST-Lab/GCOPTER/tree/main
-
 used in ROS2
-
 ```shell
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-or in Release build
+
+
+# SIMULATION
+
+## simulator
+## gazebo simulation
+First, start the gazebo simulation
 ```shell
-colcon build --symlink-install --cmake-args CMAKE_BUILD_TYPE Release
-source install/setup.bash
+runpx4 1
 ```
+## simple
 
-
-
-
-
-# START SIMULATION
-First, generate the ref_trajecotry `control_traj`
-```shell
-ros2 launch trajectory_server planning.launch.py
-```
-
-Second, 
-
-
+## 
+Second, (wait the gui on)
 # Experiments
-## Fixed point
-### simulation
 ```shell
-ros2 launch px4_interface fixed_point_exp.launch.py target_position:=[15.0,0.0,10.0]
-```
-
-```shell
-ros2 launch tailsitter_simulator sim_interface.launch.py
+runall
 ```
 
 ## Problem
