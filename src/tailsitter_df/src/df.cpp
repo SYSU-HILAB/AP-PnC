@@ -269,12 +269,6 @@ namespace tailsitter_df
         }
         else
         {
-            // real cmp = 1e4;
-            // if(N.norm() * (N.inverse()).norm() > cmp)
-            // std::cout << "condition number " << N.norm() *
-            // (N.inverse()).norm() <<
-            // "\n"; std::cout << "not Singularity N" << N << "\n";
-
             return N.inverse() * h;
         }
     }
@@ -354,8 +348,7 @@ namespace tailsitter_df
         attitude << xb, yb, zb;
 
         // auto &q = data.q;
-        q           = Eigen::Quaternion<real>(attitude);
-        realV3 vbXX = attitude.transpose() * v;
+        q = Eigen::Quaternion<real>(attitude);
 
         real &h1 = data.h1;
         h1       = yb.dot(a);
@@ -410,9 +403,7 @@ namespace tailsitter_df
         realV3 &xb       = data.xb;
         realV3 &yb       = data.yb;
         realV3 &zb       = data.zb;
-        auto   &attitude = data.attitude;
         auto   &q        = data.q;
-        auto   &alpha    = data.alpha;
         auto   &at       = data.at;
         auto   &magic    = data.magic;
         realV3 &zb_fixed = data.zb_fixed;
@@ -427,29 +418,14 @@ namespace tailsitter_df
         yb.normalize();
         zb = xb.cross(yb);
         zb.normalize();
-        // out << "xb " << xb.transpose() << " norm " << xb.norm()<< "\n";
-        // out << "yb " << yb.transpose() << " norm " << yb.norm()<< "\n";
-        // out << "zb " << zb.transpose() << " norm " << zb.norm()<< "\n";
-        // out << "zb fixed" << zb_fixed.transpose() << " norm " <<
-        // zb_fixed.norm()<<
-        // "\n";
+
         auto   e1       = realV3::UnitX();
         realV3 xb_fixed = (yb_prev.cross(zb_fixed));
         xb_fixed.normalize();
         realM3 rot = (realM3() << xb, yb, zb).finished();
-        // rot << xb_fixed, yb_prev, zb_fixed;
-        // out << "rot\n" << rot << "\n";
-        // out << "rot det " << rot.determinant() << "\n";
-        // rot.colse
-        q = Eigen::Quaternion<real>(rot);
-
-        // construct N1 N2 h1 h2;
-        // out << "e1\n" << e1 << "\n";
+        q          = Eigen::Quaternion<real>(rot);
         Eigen::Matrix<real, 3, 4> N2;
-        Eigen::Vector3<real>      N2_1 = rot * e1;
-        // out << "rot e1\n" << N2_1 << "\n";
-        // out << "at\n" << at << "\n";
-        // out << "at norm\n" << at.norm() << "\n";
+        Eigen::Vector3<real>      N2_1    = rot * e1;
         real                      at_norm = at.norm();
         Eigen::Matrix<real, 3, 3> N2_2    = -at_norm * rot * skew(e1);
 
@@ -464,15 +440,6 @@ namespace tailsitter_df
         real                  h1 = (skew(zb) * j).transpose() * zb;
         tailsitter_df::realV3 h2 = j;
 
-        //  std::cerr << "N1: " << N1 << "\n";
-        //  std::cerr << "N2: \n" << N2 << "\n";
-        //  std::cerr << "h1: \n" << h1 << "\n";
-        //  std::cerr << "h2: \n" << h2 << "\n";
-        //  std::cerr << "xb: \n" << xb << "\n";
-        //  std::cerr << "yb: \n" << yb << "\n";
-        //  std::cerr << "zb: \n" << zb << "\n";
-        Eigen::Matrix<real, 3, 3> temp = at_norm * rot * skew(e1);
-
         Eigen::Vector4<real> lora = computeDotAtAndBodyRates(N1, N2, h1, h2);
         // Eigen::Vector4<real> magic;
         magic(0) = at.norm();
@@ -482,93 +449,6 @@ namespace tailsitter_df
         // zb_fixed = zb;
         return magic;
     }
-
-    // VectorXreal df_forward_singularity_gamma(const Vector3real &v,
-    //                                          const Vector3real &a,
-    //                                          const Vector3real &j) {
-    //   // auto& yb_prev = data.yb_prev;
-    //   realV3 &eta = data.eta;
-    //   realV3 &zb_fixed = data.zb_fixed;
-    //   realV3 temp = v.cross(eta);
-    //   realV3 &xb = data.xb;
-    //   realV3 &yb = data.yb;
-    //   realV3 &zb = data.zb;
-    //   auto &attitude = data.attitude;
-    //   auto &q = data.q;
-    //   auto &alpha = data.alpha;
-    //   auto &at = data.at;
-    //   auto &magic = data.magic;
-    //   auto &yb_prev = data.yb_prev;
-    //
-    //   eta = a - g;
-    //   yb = eta.cross(zb_fixed);
-    //   yb.normalize();
-    //
-    //   int r = sgn(yb.dot(yb_prev));
-    //   yb = r * (yb);
-    //   constexpr real sin_pre = 1e-1;
-    //   if (eta.squaredNorm() < sin_pre) {
-    //     std::cerr << "[error singularity of eta]" << std::endl;
-    //   }
-    //   real gamma = r * atan2((eta.cross(v)).norm(), eta.dot(v));
-    //   if (gamma < 5 * M_PI/180)
-    //   {
-    //     abort();
-    //   }
-    //   real V = v.norm();
-    //   real h = (2 * tailsitter_model.mass_ * (eta.norm())) /
-    //            (tailsitter_model.rho_ * V * V * tailsitter_model.area_);
-    //   // real &alpha = data.alpha;
-    //   alpha = tailsitter_model.computeAlpha(h, gamma);
-    //
-    //   Eigen::AngleAxis<real> rot(alpha, yb);
-    //   xb = rot * v;
-    //   xb.normalize();
-    //
-    //   zb = xb.cross(yb);
-    //   zb.normalize();
-    //   realM3 &Attitude = data.attitude;
-    //   Attitude << xb, yb, zb;
-    //
-    //   // auto &q = data.q;
-    //   q = Eigen::Quaternion<real>(Attitude);
-    //   realV3 vb = Attitude.transpose() * v;
-    //
-    //   at << eta.norm() * cos(gamma - alpha) -
-    //             tailsitter_model.getAeroForceB(vb)(0) /
-    //             tailsitter_model.mass_,
-    //       0, 0;
-    //
-    //   real &h1 = data.h1;
-    //   h1 = yb.dot(a);
-    //
-    //   realV3 &h2 = data.h2;
-    //   h2 = j - (1 / tailsitter_model.mass_) * Attitude *
-    //                tailsitter_model.getPartialDerivativeOfFbOverVb(vb) *
-    //                Attitude.transpose() * a;
-    //   Eigen::Matrix<real, 1, 4> &N1 = data.N1;
-    //   N1 << 0, v.transpose() * Attitude * skew(realV3::UnitY());
-    //   Eigen::Matrix<real, 3, 4> &N2 = data.N2;
-    //   realM3 temp1 =
-    //       -1 *
-    //       skew((at.norm() * realV3::UnitX()) +
-    //            (tailsitter_model.getAeroForceB(vb) * (1 /
-    //            tailsitter_model.mass_)));
-    //   realM3 temp2 =
-    //       ((1 / tailsitter_model.mass_) *
-    //        tailsitter_model.getPartialDerivativeOfFbOverVb(vb) * skew(vb));
-    //   N2.col(0) = Attitude * realV3::UnitX();
-    //   N2.block<3, 3>(0, 1) = temp1 + temp2;
-    //   Eigen::Vector4<real> lora = computeDotAtAndBodyRates(N1, N2, h1, h2);
-    //   // Eigen::Vector4<real> &magic = data.magic;
-    //   magic(0) = at.norm();
-    //   // magic(0) = alpha;
-    //   magic.tail(3) = lora.tail(3);
-    //   return magic;
-    //   // return (Eigen::Vector2<real>()<<at.norm(),0).finished();
-    //
-    //   // return p;
-    // }
 
     VectorXreal df_forward(const VectorXreal &z)
     {
@@ -634,7 +514,7 @@ namespace tailsitter_df
         gradj = J.block<3, 3>(1, 6).transpose();
     }
 
-    Eigen::Matrix3d &get_v_jacobian_omega()
+    Eigen::Matrix3d &getVelJacobOmega()
     {
         // for example gradv =
         // [
@@ -647,7 +527,7 @@ namespace tailsitter_df
         return gradv;
     }
 
-    Eigen::Matrix3d &get_a_jacobian_omega()
+    Eigen::Matrix3d &getAccJacobOmega()
     {
         // for example gradv =
         // [
@@ -660,7 +540,7 @@ namespace tailsitter_df
         return grada;
     }
 
-    Eigen::Matrix3d &get_j_jacobian_omega()
+    Eigen::Matrix3d &getJerJacobOmega()
     {
         // for example gradv =
         // [
@@ -712,14 +592,14 @@ namespace tailsitter_df
 
         delimiter();
 
-        std::cout << get_v_jacobian_omega() << "\n";
+        std::cout << getVelJacobOmega() << "\n";
 
         delimiter();
 
-        std::cout << get_a_jacobian_omega() << "\n";
+        std::cout << getAccJacobOmega() << "\n";
         delimiter();
 
-        std::cout << get_j_jacobian_omega() << "\n";
+        std::cout << getJerJacobOmega() << "\n";
     }
 
 }  // namespace tailsitter_df

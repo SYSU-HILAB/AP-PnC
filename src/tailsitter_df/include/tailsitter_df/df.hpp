@@ -184,13 +184,13 @@ namespace tailsitter_df
                         Eigen::Matrix3d &gradj);
 
     // TODO reoptimize???
-    Eigen::Vector3d &get_v_jacobian_at();
-    Eigen::Vector3d &get_a_jacobian_at();
-    Eigen::Vector3d &get_j_jacobian_at();
+    Eigen::Vector3d &getVelJacobThrAcc();
+    Eigen::Vector3d &getAccJacobThrAcc();
+    Eigen::Vector3d &getJerJacobThrAcc();
 
-    Eigen::Matrix3d &get_v_jacobian_omega();
-    Eigen::Matrix3d &get_a_jacobian_omega();
-    Eigen::Matrix3d &get_j_jacobian_omega();
+    Eigen::Matrix3d &getVelJacobOmega();
+    Eigen::Matrix3d &getAccJacobOmega();
+    Eigen::Matrix3d &getJerJacobOmega();
     void             df_test();
 }  // namespace tailsitter_df
 

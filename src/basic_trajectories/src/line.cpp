@@ -16,14 +16,15 @@ namespace basic_trajectories
         angular_speed = angular_speed_in;
         height        = height_in;
         type          = basic_trajectories::Type::INIT;
+        linear_vel_   = 2 * radius * angular_speed / (2 * M_PI);
     }
 
     Vec3E Line::pos(double t)
     {
         Vec3E pos = Vec3E::Zero();
         // Only change first two, i.e., x and y;
-        pos[0] = radius * cos(angular_speed * t);
-        pos[1] = radius * sin(angular_speed * t) * cos(angular_speed * t);
+        pos[0] = linear_vel_ * t;
+        pos[1] = 0;
         pos[2] = height;
         return pos;
     }
@@ -32,33 +33,20 @@ namespace basic_trajectories
     {
         Vec3E vel = Vec3E::Zero();
         // Only change first two, i.e., x and y;
-        vel[0] = -radius * angular_speed * sin(angular_speed * t);
-        vel[1] = radius * angular_speed *
-                 (cos(angular_speed * t) * cos(angular_speed * t) -
-                  sin(angular_speed * t) * sin(angular_speed * t));
+        vel[0] = linear_vel_;
+        vel[1] = 0;
         return vel;
     }
 
     Vec3E Line::acc(double t)
     {
         Vec3E acc = Vec3E::Zero();
-        // Only change first two, i.e., x and y;
-        acc[0] =
-            -radius * angular_speed * angular_speed * cos(angular_speed * t);
-        acc[1] = -4 * radius * angular_speed *
-                 (cos(angular_speed * t) * sin(angular_speed * t));
         return acc;
     }
 
     Vec3E Line::jerk(double t)
     {
         Vec3E jerk = Vec3E::Zero();
-        // Only change first two, i.e., x and y;
-        jerk[0] = radius * angular_speed * angular_speed * angular_speed *
-                  sin(angular_speed * t);
-        jerk[1] = 4 * radius * angular_speed * angular_speed * angular_speed *
-                  (sin(angular_speed * t) * sin(angular_speed * t) -
-                   cos(angular_speed * t) * cos(angular_speed * t));
         return jerk;
     }
 

@@ -515,9 +515,9 @@ namespace gcopter
                         pena += config.omg_x_weight * violaOmgXPena;
                         pena += config.omg_y_weight * violaOmgYPena;
                         pena += config.omg_z_weight * violaOmgZPena;
-                        auto &Jv = tailsitter_df::get_v_jacobian_omega();
-                        auto &Ja = tailsitter_df::get_a_jacobian_omega();
-                        auto &Jj = tailsitter_df::get_j_jacobian_omega();
+                        auto &Jv = tailsitter_df::getVelJacobOmega();
+                        auto &Ja = tailsitter_df::getAccJacobOmega();
+                        auto &Jj = tailsitter_df::getJerJacobOmega();
                         totalGradVel += Jv * gradOmg;
                         totalGradAcc += Ja * gradOmg;
                         totalGradJer += Jj * gradOmg;
