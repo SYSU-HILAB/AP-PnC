@@ -41,9 +41,6 @@ target_link_libraries(${PROJECT_NAME}_lib
 
 ament_auto_add_executable(${PROJECT_NAME}_interface src/sim_interface.cpp) # Add other source files as needed
 
-ament_auto_add_executable(${PROJECT_NAME}_hover src/hover_example.cpp) # Add other source files as needed
-# target_link_libraries(${PROJECT_NAME}_hover ${PROJECT_NAME}_lib)
-ament_auto_add_executable(zero_copy_sub src/zero_copy.cpp) # Add other source files as needed
 
 
 install(

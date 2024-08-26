@@ -43,23 +43,29 @@ namespace tailsitter_df
         // tailsitter_df::zb_fixed.normalize();
         type_ = Model::Type::LowAlpha;
         // Update staitc parameter;
+        const char *env_p = std::getenv("TAILSITTER_PLANNING_DIR");
+        std::string sv(env_p);
+        sv += "/global.toml";
+        toml::table tbl    = toml::parse_file(sv);
+        auto        config = tbl["tailsitter_df"];
 
-        // TODO: to toml
-        YAML::Node config = YAML::LoadFile(
-            "/home/zhenglong/Projects/df_ws/src/tailsitter_df/"
-            "config/tailsitter.yaml");
-        getPhi() << config["phi1"][0].as<double>(),
-            config["phi1"][1].as<double>(), config["phi1"][2].as<double>(),
-            config["phi2"][0].as<double>(), config["phi1"][1].as<double>(),
-            config["phi1"][2].as<double>(), config["phi3"][0].as<double>(),
-            config["phi3"][1].as<double>(), config["phi3"][2].as<double>();
+        auto phi = config["phi"].as_array();
+        for (int i = 0; i < phi->size(); i++)
+        {
+            // Real val(phi->get(i)->as_array()->size());
+            // Real val(phi->get(i)->as_floating_point()->get());
+            double val  = phi->get(i)->as_floating_point()->get();
+            getPhi()(i) = val;
+        }
+        auto it = config["bias"].as_array();
+        for (int i = 0; i < 3; i++)
+        {
+            bias_[i] << it->get(i)->as_floating_point()->get();
+        }
 
-        getBias() << config["bias"][0].as<double>(),
-            config["bias"][1].as<double>(), config["bias"][2].as<double>();
-
-        mass_      = config["mass"].as<double>();
-        area_      = config["area"].as<double>();
-        rho_       = config["air_density"].as<double>();
+        mass_      = config["mass"].as_floating_point()->get();
+        area_      = config["area"].as_floating_point()->get();
+        rho_       = config["air_density"].as_floating_point()->get();
         alpha_rad_ = 0;
 
         scale_ = rho_ * area_ / 2;

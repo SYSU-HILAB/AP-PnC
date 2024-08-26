@@ -23,8 +23,6 @@ target_link_libraries(tailsitter_df
   autodiff::autodiff 
 )
 
-ament_auto_add_executable(test_main  src/main.cpp)
-target_link_libraries(test_main)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

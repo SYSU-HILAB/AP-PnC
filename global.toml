@@ -1,0 +1,28 @@
+[tailsitter_simulator]
+aero_force_on = true
+aero_moment_on = false
+arm_length = 0.125
+inertia = [0.00715066, 0.00818037, 0.00987597]
+kf = 0.00000854858
+mass = 1.0
+max_rpm = 1000.0
+min_rpm = 0.0
+motor_time = 0.035
+tau = 0.013
+
+[tailsitter_df]
+air_density = 1.25
+area = 0.25
+bias = [0.0, 0.0, 0.0]
+mass = 1.5
+phi = [
+  -0.1,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  -1.532,
+]

@@ -1,12 +1,10 @@
-#include "tailsitter_simulator/Tailsitter.hpp"
-
-#include <yaml-cpp/yaml.h>
+#include <toml++/toml.h>
 
 #include <Eigen/Geometry>
 #include <boost/bind.hpp>
+#include <boost/numeric/odeint.hpp>
 #include <iostream>
-
-#include "ode/boost/numeric/odeint.hpp"
+#include <tailsitter_simulator/Tailsitter.hpp>
 namespace odeint = boost::numeric::odeint;
 
 namespace TailsitterSimulator
@@ -33,35 +31,37 @@ namespace TailsitterSimulator
 
     Tailsitter::Tailsitter(void)
     {
-        // TODO to toml config
-        // YAML::Node config =
-        // YAML::LoadFile(utils::files::get_config_file_path(
-        //     "tailsitter_simulator", "simulator_config.yaml"));
-        YAML::Node config = YAML::LoadFile("simulator_config.yaml");
-        g_                = 9.81;
-        mass_             = config["mass"].as<double>();
+        const char *env_p = std::getenv("TAILSITTER_PLANNING_DIR");
+        std::string sv(env_p);
+        sv += "/global.toml";
+        toml::table tbl    = toml::parse_file(sv);
+        auto        config = tbl["tailsitter_simulator"];
+        g_                 = 9.81;
+        mass_              = config["mass"].as_floating_point()->get();
 
-        J_ = (Eigen::Vector3d() << config["inertia"][0].as<double>(),
-              config["inertia"][1].as<double>(),
-              config["inertia"][2].as<double>())
-                 .finished()
-                 .asDiagonal();
-        kf_ = config["kf"].as<double>();
+        auto            iner = config["inertia"].as_array();
+        Eigen::Vector3d diag_j;
+        for (int i = 0; i < 3; i++)
+        {
+            diag_j(i) = iner->get(i)->as_floating_point()->get();
+        }
+        J_ = diag_j.asDiagonal();
 
-        km_ = config["tau"].as<double>() * kf_;
+        kf_ = config["kf"].as_floating_point()->get();
 
-        arm_length_          = config["arm_length"].as<double>();
-        motor_time_constant_ = config["motor_time"].as<double>();
-        min_rpm_             = config["min_rpm"].as<double>();
-        max_rpm_             = config["max_rpm"].as<double>();
+        km_ = config["tau"].as_floating_point()->get() * kf_;
 
-        aero_moment_on_ = config["aero_moment_on"].as<bool>();
-        aero_force_on_  = config["aero_force_on"].as<bool>();
+        arm_length_          = config["arm_length"].as_floating_point()->get();
+        motor_time_constant_ = config["motor_time"].as_floating_point()->get();
+        min_rpm_             = config["min_rpm"].as_floating_point()->get();
+        max_rpm_             = config["max_rpm"].as_floating_point()->get();
+
+        aero_moment_on_ = config["aero_moment_on"].as_boolean()->get();
+        aero_force_on_  = config["aero_force_on"].as_boolean()->get();
         external_force_.setZero();
         state_.motor_rpm =
             Eigen::Array4d::Ones() * sqrt(mass_ * g_ / (4 * kf_));
         updateInternalState();
-
         input_ = Eigen::Array4d::Ones() * sqrt(mass_ * g_ / (4 * kf_));
     }
 
