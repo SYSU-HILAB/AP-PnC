@@ -264,6 +264,7 @@ void PX4Interface::controls_callback(
     px4_control.timestamp     = this->get_clock()->now().nanoseconds() / 1000;
     px4_control.rates_sp      = trans_->toFRD(msg->rates_sp);
     px4_control.thrust_acc_sp = msg->thrust_acc_sp;
+    px4_control.pitch_sp      = msg->pitch_sp;
     if (msg->thrust_acc_sp > 9.81)
     {
         px4_control.model_ff = msg->thrust_acc_sp / 9.81 * hover_estimate_;

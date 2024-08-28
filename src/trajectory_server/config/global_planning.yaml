@@ -23,7 +23,7 @@
     BasicTrajectoryHeight: 1.5
     BasicTrajectoryWaveLen: 50.0
     # range from [0, 3.0] is preferred
-    BasicTrajectoryCurvatureFactor: 0.8
+    BasicTrajectoryCurvatureFactor: 0.2
 
     v_max: 3.0
     omg_x_max: 0.5
