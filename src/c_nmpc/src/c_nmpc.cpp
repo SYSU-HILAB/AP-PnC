@@ -279,7 +279,13 @@ void NMPC::solve()
     q_next.normalize();
 
     double pitch = q_next.toRotationMatrix().eulerAngles(2, 1, 0)(1);
-
+    // wrap pitch to [-pi,pi]
+    if (pitch >= M_PI){
+        pitch -= 2*M_PI;
+    }
+    if (pitch < -M_PI){
+        pitch += 2*M_PI;
+    }
     // copy x_aug controls to u_
     std::copy(x_next.data() + state_size,
               x_next.data() + state_size + controls_size, u_.begin());
