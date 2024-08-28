@@ -272,6 +272,14 @@ void NMPC::solve()
                 status);
             break;
     }
+
+    Eigen::Quaterniond q_next(x_next[q_start_index], x_next[q_start_index + 1],
+                              x_next[q_start_index + 2],
+                              x_next[q_start_index + 3]);
+    q_next.normalize();
+
+    double pitch = q_next.toRotationMatrix().eulerAngles(2, 1, 0)(1);
+
     // copy x_aug controls to u_
     std::copy(x_next.data() + state_size,
               x_next.data() + state_size + controls_size, u_.begin());
@@ -280,8 +288,8 @@ void NMPC::solve()
     ctrl_msg.rates_sp = {x_next[rate_start_index], x_next[rate_start_index + 1],
                          x_next[rate_start_index + 2]};
     ctrl_msg.timestamp     = this->get_clock()->now().nanoseconds() / 1000;
-    ctrl_msg.total_thrust  = u_[0] + u_[1] + u_[2] + u_[3];
-    ctrl_msg.thrust_acc_sp = ctrl_msg.total_thrust / mass_;
+    ctrl_msg.pitch_sp      = pitch;
+    ctrl_msg.thrust_acc_sp = (u_[0] + u_[1] + u_[2] + u_[3]) / mass_;
     ctrl_pub_->publish(ctrl_msg);
 
     t_end_ = std::chrono::high_resolution_clock::now();
