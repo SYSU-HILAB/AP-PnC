@@ -18,7 +18,7 @@
     # type1 : lemniscate have a bug. yb change fast
     BasicTrajectoryType: 1
 
-    BasicTrajectoryRadius: 10.0
+    BasicTrajectoryRadius: 5.0
     BasicTrajectoryRate: 0.8
     BasicTrajectoryHeight: 1.5
     BasicTrajectoryWaveLen: 50.0
