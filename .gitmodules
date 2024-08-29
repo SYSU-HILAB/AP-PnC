@@ -11,3 +11,6 @@
 [submodule "src/external_libraries/yamlcpp"]
 	path = src/external_libraries/yamlcpp
 	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "mpc_framework"]
+	path = mpc_framework
+	url = https://github.com/acados/acados.git
