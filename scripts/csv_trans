@@ -1,6 +1,8 @@
 # /usr/bin/bash
-ls -t *.ulg | head -n 1 | xargs ulog2csv -m tracking_info -o output_csv
-ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_angular_velocity -o output_csv
-ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_rates_setpoint -o output_csv
-ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_thrust_acc_setpoint -o output_csv
-ls -t *.ulg | head -n 1 | xargs ulog2csv -m vehicle_acceleration -o output_csv
+latest_ulg=$(ls -t *.ulg | head -n 1)
+
+ulog2csv "$latest_ulg" -m tracking_info -o output_csv
+ulog2csv "$latest_ulg" -m vehicle_angular_velocity -o output_csv
+ulog2csv "$latest_ulg" -m vehicle_rates_setpoint -o output_csv
+ulog2csv "$latest_ulg" -m vehicle_thrust_acc_setpoint -o output_csv
+ulog2csv "$latest_ulg" -m vehicle_acceleration -o output_csv

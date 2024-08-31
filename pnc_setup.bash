@@ -23,6 +23,7 @@ export PYTHONPATH="$PYTHONPATH:$NMPC_DIR"
 export LD_LIBRARY_PATH=$TAILSITTER_PLANNING_DIR/c_generated_code:$LD_LIBRARY_PATH:"$ACADOS_SOURCE_DIR/lib"
 
 if [ -f $TAILSITTER_PLANNING_DIR/install/setup.bash ]; then
+  source $TAILSITTER_PLANNING_DIR/install/setup.bash
   echo "Successfully source the environment variables of the project."
 else
   echo "Please build & install the project"

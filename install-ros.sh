@@ -24,7 +24,7 @@ sudo apt install ros-dev-tools
 sudo apt install ros-humble-plotju*
 sudo apt install python3-colcon-common-extensions
 
-sudo apt install ccache
+sudo apt install ccache fzf cloc
 sudo apt install python3-virtualenv
 
 if [ -f "Miniconda3-latest-Linux-x86_64.sh" ]; then

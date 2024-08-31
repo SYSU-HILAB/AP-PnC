@@ -1,5 +1,11 @@
 #!/bin/bash
-if [-f "output_csv/*"]; then
+if [ $PWD != $TAILSITTER_PLANNING_DIR ]
+then
+    echo "Please run this script in the tailsitter_planning directory"
+    exit 1
+fi
+
+if [ -d "output_csv" ]; then
     rm output_csv/*
 fi
 csv_trans

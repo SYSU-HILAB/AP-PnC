@@ -28,5 +28,5 @@ phi = [
 ]
 
 [setup]
-circled = false
-real_world = true
+circled = true
+real_world = false
