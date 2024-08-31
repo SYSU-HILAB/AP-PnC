@@ -1,2 +1,5 @@
 #!/usr/bin/bash
+source $HOME/acados_env/bin/activate
 python3 src/nmpc/create_ocp_or_sim.py 
+deactivate
+

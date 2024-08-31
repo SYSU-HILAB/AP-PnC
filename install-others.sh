@@ -3,16 +3,6 @@
 git config --global user.email 632029496@qq.com
 git config --global user.name WarriorHanamy
 
-
-if [ -f "Miniconda3-latest-Linux-x86_64.sh" ]; then
-  echo "Miniconda3-latest-Linux-x86_64.sh exists!"  
-else
-  echo "Installing Miniconda3-latest-Linux-x86_64.sh"
-  curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-fi
-# curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-# conda install conda-forge::autodiff
-
 export TAILSITTER_PLANNING_DIR="$HOME/minco-ros2"
 export ACADOS_SOURCE_DIR="$TAILSITTER_PLANNING_DIR/mpc_framework"
 
@@ -42,3 +32,19 @@ else
   ./install-extras.bash
 fi
 
+if [ ! -d "$HOME/acados_env" ]; then
+  virtualenv $HOME/acados_env --python=/usr/bin/python3
+else
+  echo "Virtual environment for acados exists"
+fi
+
+source $HOME/acados_env/bin/activate
+pip install -e $ACADOS_SOURCE_DIR/interfaces/acados_template
+pip install numpy
+pip install pandas
+deactivate
+
+
+if ! grep -q "source $TAILSITTER_PLANNING_DIR/pnc_setup.bash" ~/.bashrc; then
+    echo "source $TAILSITTER_PLANNING_DIR/pnc_setup.bash" >> ~/.bashrc
+fi

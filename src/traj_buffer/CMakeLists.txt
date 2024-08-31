@@ -12,6 +12,7 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED)
+#TODO moving to external libraries
 add_subdirectory(external)
 
 ament_auto_find_build_dependencies()

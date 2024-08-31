@@ -66,6 +66,8 @@ class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
     bool   init_traj_set_  = false;
     bool   tracking_valid_ = false;
     double cz_predict_     = 0.0;
+    double acc_aero_fix_factor     = 1.0;
+    double deacc_aero_fix_factor     = 1.0;
     // bool
     Trajectory              trajectory_;
     TrajecotryBullet        msg_planning_traj_;

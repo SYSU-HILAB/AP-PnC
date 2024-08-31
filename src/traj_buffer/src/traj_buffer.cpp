@@ -191,11 +191,18 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
                     .point[interface::msg::TrajectoryPoint::VEL_START_INDEX +
                            2]);
 
-            if (v1.norm() > v2.norm())
+            if (v1.norm() < v2.norm() + 0.2)
             {
                 for (auto point : msg_planning_traj_.points)
                 {
-                    point.cz_prediction *= 1.2;
+                    point.cz_prediction *= acc_aero_fix_factor;
+                }
+            }
+            if (v1.norm() > v2.norm() + 0.2)
+            {
+                for (auto point : msg_planning_traj_.points)
+                {
+                    point.cz_prediction *= deacc_aero_fix_factor;
                 }
             }
 
@@ -268,7 +275,8 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
 
 void TrajectoryBuffer::declareParameters()
 {
-    this->declare_parameter<double>("traj_sampling_time", traj_sampling_time_);
+    this->declare_parameter<double>("acc_aero_fix_factor", acc_aero_fix_factor);
+    this->declare_parameter<double>("deacc_aero_fix_factor", deacc_aero_fix_factor);
     this->declare_parameter<double>("traj_control_time", traj_control_time_);
     this->declare_parameter<int>("down_sampling_factor", down_sampling_factor);
     this->declare_parameter<bool>("circled", circled_);
@@ -295,6 +303,8 @@ void TrajectoryBuffer::updateParameters()
     this->get_parameter("real_world", real_world_);
     this->get_parameter("exp_coefs", exp_coefs_);
     this->get_parameter("sim_coefs", sim_coefs_);
+    this->get_parameter("acc_aero_fix_factor", acc_aero_fix_factor);
+    this->get_parameter("deacc_aero_fix_factor", deacc_aero_fix_factor);
     assert(std::abs(down_sampling_factor * traj_sampling_time_ -
                     traj_control_time_) < 1e-9);
     aero_dyn_.setCoefs(exp_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Exp);

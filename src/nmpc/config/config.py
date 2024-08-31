@@ -43,25 +43,8 @@ class MpcConfig:
 
     Metrics = False
 
-
-
-
-class PX4Interface:
-    stable_odom_frq = ControlConfig.control_frequency
-    use_sim_time = True
-
-    class thrust_curve:
-        a = 11.019786910197855
-        b = 5.380213089802145
-
-
 def main():
-    # x,y = loop_trajectory(config=LoopTrajConfig)
     pass
-
-    # simple_simulator.drag
-    # print(simple_simulator.drag)
-
 
 if __name__ == "__main__":
     main()

@@ -21,5 +21,15 @@ sudo apt update
 sudo apt upgrade
 sudo apt install ros-humble-desktop
 sudo apt install ros-dev-tools
-sudo apt install ros-humbel-plotju*
+sudo apt install ros-humble-plotju*
 sudo apt install python3-colcon-common-extensions
+
+sudo apt install ccache
+sudo apt install python3-virtualenv
+
+if [ -f "Miniconda3-latest-Linux-x86_64.sh" ]; then
+  echo "Miniconda3-latest-Linux-x86_64.sh exists!"  
+else
+  echo "Installing Miniconda3-latest-Linux-x86_64.sh"
+  curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+fi
