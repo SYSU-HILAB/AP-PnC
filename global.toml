@@ -26,3 +26,7 @@ phi = [
   0.0,
   -1.532,
 ]
+
+[setup]
+circled = false
+real_world = true

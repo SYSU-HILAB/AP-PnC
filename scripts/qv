@@ -1,4 +1,6 @@
 #!/bin/bash
-rm output_csv/*
+if [-f "output_csv/*"]; then
+    rm output_csv/*
+fi
 csv_trans
 csv_plots

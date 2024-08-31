@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-python src/nmpc/create_ocp_or_sim.py 
+python3 src/nmpc/create_ocp_or_sim.py 

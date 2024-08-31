@@ -38,7 +38,6 @@ namespace aerodyn
     {
         if (type == AeroDynType::Exp)
         {
-            std::cerr << "Sim aero mode" << std::endl;
             assert(coefs.size() == exp_coefs_.size());
             if (coefs.size() != exp_coefs_.size())
             {
@@ -51,7 +50,6 @@ namespace aerodyn
         }
         else
         {
-            std::cerr << "Exp aero mode" << std::endl;
             assert(coefs.size() == sim_coefs_.size());
             if (coefs.size() != sim_coefs_.size())
             {

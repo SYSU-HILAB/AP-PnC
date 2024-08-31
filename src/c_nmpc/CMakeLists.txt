@@ -5,7 +5,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 set(MODEL "tailsitter_flu" CACHE STRING "The model_name of NMPC")
 set(TAILSITTER_PLANNING_DIR $ENV{TAILSITTER_PLANNING_DIR} CACHE PATH "The root path of pnc")

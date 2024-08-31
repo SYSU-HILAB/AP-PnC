@@ -13,7 +13,6 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 
 
 import math
-import pyquaternion
 import numpy as np
 import casadi as cs
 from scipy.interpolate.interpolate import interp1d

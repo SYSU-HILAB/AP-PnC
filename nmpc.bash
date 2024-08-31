@@ -1,6 +1,12 @@
 export CC="/usr/lib/ccache/gcc"
 export CXX="/usr/lib/ccache/g++"
 export CCACHE_DIR="$HOME/.cache/ccache/"
+source /opt/ros/humble/setup.bash
+source /usr/share/colcon_cd/function/colcon_cd.sh
+export _colcon_cd_root=/opt/ros/humble/
+
+# Disable Miniconda
+export PYTHONPATH=$PYTHONPATH:/usr/lib/python3/dist-packages
 
 if [ $ROS_VERSION == 1 ] || [ $ROS_DISTRO == 'foxy' ]; then
   echo "ROS_DISTRO is $ROS_DISTRO! DON'T SETUP ACADOS"
@@ -11,7 +17,7 @@ if [ $ROS_VERSION == 1 ] || [ $ROS_DISTRO == 'foxy' ]; then
 
 ## ROS2 setting, that is can run code without docker environment
 else
-  export ACADOS_SOURCE_DIR="$HOME/acados"
+  export ACADOS_SOURCE_DIR="$TAILSITTER_PLANNING_DIR/mpc_framework"
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$ACADOS_SOURCE_DIR/lib"
 
   if [ -f "$HOME/env/bin/activate" ]; then
@@ -39,3 +45,4 @@ alias print_metrics='python $NMPC_DIR/metrics/rmse.py'
 export PATH=$PATH:$NMPC_DIR/scripts/:$TAILSITTER_PLANNING_DIR/scripts
 alias dds_serial='MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600'
 export PATH=$PATH:$PX4_ROOT/Tools/
+source $TAILSITTER_PLANNING_DIR/install/setup.bash
