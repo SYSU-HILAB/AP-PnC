@@ -113,6 +113,7 @@ def ocp_nls() -> AcadosOcp:
     ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1.0 * 0.8
     ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1.0 * 0.8
     
+    
 
     print(ocp.dims)
     # set options
@@ -129,7 +130,7 @@ def ocp_nls() -> AcadosOcp:
     # ocp.solver_options.eps_sufficient_descent = 1e-8
     # ocp.solver_options.qp_tol_eq = 1e-04
     # ocp.solver_options.qp_solver_tol_stat = 1e-02
-    # ocp.solver_options.print_level = 1
+    ocp.solver_options.print_level = 0
     # ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
     # ocp.solver_options.line_search_use_sufficient_descent = 1
     # ocp.solver_options.alpha_reduction = 0.9

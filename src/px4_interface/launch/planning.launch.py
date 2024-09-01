@@ -14,6 +14,8 @@ with open(toml_file_path, 'r') as f:
     data = toml.load(f)
     circled = data['setup']['circled']
     real_world = data['setup']['real_world']
+    acc_aero_fix_factor = data['setup']['acc_aero_fix_factor']
+    deacc_aero_fix_factor = data['setup']['deacc_aero_fix_factor']
 
 def generate_launch_description():
     gcopter_params = os.path.join(
@@ -46,8 +48,8 @@ def generate_launch_description():
             name='traj_buffer',
             parameters=[
                 {
-                    "acc_aero_fix_factor": 1.0,
-                    "deacc_aero_fix_factor": 1.0,
+                    "acc_aero_fix_factor": acc_aero_fix_factor,
+                    "deacc_aero_fix_factor": deacc_aero_fix_factor,
                     "circled": circled,
                     "real_world": real_world,
                     "exp_coefs": [0.08869374325729838, 0.11713376801189856, 0.12567841873810845, 0.15005373297969835, 0.1324185630496418, 0.24883612641861838, 0.20757431730331458, 0.5001433323539398, 0.3877382239367887, 0.08974898500006634, 0.14520286916801822, 0.08072293755821285],

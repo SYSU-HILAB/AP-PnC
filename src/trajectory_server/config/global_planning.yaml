@@ -18,17 +18,17 @@
     # type1 : lemniscate have a bug. yb change fast
     BasicTrajectoryType: 1
 
-    BasicTrajectoryRadius: 5.0
+    BasicTrajectoryRadius: 6.0
     BasicTrajectoryRate: 0.8
     BasicTrajectoryHeight: 1.5
     BasicTrajectoryWaveLen: 50.0
     # range from [0, 3.0] is preferred
     BasicTrajectoryCurvatureFactor: 0.8
 
-    v_max: 3.0
+    v_max: 4.0
     omg_x_max: 0.5
-    omg_y_max: 0.5
-    omg_z_max: 0.8
+    omg_y_max: 0.8
+    omg_z_max: 0.5
     acc_max: 14.0
     thrust_max: 20.0
     thrust_min: 2.0
@@ -36,7 +36,7 @@
     vel_weight: 10000.0
     acc_weight: 0.0
     omg_x_weight: 20000.0
-    omg_y_weight: 20000.0
-    omg_z_weight: 10000.0
+    omg_y_weight: 10000.0
+    omg_z_weight: 20000.0
     omg_consistent_weight: 0.0
     time_weight: 10000.0

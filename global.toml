@@ -28,5 +28,7 @@ phi = [
 ]
 
 [setup]
+acc_aero_fix_factor = 0.0
 circled = true
+deacc_aero_fix_factor = 0.9
 real_world = false
