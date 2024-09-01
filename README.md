@@ -3,18 +3,18 @@
 ```shell
 git clone git@github.com:SYSU-HILAB/minco-ros2.git --recursive
 ```
+## Environment Variables
+Define the environment variable TAILSITTER_PLANING_DIR to point to the root directory of the cloned repository. For example:
+```shell
+export TAILSITTER_PLANNING_DIR=$PWD
+```
+
 ## Install ros2
 ```shell
 source $TAILSITTER_PLANNING_DIR/install-ros.sh
 ```
 
 # Build & Install dependencies
-
-# Environment Variables
-Define the environment variable TAILSITTER_PLANING_DIR to point to the root directory of the cloned repository. For example:
-```shell
-export TAILSITTER_PLANING_DIR=$PWD
-```
 
 ## Installing Miniconda
 ```shell
