@@ -2,9 +2,7 @@ from acados_template import AcadosOcp, AcadosSim, AcadosSimSolver, AcadosOcpSolv
 from config.config import MpcConfig
 import numpy as np
 from model import *
-from utils.quaternions import *
 import time
-from utils.terminal_color import *
 
 
 def ocp_nls() -> AcadosOcp:

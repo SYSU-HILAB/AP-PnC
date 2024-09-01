@@ -1,5 +1,4 @@
 // #include "tailsitter_flu_app.h"
-#include <spdlog/spdlog.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -435,7 +434,6 @@ NMPC::~NMPC()
 
 int main(int argc, char** argv)
 {
-    spdlog::set_level(spdlog::level::debug);
     rclcpp::init(argc, argv);
     auto node = std::make_shared<NMPC>();
     rclcpp::spin(node);

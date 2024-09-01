@@ -3,18 +3,6 @@
 ```shell
 git clone git@github.com:SYSU-HILAB/minco-ros2.git --recursive
 ```
-
-
-
-## Ensure Environment Variables are correctly set
-```shell
-export TAILSITTER_PLANNING_DIR=[this-project-root]
-```
-if you are in the root of this project.
-```shell
-export TAILSITTER_PLANNING_DIR=$PWD
-```
-
 ## Install ros2
 ```shell
 source $TAILSITTER_PLANNING_DIR/install-ros.sh
@@ -66,20 +54,14 @@ First, start the gazebo simulation
 ```shell
 runpx4 1
 ```
-## simple
 
-## 
 Second, (wait the gui on)
-# Experiments
+## Experiments
 ```shell
 srunall
 ```
 
+## trigger the trajectory mode
 ```shell
-srunall
+trigger
 ```
-
-## Problem
-update universe config
-- nmpc/model.py
-- px4_interface traj_buffer

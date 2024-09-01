@@ -6,8 +6,8 @@
 #
 from acados_template import AcadosModel
 from casadi import MX, SX, vertcat, sin, cos
+# TODO remove the dependency to quaternions
 from utils.quaternions import *
-from utils.aero_dynamics import *
 import numpy as np
 import casadi as cs
 
@@ -18,7 +18,6 @@ import casadi as cs
     # dx = cs.DM(0.707)
     # dy = cs.DM(0.707)
     # c_tau = cs.DM(0.016)
-
 
 def tailsitter_flu():
     model_name = "tailsitter_flu"
@@ -57,20 +56,10 @@ def tailsitter_flu():
 
     # aerodynamics
     vb = v_dot_q_inverse(v, q)
-# simple_f_body_sx
-    # only aero force
-    F_aero_b_frd = cs.if_else(cs.norm_2(vb) > 0.5,
-                              simple_f_body_sx(vb),
-                              cs.DM([0, 0, 0])
-                              )
-    # F_aero_b_frd = fit_aero_body_sx(vb)
-    # F_aero_b_frd = 0 * F_aero_b_frd
-    # F_aero_b_frd[0] =  -0.02 * cs.dot(v,v) 
+    F_aero_b_frd = cs.SX([0, 0, 0])
     F_aero_b_frd[0] = 0
     F_aero_b_frd[1] = 0
     F_aero_b_frd[2] =   - cz * cs.dot(v,v) 
-    # F_aero_b_frd[2] =   0.0 * cs.dot(v,v)
-    # F_aero_b_frd[2] =   0
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = q_to_rot_mat(q_tf)
     F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)
@@ -112,63 +101,6 @@ def tailsitter_flu():
     model.name = model_name
 
     return model
-
-
-def odometry_model():
-    model_name = "odometry_model"
-    p = MX.sym('p', 3)
-    v = MX.sym('v', 3)
-    r = MX.sym('r', 3)
-    q = MX.sym('q', 4)
-
-    x = vertcat(p, q)
-
-    # xdot
-    p_dot = MX.sym("p_dot", 3, 1)
-    q_dot = MX.sym("q_dot", 4, 1)
-    x_dot = cs.vertcat(p_dot, q_dot)
-    u = cs.vertcat(v, r)
-    p = []
-    # dynamics
-    f_expl = vertcat(
-        v,
-        1 / 2 * cs.mtimes(skew_symmetric(r), q),
-    )
-    f_impl = x_dot - f_expl
-
-    model = AcadosModel()
-
-    model.f_impl_expr = f_impl
-    model.f_expl_expr = f_expl
-    model.x = x
-    model.xdot = x_dot
-    model.u = u
-    # model.z = z
-    model.p = p
-    model.name = model_name
-
-    return model
-
-    model = test_huber()
-    # print(model.)
-def test_model():
-    p = SX.sym('p', 3,1)
-    v = SX.sym('v', 3,1)
-    a = SX.sym('a', 3,1)
-    j = SX.sym('j', 3,1)
-
-    g = cs.DM(3,1)
-    g[0] = 0
-    g[1] = 0
-    g[2] = 9.8
-    yb = cs.cross(v, a )
-
-    jv = cs.jacobian(yb,v)
-    ja = cs.jacobian(yb,a)
-    print(jv)
-    print('------')
-    print(ja)
-
 
 if __name__ == "__main__":
     tailsitter_flu()

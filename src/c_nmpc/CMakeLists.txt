@@ -30,7 +30,6 @@ ament_auto_find_build_dependencies()
 
 ament_auto_add_executable(${PROJECT_NAME}_node src/c_nmpc.cpp) # Add other source files as needed
 
-find_package(spdlog REQUIRED)
 target_link_libraries(
         ${PROJECT_NAME}_node
         Eigen3::Eigen  # Eigen support namespace CMake
@@ -41,11 +40,6 @@ target_link_libraries(
         fmt::fmt
 )
 
-ament_auto_add_executable(intras src/intras.cpp) # Add other source files as needed
-target_link_libraries(
-  intras 
-  fmt::fmt
-)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

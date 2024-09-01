@@ -1,7 +1,4 @@
 #!/usr/bin/bash
-# sudo apt update -y && sudo apt install ccache 
-git config --global user.email 632029496@qq.com
-git config --global user.name WarriorHanamy
 
 export TAILSITTER_PLANNING_DIR="$HOME/minco-ros2"
 export ACADOS_SOURCE_DIR="$TAILSITTER_PLANNING_DIR/mpc_framework"
