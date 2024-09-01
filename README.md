@@ -27,12 +27,6 @@ bash Miniconda3-latest-Linux-x86_64.sh
 ``` 
 **WARNING**: not automatically activate conda
 
-## install autodiff
-```shell
-source $HOME/miniconda3/bin/activate
-conda install conda-forge::autodiff
-source $HOME/miniconda3/bin/deactivate
-``` 
 
 ## Link default colcon config
 ```shell

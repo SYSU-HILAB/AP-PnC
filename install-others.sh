@@ -6,6 +6,10 @@ git config --global user.name WarriorHanamy
 export TAILSITTER_PLANNING_DIR="$HOME/minco-ros2"
 export ACADOS_SOURCE_DIR="$TAILSITTER_PLANNING_DIR/mpc_framework"
 
+source $HOME/miniconda3/bin/activate
+conda install conda-forge::autodiff
+deactivate
+
 
 # if build folder exists, not start to build
 if [ -d "$ACADOS_SOURCE_DIR/build" ]; then
