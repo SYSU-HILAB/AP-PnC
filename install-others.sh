@@ -6,10 +6,14 @@ git config --global user.name WarriorHanamy
 export TAILSITTER_PLANNING_DIR="$HOME/minco-ros2"
 export ACADOS_SOURCE_DIR="$TAILSITTER_PLANNING_DIR/mpc_framework"
 
-source $HOME/miniconda3/bin/activate
-conda install conda-forge::autodiff
-deactivate
-
+if ! conda list -c autodiff > /dev/null 2>&1; then
+  # Install the package
+  source $HOME/miniconda3/bin/activate
+  conda install conda-forge::autodiff
+  conda deactivate
+else 
+  echo "autodiff is already installed"
+fi
 
 # if build folder exists, not start to build
 if [ -d "$ACADOS_SOURCE_DIR/build" ]; then
@@ -43,9 +47,13 @@ else
 fi
 
 source $HOME/acados_env/bin/activate
-pip install -e $ACADOS_SOURCE_DIR/interfaces/acados_template
-pip install numpy
-pip install pandas
+if ! pip list | grep acados > /dev/null 2>&1; then
+  pip install -e $ACADOS_SOURCE_DIR/interfaces/acados_template
+  pip install numpy
+  pip install pandas
+else 
+  echo "Acados python interface is already installed"
+fi
 deactivate
 
 
