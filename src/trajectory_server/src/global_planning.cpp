@@ -15,10 +15,6 @@
 
 #include "gcopter/gcopter.hpp"
 #include "gcopter/trajectory.hpp"
-// #include "misc/CSVWriter.hpp"
-// #include "misc/visualizer.hpp"
-// #include "geometry_msgs/msg/vis
-// writing data to csv
 #include <ostream>
 using std::chrono_literals::operator""s;
 using RefTrajectory   = interface::msg::RefTrajectory;
