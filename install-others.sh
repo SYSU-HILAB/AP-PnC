@@ -10,10 +10,11 @@ source $HOME/miniconda3/bin/activate
 if ! conda list -c autodiff > /dev/null 2>&1; then
   # Install the package
   conda install conda-forge::autodiff
-  conda deactivate
 else 
   echo "autodiff is already installed"
 fi
+conda deactivate
+
 
 # if build folder exists, not start to build
 if [ -d "$ACADOS_SOURCE_DIR/build" ]; then
