@@ -1,0 +1,6 @@
+#!/bin/bash
+PIDS=$(pgrep -f "c_nmpc")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+ros2 run c_nmpc c_nmpc_node

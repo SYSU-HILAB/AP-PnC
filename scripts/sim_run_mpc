@@ -1,0 +1,13 @@
+#!/bin/bash
+PIDS=$(pgrep -f "c_nmpc")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
+# find if have an arugment
+if [ -z "$1" ]; then
+  ros2 run px4_interface offboard_mode &
+fi
+sleep 1
+
+ros2 run c_nmpc c_nmpc_node
