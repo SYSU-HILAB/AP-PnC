@@ -7,38 +7,55 @@ git clone git@github.com:SYSU-HILAB/minco-ros2.git --recursive
 ```shell
 source $TAILSITTER_PLANNING_DIR/install-ros.sh
 ```
+
 # Build & Install dependencies
 
-## first install Miniconda
+# Environment Variables
+Define the environment variable TAILSITTER_PLANING_DIR to point to the root directory of the cloned repository. For example:
+```shell
+export TAILSITTER_PLANING_DIR=$PWD
+```
+
+## Installing Miniconda
 ```shell
 bash Miniconda3-latest-Linux-x86_64.sh
 ``` 
 **WARNING**: not automatically activate conda
 
 
-## Link default colcon config
+## Linking Colcon Configuration
+Create a .colcon directory in your home directory and link the default configuration file:
 ```shell
 mkdir $HOME/.colcon
 ln -s $TAILSITTER_PLANNING_DIR/colcon_default.yaml $HOME/.colcon/default.yaml
 ``` 
 
-## install Acados & PX4 & others
+## Installing Additional Dependencies
+Install Acados, PX4, and other dependencies using the provided script:
 ```shell
 source $TAILSITTER_PLANNING_DIR/install-others.sh
 ```
 
-# BUILD
-## All
+# Building the System:
+## Building Acados and MPC
+When building for the first time or making changes to the nmpc (Python) code, you need to build the Acados code. Run the following script:
+```shell
+cocp
+```
+
+## Building All Packages
+Build all packages in the workspace:
 ```shell
 colcon build 
 ```
 
 
-## package specifics
+## Building Specific Packages
+Build a specific package:
 ```shell
 colcon build --packages-select [pkg]
 ```
-for example:
+For example, to build the tailsitter_df package:
 ```shell
 colcon build --packages-select tailsitter_df
 ```
@@ -46,22 +63,21 @@ colcon build --packages-select tailsitter_df
 
 
 
-# SIMULATION
+#  Running the Simulation:
 
-## simulator
 ## gazebo simulation
-First, start the gazebo simulation
+Starting Gazebo: Start the Gazebo simulation:
 ```shell
 runpx4 1
 ```
-
-Second, (wait the gui on)
+Running other codes: Once the Gazebo GUI is visible, run the experiments
 ## Experiments
 ```shell
 srunall
 ```
 
-## trigger the trajectory mode
+## Triggering Trajectory Mode
+To enable trajectory mode, run the following command
 ```shell
 trigger
 ```
