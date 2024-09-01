@@ -1,42 +1,39 @@
 /global_planning_node:
   ros__parameters:
-    SmoothingEps: 1.0e-2
-    IntegralIntervs: 30
-    RelCostTol: 1.0e-5
-    UavScale: 1.0
-    PieceN: 10
-    Frame: "world"
-    traj_pub_rsl: 0.02
-    trajTopic: "/control_traj"
-
-    BoxSideInsideLength: 0.1
-    BoxSideOutsideLength: 0.1
-    BoxDownLength: 0.1
-    BoxUpLength: 0.1
-    BoxFrontLength: 0.3
-    BoxBackLength: 0.3
-    # type1 : lemniscate have a bug. yb change fast
-    BasicTrajectoryType: 1
-
+    BasicTrajectoryCirled: true
+    BasicTrajectoryCurvatureFactor: 0.8
+    BasicTrajectoryHeight: 1.5
     BasicTrajectoryRadius: 6.0
     BasicTrajectoryRate: 0.8
-    BasicTrajectoryHeight: 1.5
+    BasicTrajectoryType: 2
     BasicTrajectoryWaveLen: 50.0
-    # range from [0, 3.0] is preferred
-    BasicTrajectoryCurvatureFactor: 0.8
-
-    v_max: 4.0
-    omg_x_max: 0.5
-    omg_y_max: 0.8
-    omg_z_max: 0.5
+    BoxBackLength: 0.3
+    BoxDownLength: 0.1
+    BoxFrontLength: 0.3
+    BoxSideInsideLength: 0.1
+    BoxSideOutsideLength: 0.1
+    BoxUpLength: 0.1
+    Frame: world
+    IntegralIntervs: 30
+    PieceN: 10
+    RelCostTol: 1.0e-05
+    SmoothingEps: 0.01
+    TrajectoryCirled: false
+    UavScale: 1.0
     acc_max: 14.0
+    acc_weight: 0.0
+    omg_consistent_weight: 0.0
+    omg_x_max: 0.5
+    omg_x_weight: 20000.0
+    omg_y_max: 0.8
+    omg_y_weight: 10000.0
+    omg_z_max: 0.5
+    omg_z_weight: 20000.0
     thrust_max: 20.0
     thrust_min: 2.0
     thrust_weight: 500.0
-    vel_weight: 10000.0
-    acc_weight: 0.0
-    omg_x_weight: 20000.0
-    omg_y_weight: 10000.0
-    omg_z_weight: 20000.0
-    omg_consistent_weight: 0.0
     time_weight: 10000.0
+    trajTopic: /control_traj
+    traj_pub_rsl: 0.02
+    v_max: 4.0
+    vel_weight: 10000.0

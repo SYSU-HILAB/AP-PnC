@@ -1,0 +1,45 @@
+#! /usr/bin/python3
+import toml
+import yaml
+import os 
+
+
+def sync_circled_property(toml_file_path, yaml_file_path):
+    """Reads the 'circled' property from a TOML file and updates the 'TrajectoryCirled' property in a YAML file.
+
+    Args:
+        toml_file_path (str): The path to the TOML file.
+        yaml_file_path (str): The path to the YAML file.
+    """
+
+    # Read the TOML file
+    with open(toml_file_path, 'r') as f:
+        toml_data = toml.load(f)
+
+    # Read the YAML file
+    with open(yaml_file_path, 'r') as f:
+        yaml_data = yaml.safe_load(f)
+
+    # Get the 'circled' value from the TOML file
+    circled = toml_data.get('setup', {}).get('circled', False)
+    v_max = toml_data.get('setup', {}).get('v_max', False)
+    radius = toml_data.get('setup', {}).get('radius', False)
+    type_traj = toml_data.get('setup', {}).get('type', False)
+
+    # Update the 'TrajectoryCirled' property in the YAML file
+    yaml_data['/global_planning_node']['ros__parameters']['BasicTrajectoryCirled'] = circled
+    yaml_data['/global_planning_node']['ros__parameters']['BasicTrajectoryRadius'] = radius
+    yaml_data['/global_planning_node']['ros__parameters']['BasicTrajectoryType'] = type_traj
+    yaml_data['/global_planning_node']['ros__parameters']['v_max'] = v_max
+
+    # Write the updated YAML data back to the file
+    with open(yaml_file_path, 'w') as f:
+        yaml.dump(yaml_data, f)
+
+
+
+toml_file_path = os.getenv("TAILSITTER_PLANNING_DIR") + "/global.toml"
+yaml_file = os.getenv("TAILSITTER_PLANNING_DIR") + "/src/trajectory_server/config/global_planning.yaml"
+sync_circled_property(toml_file_path, yaml_file)
+
+print(f"Synced 'circled' property from '{toml_file_path}' to 'TrajectoryCirled' in '{yaml_file}'")

@@ -1,3 +1,4 @@
 #!/bin/bash
+planConfigSync
 taskset -c 14 syncRunPlanning &
 taskset -c 15 sim_run_mpc > /dev/null &

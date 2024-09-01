@@ -5,7 +5,6 @@ export CXX="/usr/lib/ccache/g++"
 export CCACHE_DIR="$HOME/.cache/ccache/"
 source /opt/ros/humble/setup.bash
 source /usr/share/colcon_cd/function/colcon_cd.sh
-alias cbp='colcon build --packages-select'
 export _colcon_cd_root=/opt/ros/humble/
 
 if [ $ROS_DISTRO == "humble" ]; then
@@ -30,3 +29,6 @@ else
 fi
 
 export PATH=$PATH:$TAILSITTER_PLANNING_DIR/scripts:$PX4_ROOT/Tools/
+
+alias cbp='colcon build --packages-select'
+alias pl='ros2 run plotjuggler plotjuggler'

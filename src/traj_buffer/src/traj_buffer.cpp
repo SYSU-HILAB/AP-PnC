@@ -309,18 +309,7 @@ void TrajectoryBuffer::updateParameters()
                     traj_control_time_) < 1e-9);
     aero_dyn_.setCoefs(exp_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
     aero_dyn_.setCoefs(sim_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
-    // print circled, exp_coefs, sim_coefs
-    RCLCPP_INFO(this->get_logger(), "circled: %d", circled_);
-    RCLCPP_INFO(this->get_logger(), "exp_coefs: ");
-    for (auto coef : exp_coefs_)
-    {
-        RCLCPP_INFO(this->get_logger(), "%f", coef);
-    }
-    RCLCPP_INFO(this->get_logger(), "sim_coefs: ");
-    for (auto coef : sim_coefs_)
-    {
-        RCLCPP_INFO(this->get_logger(), "%f", coef);
-    }
+
 }
 
 void TrajectoryBuffer::modeTriggerCallback(std_msgs::msg::Bool::SharedPtr msg)

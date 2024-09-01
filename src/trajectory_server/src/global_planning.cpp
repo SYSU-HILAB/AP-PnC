@@ -64,6 +64,8 @@ struct Config
     double basic_trajectory_curvature_factor = 0.0;
     double basic_traj_wave_len               = 10.0;
 
+    double trajecotry_cirled = true;
+
     gcopter::CostConfig &cost_config;
 
     Config(rclcpp::Node *node) : cost_config(gcopter::CostConfig::getInstance())
@@ -98,6 +100,9 @@ struct Config
             node->declare_parameter("BasicTrajectoryCurvatureFactor", 0.0);
         basic_traj_wave_len =
             node->declare_parameter("BasicTrajectoryWaveLen", 10.0);
+
+        trajecotry_cirled = node->declare_parameter("BasicTrajectoryCirled", true);
+
         // pub config
         traj_pub_rsl = node->declare_parameter("traj_pub_rsl", 0.02);
         trajTopic    = node->declare_parameter("trajTopic", "control_traj");
@@ -150,6 +155,7 @@ struct Config
         node->get_parameter("BasicTrajectoryCurvatureFactor",
                             basic_trajectory_curvature_factor);
         node->get_parameter("BasicTrajectoryWaveLen", basic_traj_wave_len);
+        node->get_parameter("TrajectoryCirled", trajecotry_cirled);
         // update cost_config
         node->get_parameter("v_max", cost_config.v_max);
         node->get_parameter("omg_x_max", cost_config.omg_x_max);
@@ -235,11 +241,18 @@ class GlobalPlanner : public rclcpp::Node
             return;
         }
         if (type == 4)
-        {
-            basic_traj = std::make_unique<basic_trajectories::Line>(
-                config.basic_trajectory_radius, config.basic_trajectory_rate,
-                config.basic_trajectory_height);
-            return;
+        {   
+            if (!config.trajecotry_cirled){
+                basic_traj = std::make_unique<basic_trajectories::Line>(
+                    config.basic_trajectory_radius, config.basic_trajectory_rate,
+                    config.basic_trajectory_height);
+                return;
+            }
+            else {
+                RCLCPP_ERROR(this->get_logger(),
+                             "The line trajectory must not be cirled!");
+                abort();
+            }
         }
         else
         {
@@ -362,7 +375,7 @@ class GlobalPlanner : public rclcpp::Node
 
             auto &tailsitter_data  = tailsitter_df::Data::getInstance();
             auto &tailsitter_model = tailsitter_df::Model::getInstance();
-            tailsitter_data.reset(tailsitter_model);
+            tailsitter_data.reset(tailsitter_model, config.trajecotry_cirled);
             control_traj_msg.points.clear();
 
             for (double t = 0.0; t <= traj.getTotalDuration() + FLT_EPSILON;

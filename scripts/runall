@@ -1,3 +1,5 @@
+#!/bin/bash
+planConfigSync
 taskset -c 13 syncRunPlanning &
 taskset -c 14 pxinterface &
 taskset -c 15 real_run_mpc > /dev/null &
