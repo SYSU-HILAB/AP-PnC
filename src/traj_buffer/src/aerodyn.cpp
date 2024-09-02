@@ -87,7 +87,7 @@ namespace aerodyn
     double BsplineAeroDyn::getAeroCzVb(const Eigen::Vector3d      &vb,
                                        BsplineAeroDyn::AeroDynType type)
     {
-        if (vb.norm() < 0.5)
+        if (vb.norm() < 1.0)
         {
             return getAerodynCz(M_PI_2, type);
         }
