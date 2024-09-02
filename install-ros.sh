@@ -23,7 +23,7 @@ sudo apt install ros-humble-desktop
 sudo apt install ros-dev-tools
 sudo apt install ros-humble-plotju*
 sudo apt install python3-colcon-common-extensions
-
+sudo apt install ros-humble-vrpn
 sudo apt install ccache fzf cloc
 sudo apt install python3-virtualenv
 

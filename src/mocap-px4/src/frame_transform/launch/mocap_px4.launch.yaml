@@ -1,0 +1,50 @@
+launch:
+  - arg:
+      name: "server"
+      default: "10.1.1.198"
+  - arg:
+      name: "port"
+      default: "3883"
+  - arg:
+      name: "rb"
+      default: "quadrotor"
+
+  - arg:
+      name: "time_unit"
+      default: "0.033"
+
+  - node:
+      pkg: "mocap-ros2"
+      namespace: "mocap"
+      exec: "client_node"
+      name: "vrpn_mocap_client_node"
+      param:
+        - from: "$(find-pkg-share mocap-ros2)/config/client.yaml"
+        - name: "server"
+          value: "$(var server)"
+        - name: "port"
+          value: "$(var port)"
+
+  - node:
+      pkg: "frame_transform"
+      exec: "mocap_to_visual_odometry"
+      name: "mocap_to_visual_odometry_node"
+      remap:
+        - from: "/mocap/odometry"
+          to: "/mocap/$(var rb)/pose"
+      param:
+        - name: "time_unit"
+          value: "$(var time_unit)"
+        - name: "alpha"
+          value: 0.2
+        - name: "beta"
+          value: 0.0001
+      # param:
+      # -
+      #   from: "$(find-pkg-share mocap-ros2)/config/client.yaml"
+      # -
+      #   name: "server"
+      #   value: "$(var server)"
+      # -
+      #   name: "port"
+      #   value: "$(var port)"
