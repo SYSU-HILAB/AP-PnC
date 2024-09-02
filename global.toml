@@ -29,11 +29,11 @@ phi = [
 
 [setup]
 acc_aero_fix_factor = 0.0
-circled = true
+circled = false
 curvature = 0.8
 deacc_aero_fix_factor = 0.9
-radius = 6.0
-real_world = false
+radius = 6.5
+real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
-type = 2
+type = 4
 v_max = 4.0

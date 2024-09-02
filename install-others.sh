@@ -15,9 +15,9 @@ conda deactivate
 
 # if build folder exists, not start to build
 if [ -d "$ACADOS_SOURCE_DIR/build" ]; then
-  echo "build folder exists, not start to build"
+  echo "acados build folder exists, not start to build"
 else
-  echo "build folder not exists, start to build"
+  echo "acados build folder not exists, start to build"
   mkdir -p $ACADOS_SOURCE_DIR/build
   cd $ACADOS_SOURCE_DIR/build
   cmake -DACADOS_WITH_QPOASES=ON ..
