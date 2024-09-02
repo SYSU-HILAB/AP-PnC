@@ -1,4 +1,11 @@
 #!/usr/bin/bash
+if [ -f "Miniconda3-latest-Linux-x86_64.sh" ]; then
+	  echo "Miniconda3-latest-Linux-x86_64.sh exists!"
+  else
+	    echo "Installing Miniconda3-latest-Linux-x86_64.sh"
+	      curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+fi
+
 locale  # check for UTF-8
 
 sudo apt update && sudo apt install locales
@@ -26,10 +33,3 @@ sudo apt install python3-colcon-common-extensions
 sudo apt install ros-humble-vrpn
 sudo apt install ccache fzf cloc
 sudo apt install python3-virtualenv
-
-if [ -f "Miniconda3-latest-Linux-x86_64.sh" ]; then
-  echo "Miniconda3-latest-Linux-x86_64.sh exists!"  
-else
-  echo "Installing Miniconda3-latest-Linux-x86_64.sh"
-  curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-fi

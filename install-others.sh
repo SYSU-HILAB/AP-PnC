@@ -4,12 +4,7 @@ export TAILSITTER_PLANNING_DIR="$HOME/minco-ros2"
 export ACADOS_SOURCE_DIR="$TAILSITTER_PLANNING_DIR/mpc_framework"
 
 source $HOME/miniconda3/bin/activate
-if ! conda list -c autodiff > /dev/null 2>&1; then
-  # Install the package
-  conda install conda-forge::autodiff
-else 
-  echo "autodiff is already installed"
-fi
+conda install -c conda-forge autodiff
 conda deactivate
 
 
