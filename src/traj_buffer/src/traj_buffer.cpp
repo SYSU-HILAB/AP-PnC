@@ -191,14 +191,14 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
                     .point[interface::msg::TrajectoryPoint::VEL_START_INDEX +
                            2]);
 
-            if (v1.norm() < v2.norm() + 0.2)
+            if (v1.norm() < v2.norm() + 0.3)
             {
                 for (auto point : msg_planning_traj_.points)
                 {
                     point.cz_prediction *= acc_aero_fix_factor;
                 }
             }
-            if (v1.norm() > v2.norm() + 0.2)
+            if (v1.norm() > v2.norm() + 0.3)
             {
                 for (auto point : msg_planning_traj_.points)
                 {

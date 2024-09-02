@@ -6,7 +6,10 @@ then
 fi
 
 if [ -d "output_csv" ]; then
-    rm output_csv/*
+    # If the directory exists and is not empty
+    if [ "$(ls -A output_csv)" ]; then
+        rm output_csv/*
+    fi
 fi
 csv_trans
 csv_plots
