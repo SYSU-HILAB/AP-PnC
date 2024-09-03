@@ -35,5 +35,5 @@ deacc_aero_fix_factor = 0.9
 radius = 6.5
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
-type = 4
-v_max = 4.0
+type = 1
+v_max = 3.5
