@@ -32,3 +32,4 @@ export PATH=$PATH:$TAILSITTER_PLANNING_DIR/scripts:$PX4_ROOT/Tools/
 
 alias cbp='colcon build --packages-select'
 alias pl='ros2 run plotjuggler plotjuggler'
+alias restart_ros='ros2 daemon stop && ros2 daemon start'

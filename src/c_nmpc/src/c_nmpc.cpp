@@ -373,7 +373,7 @@ void NMPC::solve()
 void NMPC::accCallback(const AccelerationMsg& msg)
 {
     double filtered_cz = filter.process(msg.xyz[0]);
-    cz_filtered_ = -filtered_cz/(cur_vel_norm*cur_vel_norm + 0.1);
+    cz_filtered_ = -msg.xyz[0]/(cur_vel_norm*cur_vel_norm + 0.1)*1.0;
     // bound to -0.4 to 0.4
     if (cz_filtered_ > 0.4){
         cz_filtered_ = 0.4;

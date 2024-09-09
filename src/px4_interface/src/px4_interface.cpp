@@ -23,21 +23,124 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
 
-inline double inverse_thrust_model(double a, double b, double c)
+constexpr double threshold         = 0.05;
+constexpr size_t positionQueueSize = 300;
+#include <stdexcept>
+#include <vector>
+
+template <typename T, size_t N>
+class FixedSizeWindow
 {
-    return (-b + std::sqrt(b * b + 4 * a * c)) / (2 * a);
+   private:
+    std::vector<T> data;
+    size_t         head;
+    size_t         tail;
+    size_t         size;
+
+   public:
+    // Constructor
+    FixedSizeWindow() : head(0), tail(0), size(0) { data.resize(N); }
+
+    // Check if the window is empty
+    bool empty() const { return size == 0; }
+
+    // Check if the window is full
+    bool full() const { return size == N; }
+
+    // Get the size of the window
+    size_t getSize() const { return size; }
+
+    // Enqueue an element
+    void enqueue(const T& value)
+    {
+        if (full())
+        {
+            // Remove the oldest element
+            head = (head + 1) % N;
+        }
+        else
+        {
+            size++;
+        }
+        data[tail] = value;
+        tail       = (tail + 1) % N;
+    }
+
+    // Dequeue an element
+    T dequeue()
+    {
+        if (empty())
+        {
+            throw std::out_of_range("Window is empty");
+        }
+        T value = data[head];
+        head    = (head + 1) % N;
+        size--;
+        return value;
+    }
+
+    // Get the front element without removing it
+    T front() const
+    {
+        if (empty())
+        {
+            throw std::out_of_range("Window is empty");
+        }
+        return data[head];
+    }
+
+    // Get the element at a specific index (random access)
+    T operator[](size_t index) const
+    {
+        if (index >= size)
+        {
+            throw std::out_of_range("Index out of range");
+        }
+        return data[(head + index) % N];
+    }
+};
+// Structure to represent a 3D position
+struct Position3D
+{
+    double x;
+    double y;
+    double z;
+};
+
+// Function to calculate the Euclidean distance between two 3D positions
+double distance(const Position3D& p1, const Position3D& p2)
+{
+    return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) +
+                pow(p1.z - p2.z, 2));
 }
 
-// inverse to calcuate linear matrix equation
-Eigen::Vector2d fit_a_b(double hover_estimate)
+// Function to check if a position is stationary based on a threshold
+std::pair<Position3D, bool> isStationary(Position3D pos, double threshold)
 {
-    Eigen::Matrix2d A;
-    Eigen::Vector2d b_tilde;
-    A.row(0) << hover_estimate * hover_estimate, hover_estimate;
-    A.row(1) << 2 * hover_estimate, 1;
-    b_tilde << 9.81, hover_estimate;
-    return Eigen::Vector2d(
-        9.81 / (hover_estimate * hover_estimate * hover_estimate), 0);
+    static FixedSizeWindow<Position3D, positionQueueSize> positions;
+    static bool                                           stationary = false;
+    static Position3D initPos = {-1, -1, -1};
+    if (!stationary)
+    {
+        if (positions.getSize() < positionQueueSize)
+        {
+            positions.enqueue(pos);
+            return std::make_pair(pos, stationary);
+            ;  // Not enough data points to determine stationarity
+        }
+        positions.enqueue(pos);
+        for (size_t i = 0; i < positionQueueSize; ++i)
+        {
+            if (distance(pos, positions[i]) > threshold)
+            {
+                stationary = false;
+                return std::make_pair(pos, stationary);
+            }
+        }
+        stationary = true;
+        initPos    = pos;
+    }
+    return std::make_pair(pos, stationary);
 }
 
 class Transcribe
@@ -124,9 +227,7 @@ class PX4Interface : public rclcpp::Node
         this->declare_parameter("world_frame", "NED");
         this->declare_parameter("hover_estimate", 0.73);
         hover_estimate_ = this->get_parameter("hover_estimate").as_double();
-        a_b_            = fit_a_b(hover_estimate_);
         // warn print ab
-        RCLCPP_WARN(this->get_logger(), "a: %f, b: %f", a_b_(0), a_b_(1));
         std::string world_frame =
             this->get_parameter("world_frame").as_string();
         if (world_frame == "NED")
@@ -193,8 +294,7 @@ class PX4Interface : public rclcpp::Node
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     rclcpp::TimerBase::SharedPtr state_pub_timer_;
 
-    double          hover_estimate_;
-    Eigen::Vector2d a_b_;
+    double hover_estimate_;
     // sub
     // VehicleOdometry
     // Controls;
@@ -265,18 +365,7 @@ void PX4Interface::controls_callback(
     px4_control.rates_sp      = trans_->toFRD(msg->rates_sp);
     px4_control.thrust_acc_sp = msg->thrust_acc_sp;
     px4_control.pitch_sp      = msg->pitch_sp;
-    if (msg->thrust_acc_sp > 9.81)
-    {
-        px4_control.model_ff = msg->thrust_acc_sp / 9.81 * hover_estimate_;
-    }
-    else
-    {
-        // cubic inverse
-        px4_control.model_ff =
-            std::pow(msg->thrust_acc_sp / a_b_(0), 1.0 / 3.0);
-    }
 
-    printf("model_ff: %f\n", px4_control.model_ff);
     vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
     // publish_px4_control();
 }
@@ -304,6 +393,26 @@ void PX4Interface::vehicle_odometry_callback(
 
 void PX4Interface::publish_state()
 {
+    // wait position msgs to a stationary value
+    static bool       init  = false;
+    static Position3D pos_s = {0, 0, 0};
+    if (!init)
+    {
+        Position3D pos = {state_.state[0], state_.state[1], state_.state[2]};
+        auto [pos_ss, if_staitonary] = isStationary(pos, threshold);
+        init                         = if_staitonary;
+        pos_s                        = pos_ss;
+        return;
+    }
+
+    state_.state[0] -= pos_s.x;
+    state_.state[1] -= pos_s.y;
+    state_.state[2] -= pos_s.z;
+
+    state_.mpc_state[0] -= pos_s.x;
+    state_.mpc_state[1] -= pos_s.y;
+    state_.mpc_state[2] -= pos_s.z;
+
     state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     state_publisher_->publish(state_);
     nav_msgs::msg::Odometry odom;
