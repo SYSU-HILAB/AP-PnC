@@ -24,60 +24,8 @@
 // #include "tailsitter_flu_model/tailsitter_flu_model.h"
 int status;  // acados operation state
 
-#include <vector>
 #include <cmath>
-
-class IIRButterworthLPF {
-public:
-    IIRButterworthLPF(double cutoffFreq, double sampleRate) {
-        double theta_c = 2.0 * M_PI * cutoffFreq / sampleRate;
-        double d = 1.0 / sqrt(2.0); // For Butterworth filter
-        double gamma = sin(theta_c) / (2.0 * d);
-        double beta = cos(theta_c);
-
-        // Coefficients for the 4th-order Butterworth filter
-        a0 = 1.0 + gamma;
-        a1 = -2.0 * beta;
-        a2 = 1.0 - gamma;
-        b0 = (1.0 - cos(theta_c)) / a0;
-        b1 = (1.0 - cos(theta_c)) / a0;
-        b2 = (1.0 - cos(theta_c)) / a0;
-
-        // Initialize buffers
-        x.resize(3, 0.0); // Input buffer
-        y.resize(3, 0.0); // Output buffer
-    }
-
-    double process(double input) {
-        // Shift the input buffer
-        x[2] = x[1];
-        x[1] = x[0];
-        x[0] = input;
-
-        // Shift the output buffer
-        y[2] = y[1];
-        y[1] = y[0];
-
-        // Calculate output
-        y[0] = (b0 * x[0] + b1 * x[1] + b2 * x[2] - a1 * y[1] - a2 * y[2]) / a0;
-
-        return y[0];
-    }
-
-private:
-    // Coefficients
-    double a0, a1, a2;
-    double b0, b1, b2;
-
-    // Buffers
-    std::vector<double> x; // Input buffer
-    std::vector<double> y; // Output buffer
-};
-
-
-constexpr    double cutoffFreq = 5.0; // Cutoff frequency in Hz
-constexpr    double sampleRate = 100.0; // Sample rate in Hz
-IIRButterworthLPF filter(cutoffFreq, sampleRate);
+#include <vector>
 
 // Template function to bind a member function to a std::function
 template <typename T1, class T2>
@@ -213,12 +161,12 @@ class NmpcCallbacks
    public:
     virtual void stateCallback(const StateMsg& msg)            = 0;
     virtual void referenceCallback(const ReferenceBullet& msg) = 0;
-    virtual void accCallback(const AccelerationMsg& msg) = 0;
+    virtual void accCallback(const AccelerationMsg& msg)       = 0;
     virtual void initSubsPubs()                                = 0;
 
    public:
-    rclcpp::Subscription<StateMsg>::SharedPtr         state_sub_;
-    rclcpp::Subscription<ReferenceBullet>::SharedPtr  ref_sub_;
+    rclcpp::Subscription<StateMsg>::SharedPtr        state_sub_;
+    rclcpp::Subscription<ReferenceBullet>::SharedPtr ref_sub_;
     rclcpp::Subscription<AccelerationMsg>::SharedPtr acc_sub_;
 
     rclcpp::Publisher<ControlMsg>::SharedPtr          ctrl_pub_;
@@ -255,7 +203,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     std::chrono::_V2::system_clock::time_point t_end_;
     AcadosInterface& acados = AcadosInterface::getInstance();
 
-    double cur_vel_norm;
+    double               cur_vel_norm;
     constexpr static int controls_size    = 4;
     constexpr static int state_size       = 13;
     constexpr static int pos_start_index  = 0;
@@ -272,7 +220,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     // augment the state with the controls
     std::array<double, state_size + controls_size> x_next;
     // store reference msg
-    double        cz_predict_;
+    double cz_predict_;
     // double cz_filtered_ = 0.0;
     double cz_filtered_;
 };
@@ -347,10 +295,12 @@ void NMPC::solve()
 
     double pitch = q_next.toRotationMatrix().eulerAngles(2, 1, 0)(1);
     // wrap pitch to [-pi,pi]
-    if (pitch >= M_PI_2){
+    if (pitch >= M_PI_2)
+    {
         pitch -= M_PI;
     }
-    if (pitch < -M_PI_2){
+    if (pitch < -M_PI_2)
+    {
         pitch += M_PI;
     }
     // copy x_aug controls to u_
@@ -372,13 +322,14 @@ void NMPC::solve()
 
 void NMPC::accCallback(const AccelerationMsg& msg)
 {
-    double filtered_cz = filter.process(msg.xyz[0]);
-    cz_filtered_ = -msg.xyz[0]/(cur_vel_norm*cur_vel_norm + 0.1)*1.0;
+    cz_filtered_ = -msg.xyz[0] / (cur_vel_norm * cur_vel_norm + 0.1) * 1.0;
     // bound to -0.4 to 0.4
-    if (cz_filtered_ > 0.4){
+    if (cz_filtered_ > 0.4)
+    {
         cz_filtered_ = 0.4;
     }
-    if (cz_filtered_ < -0.4){
+    if (cz_filtered_ < -0.4)
+    {
         cz_filtered_ = -0.4;
     }
 }
@@ -444,7 +395,7 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     tracking_info_msg.alpha = static_cast<float>(atan2(vb(0), vb(2)));
     // TODO: add the actual cz
     // tracking_info_msg.cz    = static_cast<float>(cz_predict_);
-    tracking_info_msg.cz    = static_cast<float>(cz_filtered_);
+    tracking_info_msg.cz = static_cast<float>(cz_filtered_);
     // tracking_info_msg.cz =
     if (tracking_valid)
         tracking_info_pub_->publish(tracking_info_msg);
@@ -457,11 +408,15 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     // rclcpp print size and N
     for (int i = 0; i < acados.N; i++)
     {
-        acados.setReference(refs.points[i].point.data(),
-                            &cz_filtered_, i);
+        acados.setReference(refs.points[i].point.data(), &cz_filtered_, i);
     }
     acados.setReference(refs.points[acados.N].point.data(), acados.N);
-
+    static bool first_solve = true;
+    if (first_solve)
+    {
+        first_solve = false;
+        RCLCPP_WARN(this->get_logger(), "First solve");
+    }
     solve();
 }
 
@@ -474,12 +429,11 @@ void NMPC::stateCallback(const StateMsg& msg)
               x_cur_.begin());
     std::copy(u_.data(), u_.data() + controls_size,
               x_cur_.begin() + state_size);
-    
-    cur_vel_norm = std::sqrt(x_cur_[vel_start_index] * x_cur_[vel_start_index] +
-                             x_cur_[vel_start_index + 1] *
-                                 x_cur_[vel_start_index + 1] +
-                             x_cur_[vel_start_index + 2] *
-                                 x_cur_[vel_start_index + 2]);
+
+    cur_vel_norm =
+        std::sqrt(x_cur_[vel_start_index] * x_cur_[vel_start_index] +
+                  x_cur_[vel_start_index + 1] * x_cur_[vel_start_index + 1] +
+                  x_cur_[vel_start_index + 2] * x_cur_[vel_start_index + 2]);
     acados.setState(const_cast<double*>(x_cur_.data()));
 
     std_msgs::msg::Bool ready_msg;

@@ -25,6 +25,8 @@ using namespace px4_msgs::msg;
 
 constexpr double threshold         = 0.05;
 constexpr size_t positionQueueSize = 300;
+
+constexpr size_t stateQuatStartIndex = interface::msg::State::QUAT_START_INDEX;
 #include <stdexcept>
 #include <vector>
 
@@ -394,14 +396,22 @@ void PX4Interface::vehicle_odometry_callback(
 void PX4Interface::publish_state()
 {
     // wait position msgs to a stationary value
-    static bool       init  = false;
-    static Position3D pos_s = {0, 0, 0};
+    static bool               init  = false;
+    static Position3D         pos_s = {0, 0, 0};
+    static Eigen::Quaterniond q_init;
     if (!init)
     {
         Position3D pos = {state_.state[0], state_.state[1], state_.state[2]};
         auto [pos_ss, if_staitonary] = isStationary(pos, threshold);
         init                         = if_staitonary;
         pos_s                        = pos_ss;
+        q_init = Eigen::Quaterniond(state_.state[stateQuatStartIndex],
+                                    state_.state[stateQuatStartIndex + 1],
+                                    state_.state[stateQuatStartIndex + 2],
+                                    state_.state[stateQuatStartIndex + 3]);
+        RCLCPP_WARN(this->get_logger(), "Still waiting for stationary");
+        // echo q_init
+
         return;
     }
 
@@ -412,6 +422,16 @@ void PX4Interface::publish_state()
     state_.mpc_state[0] -= pos_s.x;
     state_.mpc_state[1] -= pos_s.y;
     state_.mpc_state[2] -= pos_s.z;
+
+    Eigen::Quaterniond q(state_.state[stateQuatStartIndex],
+                         state_.state[stateQuatStartIndex + 1],
+                         state_.state[stateQuatStartIndex + 2],
+                         state_.state[stateQuatStartIndex + 3]);
+    q                                     = q_init.inverse() * q;
+    state_.state[stateQuatStartIndex]     = q.w();
+    state_.state[stateQuatStartIndex + 1] = q.x();
+    state_.state[stateQuatStartIndex + 2] = q.y();
+    state_.state[stateQuatStartIndex + 3] = q.z();
 
     state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     state_publisher_->publish(state_);
