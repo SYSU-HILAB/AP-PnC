@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include <Eigen/Geometry>
+#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -14,10 +15,13 @@
 #include <px4_msgs/msg/tracking_info.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
 #include <px4_msgs/msg/vehicle_thrust_acc_setpoint.hpp>
+#include <random>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
+
+#include "lbfgs.hpp"
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
@@ -33,121 +37,6 @@ constexpr size_t velStartIndex       = interface::msg::State::VEL_START_INDEX;
 #include <stdexcept>
 #include <vector>
 
-template <typename T, size_t N>
-class FixedSizeWindow
-{
-   private:
-    std::vector<T> data;
-    size_t         head;
-    size_t         tail;
-    size_t         size;
-
-   public:
-    // Constructor
-    FixedSizeWindow() : head(0), tail(0), size(0) { data.resize(N); }
-
-    // Check if the window is empty
-    bool empty() const { return size == 0; }
-
-    // Check if the window is full
-    bool full() const { return size == N; }
-
-    // Get the size of the window
-    size_t getSize() const { return size; }
-
-    // Enqueue an element
-    void enqueue(const T& value)
-    {
-        if (full())
-        {
-            // Remove the oldest element
-            head = (head + 1) % N;
-        }
-        else
-        {
-            size++;
-        }
-        data[tail] = value;
-        tail       = (tail + 1) % N;
-    }
-
-    // Dequeue an element
-    T dequeue()
-    {
-        if (empty())
-        {
-            throw std::out_of_range("Window is empty");
-        }
-        T value = data[head];
-        head    = (head + 1) % N;
-        size--;
-        return value;
-    }
-
-    // Get the front element without removing it
-    T front() const
-    {
-        if (empty())
-        {
-            throw std::out_of_range("Window is empty");
-        }
-        return data[head];
-    }
-
-    // Get the element at a specific index (random access)
-    T operator[](size_t index) const
-    {
-        if (index >= size)
-        {
-            throw std::out_of_range("Index out of range");
-        }
-        return data[(head + index) % N];
-    }
-};
-// Structure to represent a 3D position
-struct Position3D
-{
-    double x;
-    double y;
-    double z;
-};
-
-// Function to calculate the Euclidean distance between two 3D positions
-double distance(const Position3D& p1, const Position3D& p2)
-{
-    return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) +
-                pow(p1.z - p2.z, 2));
-}
-
-// Function to check if a position is stationary based on a threshold
-std::pair<Position3D, bool> isStationary(Position3D pos, double threshold)
-{
-    static FixedSizeWindow<Position3D, positionQueueSize> positions;
-    static bool                                           stationary = false;
-    static Position3D initPos = {-1, -1, -1};
-    if (!stationary)
-    {
-        if (positions.getSize() < positionQueueSize)
-        {
-            positions.enqueue(pos);
-            return std::make_pair(pos, stationary);
-            ;  // Not enough data points to determine stationarity
-        }
-        positions.enqueue(pos);
-        for (size_t i = 0; i < positionQueueSize; ++i)
-        {
-            if (distance(pos, positions[i]) > threshold)
-            {
-                stationary = false;
-                return std::make_pair(pos, stationary);
-            }
-        }
-        stationary = true;
-        initPos    = pos;
-    }
-    return std::make_pair(pos, stationary);
-}
-
 class Transcribe
 {
     Eigen::Vector3d    p;
@@ -156,41 +45,34 @@ class Transcribe
     Eigen::Quaterniond q;
 
     Eigen::Quaterniond q_flu_frd = Eigen::Quaterniond(0, 1, 0, 0);
-    Eigen::Quaterniond q_enu_ned = Eigen::Quaterniond(0, 1, 1, 0);
-    Eigen::Quaterniond q_transform;
+
+    Eigen::Quaterniond q_transform = Eigen::Quaterniond(1, 0, 0, 0);
+    Eigen::Vector3d    init_p;
 
    public:
-    enum class E_World_Frame
+    explicit Transcribe() { q_flu_frd.normalize(); };
+    void setInitInertial(const Eigen::Vector3d& pos,
+                         const Eigen::Vector4d& quat)
     {
-        NED,
-        FRD
-    };
-    explicit Transcribe(const E_World_Frame world_frame)
-    {
-        q_flu_frd.normalize();
-        if (world_frame == E_World_Frame::NED)
-        {
-            q_transform = Eigen::Quaterniond(0, 1, 1, 0);
-        }
-        else
-        {
-            q_transform = q_flu_frd;
-        }
-        q_transform.normalize();
-    };
+        init_p = pos;
+        std::cerr << "quat in" << quat.transpose() << std::endl;
+        q_transform = Eigen::Quaterniond(quat[1], quat[2], quat[3], quat[0]);
+    }
+
     template <typename T>
     void toFLU(const std::array<T, 3>& pos, const std::array<T, 3>& vel,
                const std::array<T, 3>& rate, const std::array<T, 4>& quat,
                interface::msg::State& state)
     {
         p = Eigen::Vector3d(pos[0], pos[1], pos[2]);
+        p -= init_p;
         v = Eigen::Vector3d(vel[0], vel[1], vel[2]);
         r = Eigen::Vector3d(rate[0], rate[1], rate[2]);
         q = Eigen::Quaterniond(quat[0], quat[1], quat[2], quat[3]);
-        p = q_transform * p;
-        v = q_transform * v;
+        p = q_transform.inverse() * p;
+        v = q_transform.inverse() * v;
         r = q_flu_frd * r;
-        q = q_transform * q * q_flu_frd;
+        q = q_transform.inverse() * q * q_flu_frd;
         q.normalize();
         using interface::msg::State;
         std::copy(p.data(), p.data() + 3,
@@ -233,25 +115,14 @@ class PX4Interface : public rclcpp::Node
         this->declare_parameter("hover_estimate", 0.73);
         this->declare_parameter("position_init_distance_threshold", 0.05);
         this->declare_parameter("real_world", false);
-        hover_estimate_ = this->get_parameter("hover_estimate").as_double();
         // warn print ab
         std::string world_frame =
             this->get_parameter("world_frame").as_string();
         this->get_parameter("position_init_distance_threshold",
                             pos_init_dis_threshold);
         this->get_parameter("real_world", real_world);
-        if (world_frame == "NED")
-        {
-            RCLCPP_WARN(this->get_logger(), "world frame: NED");
-            trans_ =
-                std::make_unique<Transcribe>(Transcribe::E_World_Frame::NED);
-        }
-        else
-        {
-            RCLCPP_WARN(this->get_logger(), "world frame: FRD");
-            trans_ =
-                std::make_unique<Transcribe>(Transcribe::E_World_Frame::FRD);
-        }
+
+        trans_ = std::make_unique<Transcribe>();
 
         auto reliable_qos =
             rclcpp::ParametersQoS().keep_last(1).transient_local();
@@ -304,12 +175,14 @@ class PX4Interface : public rclcpp::Node
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     rclcpp::TimerBase::SharedPtr state_pub_timer_;
 
-    double hover_estimate_;
+    using MPC_STATE = interface::msg::State;
+
+    static constexpr size_t nums_to_to_collect = 300;
+    static std::array<Eigen::Vector3d, nums_to_to_collect>    pos_collecter_;
+    static std::array<Eigen::Quaterniond, nums_to_to_collect> quat_collector_;
+    double                                                    hover_estimate_;
     // sub
     // VehicleOdometry
-    // Controls;
-    // pub
-    // vehicle_thrust_setpoint
     // State
     rclcpp::Publisher<VehicleThrustAccSetpoint>::SharedPtr
         vehicle_thrust_acc_setpoint_publisher_;
@@ -326,10 +199,6 @@ class PX4Interface : public rclcpp::Node
     rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr
         vehicle_odometry_subscriber_;
 
-    // rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr
-    //     vehicle_odometry_subscriber_;
-    // // sub
-    // std
     // bool
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr trigger_subscriber_;
     rclcpp::Subscription<interface::msg::TrackingInfo>::SharedPtr
@@ -345,6 +214,15 @@ class PX4Interface : public rclcpp::Node
     void publish_offboard_control_mode();
     void publish_state();
 
+    Eigen::Quaterniond AverageQuaternions(
+        const std::array<Eigen::Quaterniond, nums_to_to_collect>& quaternions);
+    // static inline double costTinyNLS(void *ptr, const Eigen::VectorXd
+    // &xi,
+    //                              Eigen::VectorXd &gradXi)
+    static double position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
+                                    Eigen::VectorXd& gradX);
+    static double quaternion_tiny_nls(void* ptr, const Eigen::VectorXd& X,
+                                      Eigen::VectorXd& gradX);
     void tracking_info_cb(const interface::msg::TrackingInfo::SharedPtr msg);
 };
 
@@ -380,6 +258,51 @@ void PX4Interface::controls_callback(
     // publish_px4_control();
 }
 
+double PX4Interface::position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
+                                       Eigen::VectorXd& gradX)
+{
+    const PX4Interface* obj  = static_cast<PX4Interface*>(ptr);
+    double              cost = 0;
+    gradX                    = Eigen::Vector3d::Zero();
+    for (auto pos : obj->pos_collecter_)
+    {
+        cost += (pos - X).squaredNorm();
+        gradX += 2 * (X - pos);
+    }
+    return cost;
+}
+
+Eigen::Quaterniond PX4Interface::AverageQuaternions(
+    const std::array<Eigen::Quaterniond, nums_to_to_collect>& quaternions)
+{
+    // Create a 4x4 accumulator matrix for the covariance
+    Eigen::Matrix4d covariance = Eigen::Matrix4d::Zero();
+
+    // Accumulate the outer product of each quaternion (as a vector) with itself
+    for (const auto& q : quaternions)
+    {
+        Eigen::Vector4d q_vec(q.w(), q.x(), q.y(),
+                              q.z());  // Convert quaternion to a 4D vector
+        covariance +=
+            q_vec * q_vec.transpose();  // Outer product and accumulate
+    }
+
+    // Perform eigenvalue decomposition on the covariance matrix
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> solver(covariance);
+    Eigen::Vector4d avg_quaternion_vec = solver.eigenvectors().col(
+        3);  // The eigenvector with the largest eigenvalue
+
+    // Convert the resulting vector back to a quaternion
+    Eigen::Quaterniond avg_quaternion(
+        avg_quaternion_vec(0), avg_quaternion_vec(1), avg_quaternion_vec(2),
+        avg_quaternion_vec(3));
+
+    // Normalize the quaternion to ensure it's a unit quaternion
+    avg_quaternion.normalize();
+
+    return avg_quaternion;
+}
+
 /**
  * @brief
  * Callback
@@ -389,22 +312,53 @@ void PX4Interface::controls_callback(
 void PX4Interface::vehicle_odometry_callback(
     const px4_msgs::msg::VehicleOdometry::SharedPtr msg)
 {
+    static double                   minPosSqrD;
+    static lbfgs::lbfgs_parameter_t tiny_nls_params;
+    tiny_nls_params.past           = 0;
+    tiny_nls_params.delta          = 1.0e-5;
+    tiny_nls_params.g_epsilon      = FLT_EPSILON;
+    tiny_nls_params.max_iterations = 128;
+    // stat
+    static Eigen::VectorXd pos_dec;
+    static Eigen::VectorXd quat_dec;
+    pos_dec.resize(3);
+    quat_dec.resize(4);
+
+    static size_t index = 0;
+    if (index < nums_to_to_collect)
+    {
+        Eigen::Vector3d    pos_temp(msg->position[0], msg->position[1],
+                                    msg->position[2]);
+        Eigen::Quaterniond q_temp(msg->q[0], msg->q[1], msg->q[2], msg->q[3]);
+        q_temp.normalize();
+        // q_temp                = q_temp;
+        pos_collecter_[index]  = pos_temp;
+        quat_collector_[index] = {q_temp.w(), q_temp.x(), q_temp.y(),
+                                  q_temp.z()};
+        index++;
+        return;
+    }
+    Eigen::Quaterniond q1;
+    Eigen::Quaterniond q2;
+    Eigen::Vector4d    v = q1.coeffs();
     if (!is_init_)
     {
-        is_init_         = true;
+        is_init_ = true;
+        lbfgs::lbfgs_optimize(pos_dec, minPosSqrD,
+                              &PX4Interface::position_tiny_nls, nullptr,
+                              nullptr, this, tiny_nls_params);
+        quat_dec = AverageQuaternions(quat_collector_).coeffs();
+        this->trans_->setInitInertial(pos_dec, quat_dec);
         state_pub_timer_ = this->create_wall_timer(
             20ms, std::bind(&PX4Interface::publish_state, this));
     }
     this->trans_->toFLU(msg->position, msg->velocity, msg->angular_velocity,
                         msg->q, state_);
-    std::copy(state_.state.begin(), state_.state.end(), state_.state.begin());
 }
-
 void PX4Interface::publish_state()
 {
     // wait position msgs to a stationary value
-    static bool               init  = false;
-    static Position3D         pos_s = {0, 0, 0};
+    static bool               init = false;
     static Eigen::Quaterniond q_init_yaw;
 
     static bool first_time_log = true;
@@ -412,22 +366,20 @@ void PX4Interface::publish_state()
     {
         if (!init)
         {
-            Position3D pos = {state_.state[0], state_.state[1],
-                              state_.state[2]};
-            auto [pos_ss, if_staitonary] =
-                isStationary(pos, pos_init_dis_threshold);
-            init  = if_staitonary;
-            pos_s = pos_ss;
+            // auto [pos_ss, if_staitonary] =
+            //     isStationary(pos, pos_init_dis_threshold);
+            // init  = if_staitonary;
+            // pos_s = pos_ss;
 
-            // construct quaternoin and get ZYX yaw angle.
-            Eigen::Quaterniond q_cur =
-                Eigen::Quaterniond(state_.state[stateQuatStartIndex],
-                                   state_.state[stateQuatStartIndex + 1],
-                                   state_.state[stateQuatStartIndex + 2],
-                                   state_.state[stateQuatStartIndex + 3]);
-            Eigen::Matrix3d rotationMatrix = q_cur.toRotationMatrix();
-            double yaw = atan2(rotationMatrix(1, 0), rotationMatrix(0, 0));
-            q_init_yaw = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+            // // construct quaternoin and get ZYX yaw angle.
+            // Eigen::Quaterniond q_cur =
+            //     Eigen::Quaterniond(state_.state[stateQuatStartIndex],
+            //                        state_.state[stateQuatStartIndex + 1],
+            //                        state_.state[stateQuatStartIndex + 2],
+            //                        state_.state[stateQuatStartIndex + 3]);
+            // Eigen::Matrix3d rotationMatrix = q_cur.toRotationMatrix();
+            // double yaw = atan2(rotationMatrix(1, 0), rotationMatrix(0, 0));
+            // q_init_yaw = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
             if (first_time_log)
             {
                 RCLCPP_WARN(
@@ -463,15 +415,16 @@ void PX4Interface::publish_state()
         first_time_pub_state = false;
     }
 
-    state_.state[0] -= pos_s.x;
-    state_.state[1] -= pos_s.y;
-    state_.state[2] -= pos_s.z;
+    // state_.state[0] -= pos_s.x;
+    // state_.state[1] -= pos_s.y;
+    // state_.state[2] -= pos_s.z;
 
     Eigen::Quaterniond q(state_.state[stateQuatStartIndex],
                          state_.state[stateQuatStartIndex + 1],
                          state_.state[stateQuatStartIndex + 2],
                          state_.state[stateQuatStartIndex + 3]);
-    // q_init_yaw                            = Eigen::Quaterniond::Identity();
+    // q_init_yaw                            =
+    // Eigen::Quaterniond::Identity();
     q                                     = q_init_yaw.inverse() * q;
     state_.state[stateQuatStartIndex]     = q.w();
     state_.state[stateQuatStartIndex + 1] = q.x();
@@ -518,6 +471,10 @@ void PX4Interface::publish_offboard_control_mode()
     msg.timestamp    = this->get_clock()->now().nanoseconds() / 1000;
     offboard_control_mode_publisher_->publish(msg);
 }
+std::array<Eigen::Vector3d, PX4Interface::nums_to_to_collect>
+    PX4Interface::pos_collecter_;
+std::array<Eigen::Quaterniond, PX4Interface::nums_to_to_collect>
+    PX4Interface::quat_collector_;
 
 int main(int argc, char* argv[])
 {
