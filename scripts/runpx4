@@ -14,8 +14,7 @@ fi
 
 cd $PX4_ROOT
 
-# start px4_interface
-ros2 launch px4_interface px4_interface.launch.py frame:=NED&
+
 # start communication 
 MicroXRCEAgent udp4 -p 8888 &
 

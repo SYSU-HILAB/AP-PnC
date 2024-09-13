@@ -1,4 +1,7 @@
 #!/bin/bash
 planConfigSync
+# start px4_interface
+ros2 launch px4_interface px4_interface.launch.py frame:=NED&
+
 taskset -c 14 syncRunPlanning &
 taskset -c 15 sim_run_mpc > /dev/null &

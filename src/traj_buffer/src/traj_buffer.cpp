@@ -97,7 +97,7 @@ bool TrajectoryBuffer::checkTrajectoryTermination()
 // state callback is to update cz_predict
 void TrajectoryBuffer::stateCallback(const interface::msg::State::SharedPtr msg)
 {
-    auto state = msg->mpc_state;  // p,v,r,q
+    auto state = msg->state;  // p,v,r,q
     // get v and q to eigen
     auto v = Eigen::Vector3d(state[3], state[4], state[5]);
     auto q = Eigen::Quaterniond(state[9], state[10], state[11], state[12]);
@@ -276,7 +276,8 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
 void TrajectoryBuffer::declareParameters()
 {
     this->declare_parameter<double>("acc_aero_fix_factor", acc_aero_fix_factor);
-    this->declare_parameter<double>("deacc_aero_fix_factor", deacc_aero_fix_factor);
+    this->declare_parameter<double>("deacc_aero_fix_factor",
+                                    deacc_aero_fix_factor);
     this->declare_parameter<double>("traj_control_time", traj_control_time_);
     this->declare_parameter<int>("down_sampling_factor", down_sampling_factor);
     this->declare_parameter<bool>("circled", circled_);
@@ -309,7 +310,6 @@ void TrajectoryBuffer::updateParameters()
                     traj_control_time_) < 1e-9);
     aero_dyn_.setCoefs(exp_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
     aero_dyn_.setCoefs(sim_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
-
 }
 
 void TrajectoryBuffer::modeTriggerCallback(std_msgs::msg::Bool::SharedPtr msg)

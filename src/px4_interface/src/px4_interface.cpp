@@ -23,10 +23,13 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
 
-constexpr double threshold         = 0.05;
-constexpr size_t positionQueueSize = 300;
+double           pos_init_dis_threshold = 0.05;
+bool             real_world             = false;
+constexpr size_t positionQueueSize      = 300;
 
 constexpr size_t stateQuatStartIndex = interface::msg::State::QUAT_START_INDEX;
+constexpr size_t posStartIndex       = interface::msg::State::POS_START_INDEX;
+constexpr size_t velStartIndex       = interface::msg::State::VEL_START_INDEX;
 #include <stdexcept>
 #include <vector>
 
@@ -228,10 +231,15 @@ class PX4Interface : public rclcpp::Node
     {
         this->declare_parameter("world_frame", "NED");
         this->declare_parameter("hover_estimate", 0.73);
+        this->declare_parameter("position_init_distance_threshold", 0.05);
+        this->declare_parameter("real_world", false);
         hover_estimate_ = this->get_parameter("hover_estimate").as_double();
         // warn print ab
         std::string world_frame =
             this->get_parameter("world_frame").as_string();
+        this->get_parameter("position_init_distance_threshold",
+                            pos_init_dis_threshold);
+        this->get_parameter("real_world", real_world);
         if (world_frame == "NED")
         {
             RCLCPP_WARN(this->get_logger(), "world frame: NED");
@@ -389,8 +397,7 @@ void PX4Interface::vehicle_odometry_callback(
     }
     this->trans_->toFLU(msg->position, msg->velocity, msg->angular_velocity,
                         msg->q, state_);
-    std::copy(state_.state.begin(), state_.state.end(),
-              state_.mpc_state.begin());
+    std::copy(state_.state.begin(), state_.state.end(), state_.state.begin());
 }
 
 void PX4Interface::publish_state()
@@ -398,40 +405,91 @@ void PX4Interface::publish_state()
     // wait position msgs to a stationary value
     static bool               init  = false;
     static Position3D         pos_s = {0, 0, 0};
-    static Eigen::Quaterniond q_init;
-    if (!init)
-    {
-        Position3D pos = {state_.state[0], state_.state[1], state_.state[2]};
-        auto [pos_ss, if_staitonary] = isStationary(pos, threshold);
-        init                         = if_staitonary;
-        pos_s                        = pos_ss;
-        q_init = Eigen::Quaterniond(state_.state[stateQuatStartIndex],
-                                    state_.state[stateQuatStartIndex + 1],
-                                    state_.state[stateQuatStartIndex + 2],
-                                    state_.state[stateQuatStartIndex + 3]);
-        RCLCPP_WARN(this->get_logger(), "Still waiting for stationary");
-        // echo q_init
+    static Eigen::Quaterniond q_init_yaw;
 
-        return;
+    static bool first_time_log = true;
+    if (real_world)
+    {
+        if (!init)
+        {
+            Position3D pos = {state_.state[0], state_.state[1],
+                              state_.state[2]};
+            auto [pos_ss, if_staitonary] =
+                isStationary(pos, pos_init_dis_threshold);
+            init  = if_staitonary;
+            pos_s = pos_ss;
+
+            // construct quaternoin and get ZYX yaw angle.
+            Eigen::Quaterniond q_cur =
+                Eigen::Quaterniond(state_.state[stateQuatStartIndex],
+                                   state_.state[stateQuatStartIndex + 1],
+                                   state_.state[stateQuatStartIndex + 2],
+                                   state_.state[stateQuatStartIndex + 3]);
+            Eigen::Matrix3d rotationMatrix = q_cur.toRotationMatrix();
+            double yaw = atan2(rotationMatrix(1, 0), rotationMatrix(0, 0));
+            q_init_yaw = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+            if (first_time_log)
+            {
+                RCLCPP_WARN(
+                    this->get_logger(),
+                    "Real world mode, init_position adjustment to (0,0,0)");
+                first_time_log = false;
+            }
+            return;
+        }
+    }
+    else
+    {
+        if (first_time_log)
+        {
+            RCLCPP_WARN(this->get_logger(),
+                        "The init position is already set to (0,0,0)");
+            first_time_log = false;
+
+            // construct quaternoin and get ZYX yaw angle.
+            Eigen::Quaterniond q_cur =
+                Eigen::Quaterniond(state_.state[stateQuatStartIndex],
+                                   state_.state[stateQuatStartIndex + 1],
+                                   state_.state[stateQuatStartIndex + 2],
+                                   state_.state[stateQuatStartIndex + 3]);
+            double yaw = q_cur.toRotationMatrix().eulerAngles(2, 1, 0)(0);
+            q_init_yaw = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+        }
+    }
+    static bool first_time_pub_state = true;
+    if (first_time_pub_state)
+    {
+        RCLCPP_WARN(this->get_logger(), "Starting pulish mpc-state");
+        first_time_pub_state = false;
     }
 
     state_.state[0] -= pos_s.x;
     state_.state[1] -= pos_s.y;
     state_.state[2] -= pos_s.z;
 
-    state_.mpc_state[0] -= pos_s.x;
-    state_.mpc_state[1] -= pos_s.y;
-    state_.mpc_state[2] -= pos_s.z;
-
     Eigen::Quaterniond q(state_.state[stateQuatStartIndex],
                          state_.state[stateQuatStartIndex + 1],
                          state_.state[stateQuatStartIndex + 2],
                          state_.state[stateQuatStartIndex + 3]);
-    q                                     = q_init.inverse() * q;
+    // q_init_yaw                            = Eigen::Quaterniond::Identity();
+    q                                     = q_init_yaw.inverse() * q;
     state_.state[stateQuatStartIndex]     = q.w();
     state_.state[stateQuatStartIndex + 1] = q.x();
     state_.state[stateQuatStartIndex + 2] = q.y();
     state_.state[stateQuatStartIndex + 3] = q.z();
+
+    Eigen::Vector3d pos =
+        Eigen::Vector3d(state_.state[0], state_.state[1], state_.state[2]);
+    Eigen::Vector3d vel =
+        Eigen::Vector3d(state_.state[3], state_.state[4], state_.state[5]);
+    pos             = q_init_yaw.inverse() * pos;
+    vel             = q_init_yaw.inverse() * vel;
+    state_.state[0] = pos.x();
+    state_.state[1] = pos.y();
+    state_.state[2] = pos.z();
+    state_.state[3] = vel.x();
+    state_.state[4] = vel.y();
+    state_.state[5] = vel.z();
 
     state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     state_publisher_->publish(state_);

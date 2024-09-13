@@ -425,8 +425,7 @@ void NMPC::stateCallback(const StateMsg& msg)
     t_start_ = std::chrono::high_resolution_clock::now();
     // msg.mpc_state.data();
     // copy states and controls to x_cur_
-    std::copy(msg.mpc_state.data(), msg.mpc_state.data() + state_size,
-              x_cur_.begin());
+    std::copy(msg.state.data(), msg.state.data() + state_size, x_cur_.begin());
     std::copy(u_.data(), u_.data() + controls_size,
               x_cur_.begin() + state_size);
 

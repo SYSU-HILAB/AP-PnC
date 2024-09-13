@@ -134,15 +134,13 @@ namespace simulator_interface
         static MpcStateMsg mpc_state_msg;
         // now, only update mpc_state_msg 中的 mpc_state
         sim_state       = tailsitter_simulator_.getState();
-        auto& msg_array = mpc_state_msg.mpc_state;  // p v r q
+        auto& msg_array = mpc_state_msg.state;  // p v r q
         auto  mpc_state_eigen_array =
             Eigen::Map<Eigen::Array<double, 13, 1>>(msg_array.data());
 
         mpc_state_eigen_array << sim_state.p.array(), sim_state.v.array(),
             sim_state.omega.array(), rotToQuat(sim_state.R).array();
 
-        std::copy(mpc_state_msg.mpc_state.begin(),
-                  mpc_state_msg.mpc_state.end(), mpc_state_msg.state.begin());
         mpc_state_publisher_->publish(mpc_state_msg);
     };
 
