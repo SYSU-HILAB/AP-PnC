@@ -63,12 +63,16 @@ if [ -n "$PIDS" ]; then
   echo $PIDS | xargs kill
 fi
 
+PIDS=$(pgrep -f "ros2")
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
+
 echo "killing px4_interface"
 PIDS=$(pgrep -f "px4_interface")
-for PID in "${PIDS[@]}"; do
-  kill -9 "$PID"
-done
+if [ -n "$PIDS" ]; then
+  echo $PIDS | xargs kill
+fi
 
-pkill px4_interface
 
 

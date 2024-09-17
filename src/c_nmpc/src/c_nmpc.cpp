@@ -382,7 +382,7 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
                              x_cur_[q_start_index + 2],
                              x_cur_[q_start_index + 3]);
     q_cur.normalize();
-    auto yb_double              = q_cur.toRotationMatrix().col(1);
+    Eigen::Vector3d yb_double   = q_cur.toRotationMatrix().col(1);
     tracking_info_msg.actual_yb = {static_cast<float>(yb_double[0]),
                                    static_cast<float>(yb_double[1]),
                                    static_cast<float>(yb_double[2])};

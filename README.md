@@ -37,6 +37,31 @@ source $TAILSITTER_PLANNING_DIR/install-others.sh
 ```
 
 # Building the System:
+## pre-Build
+Set colcon default build behavior for you $USER
+For example, copy the following content to your $USER/.colcon/defaults.yaml
+```yaml
+build:
+  # Set the build type for all packages (can be Debug, Release, RelWithDebInfo, MinSizeRel)
+  build-base: build
+  install-base: install
+  log-base: log
+  test-result-base: test_results
+  cmake-args:
+    - -DCMAKE_BUILD_TYPE=Release  # Set the build type to Release
+    - -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  symlink-install: true            # Create symlinks to the install space instead of copying files
+
+# Specify parallelism (adjust based on your hardware capabilities)
+parallel:
+  jobs: 4  # Number of parallel jobs during the build (e.g., -j4)
+
+test:
+  # Specify where to put test results
+  result-base: test_results
+
+```
+
 ## Building Acados and MPC
 When building for the first time or making changes to the nmpc (Python) code, you need to build the Acados code. Run the following script:
 ```shell

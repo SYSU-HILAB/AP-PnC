@@ -4,18 +4,23 @@ project(px4_interface)
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
-
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(px4_msgs REQUIRED)
+find_package(Ceres REQUIRED)
 ament_auto_find_build_dependencies()
 # find_package(interface REQUIRED)
 # add_executable(offboard_control src/offboard_control.cpp)
 ament_auto_add_executable(offboard_control src/offboard_control.cpp)
 ament_auto_add_executable(offboard_mode src/offboard_mode.cpp)
-
+ament_auto_add_library(helper src/helper.cpp)
+target_link_libraries(
+  helper
+  Ceres::ceres 
+  Eigen3::Eigen
+)
 # ament_target_dependencies(
 #   offboard_control
 #   rclcpp
