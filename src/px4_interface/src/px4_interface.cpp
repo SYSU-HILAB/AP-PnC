@@ -1,6 +1,3 @@
-// #include
-#include <stdint.h>
-
 #include <Eigen/Geometry>
 #include <cfloat>
 #include <cmath>
@@ -14,55 +11,33 @@
 #include <px4_msgs/msg/tracking_info.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
 #include <px4_msgs/msg/vehicle_thrust_acc_setpoint.hpp>
-#include <random>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 
 #include "helper.cpp"
-#include "lbfgs.hpp"
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
 
-double                  pos_init_dis_threshold = 0.05;
-bool                    real_world             = false;
-static constexpr size_t nums_to_to_collect     = 300;
-
-constexpr size_t stateQuatStartIndex = interface::msg::State::QUAT_START_INDEX;
-constexpr size_t posStartIndex       = interface::msg::State::POS_START_INDEX;
-constexpr size_t velStartIndex       = interface::msg::State::VEL_START_INDEX;
 #include <stdexcept>
 #include <vector>
-Eigen::Quaterniond q_ned_enu = Eigen::Quaterniond(0, 1.0, 1.0, 0);
+
+static Eigen::Quaterniond q_flu_frd = Eigen::Quaterniond(0, 1, 0, 0);
 class Transcribe
 {
-    Eigen::Quaterniond q_flu_frd = Eigen::Quaterniond(0, 1, 0, 0);
-
     Eigen::Quaterniond q_transform = Eigen::Quaterniond(1, 0, 0, 0);
     Eigen::Vector3d    init_p;
-
-    // Eigen::Vector4d last_q = Eigen::Vector4d(1, 0, 0, 0);
 
    public:
     explicit Transcribe() { q_flu_frd.normalize(); };
     void setInitInertial(const Eigen::Vector3d&    pos,
                          const Eigen::Quaterniond& quat)
     {
-        init_p = pos;
-        // get yaw angle of quat
-        double yaw = atan2(2 * (quat.w() * quat.z() + quat.x() * quat.y()),
-                           1 - 2 * (quat.y() * quat.y() + quat.z() * quat.z()));
-        std::cerr << "yaw " << yaw << std::endl;
-        Eigen::Quaterniond q_yaw(
-            Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitZ()));
-        q_yaw.normalize();
-        q_transform = q_yaw * q_flu_frd;
+        init_p      = pos;
+        q_transform = quat * q_flu_frd;
         q_transform.normalize();
-        std::cerr << "q_transform " << q_transform.w() << " " << q_transform.x()
-                  << " " << q_transform.y() << " " << q_transform.z()
-                  << std::endl;
     }
 
     template <typename T>
@@ -70,19 +45,12 @@ class Transcribe
                const std::array<T, 3>& rate, const std::array<T, 4>& quat,
                interface::msg::State& state)
     {
-        q_ned_enu.normalize();
-
-        Eigen::Quaterniond q_yaw(
-            Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitZ()));
-        q_yaw.normalize();
-        q_transform = q_flu_frd;
-        q_transform.normalize();
-
         Eigen::Vector3d    p{pos[0], pos[1], pos[2]};
         Eigen::Vector3d    v{vel[0], vel[1], vel[2]};
         Eigen::Vector3d    r{rate[0], rate[1], rate[2]};
         Eigen::Quaterniond q{quat[0], quat[1], quat[2], quat[3]};
 
+        p -= init_p;
         p = q_transform * p;
         v = q_transform * v;
         r = q_flu_frd * r;
@@ -95,43 +63,7 @@ class Transcribe
                   state.state.begin() + State::VEL_START_INDEX);
         std::copy(r.data(), r.data() + 3,
                   state.state.begin() + State::RATE_START_INDEX);
-        // q.coeffs
-        // returns
-        // x,y,z,w
-        Eigen::Vector4d q_vec(q.w(), q.x(), q.y(), q.z());
-        std::copy(q_vec.data(), q_vec.data() + 4,
-                  state.state.begin() + State::QUAT_START_INDEX);
-    }
 
-    void fixYaw(double yaw, interface::msg::State& state)
-    {
-        static Eigen::Quaterniond q_yaw(
-            Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
-        q_yaw.normalize();
-
-        Eigen::Vector3d p{
-            state.state[interface::msg::State::POS_START_INDEX],
-            state.state[interface::msg::State::POS_START_INDEX + 1],
-            state.state[interface::msg::State::POS_START_INDEX + 2]};
-        Eigen::Vector3d v{
-            state.state[interface::msg::State::VEL_START_INDEX],
-            state.state[interface::msg::State::VEL_START_INDEX + 1],
-            state.state[interface::msg::State::VEL_START_INDEX + 2]};
-        Eigen::Quaterniond q{
-            state.state[interface::msg::State::QUAT_START_INDEX],
-            state.state[interface::msg::State::QUAT_START_INDEX + 1],
-            state.state[interface::msg::State::QUAT_START_INDEX + 2],
-            state.state[interface::msg::State::QUAT_START_INDEX + 3]};
-
-        p = q_yaw * p;
-        v = q_yaw * v;
-        q = q_yaw * q;
-
-        using interface::msg::State;
-        std::copy(p.data(), p.data() + 3,
-                  state.state.begin() + State::POS_START_INDEX);
-        std::copy(v.data(), v.data() + 3,
-                  state.state.begin() + State::VEL_START_INDEX);
         Eigen::Vector4d q_vec(q.w(), q.x(), q.y(), q.z());
         std::copy(q_vec.data(), q_vec.data() + 4,
                   state.state.begin() + State::QUAT_START_INDEX);
@@ -155,17 +87,6 @@ class PX4Interface : public rclcpp::Node
    public:
     PX4Interface() : Node("px4_interface")
     {
-        this->declare_parameter("world_frame", "NED");
-        this->declare_parameter("hover_estimate", 0.73);
-        this->declare_parameter("position_init_distance_threshold", 0.05);
-        this->declare_parameter("real_world", false);
-        // warn print ab
-        std::string world_frame =
-            this->get_parameter("world_frame").as_string();
-        this->get_parameter("position_init_distance_threshold",
-                            pos_init_dis_threshold);
-        this->get_parameter("real_world", real_world);
-
         trans_ = std::make_unique<Transcribe>();
 
         auto reliable_qos =
@@ -201,17 +122,14 @@ class PX4Interface : public rclcpp::Node
                 "/tracking_info", keep_last_qos,
                 std::bind(&PX4Interface::tracking_info_cb, this,
                           std::placeholders::_1));
+
         auto heartbeat_callback = [this]() -> void
         { publish_offboard_control_mode(); };
-
-        this->declare_parameter("control_interval", 0.02);
-        control_interval_ = this->get_parameter("control_interval").as_double();
-        heartbeat_timer_  = this->create_wall_timer(100ms, heartbeat_callback);
+        heartbeat_timer_ = this->create_wall_timer(100ms, heartbeat_callback);
     }
 
    public:
     std::unique_ptr<Transcribe> trans_;
-    double                      control_interval_;
     bool                        is_init_ = false;
     interface::msg::Controls    controls_;
     interface::msg::State       state_;
@@ -221,12 +139,9 @@ class PX4Interface : public rclcpp::Node
 
     using MPC_STATE = interface::msg::State;
 
-    static std::array<Eigen::Vector3d, nums_to_to_collect>    pos_collecter_;
-    static std::array<Eigen::Quaterniond, nums_to_to_collect> quat_collector_;
-    double                                                    hover_estimate_;
-    // sub
-    // VehicleOdometry
-    // State
+    static std::vector<Eigen::Vector3d>    pos_collecter_;
+    static std::vector<Eigen::Quaterniond> quat_collector_;
+
     rclcpp::Publisher<VehicleThrustAccSetpoint>::SharedPtr
         vehicle_thrust_acc_setpoint_publisher_;
     rclcpp::Publisher<interface::msg::State>::SharedPtr state_publisher_;
@@ -246,9 +161,7 @@ class PX4Interface : public rclcpp::Node
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr trigger_subscriber_;
     rclcpp::Subscription<interface::msg::TrackingInfo>::SharedPtr
         tracking_info_subscriber_;
-    // subscription
-    // callbacks
-    // above
+
     void controls_callback(const interface::msg::Controls::SharedPtr msg);
     void vehicle_odometry_callback(
         const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
@@ -259,9 +172,6 @@ class PX4Interface : public rclcpp::Node
 
     Eigen::Quaterniond AverageQuaternions(
         const std::vector<Eigen::Quaterniond>& quaternions);
-    // static inline double costTinyNLS(void *ptr, const Eigen::VectorXd
-    // &xi,
-    //                              Eigen::VectorXd &gradXi)
     static double position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
                                     Eigen::VectorXd& gradX);
     static double quaternion_tiny_nls(void* ptr, const Eigen::VectorXd& X,
@@ -298,7 +208,6 @@ void PX4Interface::controls_callback(
     px4_control.pitch_sp      = msg->pitch_sp;
 
     vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
-    // publish_px4_control();
 }
 
 double PX4Interface::position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
@@ -359,44 +268,39 @@ Eigen::Quaterniond PX4Interface::AverageQuaternions(
 void PX4Interface::vehicle_odometry_callback(
     const px4_msgs::msg::VehicleOdometry::SharedPtr msg)
 {
-    // static double                   minPosSqrD;
-    // static lbfgs::lbfgs_parameter_t tiny_nls_params;
-    // tiny_nls_params.past           = 0;
-    // tiny_nls_params.delta          = 1.0e-5;
-    // tiny_nls_params.g_epsilon      = FLT_EPSILON;
-    // tiny_nls_params.max_iterations = 128;
-    // // stat
-    static Eigen::VectorXd    pos_dec;
-    static Eigen::Quaterniond quat_dec;
-    pos_dec.resize(3);
-    quat_dec = Eigen::Quaterniond(msg->q[0], msg->q[1], msg->q[2], msg->q[3]);
-    // pos_dec.resize(3);
-    // static Eigen::Quaterniond q_flu_frd = Eigen::Quaterniond(0, 1, 0, 0);
-    // static size_t             index     = 0;
-    // if (index < nums_to_to_collect)
-    // {
-    //     Eigen::Vector3d    pos_temp(msg->position[0], msg->position[1],
-    //                                 msg->position[2]);
-    //     Eigen::Quaterniond q_temp(msg->q[0], msg->q[1], msg->q[2],
-    //     msg->q[3]);
-    //     // q_temp.normalize();
-    //     q_temp                 = q_flu_frd * q_temp * q_flu_frd;
-    //     pos_collecter_[index]  = pos_temp;
-    //     quat_collector_[index] = q_temp;
-    //     index++;
-    //     return;
-    // }
+    static constexpr size_t   nums_to_to_collect = 100;
+    static Eigen::Vector3d    pos_dec;
+    static Eigen::Quaterniond quat_dec(Eigen::Quaterniond::Identity());
+    static size_t             index = 0;
+    if (index < nums_to_to_collect)
+    {
+        index++;
+        Eigen::Vector3d    pos_temp(msg->position[0], msg->position[1],
+                                    msg->position[2]);
+        Eigen::Quaterniond q_temp(msg->q[0], msg->q[1], msg->q[2], msg->q[3]);
+        // q_temp.normalize();
+        q_temp = q_temp * q_flu_frd;
+        pos_collecter_.push_back(pos_temp);
+        quat_collector_.push_back(q_temp);
+        return;
+    }
+
+    if (index == nums_to_to_collect)
+    {
+        index++;
+        double yaw = YawCostFunctor::constructProblemAndSolve(quat_collector_);
+        pos_dec = PositionCostFunctor::constructProblemAndSolve(pos_collecter_);
+        std::cerr << "pos_dec: " << pos_dec.transpose() << std::endl;
+        quat_dec = Eigen::Quaterniond(
+            Eigen::AngleAxisd(-yaw, Eigen::Vector3d::UnitZ()));
+        this->trans_->setInitInertial(pos_dec, quat_dec);
+    }
 
     if (!is_init_)
     {
         is_init_         = true;
         state_pub_timer_ = this->create_wall_timer(
             20ms, std::bind(&PX4Interface::publish_state, this));
-        // lbfgs::lbfgs_optimize(pos_dec, minPosSqrD,
-        //                       &PX4Interface::position_tiny_nls, nullptr,
-        //                       nullptr, this, tiny_nls_params);
-
-        // quat_dec = AverageQuaternions(quat_collector_);
         this->trans_->setInitInertial(pos_dec, quat_dec);
     }
     this->trans_->toFLU(msg->position, msg->velocity, msg->angular_velocity,
@@ -405,38 +309,6 @@ void PX4Interface::vehicle_odometry_callback(
 
 void PX4Interface::publish_state()
 {
-    static constexpr size_t                nums_to_init_yaw = 50;
-    static size_t                          index            = 0;
-    static double                          yaw              = 0;
-    static double                          yaw1             = 0;
-    static std::vector<Eigen::Quaterniond> quaternions;
-    static std::array<Eigen::Quaterniond, nums_to_init_yaw> quaternions_arr;
-    if (index < nums_to_init_yaw)
-    {
-        index++;
-        quaternions.emplace_back(state_.state[stateQuatStartIndex],
-                                 state_.state[stateQuatStartIndex + 1],
-                                 state_.state[stateQuatStartIndex + 2],
-                                 state_.state[stateQuatStartIndex + 3]);
-        return;
-    }
-    if (index == nums_to_init_yaw)
-    {
-        index++;
-        yaw = YawCostFunctor::constructProblemAndSolve(quaternions);
-
-        yaw1 = AverageQuaternions(quaternions)
-                   .toRotationMatrix()
-                   .eulerAngles(2, 1, 0)(0);
-        return;
-    }
-    // RCLCPP_INFO(this->get_logger(), "%s Optimal yaw angle: %f %s", BLUE, yaw,
-    //             RESET);
-
-    // RCLCPP_INFO(this->get_logger(), "%s avg yaw angle: %f %s", BLUE, yaw1,
-    //             RESET);
-    this->trans_->fixYaw(-yaw, state_);
-
     state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     state_publisher_->publish(state_);
     nav_msgs::msg::Odometry odom;
@@ -464,9 +336,8 @@ void PX4Interface::publish_offboard_control_mode()
     msg.timestamp    = this->get_clock()->now().nanoseconds() / 1000;
     offboard_control_mode_publisher_->publish(msg);
 }
-std::array<Eigen::Vector3d, nums_to_to_collect> PX4Interface::pos_collecter_;
-std::array<Eigen::Quaterniond, nums_to_to_collect>
-    PX4Interface::quat_collector_;
+std::vector<Eigen::Vector3d>    PX4Interface::pos_collecter_;
+std::vector<Eigen::Quaterniond> PX4Interface::quat_collector_;
 
 int main(int argc, char* argv[])
 {
