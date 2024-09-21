@@ -30,13 +30,13 @@ phi = [
 [setup]
 acc_aero_fix_factor = 0.0
 circled = true
-curvature = 0.01
+curvature = 0.5
 deacc_aero_fix_factor = 0.9
-radius = 10.0
+radius = 15.0
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
 type = 2
-v_max = 4.0
+v_max = 10.0
 
 [px4_interface]
 pos_init_dis_threshold = 0.01

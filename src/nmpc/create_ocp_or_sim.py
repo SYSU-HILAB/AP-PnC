@@ -104,10 +104,9 @@ def ocp_nls() -> AcadosOcp:
     
     ocp.constraints.x0 = np.zeros((nx_aug))
     # bound part of x
-    
-    ocp.constraints.idxbx = np.array([13,14,15,16])
-    ocp.constraints.lbx = MpcConfig.lb_u
-    ocp.constraints.ubx = MpcConfig.ub_u
+    ocp.constraints.idxbx = np.array([6,7,8,13,14,15,16])
+    ocp.constraints.lbx = np.concatenate((MpcConfig.lb_r, MpcConfig.lb_u))
+    ocp.constraints.ubx = np.concatenate((MpcConfig.ub_r, MpcConfig.ub_u))
     
     ocp.constraints.Jbu = np.eye(nu)
     ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1.0 * 0.8

@@ -26,10 +26,11 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED)
+find_package(Ceres REQUIRED)
+
 ament_auto_find_build_dependencies()
 
 ament_auto_add_executable(${PROJECT_NAME}_node src/c_nmpc.cpp) # Add other source files as needed
-# ament_auto_add_executable(test_filter_node src/test_filter.cpp) # Add other source files as needed
 
 target_link_libraries(
         ${PROJECT_NAME}_node

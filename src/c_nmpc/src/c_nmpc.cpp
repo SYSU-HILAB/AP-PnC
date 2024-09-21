@@ -26,6 +26,45 @@ int status;  // acados operation state
 
 #include <cmath>
 #include <vector>
+using namespace Eigen;
+double RLSUpdate(const double x, const double y,
+                 const double forgetting_factor = 0.75)
+{
+    // Static covariance matrix (2x2) for parameters theta0 and theta1
+    static Matrix2d P =
+        Matrix2d::Identity() * 100;  // Initial large value for P
+
+    // Static model parameters (theta0 = intercept, theta1 = slope)
+    static double theta_0 = 0.4;
+    static double theta_1 = 0.0;
+
+    // Create the input vector [1, x] (1 for bias term)
+    Vector2d x_(2);
+    x_ << 1.0, x;
+
+    // Current parameter vector [theta0, theta1]
+    Vector2d theta(2);
+    theta << theta_0, theta_1;
+
+    // Compute the prediction error (y - predicted_y)
+    double error = y - x_.transpose() * theta;
+
+    // Gain vector K (used to update the parameters)
+    Vector2d K = P * x_ / (forgetting_factor + x_.transpose() * P * x_);
+
+    // Update the parameter vector theta
+    theta = theta + K * error;
+
+    // Update the covariance matrix P with forgetting factor
+    P = (P - K * x_.transpose() * P) / forgetting_factor;
+
+    // Store updated theta values back into static variables
+    theta_0 = theta(0);
+    theta_1 = theta(1);
+
+    // Return the updated slope theta_1
+    return theta_1;
+}
 
 // Template function to bind a member function to a std::function
 template <typename T1, class T2>
@@ -105,7 +144,7 @@ class AcadosInterface
                       std::placeholders::_1, "yref", std::placeholders::_2);
         set_model_parameter =
             std::bind(tailsitter_flu_acados_update_params, acados_ocp_capsule,
-                      std::placeholders::_1, std::placeholders::_2, 1);
+                      std::placeholders::_1, std::placeholders::_2, 3);
         get_nlp_out_u      = std::bind(ocp_nlp_out_get, nlp_config, nlp_dims,
                                        nlp_out, 0, "u", std::placeholders::_1);
         get_nlp_out_x_next = std::bind(ocp_nlp_out_get, nlp_config, nlp_dims,
@@ -190,6 +229,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     void          accCallback(const AccelerationMsg& msg) override;
     double        mass_;
     std::ofstream file;
+    std::ofstream file_aero;
 
     void solve();
 
@@ -303,7 +343,7 @@ void NMPC::solve()
     {
         pitch += M_PI;
     }
-    // copy x_aug controls to u_
+
     std::copy(x_next.data() + state_size,
               x_next.data() + state_size + controls_size, u_.begin());
     ControlMsg ctrl_msg;
@@ -403,12 +443,22 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     // Debug
     int size = refs.points.size();
 
+    double cz_rate = RLSUpdate(tracking_info_msg.alpha, cz_predict_);
+    double p[3]    = {tracking_info_msg.cz, tracking_info_msg.alpha, cz_rate};
+
+    // let the p[2] and cz_rate to csv files
+    // initialize the file
+    if (file_aero.is_open())
+    {
+        file_aero << p[0] << "," << p[1] << "," << cz_rate << ","
+                  << "\n";
+    }
     // TODO hahh
     assert(size >= acados.N + 1);
     // rclcpp print size and N
     for (int i = 0; i < acados.N; i++)
     {
-        acados.setReference(refs.points[i].point.data(), &cz_filtered_, i);
+        acados.setReference(refs.points[i].point.data(), p, i);
     }
     acados.setReference(refs.points[acados.N].point.data(), acados.N);
     static bool first_solve = true;
@@ -440,7 +490,7 @@ void NMPC::stateCallback(const StateMsg& msg)
     ready_pub_->publish(ready_msg);
 }
 
-NMPC::NMPC() : Node("NMPC"), file("time_record.csv")
+NMPC::NMPC() : Node("NMPC"), file("time_record.csv"), file_aero("cz_est.csv")
 {
     // Initialize the reference
     this->declare_parameter("mass", 1.0);
@@ -471,6 +521,15 @@ NMPC::~NMPC()
     else
     {
         RCLCPP_ERROR(this->get_logger(), "Unable to open file");
+    }
+
+    if (file_aero.is_open())
+    {
+        file_aero.close();
+    }
+    else
+    {
+        RCLCPP_ERROR(this->get_logger(), "Unable to open file aero");
     }
 }
 

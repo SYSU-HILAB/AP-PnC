@@ -10,7 +10,7 @@ from casadi import MX, SX, vertcat, sin, cos
 from utils.quaternions import *
 import numpy as np
 import casadi as cs
-
+from config.config import MpcConfig
 
 # TODO MODEL PARARS TO CONFIG
 # gz_x500 parameters
@@ -38,7 +38,9 @@ def tailsitter_flu():
     x = vertcat(p, v, r, q)
     x_aug = vertcat(x, u)
     cz = SX.sym('cz', 1)
-    param = cs.vertcat(cz)
+    cur_alpha = SX.sym('cur_alpha', 1)
+    cz_rate = SX.sym('cz_rate', 1)
+    param = cs.vertcat(cz, cur_alpha, cz_rate)
     # u is mass-normalized thrust [N/kg] >= 0, that is thrust acc
     du = SX.sym('du', 4)
     # world frame
@@ -56,10 +58,12 @@ def tailsitter_flu():
 
     # aerodynamics
     vb = v_dot_q_inverse(v, q)
+    # calculate alpha
     F_aero_b_frd = cs.SX([0, 0, 0])
     F_aero_b_frd[0] = 0
     F_aero_b_frd[1] = 0
-    F_aero_b_frd[2] =   - cz * cs.dot(v,v) 
+    F_aero_b_frd[0] =   - MpcConfig.drag_est * cs.dot(v,v)
+    F_aero_b_frd[2] =   - 1.0*(cz ) * cs.dot(v,v) 
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = q_to_rot_mat(q_tf)
     F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)
