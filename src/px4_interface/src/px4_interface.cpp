@@ -289,7 +289,7 @@ void PX4Interface::vehicle_odometry_callback(
     {
         index++;
         double yaw = YawCostFunctor::constructProblemAndSolve(quat_collector_);
-        pos_dec = PositionCostFunctor::constructProblemAndSolve(pos_collecter_);
+        pos_dec    = pos_collecter_.back();
         std::cerr << "pos_dec: " << pos_dec.transpose() << std::endl;
         quat_dec = Eigen::Quaterniond(
             Eigen::AngleAxisd(-yaw, Eigen::Vector3d::UnitZ()));

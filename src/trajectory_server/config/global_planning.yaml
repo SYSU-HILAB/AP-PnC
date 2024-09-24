@@ -5,7 +5,7 @@
     BasicTrajectoryHeight: 1.5
     BasicTrajectoryRadius: 25.0
     BasicTrajectoryRate: 0.5
-    BasicTrajectoryType: 1
+    BasicTrajectoryType: 2
     BasicTrajectoryWaveLen: 50.0
     BoxBackLength: 0.3
     BoxDownLength: 0.1
@@ -35,5 +35,5 @@
     time_weight: 10000.0
     trajTopic: /control_traj
     traj_pub_rsl: 0.02
-    v_max: 12.0
+    v_max: 11.0
     vel_weight: 10000.0
