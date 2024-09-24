@@ -228,6 +228,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     void          referenceCallback(const ReferenceBullet& msg) override;
     void          accCallback(const AccelerationMsg& msg) override;
     double        mass_;
+    double        cz_rate_;
     std::ofstream file;
     std::ofstream file_aero;
 
@@ -432,6 +433,7 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
         Eigen::Vector3d(x_cur_[vel_start_index], x_cur_[vel_start_index + 1],
                         x_cur_[vel_start_index + 2]);
 
+    double v_norm           = vb.norm();
     tracking_info_msg.alpha = static_cast<float>(atan2(vb(0), vb(2)));
     // TODO: add the actual cz
     // tracking_info_msg.cz    = static_cast<float>(cz_predict_);
@@ -443,8 +445,21 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     // Debug
     int size = refs.points.size();
 
-    double cz_rate = RLSUpdate(tracking_info_msg.alpha, cz_predict_);
-    double p[3]    = {tracking_info_msg.cz, tracking_info_msg.alpha, cz_rate};
+    double cz_rate;
+    if (tracking_info_msg.alpha < M_PI_2 && tracking_info_msg.alpha > 0.0)
+    {
+        cz_rate = cz_rate_;
+    }
+    else if (tracking_info_msg.alpha >= M_PI_2 &&
+             tracking_info_msg.alpha < M_PI)
+    {
+        cz_rate = -cz_rate_;
+    }
+    else
+    {
+        cz_rate = 0.0;
+    }
+    double p[3] = {tracking_info_msg.cz, tracking_info_msg.alpha, cz_rate};
 
     // let the p[2] and cz_rate to csv files
     // initialize the file
@@ -494,7 +509,9 @@ NMPC::NMPC() : Node("NMPC"), file("time_record.csv"), file_aero("cz_est.csv")
 {
     // Initialize the reference
     this->declare_parameter("mass", 1.0);
+    this->declare_parameter("cz_rate", 0.02);
     this->get_parameter("mass", mass_);
+    this->get_parameter("cz_rate", cz_rate_);
     RCLCPP_INFO(this->get_logger(), "mass: %f", mass_);
     initSubsPubs();
     time_statistic.reserve(10000);

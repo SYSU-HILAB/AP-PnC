@@ -10,4 +10,4 @@ if [ -z "$1" ]; then
 fi
 sleep 1
 
-ros2 run c_nmpc c_nmpc_node
+ros2 launch c_nmpc cnmpc.launch.py

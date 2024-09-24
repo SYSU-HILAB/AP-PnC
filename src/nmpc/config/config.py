@@ -43,7 +43,7 @@ class MpcConfig:
     wz=0.1
     qAngV = np.array([wx, wy, wz]) * 1 
     qDynamicVel = np.zeros((1,))
-    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 2
+    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 1
 
     Metrics = False
 

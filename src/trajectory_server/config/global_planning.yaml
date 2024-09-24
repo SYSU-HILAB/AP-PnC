@@ -2,7 +2,7 @@
   ros__parameters:
     BasicTrajectoryCirled: true
     BasicTrajectoryCurvatureFactor: 0.8
-    BasicTrajectoryHeight: 1.5
+    BasicTrajectoryHeight: 4.5
     BasicTrajectoryRadius: 25.0
     BasicTrajectoryRate: 0.5
     BasicTrajectoryType: 2
@@ -25,7 +25,7 @@
     omg_consistent_weight: 0.0
     omg_x_max: 0.8
     omg_x_weight: 20000.0
-    omg_y_max: 1.5
+    omg_y_max: 1.0
     omg_y_weight: 30000.0
     omg_z_max: 0.8
     omg_z_weight: 20000.0
@@ -35,5 +35,5 @@
     time_weight: 10000.0
     trajTopic: /control_traj
     traj_pub_rsl: 0.02
-    v_max: 11.0
+    v_max: 12.0
     vel_weight: 10000.0
