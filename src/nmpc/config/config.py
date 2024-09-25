@@ -19,8 +19,8 @@ class MpcConfig:
 
     cz = 0.0 * np.zeros((1,))
     # TODO keep sync with MpcConfig
-    lb_r = np.array([-1.5, -1.8, -1.5])
-    ub_r = np.array([1.5, 1.8, 1.5]) 
+    lb_r = np.array([-1.5, -2.5, -1.5])
+    ub_r = np.array([1.5, 2.5, 1.5]) 
     
     lb_u = np.array([0.05, 0.05, 0.05, 0.05]) * 0
     ub_u = np.array([10., 10., 10., 10.]) * 0.55

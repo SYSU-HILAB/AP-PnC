@@ -43,4 +43,4 @@ pos_init_dis_threshold = 0.01
 real_world = false
 
 [c_nmpc]
-cz_rate = 0.02
+cz_rate = 0.05
