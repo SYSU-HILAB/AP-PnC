@@ -1,8 +1,11 @@
 from acados_template import AcadosOcp, AcadosSim, AcadosSimSolver, AcadosOcpSolver
-from config.config import MpcConfig
+from config import MpcConfig
 import numpy as np
 from model import *
 import time
+
+
+
 
 
 def ocp_nls() -> AcadosOcp:
@@ -69,7 +72,7 @@ def ocp_nls() -> AcadosOcp:
     ocp.cost.yref_e = np.zeros((cost_x_size))
     ocp.parameter_values = np.zeros((nparam))
     print(nx)
-    assert nx == 3 + 3 + 3 + 4 
+    assert nx == 3 + 3 + 3 + 4 + 1
     assert nu == 4
 
     Q_list = np.hstack((

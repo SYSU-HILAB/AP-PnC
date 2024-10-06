@@ -253,8 +253,8 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     constexpr static int q_start_index    = 9;
     constexpr static int contorl_nodes    = 11;
 
-    std::array<double, state_size + controls_size> x_cur_;
-    std::array<double, controls_size>              u_;
+    std::array<double, state_size + controls_size + 1> x_cur_;
+    std::array<double, controls_size>                  u_;
     // u_sol is now du
     std::array<double, controls_size> u_sol;
     // p,v,r,q
@@ -493,7 +493,8 @@ void NMPC::stateCallback(const StateMsg& msg)
     std::copy(msg.state.data(), msg.state.data() + state_size, x_cur_.begin());
     std::copy(u_.data(), u_.data() + controls_size,
               x_cur_.begin() + state_size);
-
+    std::copy(&cz_filtered_, &cz_filtered_ + 1,
+              x_cur_.begin() + state_size + controls_size);
     cur_vel_norm =
         std::sqrt(x_cur_[vel_start_index] * x_cur_[vel_start_index] +
                   x_cur_[vel_start_index + 1] * x_cur_[vel_start_index + 1] +
