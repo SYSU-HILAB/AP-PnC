@@ -41,7 +41,7 @@ namespace tailsitter_df
         // using TModel::Type;
         // tailsitter_df::yb_prev.normalize();
         // tailsitter_df::zb_fixed.normalize();
-        type_ = Model::Type::LowAlpha;
+        type_ = Model::Type::HighLiftRange;
         // Update staitc parameter;
         const char *env_p = std::getenv("TAILSITTER_PLANNING_DIR");
         std::string sv(env_p);
@@ -58,7 +58,7 @@ namespace tailsitter_df
             getPhi()(i) = val;
         }
         auto it = config["bias"].as_array();
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < size_Models; i++)
         {
             bias_[i] << it->get(i)->as_floating_point()->get();
         }
@@ -68,22 +68,18 @@ namespace tailsitter_df
         rho_       = config["air_density"].as_floating_point()->get();
         alpha_rad_ = 0;
 
-        scale_ = rho_ * area_ / 2;
+        scale_ = 1.0;
     }
 
     realM3 &Model::getPhi()
     {
-        if (type_ == Model::Type::HighPositveAlpha)
+        if (type_ == Model::Type::Plain)
         {
             return Phis_[0];
         }
-        if (type_ == Model::Type::LowAlpha)
+        if (type_ == Model::Type::HighLiftRange)
         {
             return Phis_[1];
-        }
-        if (type_ == Model::Type::HighNegativeAlpha)
-        {
-            return Phis_[2];
         }
     };
 
@@ -121,17 +117,13 @@ namespace tailsitter_df
 
     realV3 &Model::getBias()
     {
-        if (type_ == Model::Type::HighPositveAlpha)
+        if (type_ == Model::Type::Plain)
         {
             return bias_[0];
         }
-        if (type_ == Model::Type::LowAlpha)
+        if (type_ == Model::Type::HighLiftRange)
         {
             return bias_[1];
-        }
-        if (type_ == Model::Type::HighNegativeAlpha)
-        {
-            return bias_[2];
         }
     };
 
@@ -301,6 +293,14 @@ namespace tailsitter_df
         auto   &magic    = data.magic;
         auto   &yb_prev  = data.yb_prev;
 
+        if (alpha >= 0.0 && alpha <= 0.33)
+        {
+            tailsitter_model.type_ = Model::Type::HighLiftRange;
+        }
+        else
+        {
+            tailsitter_model.type_ = Model::Type::Plain;
+        }
         realV3 &aeroForceB = data.aeroForceB;
 
         eta         = a - g;

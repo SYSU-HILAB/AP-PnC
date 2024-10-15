@@ -151,7 +151,7 @@ def tailsitter_flu():
     alpha_dot = (vb_dot[2]*vb[0] - vb[2]*vb_dot[0]) / (cs.dot(v,v))
     cz_dot = cs.if_else(
         cs.dot(v,v) > 1.0,
-        -0.25 * alpha_dot,
+        -cz_rate * alpha_dot,
         0.0
     )
 

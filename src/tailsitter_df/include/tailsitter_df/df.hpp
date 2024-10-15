@@ -12,7 +12,7 @@ namespace tailsitter_df
     typedef autodiff::real1st     real;
     typedef autodiff::Vector3real realV3;
     typedef autodiff::Matrix3real realM3;
-    constexpr int                 size_Models = 3;
+    constexpr int                 size_Models = 2;
     constexpr double              error_alpha = 100;
     const realV3                  g = (realV3() << 0, 0, -9.8).finished();
     constexpr real                vThreshold     = 0.01;
@@ -21,11 +21,12 @@ namespace tailsitter_df
     class Model
     {
         // testing only use -50 - 50;
+       public:
         enum class Type
         {
-            HighPositveAlpha,
-            HighNegativeAlpha,
-            LowAlpha
+            Plain,
+            HighLiftRange,  // typically, it refers to low-alpha and high speed
+                            // range.
         };
 
        private:

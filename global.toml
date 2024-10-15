@@ -12,35 +12,36 @@ tau = 0.013
 
 [tailsitter_df]
 air_density = 1.25
-area = 0.25
-bias = [0.0, 0.0, 0.0]
-mass = 1.5
+area = 0.24
+#bias = [-0.146277, 0.0]
+bias = [0.0, 0.0]
+mass = 2.0
 phi = [
-  -0.1,
+  -0.05,
   0.0,
   0.0,
   0.0,
   0.0,
   0.0,
   0.0,
-  0.0,
-  -1.532,
+  0.0, # -1.532, -0.2279616
+  -0.4514122730076191, #-0.451412,
 ]
-
+# 0.33 .146277
 [setup]
 acc_aero_fix_factor = 0.0
 circled = true
 curvature = 0.5
 deacc_aero_fix_factor = 0.9
-radius = 25.0
+radius = 35.0
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
 type = 2
-v_max = 12.0
+v_max = 13.0
 
 [px4_interface]
 pos_init_dis_threshold = 0.01
 real_world = false
 
 [c_nmpc]
-cz_rate = 0.05
+cz_rate = 0.20

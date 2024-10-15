@@ -3,7 +3,7 @@
     BasicTrajectoryCirled: true
     BasicTrajectoryCurvatureFactor: 0.8
     BasicTrajectoryHeight: 4.5
-    BasicTrajectoryRadius: 25.0
+    BasicTrajectoryRadius: 35.0
     BasicTrajectoryRate: 0.5
     BasicTrajectoryType: 2
     BasicTrajectoryWaveLen: 50.0
@@ -32,8 +32,8 @@
     thrust_max: 20.0
     thrust_min: 2.0
     thrust_weight: 500.0
-    time_weight: 10000.0
+    time_weight: 15000.0
     trajTopic: /control_traj
     traj_pub_rsl: 0.02
-    v_max: 12.0
+    v_max: 13.0
     vel_weight: 10000.0

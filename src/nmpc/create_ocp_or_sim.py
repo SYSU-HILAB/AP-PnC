@@ -124,7 +124,7 @@ def ocp_nls() -> AcadosOcp:
     # FULL_CONDENSING_HPIPM
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"  # 'GAUSS_NEWTON', 'EXACT'
     ocp.solver_options.integrator_type = "ERK"
-    ocp.solver_options.nlp_solver_type = "SQP"  # SQP_RTI, SQP
+    ocp.solver_options.nlp_solver_type = "SQP_RTI"  # SQP_RTI, SQP
     # ocp.solver_options.nlp_solver_ext_qp_res = 1
     ocp.solver_options.nlp_solver_max_iter = 10
     # ocp.solver_options.nlp_solver_max_iter = 20
