@@ -8,6 +8,7 @@
 #include <interface/msg/trajectory_control.hpp>
 #include <iostream>
 #include <memory>
+#include <ostream>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <string>
@@ -15,7 +16,6 @@
 
 #include "gcopter/gcopter.hpp"
 #include "gcopter/trajectory.hpp"
-#include <ostream>
 using std::chrono_literals::operator""s;
 using RefTrajectory   = interface::msg::RefTrajectory;
 using TrajectoryPoint = interface::msg::TrajectoryPoint;
@@ -24,6 +24,35 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 #include <basic_trajectories/lemniscate.hpp>
 #include <basic_trajectories/line.hpp>
 #include <basic_trajectories/sin.hpp>
+
+std::ofstream &init_planning_csv_file()
+{
+    static std::ofstream csv_file;
+    csv_file.open("planning.csv", std::ios::out | std::ios::trunc);
+    // header t, p, v, thrust, alpha, aero_force_z  with header
+    // name
+    csv_file << "time"
+             << ","
+             << "pos_x"
+             << ","
+             << "pos_y"
+             << ","
+             << "pos_z"
+             << ","
+             << "vel_x"
+             << ","
+             << "vel_y"
+             << ","
+             << "vel_z"
+             << ","
+             << "thrust"
+             << ","
+             << "alpha"
+             << ","
+             << "aero_force_z"
+             << "\n";
+    return csv_file;
+}
 
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType
@@ -101,7 +130,8 @@ struct Config
         basic_traj_wave_len =
             node->declare_parameter("BasicTrajectoryWaveLen", 10.0);
 
-        trajecotry_cirled = node->declare_parameter("BasicTrajectoryCirled", true);
+        trajecotry_cirled =
+            node->declare_parameter("BasicTrajectoryCirled", true);
 
         // pub config
         traj_pub_rsl = node->declare_parameter("traj_pub_rsl", 0.02);
@@ -241,14 +271,17 @@ class GlobalPlanner : public rclcpp::Node
             return;
         }
         if (type == 4)
-        {   
-            if (!config.trajecotry_cirled){
+        {
+            if (!config.trajecotry_cirled)
+            {
                 basic_traj = std::make_unique<basic_trajectories::Line>(
-                    config.basic_trajectory_radius, config.basic_trajectory_rate,
+                    config.basic_trajectory_radius,
+                    config.basic_trajectory_rate,
                     config.basic_trajectory_height);
                 return;
             }
-            else {
+            else
+            {
                 RCLCPP_ERROR(this->get_logger(),
                              "The line trajectory must not be cirled!");
                 abort();
@@ -377,7 +410,7 @@ class GlobalPlanner : public rclcpp::Node
             auto &tailsitter_model = tailsitter_df::Model::getInstance();
             tailsitter_data.reset(tailsitter_model, config.trajecotry_cirled);
             control_traj_msg.points.clear();
-
+            auto &csv_file = init_planning_csv_file();
             for (double t = 0.0; t <= traj.getTotalDuration() + FLT_EPSILON;
                  t += config.traj_pub_rsl)
             {
@@ -389,6 +422,22 @@ class GlobalPlanner : public rclcpp::Node
                 z << traj.getVel(t), traj.getAcc(t), traj.getAcc(t);
                 double thrust;
                 tailsitter_df::df_backward_auto(z, thrust, omg);
+
+                {
+                    double alpha        = tailsitter_data.alpha.val();
+                    double aero_force_z = tailsitter_data.aeroForceB(2).val();
+
+                    // CSV cpp write
+
+                    // write data
+                    csv_file << t << "," << traj.getPos(t)(0) << ","
+                             << traj.getPos(t)(1) << "," << traj.getPos(t)(2)
+                             << "," << traj.getVel(t)(0) << ","
+                             << traj.getVel(t)(1) << "," << traj.getVel(t)(2)
+                             << "," << thrust << "," << alpha << ","
+                             << aero_force_z << "\n";
+                }
+
                 auto               quat_df = tailsitter_data.getQuaternion();
                 Eigen::Quaterniond q_b1_b2(0, 0.707, 0, 0.707);
                 auto               quat_q = quat_df * q_b1_b2;
@@ -405,9 +454,9 @@ class GlobalPlanner : public rclcpp::Node
                 auto p = traj.getPos(t);
                 auto v = traj.getVel(t);
 
-                auto            yb_df = -tailsitter_data.yb;
-                Eigen::Vector3d YB    = (Eigen::Vector3d() << yb_df.x().val(),
-                                      yb_df.y().val(), yb_df.z().val())
+                auto            yb_df = tailsitter_data.yb;
+                Eigen::Vector3d YB    = (Eigen::Vector3d() << -yb_df.x().val(),
+                                      -yb_df.y().val(), yb_df.z().val())
                                          .finished();
 
                 control_traj_msg.timestamp = this->get_clock()->now();
@@ -424,6 +473,8 @@ class GlobalPlanner : public rclcpp::Node
                 // default set to zero
                 control_traj_msg.points.push_back(traj_point);
             }
+            // clsoe file
+            csv_file.close();
 
             trajPub->publish(control_traj_msg);
             RCLCPP_WARN(this->get_logger(), "Trajectory Published !!!\n");

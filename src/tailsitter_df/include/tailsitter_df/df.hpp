@@ -14,8 +14,8 @@ namespace tailsitter_df
     typedef autodiff::Matrix3real realM3;
     constexpr int                 size_Models = 2;
     constexpr double              error_alpha = 100;
-    const realV3                  g = (realV3() << 0, 0, -9.8).finished();
-    constexpr real                vThreshold     = 0.01;
+    const realV3                  g = (realV3() << 0, 0, 9.8).finished();
+    constexpr real                vThreshold     = 1.0;
     constexpr real                gammaThreshold = 5 * M_PI / 180;
 
     class Model

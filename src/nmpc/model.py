@@ -120,6 +120,7 @@ def tailsitter_flu():
     vb = v_dot_q_inverse(v, q)
     # calculate alpha
     alpha = cs.atan2(vb[0], (vb[2] + 0.1))
+    
     # alpha = cs.if_else(alpha < 0.0, alpha+cs.pi, alpha)
     aero_comp = cs.if_else(
         alpha > 0.0,
@@ -128,7 +129,7 @@ def tailsitter_flu():
     )
     F_aero_b_frd = cs.SX([0, 0, 0])
     F_aero_b_frd[0] =   - MpcConfig.drag_est * cs.dot(v,v)
-    F_aero_b_frd[1] = 0
+    F_aero_b_frd[1] = 0.0
     F_aero_b_frd[2] =   - 1.0*(cz_state) * cs.dot(v,v) 
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = q_to_rot_mat(q_tf)

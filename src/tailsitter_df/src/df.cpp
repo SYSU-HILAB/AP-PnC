@@ -278,29 +278,75 @@ namespace tailsitter_df
     VectorXreal df_forward_nominal(const Vector3real &v, const Vector3real &a,
                                    const Vector3real &j)
     {
+        realV3 &eta      = data.eta;
+        realV3 &zb_fixed = data.zb_fixed;
+        // realV3 temp = v.cross(eta);
+        realV3 &xb         = data.xb;
+        realV3 &yb         = data.yb;
+        realV3 &zb         = data.zb;
+        auto   &attitude   = data.attitude;
+        auto   &q          = data.q;
+        auto   &alpha      = data.alpha;
+        auto   &at         = data.at;
+        auto   &magic      = data.magic;
+        auto   &yb_prev    = data.yb_prev;
+        realV3 &aeroForceB = data.aeroForceB;
+
+        realV3 x_v  = v / v.norm();
+        realV3 temp = -(realM3::Identity() - x_v * x_v.transpose()) * (a - g);
+        real   a_vz = -temp.norm();
+        realV3 z_v  = temp / temp.norm();
+        realV3 y_v  = z_v.cross(x_v);
+        real   a_vx = x_v.transpose() * (a - g);
+        real   V    = v.norm();
+        real   omega_vz = (y_v.transpose() * g);
+        omega_vz        = omega_vz / V;
+        real omega_vx   = (y_v.transpose() * j);
+        omega_vx        = ((omega_vz * a_vx) - omega_vx) / a_vz;
+        real omega_vy   = (z_v.transpose() * g);
+        omega_vy        = (-a_vz - omega_vz) / V;
+
+        realV3 aero_acc = tailsitter_model.getPhi().row(2).transpose() * V * V;
+        aeroForceB      = aero_acc;
+        alpha           = atan2(aero_acc(0) - a_vz, a_vx - aero_acc(2));
+        yb              = y_v;
+        xb              = cos(alpha) * x_v + sin(alpha) * z_v;
+        zb              = cos(alpha) * z_v - sin(alpha) * x_v;
+        at(0)           = a_vx * cos(alpha) - a_vz * sin(alpha);
+        attitude << xb, yb, zb;
+
+        real omega_bx = omega_vx * cos(alpha) - omega_vz * sin(alpha);
+        real omega_bz = omega_vx * sin(alpha) + omega_vz * cos(alpha);
+        // auto &q = data.q;
+        q             = Eigen::Quaternion<real>(attitude);
+        yb            = -yb;
+        yb_prev       = yb;
+        real av_x_dot = z_v.transpose() * j;
+        av_x_dot      = av_x_dot + omega_vy * a_vx;
+        real aerosz   = aero_acc(0) * cos(alpha) + aero_acc(2) * sin(alpha);
+        aeroForceB(2) = aerosz;
+
+        return (Eigen::Vector4<real>() << a_vx, omega_vx, av_x_dot, omega_vz)
+            .finished();
+    }
+
+    VectorXreal df_forward_nominal_2(const Vector3real &v, const Vector3real &a,
+                                     const Vector3real &j)
+    {
         // auto& yb_prev = data.yb_prev;
 
         realV3 &eta      = data.eta;
         realV3 &zb_fixed = data.zb_fixed;
         // realV3 temp = v.cross(eta);
-        realV3 &xb       = data.xb;
-        realV3 &yb       = data.yb;
-        realV3 &zb       = data.zb;
-        auto   &attitude = data.attitude;
-        auto   &q        = data.q;
-        auto   &alpha    = data.alpha;
-        auto   &at       = data.at;
-        auto   &magic    = data.magic;
-        auto   &yb_prev  = data.yb_prev;
-
-        if (alpha >= 0.0 && alpha <= 0.33)
-        {
-            tailsitter_model.type_ = Model::Type::HighLiftRange;
-        }
-        else
-        {
-            tailsitter_model.type_ = Model::Type::Plain;
-        }
+        realV3 &xb         = data.xb;
+        realV3 &yb         = data.yb;
+        realV3 &zb         = data.zb;
+        auto   &attitude   = data.attitude;
+        auto   &q          = data.q;
+        auto   &alpha      = data.alpha;
+        auto   &at         = data.at;
+        auto   &magic      = data.magic;
+        auto   &yb_prev    = data.yb_prev;
         realV3 &aeroForceB = data.aeroForceB;
 
         eta         = a - g;
@@ -452,6 +498,7 @@ namespace tailsitter_df
 
         Eigen::Vector4<real> lora = computeDotAtAndBodyRates(N1, N2, h1, h2);
         // Eigen::Vector4<real> magic;
+        yb       = -yb;
         magic(0) = at.norm();
         // magic(0) = alpha;
         magic.tail(3) = lora.tail(3);
