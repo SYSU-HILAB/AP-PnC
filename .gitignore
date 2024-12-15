@@ -43,3 +43,13 @@ output_csv/
 docs/
 *.csv
 env/
+
+
+# intermediate plots
+*.eps
+*.pdf
+
+
+# intermediate mesh files
+*.stl
+*.STL

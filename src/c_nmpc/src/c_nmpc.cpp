@@ -435,13 +435,17 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
 
     double v_norm           = vb.norm();
     tracking_info_msg.alpha = static_cast<float>(atan2(vb(0), vb(2)));
+
+    // for recording pitch , temply trans
+    // tracking_info_msg.alpha = q_cur.toRotationMatrix().eulerAngles(2, 0,
+    // 1)(2);
     // TODO: add the actual cz
     // tracking_info_msg.cz    = static_cast<float>(cz_predict_);
     tracking_info_msg.cz = static_cast<float>(cz_filtered_);
     // tracking_info_msg.cz =
     if (tracking_valid)
         tracking_info_pub_->publish(tracking_info_msg);
-
+    tracking_info_msg.alpha = static_cast<float>(atan2(vb(0), vb(2)));
     // Debug
     int size = refs.points.size();
 

@@ -23,9 +23,9 @@ phi = [
   0.0,
   0.0,
   0.0,
-  -0.05,
+  -0.00,
   0.0, # -1.532, -0.2279616
-  -0.204122730076191, #-0.451412,
+  -0.094122730076191, #-0.451412,
 ]
 # phi = [
 #   0.0,
@@ -44,15 +44,15 @@ acc_aero_fix_factor = 0.0
 circled = true
 curvature = 0.5
 deacc_aero_fix_factor = 0.9
-radius = 25.0
+radius = 20.0
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
 type = 2
-v_max = 13.0
+v_max = 14.0
 
 [px4_interface]
 pos_init_dis_threshold = 0.01
 real_world = false
 
 [c_nmpc]
-cz_rate = 0.25
+cz_rate = 0.20

@@ -6,3 +6,6 @@ ulog2csv "$latest_ulg" -m vehicle_angular_velocity -o output_csv
 ulog2csv "$latest_ulg" -m vehicle_rates_setpoint -o output_csv
 ulog2csv "$latest_ulg" -m vehicle_thrust_acc_setpoint -o output_csv
 ulog2csv "$latest_ulg" -m vehicle_acceleration -o output_csv
+ulog2csv "$latest_ulg" -m vehicle_attitude -o output_csv
+ulog2csv "$latest_ulg" -m vehicle_odometry -o output_csv
+# vehicle_odometry

@@ -9,18 +9,17 @@ namespace tailsitter_df
 {
     using namespace autodiff;
     using namespace autodiff::detail;
-    typedef autodiff::real1st     real;
-    typedef autodiff::Vector3real realV3;
-    typedef autodiff::Matrix3real realM3;
-    constexpr int                 size_Models = 2;
-    constexpr double              error_alpha = 100;
-    const realV3                  g = (realV3() << 0, 0, 9.8).finished();
-    constexpr real                vThreshold     = 1.0;
-    constexpr real                gammaThreshold = 5 * M_PI / 180;
+    using real                      = autodiff::real1st;
+    using realV3                    = autodiff::Vector3real;
+    using realM3                    = autodiff::Matrix3real;
+    constexpr int    size_Models    = 2;
+    constexpr double error_alpha    = 100;
+    const realV3     g              = (realV3() << 0, 0, 9.8).finished();
+    constexpr real   vThreshold     = 1.0;
+    constexpr real   gammaThreshold = 5 * M_PI / 180;
 
     class Model
     {
-        // testing only use -50 - 50;
        public:
         enum class Type
         {

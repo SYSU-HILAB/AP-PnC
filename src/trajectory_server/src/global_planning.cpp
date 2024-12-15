@@ -50,6 +50,18 @@ std::ofstream &init_planning_csv_file()
              << "alpha"
              << ","
              << "aero_force_z"
+             << ","
+             << "yb_x"
+             << ","
+             << "yb_y"
+             << ","
+             << "yb_z"
+             << ","
+             << "av_x"
+             << ","
+             << "av_y"
+             << ","
+             << "av_z"
              << "\n";
     return csv_file;
 }
@@ -428,14 +440,20 @@ class GlobalPlanner : public rclcpp::Node
                     double aero_force_z = tailsitter_data.aeroForceB(2).val();
 
                     // CSV cpp write
-
+                    Eigen::Vector3d       acc = traj.getAcc(t);
+                    const Eigen::Vector3d gravity(0, 0, 9.81);
+                    Eigen::Vector3d       av = acc - gravity;
                     // write data
-                    csv_file << t << "," << traj.getPos(t)(0) << ","
-                             << traj.getPos(t)(1) << "," << traj.getPos(t)(2)
-                             << "," << traj.getVel(t)(0) << ","
-                             << traj.getVel(t)(1) << "," << traj.getVel(t)(2)
-                             << "," << thrust << "," << alpha << ","
-                             << aero_force_z << "\n";
+                    csv_file
+                        << t << "," << traj.getPos(t)(0) << ","
+                        << traj.getPos(t)(1) << "," << traj.getPos(t)(2) << ","
+                        << traj.getVel(t)(0) << "," << traj.getVel(t)(1) << ","
+                        << traj.getVel(t)(2) << "," << thrust << "," << alpha
+                        << "," << aero_force_z << ","
+                        << tailsitter_data.yb.x().val() << ","
+                        << tailsitter_data.yb.y().val() << ","
+                        << -tailsitter_data.yb.z().val() << "," << av(0) << ","
+                        << av(1) << "," << av(2) << "\n";
                 }
 
                 auto               quat_df = tailsitter_data.getQuaternion();

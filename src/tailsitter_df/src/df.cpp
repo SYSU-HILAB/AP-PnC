@@ -10,7 +10,7 @@
 // use abort to signal coredump
 #include <cstdlib>
 
-#define out std::cout
+constexpr auto &out = std::cout;
 
 //
 template <typename T>
@@ -281,12 +281,18 @@ namespace tailsitter_df
         realV3 &eta      = data.eta;
         realV3 &zb_fixed = data.zb_fixed;
         // realV3 temp = v.cross(eta);
-        realV3 &xb         = data.xb;
-        realV3 &yb         = data.yb;
-        realV3 &zb         = data.zb;
+        realV3 &xb = data.xb;
+        realV3 &yb = data.yb;
+        realV3 &zb = data.zb;
+
+        realV3 last_xb = data.xb;
+        realV3 last_yb = data.yb;
+        realV3 last_zb = data.zb;
+
         auto   &attitude   = data.attitude;
         auto   &q          = data.q;
         auto   &alpha      = data.alpha;
+        real    alpha_prev = alpha;
         auto   &at         = data.at;
         auto   &magic      = data.magic;
         auto   &yb_prev    = data.yb_prev;
@@ -304,29 +310,79 @@ namespace tailsitter_df
         real omega_vx   = (y_v.transpose() * j);
         omega_vx        = ((omega_vz * a_vx) - omega_vx) / a_vz;
         real omega_vy   = (z_v.transpose() * g);
-        omega_vy        = (-a_vz - omega_vz) / V;
+        omega_vy        = (-a_vz - omega_vy) / V;
 
         realV3 aero_acc = tailsitter_model.getPhi().row(2).transpose() * V * V;
         aeroForceB      = aero_acc;
         alpha           = atan2(aero_acc(0) - a_vz, a_vx - aero_acc(2));
-        yb              = y_v;
-        xb              = cos(alpha) * x_v + sin(alpha) * z_v;
-        zb              = cos(alpha) * z_v - sin(alpha) * x_v;
-        at(0)           = a_vx * cos(alpha) - a_vz * sin(alpha);
+
+        yb    = y_v;
+        xb    = cos(alpha) * x_v - sin(alpha) * z_v;
+        zb    = cos(alpha) * z_v + sin(alpha) * x_v;
+        at(0) = a_vx * cos(alpha) - a_vz * sin(alpha);
         attitude << xb, yb, zb;
 
         real omega_bx = omega_vx * cos(alpha) - omega_vz * sin(alpha);
         real omega_bz = omega_vx * sin(alpha) + omega_vz * cos(alpha);
+
+        real phi31 = tailsitter_model.getPhi().row(2).transpose()(0);
+        real phi33 = tailsitter_model.getPhi().row(2).transpose()(2);
         // auto &q = data.q;
         q             = Eigen::Quaternion<real>(attitude);
         yb            = -yb;
         yb_prev       = yb;
-        real av_x_dot = z_v.transpose() * j;
-        av_x_dot      = av_x_dot + omega_vy * a_vx;
-        real aerosz   = aero_acc(0) * cos(alpha) + aero_acc(2) * sin(alpha);
-        aeroForceB(2) = aerosz;
+        real av_z_dot = z_v.transpose() * j;
+        av_z_dot      = av_z_dot + omega_vy * a_vx;
 
-        return (Eigen::Vector4<real>() << a_vx, omega_vx, av_x_dot, omega_vz)
+        real av_x_dot = x_v.transpose() * j;
+        av_x_dot      = av_x_dot - omega_vy * a_vz;
+
+        real v2_acc = v.transpose() * a;
+        // method1  singularity
+        // real alpha_dot = (av_x_dot - 2 * phi33 * v2_acc) * sin(alpha) +
+        //                  (av_z_dot - 2 * phi31 * v2_acc) * cos(alpha);
+        // alpha_dot     = alpha_dot / ((aero_acc(0) - a_vx) * cos(alpha) +
+        //                          (a_vz - aero_acc(2)) * sin(alpha));
+
+        // real demoninator = (a_vz + aero_acc(2)) * sin(alpha) -
+        //                    (a_vx + aero_acc(0)) * cos(alpha);
+        // real numerator = (av_x_dot - 2 * phi33 * v2_acc) * sin(alpha) +
+        //                  (av_z_dot - 2 * phi31 * v2_acc) * cos(alpha);
+        // real   alpha_dot = numerator / demoninator;
+        // realM3 last_R    = (realM3() << last_xb, last_yb,
+        // last_zb).finished(); realV3 vb        = attitude.transpose() * v;
+        // realV3 vb_dot    = attitude.transpose() * a;
+
+        // method approximation: too small
+        realV3 vb    = attitude.transpose() * v;
+        realV3 term3 = vb(0) * zb - vb(2) * xb;
+
+        real term1 = zb.transpose() * a;
+        term1      = term1 * vb(0);
+        real term2 = xb.transpose() * a;
+        term2      = term2 * vb(2);
+        real V2    = v.transpose() * v;
+        // real alpha_dot = (term1 - term2);
+        // alpha_dot      = alpha_dot / V2;
+        real alpha_dot = term3.transpose() * a;
+        alpha_dot      = alpha_dot / V2;
+        // real alpha_dot = (vb_dot(2) * vb(0) - vb_dot(0) * vb(2)) / (V * V);
+        real aero_b_z = aero_acc(0) * cos(alpha) + aero_acc(2) * sin(alpha);
+
+        real av_bz_est = a_vz;
+
+        real aero_w_z = aero_b_z * zb(2);
+        real aero_w_x = aero_b_z * zb(2);
+        real aero_w_y = aero_b_z * zb(2);
+
+        real aero_w_xy = sqrt(aero_w_x * aero_w_x + aero_w_y * aero_w_y);
+        real aerosz    = aero_acc(0) * cos(alpha) + aero_acc(2) * sin(alpha);
+        aeroForceB(2)  = alpha_dot;
+        alpha_dot      = 0;
+        real at_dot    = (av_x_dot + alpha_dot * a_vz) * cos(alpha) -
+                      (av_z_dot - alpha_dot * a_vx) * sin(alpha);
+        return (Eigen::Vector4<real>() << at_dot, omega_vx,
+                alpha_dot + omega_vy, omega_vz)
             .finished();
     }
 
@@ -470,7 +526,12 @@ namespace tailsitter_df
         xb  = at;
         xb.normalize();
 
+        real   scaling   = exp(-v.norm());
+        realV3 yb_from_v = v.cross(eta);
+        yb_from_v.normalize();
         yb = zb_fixed.cross(xb);
+        yb.normalize();
+        yb = yb_from_v * (1 - scaling) + yb * scaling;
         yb.normalize();
         zb = xb.cross(yb);
         zb.normalize();
@@ -499,7 +560,8 @@ namespace tailsitter_df
         Eigen::Vector4<real> lora = computeDotAtAndBodyRates(N1, N2, h1, h2);
         // Eigen::Vector4<real> magic;
         yb       = -yb;
-        magic(0) = at.norm();
+        real avx = v.transpose() * a;
+        magic(0) = avx;
         // magic(0) = alpha;
         magic.tail(3) = lora.tail(3);
 

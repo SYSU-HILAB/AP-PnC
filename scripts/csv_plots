@@ -80,7 +80,6 @@ axs[0, 1].set_ylabel('Z Position')
 axs[0, 1].set_title('Vertical view: Ref_z vs z')
 axs[0, 1].legend()
 axs[0, 1].grid(True)
-axs[0, 1].set_ylim([-5, 5])
 
 
 # 3rd子图：ref_vxy vs v_xy
