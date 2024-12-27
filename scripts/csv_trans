@@ -1,11 +1,31 @@
-# /usr/bin/bash
-latest_ulg=$(ls -t *.ulg | head -n 1)
+#!/usr/bin/bash
 
-ulog2csv "$latest_ulg" -m tracking_info -o output_csv
-ulog2csv "$latest_ulg" -m vehicle_angular_velocity -o output_csv
-ulog2csv "$latest_ulg" -m vehicle_rates_setpoint -o output_csv
-ulog2csv "$latest_ulg" -m vehicle_thrust_acc_setpoint -o output_csv
-ulog2csv "$latest_ulg" -m vehicle_acceleration -o output_csv
-ulog2csv "$latest_ulg" -m vehicle_attitude -o output_csv
-ulog2csv "$latest_ulg" -m vehicle_odometry -o output_csv
-# vehicle_odometry
+# Check if TAILSITTER_PLANNING_DIR is set
+if [ -z "$TAILSITTER_PLANNING_DIR" ]; then
+    echo "TAILSITTER_PLANNING_DIR is not set"
+    exit 1
+fi
+
+# Get the latest .ulg file from the 'ulgs' folder
+latest_ulg=$(ls -t ulgs/*.ulg | head -n 1)
+
+# Check if we found any .ulg files
+if [ -z "$latest_ulg" ]; then
+    echo "No .ulg files found in ulgs/"
+    exit 1
+fi
+
+# Set the output directory
+FATHER_HOME="$TAILSITTER_PLANNING_DIR/ulgs"
+
+# Ensure the output directory exists
+mkdir -p "$FATHER_HOME/output_csv"
+
+# Convert .ulg to CSV using different message types
+ulog2csv "$latest_ulg" -m tracking_info -o "$FATHER_HOME/output_csv"
+ulog2csv "$latest_ulg" -m vehicle_angular_velocity -o "$FATHER_HOME/output_csv"
+ulog2csv "$latest_ulg" -m vehicle_rates_setpoint -o "$FATHER_HOME/output_csv"
+ulog2csv "$latest_ulg" -m vehicle_thrust_acc_setpoint -o "$FATHER_HOME/output_csv"
+ulog2csv "$latest_ulg" -m vehicle_acceleration -o "$FATHER_HOME/output_csv"
+ulog2csv "$latest_ulg" -m vehicle_attitude -o "$FATHER_HOME/output_csv"
+ulog2csv "$latest_ulg" -m vehicle_odometry -o "$FATHER_HOME/output_csv"

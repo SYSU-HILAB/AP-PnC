@@ -13,7 +13,6 @@ tau = 0.013
 [tailsitter_df]
 air_density = 1.25
 area = 0.24
-#bias = [-0.146277, 0.0]
 bias = [-0.00, -0.00]
 mass = 2.0
 phi = [
@@ -44,7 +43,7 @@ acc_aero_fix_factor = 0.0
 circled = true
 curvature = 0.5
 deacc_aero_fix_factor = 0.9
-radius = 20.0
+radius = 50.0
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
 type = 2

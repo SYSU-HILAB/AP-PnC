@@ -21,7 +21,7 @@ def calculate_distance(ref_x, ref_y, x, y):
 # args = parser.parse_args()
 
 pattern = re.compile(r'tracking_info')
-directory = os.path.join(directory, 'output_csv/')
+directory = f'{directory}/ulgs/output_csv/'
 # List all files in the directory
 files = os.listdir(directory)
 # csv_file_name = args.f 

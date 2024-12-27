@@ -33,3 +33,5 @@ sudo apt install python3-colcon-common-extensions
 sudo apt install ros-humble-vrpn
 sudo apt install ccache fzf cloc
 sudo apt install python3-virtualenv
+sudo apt install ros-humble-ros-gz-*
+sudo apt install ros-humble-ros-gz

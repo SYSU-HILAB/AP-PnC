@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.8)
 project(external_libraries)
-
+set(BUILD_TESTING OFF CACHE BOOL "Disable testing" FORCE)
 # Find dependencies
 find_package(ament_cmake REQUIRED)
 add_subdirectory(tomlplusplus)
 add_subdirectory(yamlcpp)
+add_subdirectory(BSplinebasis)
 
 install(TARGETS yaml-cpp
     EXPORT yamlcpp-targets
@@ -26,5 +27,10 @@ ament_export_dependencies(yaml-cpp)
 install(DIRECTORY ${tomlplusplus_SOURCE_DIR}/include/
   DESTINATION include
 )
+
+install(DIRECTORY BSplinebasis/include/
+  DESTINATION include
+)
+
 
 ament_package()
