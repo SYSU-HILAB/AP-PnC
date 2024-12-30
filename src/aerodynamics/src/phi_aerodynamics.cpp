@@ -11,15 +11,12 @@
 namespace aerodynamics
 {
 
-    bool PhiAerodynamcis::getAeroWrench(const Eigen::Vector3d& body_speed,
+    bool PhiAerodynamics::getAeroWrench(const Eigen::Vector3d& body_speed,
                                         Eigen::Vector3d&       aero_force_b,
                                         Eigen::Vector3d&       aero_moment_b,
                                         double& alpha, double& beta)
     {
-        // first get alpha beta from vb
-        // then get aero force and moment
-
-        // here, we assume that FRD is the body frame
+        // Calculate alpha and beta from body velocity
         constexpr double vThreshold = 5e-1;
         if (body_speed.norm() < vThreshold)
         {
@@ -31,7 +28,9 @@ namespace aerodynamics
             alpha = std::atan2(body_speed(2), body_speed(0));
             beta  = std::asin(body_speed(1) / body_speed.norm());
         }
-        aero_force_b  = __phi_matrix * body_speed;
+
+        // Calculate aerodynamic forces using phi matrix
+        aero_force_b  = _phi_matrix * body_speed * body_speed.norm();
         aero_moment_b = Eigen::Vector3d::Zero();
         return true;
     }
@@ -59,12 +58,11 @@ namespace aerodynamics
         DEBUG_PRINT("phi_matrix: " << phi_matrix);
 
         // Create and initialize PhiAerodynamics instance
-        auto instance = std::make_unique<PhiAerodynamcis>();
+        auto instance = std::make_unique<PhiAerodynamics>();
         instance->setPhi(phi_matrix);
 
-        __instance = std::move(instance);
-
+        _instance = std::move(instance);
         return true;
     }
 
-};  // namespace aerodynamics
+}  // namespace aerodynamics

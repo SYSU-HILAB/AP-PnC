@@ -27,7 +27,7 @@ namespace aerodynamics
         std::unique_ptr<LyuAerodynamics> instance =
             std::make_unique<LyuAerodynamics>();
 
-        __instance = std::move(instance);
+        _instance = std::move(instance);
         return true;
     }
 

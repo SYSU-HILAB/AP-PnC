@@ -11,6 +11,7 @@ namespace sq_config_reader
         std::vector<double> cx_knots_;
         std::vector<double> cz_coefs_;
         std::vector<double> cz_knots_;
+        double              scale_factor_{1.0};  // Default to 1.0
 
        public:
         BSplineAeroConfigReader();
@@ -22,6 +23,7 @@ namespace sq_config_reader
         const std::vector<double>& get_cx_knots() const { return cx_knots_; }
         const std::vector<double>& get_cz_coefs() const { return cz_coefs_; }
         const std::vector<double>& get_cz_knots() const { return cz_knots_; }
+        double get_scale_factor() const { return scale_factor_; }
     };
 
 }  // namespace sq_config_reader

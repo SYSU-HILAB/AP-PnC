@@ -3,7 +3,7 @@ project(utils)
 
 
 # set(CMAKE_BUILD_TYPE "Debug")
-
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
@@ -12,6 +12,7 @@ ament_auto_add_library(${PROJECT_NAME}_config_reader
   src/sq_config_reader.cpp
 
 )
+
 
 ament_auto_add_library(${PROJECT_NAME}_config_reader_phi
   src/phi_aero_config_reader.cpp
@@ -28,6 +29,13 @@ target_link_libraries(${PROJECT_NAME}_config_reader_bspline
   ${PROJECT_NAME}_config_reader
 )
 
+# Add Advanced Lift Drag config reader library
+ament_auto_add_library(${PROJECT_NAME}_config_reader_advanced_lift_drag
+  src/advanced_lift_drag_config_reader.cpp
+)
+target_link_libraries(${PROJECT_NAME}_config_reader_advanced_lift_drag
+  ${PROJECT_NAME}_config_reader
+)
 
 target_include_directories(${PROJECT_NAME}_config_reader
   PUBLIC
@@ -44,6 +52,7 @@ ament_auto_add_executable(test_reader src/test_reader.cpp)
 target_link_libraries(test_reader
   ${PROJECT_NAME}_config_reader_phi
   ${PROJECT_NAME}_config_reader_bspline
+  ${PROJECT_NAME}_config_reader_advanced_lift_drag
 ) 
 
 # install(

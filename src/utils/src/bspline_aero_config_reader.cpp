@@ -12,10 +12,11 @@ namespace sq_config_reader
         constexpr const char* TABLE_NAME  = "bspline_aero_config";
         // TODO reflections: automatically generate the column names from the
         // base class `BSplineStructure`
-        constexpr const char* CX_COEFS_COL = "cx_coefs";
-        constexpr const char* CX_KNOTS_COL = "cx_knots";
-        constexpr const char* CZ_COEFS_COL = "cz_coefs";
-        constexpr const char* CZ_KNOTS_COL = "cz_knots";
+        constexpr const char* CX_COEFS_COL     = "cx_coefs";
+        constexpr const char* CX_KNOTS_COL     = "cx_knots";
+        constexpr const char* CZ_COEFS_COL     = "cz_coefs";
+        constexpr const char* CZ_KNOTS_COL     = "cz_knots";
+        constexpr const char* SCALE_FACTOR_COL = "scale_factor";
     }  // anonymous namespace
 
     BSplineAeroConfigReader::BSplineAeroConfigReader()
@@ -28,8 +29,9 @@ namespace sq_config_reader
         std::string sql = "SELECT " + std::string(CX_COEFS_COL) + ", " +
                           std::string(CX_KNOTS_COL) + ", " +
                           std::string(CZ_COEFS_COL) + ", " +
-                          std::string(CZ_KNOTS_COL) + " FROM " + table_name +
-                          " WHERE id = ?";
+                          std::string(CZ_KNOTS_COL) + ", " +
+                          std::string(SCALE_FACTOR_COL) + " FROM " +
+                          table_name + " WHERE id = ?";
 
         if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) !=
             SQLITE_OK)
@@ -63,10 +65,12 @@ namespace sq_config_reader
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
             const char* cz_knots_str =
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+            const char* scale_factor_str =
+                reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
 
             // Check for NULL values
             if (!cx_coefs_str || !cx_knots_str || !cz_coefs_str ||
-                !cz_knots_str)
+                !cz_knots_str || !scale_factor_str)
             {
                 std::cerr << "Error: Missing or NULL data in the database."
                           << std::endl;
@@ -78,6 +82,16 @@ namespace sq_config_reader
             cx_knots_ = parse_csv(cx_knots_str);
             cz_coefs_ = parse_csv(cz_coefs_str);
             cz_knots_ = parse_csv(cz_knots_str);
+
+            // Parse scale factor (take first value since it's a single number)
+            auto scale_factor_vec = parse_csv(scale_factor_str);
+            if (scale_factor_vec.empty())
+            {
+                std::cerr << "Error: Scale factor is empty after parsing."
+                          << std::endl;
+                return false;
+            }
+            scale_factor_ = scale_factor_vec[0];
 
             // Validate data
             if (cx_coefs_.empty() || cx_knots_.empty() || cz_coefs_.empty() ||
@@ -97,7 +111,7 @@ namespace sq_config_reader
                     cz_coefs_.size() +
                         default_diff_between_knots_size_and_coefs_size)
             {
-                std::cerr << "Error: Number of knots must equal "
+                std::cerr << "Error: Number of knots must be consistent with "
                           << "number of coefficients for both cx and cz. "
                           << "Got cx_knots: " << cx_knots_.size()
                           << ", cx_coefs: " << cx_coefs_.size()

@@ -4,17 +4,19 @@
 
 ### 1. Aerodynamics Visualization
 - [ ] Create visualization script for all Angles of Attack
-- [ ] Plot force coefficients vs AoA
-- [ ] Plot moment coefficients vs AoA
+- [ ] Plot CL coefficients vs AoA
+- [ ] Plot CD coefficients vs AoA
+- [ ] Plot Cx coefficients vs AoA
+- [ ] Plot Cz coefficients vs AoA
 - [ ] Add interactive visualization features
 - [ ] Export plots in publication quality
 
 ### 2. Gazebo Integration
-- [ ] Create ROS2 plugin interface
-- [ ] Implement aerodynamics force calculation in plugin
-- [ ] Add configuration file loading in Gazebo
-- [ ] Test real-time performance
-- [ ] Validate forces in simulation
+- [x] Implement direct Gazebo plugin generation in minco-ros2
+- [x] Configure and control PX4 launch logic in aerodynamics folder
+- [x] Implement and verify scaling factor control
+
+
 
 <!-- /* The data is coming from the following paper:
 @article{MaAero,
@@ -32,8 +34,8 @@
 - [x] Implement B-spline fitting in Python
 - [x] Configure and tune parameters in Python
 - [x] Dump parameters in Python and read them in C++
-- [ ] Implement B-spline basis functions and create interpolated fitting functions in C++
-- [ ] Perform testing in C++
+- [x] Implement B-spline basis functions and create interpolated fitting functions in C++
+- [x] Perform testing in C++
 
 ### 4. SQ Config Reader Assembly
 - [x] the encapsulation of the SQ Config Reader is not good

@@ -36,7 +36,10 @@ namespace aerodynamics
 
     bool NonAerodynamicsCreator::createAerodynamics()
     {
-        __instance = std::make_unique<NonAerodynamics>();
+        std::unique_ptr<NonAerodynamics> instance =
+            std::make_unique<NonAerodynamics>();
+
+        _instance = std::move(instance);
         return true;
     }
 

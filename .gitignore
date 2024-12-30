@@ -53,3 +53,4 @@ env/
 # intermediate mesh files
 *.stl
 *.STL
+*.db

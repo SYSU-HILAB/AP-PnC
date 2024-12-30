@@ -1,7 +1,8 @@
-# FATAL ERROR
-The Extended Kalman Filter 2 (EKF2) in the PX4 simulation environment can experience issues with yaw estimation when performing rapid maneuvers. This occurs because the EKF2 relies on magnetometer data, which is often not accurately simulated. Without proper magnetometer data, the EKF2 will produce incorrect yaw estimates compared to the ground truth values provided by Gazebo.
-
-To mitigate this issue, you can adjust the following parameters:
+# External Libraries
+- [BSplinebasis](https://github.com/SYSU-HILAB/BSplinebasis)  *Remove test module*
+- [tomlplusplus](https://github.com/skystrife/tomlplusplus)
+- [yamlcpp](https://github.com/jbeder/yaml-cpp)
+- [gcopter](https://github.com/ZJU-FAST-Lab/GCOPTER)  *Heavily modified*
 
 
 1. **Disable the magnetometer**: Set the EKF2_MAG_TYPE parameter to "None" to completely disable the magnetometer and prevent it from influencing the EKF2's calculations.

@@ -131,6 +131,7 @@ def tailsitter_flu():
     F_aero_b_frd[0] =   - MpcConfig.drag_est * cs.dot(v,v)
     F_aero_b_frd[1] = 0.0
     F_aero_b_frd[2] =   - 1.0*(cz_state) * cs.dot(v,v) 
+    # F_aero_b_frd[2] =   - 1.0*(cs.sin(alpha)*.5) * cs.dot(v,v) 
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = q_to_rot_mat(q_tf)
     F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)

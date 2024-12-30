@@ -111,7 +111,7 @@ plt.show()
 
 # as a function 
 pattern = re.compile(r'vehicle_angular_velocity')
-directory = './output_csv/'
+
 # List all files in the directory
 files = os.listdir(directory)
 # csv_file_name = args.f 
@@ -123,7 +123,6 @@ for file in files:
 # Read the CSV file
 cur_ang_df = pd.read_csv(f'{directory}{csv_file_name}', delimiter=',')
 pattern = re.compile(r'vehicle_rates_setpoint')
-directory = './output_csv/'
 # List all files in the directory
 files = os.listdir(directory)
 # csv_file_name = args.f 

@@ -5,11 +5,11 @@ then
     exit 1
 fi
 
-if [ -d "output_csv" ]; then
+if [ -d "ulgs/output_csv" ]; then
     # If the directory exists and is not empty
-    if [ "$(ls -A output_csv)" ]; then
-        rm output_csv/*
+    if [ "$(ls -A ulgs/output_csv)" ]; then
+        rm ulgs/output_csv/*
     fi
 fi
 csv_trans
-csv_plots
+csv_plots   
