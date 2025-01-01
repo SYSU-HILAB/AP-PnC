@@ -1,12 +1,9 @@
+#include <spdlog/spdlog.h>
+
+#include <Eigen/Dense>
 #include <aerodynamics/phi_aerodynamics.hpp>
 #include <sq_config_reader/phi_aero_config_reader.hpp>
-
-#ifndef NODEBUG
-#include <iostream>
-#define DEBUG_PRINT(x) std::cerr << x << std::endl
-#else
-#define DEBUG_PRINT(x)
-#endif
+#include <sstream>
 
 namespace aerodynamics
 {
@@ -55,7 +52,9 @@ namespace aerodynamics
             phi_values[3], phi_values[4], phi_values[5], phi_values[6],
             phi_values[7], phi_values[8];
 
-        DEBUG_PRINT("phi_matrix: " << phi_matrix);
+        std::stringstream ss;
+        ss << phi_matrix;
+        spdlog::debug("phi_matrix:\n{}", ss.str());
 
         // Create and initialize PhiAerodynamics instance
         auto instance = std::make_unique<PhiAerodynamics>();

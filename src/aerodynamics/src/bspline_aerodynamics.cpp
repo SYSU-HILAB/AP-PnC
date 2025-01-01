@@ -1,14 +1,7 @@
-// #include <bspline/Core.h>
+#include <spdlog/spdlog.h>
 
 #include <aerodynamics/bspline_aerodynamics.hpp>
 #include <sq_config_reader/bspline_aero_config_reader.hpp>
-
-#ifndef NODEBUG
-#include <iostream>
-#define DEBUG_PRINT(x) std::cerr << x << std::endl
-#else
-#define DEBUG_PRINT(x)
-#endif
 
 namespace aerodynamics
 {
@@ -61,7 +54,7 @@ namespace aerodynamics
         }
         for (size_t i = 0; i < cz_splines.size(); ++i)
         {
-            aeroForceBz += cz_coefficients_[i] * cz_splines[i](beta);
+            aeroForceBz += cz_coefficients_[i] * cz_splines[i](alpha);
         }
 
         aero_force_b = scale_factor_ *
@@ -90,7 +83,7 @@ namespace aerodynamics
 
         auto scale_factor = db.get_scale_factor();
 
-        DEBUG_PRINT("Loaded bspline parameters");
+        spdlog::debug("Loaded bspline parameters");
 
         // Create and initialize BsplineAerodynamics instance
         auto instance = std::make_unique<BsplineAerodynamics>(

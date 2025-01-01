@@ -130,8 +130,9 @@ class gz::sim::systems::AerodynamicsPluginPrivate
     enum class AerodynamicsType
     {
         PHI,
-        BSPLINE,
+        MA,
         LYU,
+        GAZEBO,
         NONE
     };
     AerodynamicsType aerodynamicsType{AerodynamicsType::PHI};
@@ -148,7 +149,7 @@ bool AerodynamicsPluginPrivate::parseAerodynamicsType()
     }
     else if (this->aerodynamicsId == 1)
     {
-        this->aerodynamicsType = AerodynamicsType::BSPLINE;
+        this->aerodynamicsType = AerodynamicsType::MA;
         this->aero_creator =
             std::make_unique<aerodynamics::BsplineAerodynamicsCreator>();
     }
@@ -158,12 +159,18 @@ bool AerodynamicsPluginPrivate::parseAerodynamicsType()
         this->aero_creator =
             std::make_unique<aerodynamics::LyuAerodynamicsCreator>();
     }
+    else if (this->aerodynamicsId == 3)
+    {
+        this->aerodynamicsType = AerodynamicsType::GAZEBO;
+        this->aero_creator =
+            std::make_unique<aerodynamics::AdvancedLiftDragCreator>();
+    }
     else
     {
         this->aerodynamicsType = AerodynamicsType::NONE;
         this->aero_creator =
             std::make_unique<aerodynamics::NonAerodynamicsCreator>();
-        gzerr << "Invalid aerodynamics ID or choose none aerodynamics: "
+        gzdbg << "Invalid aerodynamics ID or choose none aerodynamics: "
               << this->aerodynamicsId << std::endl;
     }
 

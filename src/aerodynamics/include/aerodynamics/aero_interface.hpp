@@ -6,17 +6,11 @@
 namespace aerodynamics
 {
 
-    /**
-     * @brief Interface for aerodynamic force and moment calculations
-     *
-     * This interface defines the contract for computing aerodynamic forces and
-     * moments on a body given its velocity in the body frame.
-     */
     class AerodynamicsInterface
     {
        public:
         /**
-         * @brief Compute aerodynamic wrench (force and moment) in body frame
+         * @brief Compute aerodynamic forces and moments
          *
          * @param[in] body_speed Velocity vector in body frame (m/s)
          * @param[out] aero_force_b Aerodynamic force vector in body frame (N)
@@ -24,26 +18,18 @@ namespace aerodynamics
          * (N⋅m)
          * @param[out] alpha Angle of attack (rad)
          * @param[out] beta Sideslip angle (rad)
-         * @return true if computation successful, false otherwise
-         *
-         * @note All vectors are expressed in the body frame following the
-         * Forward-Right-Down (FRD) convention
+         * @return true if computation successful
          */
         virtual bool getAeroWrench(const Eigen::Vector3d& body_speed,
                                    Eigen::Vector3d&       aero_force_b,
                                    Eigen::Vector3d&       aero_moment_b,
                                    double& alpha, double& beta) = 0;
 
-        // Enable proper cleanup of derived classes
         virtual ~AerodynamicsInterface() = default;
     };
 
     /**
-     * @brief Abstract factory for creating aerodynamics implementations
-     *
-     * This class follows the Factory pattern to create concrete implementations
-     * of the AerodynamicsInterface. Each derived class should implement the
-     * createAerodynamics method to return its specific implementation.
+     * @brief Factory base class for creating aerodynamics model instances
      */
     class AerodynamicsCreator
     {
@@ -52,16 +38,23 @@ namespace aerodynamics
 
        public:
         /**
-         * @brief Create a concrete implementation of AerodynamicsInterface
+         * @brief Create and initialize an aerodynamics model instance
          *
-         * @return true if creation successful, false otherwise
+         * @return true if creation and initialization successful
          */
         virtual bool createAerodynamics() = 0;
 
         /**
-         * @brief Forward the getAeroWrench call to the concrete implementation
+         * @brief Compute aerodynamic forces using the created model instance
          *
-         * @throws std::runtime_error if _instance is null
+         * @param[in] body_speed Velocity vector in body frame (m/s)
+         * @param[out] aero_force_b Aerodynamic force vector in body frame (N)
+         * @param[out] aero_moment_b Aerodynamic moment vector in body frame
+         * (N⋅m)
+         * @param[out] alpha Angle of attack (rad)
+         * @param[out] beta Sideslip angle (rad)
+         * @return true if computation successful
+         * @throws std::runtime_error if aerodynamics instance not created
          */
         bool getAeroWrench(const Eigen::Vector3d& body_speed,
                            Eigen::Vector3d&       aero_force_b,
@@ -76,7 +69,6 @@ namespace aerodynamics
                                             aero_moment_b, alpha, beta);
         }
 
-        // Enable proper cleanup of derived classes
         virtual ~AerodynamicsCreator() = default;
     };
 

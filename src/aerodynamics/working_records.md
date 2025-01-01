@@ -4,8 +4,6 @@
 
 ### 1. Aerodynamics Visualization
 - [ ] Create visualization script for all Angles of Attack
-- [ ] Plot CL coefficients vs AoA
-- [ ] Plot CD coefficients vs AoA
 - [ ] Plot Cx coefficients vs AoA
 - [ ] Plot Cz coefficients vs AoA
 - [ ] Add interactive visualization features

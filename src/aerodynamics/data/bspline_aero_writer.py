@@ -38,7 +38,7 @@ class BSplineAeroWriterConfig:
     CZ_COEFS_DUMP_KEY: str = 'cz_coefs'
     
     SCALE_FACTOR_DUMP_KEY: str = 'scale_factor'
-    SCALE_FACTOR_VALUE: float = 0.5 * 1.184 * 0.24 / 2.0 * 3
+    SCALE_FACTOR_VALUE: float = 0.5 * 1.184 * 0.24 / 2.0 * 3 * 0.5483863461851688 * 1.177888074834827
 
     cx_coefs_values: NDArray = np.array([])
     cz_coefs_values: NDArray = np.array([])

@@ -223,14 +223,12 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
    private:
     // std::array<double, 4> u_sol_;
     // std::array<double, 16> y_ref_;
-    void          initSubsPubs() override;
-    void          stateCallback(const StateMsg& msg) override;
-    void          referenceCallback(const ReferenceBullet& msg) override;
-    void          accCallback(const AccelerationMsg& msg) override;
-    double        mass_;
-    double        cz_rate_;
-    std::ofstream file;
-    std::ofstream file_aero;
+    void   initSubsPubs() override;
+    void   stateCallback(const StateMsg& msg) override;
+    void   referenceCallback(const ReferenceBullet& msg) override;
+    void   accCallback(const AccelerationMsg& msg) override;
+    double mass_;
+    double cz_rate_;
 
     void solve();
 
@@ -467,11 +465,6 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
 
     // let the p[2] and cz_rate to csv files
     // initialize the file
-    if (file_aero.is_open())
-    {
-        file_aero << p[0] << "," << p[1] << "," << cz_rate << ","
-                  << "\n";
-    }
     // TODO hahh
     assert(size >= acados.N + 1);
     // rclcpp print size and N
@@ -510,7 +503,8 @@ void NMPC::stateCallback(const StateMsg& msg)
     ready_pub_->publish(ready_msg);
 }
 
-NMPC::NMPC() : Node("NMPC"), file("time_record.csv"), file_aero("cz_est.csv")
+// TODO: refactor the recording items and recording methods.
+NMPC::NMPC() : Node("NMPC")
 {
     // Initialize the reference
     this->declare_parameter("mass", 1.0);
@@ -535,24 +529,6 @@ NMPC::~NMPC()
     // save the time record to a csv file
     Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, "",
                               "\n");
-    if (file.is_open())
-    {
-        file << time_record.format(CSVFormat);
-        file.close();
-    }
-    else
-    {
-        RCLCPP_ERROR(this->get_logger(), "Unable to open file");
-    }
-
-    if (file_aero.is_open())
-    {
-        file_aero.close();
-    }
-    else
-    {
-        RCLCPP_ERROR(this->get_logger(), "Unable to open file aero");
-    }
 }
 
 int main(int argc, char** argv)

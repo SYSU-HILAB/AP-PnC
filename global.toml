@@ -43,7 +43,7 @@ acc_aero_fix_factor = 0.0
 circled = true
 curvature = 0.5
 deacc_aero_fix_factor = 0.9
-radius = 20.0
+radius = 25.0
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
 type = 2
@@ -54,4 +54,4 @@ pos_init_dis_threshold = 0.01
 real_world = false
 
 [c_nmpc]
-cz_rate = 0.00
+cz_rate = 0.20

@@ -9,16 +9,13 @@
 // The original parameters is from
 // https://github.com/PX4/PX4-gazebo-models/blob/230450cc817dd7675612ed5ec72ee59b6989d367/models/quadtailsitter/model.sdf
 // Author: HanamyWarrior email: warriorhanamyxx@gmail.com
+#include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
+
 #include <aerodynamics/advanced_lift_drag.hpp>
 #include <cmath>
 #include <sq_config_reader/advanced_lift_drag_config_reader.hpp>
-
-#ifndef NODEBUG
-#include <iostream>
-#define DEBUG_PRINT(x) std::cerr << x << std::endl
-#else
-#define DEBUG_PRINT(x)
-#endif
+#include <sstream>
 
 namespace aerodynamics
 {
@@ -97,17 +94,17 @@ namespace aerodynamics
 
             // Pre-stall: linear model
             double CL_prestall = (1 - sigma) * (aero_params.CL_alpha * alpha);
-            DEBUG_PRINT("CL_prestall: " << CL_prestall);
+            spdlog::debug("CL_prestall: {}", CL_prestall);
             // Post-stall: nonlinear model based on flat plate theory
             double CL_poststall = sigma * (2 * alpha / abs(alpha)) * sinAlpha *
                                   sinAlpha * cosAlpha;
-            DEBUG_PRINT("CL_poststall: " << CL_poststall);
+            spdlog::debug("CL_poststall: {}", CL_poststall);
 
             // here we don't comply to the original model, but scale the CL by
             // the
             double CL = CL_prestall + CL_poststall;
             CL        = CL * cos(beta);
-            DEBUG_PRINT("CL: " << CL);
+            spdlog::debug("CL: {}", CL);
 
             // Calculate drag coefficient (CD)
             // Estimate flat plate drag coefficient
@@ -168,17 +165,24 @@ namespace aerodynamics
             s_R_b.col(0) << cos(alpha), 0, -sin(alpha);
             s_R_b.col(1) << 0, 1, 0;
             s_R_b.col(2) << sin(alpha), 0, cos(alpha);
-            DEBUG_PRINT("s_R_b: " << s_R_b);
+            std::stringstream ss;
+            ss << s_R_b;
+            spdlog::debug("s_R_b:\n{}", ss.str());
             Eigen::Vector3d aero_force_coefs_in_stabilization_frame;
             Eigen::Vector3d aero_moment_coefs_in_stabilization_frame;
             getAeroWrenchCoefsInStabilizationFrame(
                 alpha, beta, aero_force_coefs_in_stabilization_frame,
                 aero_moment_coefs_in_stabilization_frame);
 
-            DEBUG_PRINT("aero_force_coefs_in_stabilization_frame: "
-                        << aero_force_coefs_in_stabilization_frame);
-            DEBUG_PRINT("aero_moment_coefs_in_stabilization_frame: "
-                        << aero_moment_coefs_in_stabilization_frame);
+            spdlog::debug("aero_force_coefs_in_stabilization_frame: {}, {}, {}",
+                          aero_force_coefs_in_stabilization_frame.x(),
+                          aero_force_coefs_in_stabilization_frame.y(),
+                          aero_force_coefs_in_stabilization_frame.z());
+            spdlog::debug(
+                "aero_moment_coefs_in_stabilization_frame: {}, {}, {}",
+                aero_moment_coefs_in_stabilization_frame.x(),
+                aero_moment_coefs_in_stabilization_frame.y(),
+                aero_moment_coefs_in_stabilization_frame.z());
             aero_force_b = s_R_b.transpose() *
                            aero_force_coefs_in_stabilization_frame *
                            body_speed.squaredNorm() * aero_params.scale_factor;
@@ -223,12 +227,10 @@ namespace aerodynamics
             return false;
         }
         // print aero_params
-        std::cout << "aero_params.sigmoid_blend: " << aero_params.sigmoid_blend
-                  << std::endl;
-        std::cout << "aero_params.alpha_stall: " << aero_params.alpha_stall
-                  << std::endl;
-        std::cout << "aero_params.scale_factor: " << aero_params.scale_factor
-                  << std::endl;
+        spdlog::info("aero_params.sigmoid_blend: {}",
+                     aero_params.sigmoid_blend);
+        spdlog::info("aero_params.alpha_stall: {}", aero_params.alpha_stall);
+        spdlog::info("aero_params.scale_factor: {}", aero_params.scale_factor);
 
         _instance = std::make_unique<AdvancedLiftDrag>();
         return true;

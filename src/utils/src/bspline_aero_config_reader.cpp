@@ -1,6 +1,7 @@
+#include <spdlog/spdlog.h>
+
 #include <iostream>
 #include <sq_config_reader/bspline_aero_config_reader.hpp>
-
 namespace sq_config_reader
 {
     namespace

@@ -2,8 +2,6 @@
 #define SQ_CONFIG_READER_ADVANCED_LIFT_DRAG_CONFIG_READER_HPP_
 
 #include <sq_config_reader/sq_config_reader.hpp>
-#include <string>
-#include <vector>
 
 namespace sq_config_reader
 {

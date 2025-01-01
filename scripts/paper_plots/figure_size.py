@@ -479,7 +479,7 @@ ax5.grid(True)
 
 
 
-plt.savefig(f"{directory}/traj-view.pdf", format='pdf')  
+plt.savefig(f"{directory}/paper_plots/traj-view.pdf", format='pdf')  
 
 plt.show()
 

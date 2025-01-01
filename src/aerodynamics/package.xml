@@ -9,18 +9,10 @@
 
     <buildtool_depend>ament_cmake</buildtool_depend>
 
-    <depend>std_msgs</depend>
     <depend>ament_index_cpp</depend>
-    <depend>Eigen3</depend>
     <depend>rclcpp</depend>
     <depend>utils</depend>
-    <depend>interface</depend>
-    <depend>nav_msgs</depend>
-    <depend>geometry_msgs</depend>
-    <depend>sensor_msgs</depend>
     <depend>external_libraries</depend>
-    <depend>SQLite3</depend>
-    <depend>visualization_msgs</depend> 
     <test_depend>ament_lint_auto</test_depend>
     <test_depend>ament_lint_common</test_depend>
 

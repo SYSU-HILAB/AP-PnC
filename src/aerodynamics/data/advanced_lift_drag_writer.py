@@ -36,7 +36,7 @@ class AdvancedLiftDragWriterConfig:
                 'CD_flat_plate': 1.28,
                 'CY_beta': -0.05,
                 'CL_beta_loss': 0.0,  # useless
-                'scale_factor': 0.5 * 1.184 * 0.24 / 2.0
+                'scale_factor': 0.5 * 1.184 * 0.24 / 2.0 * 1.7395338636344466 * 1.6033190310032224
             }
 
 

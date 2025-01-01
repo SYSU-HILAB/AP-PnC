@@ -1,11 +1,6 @@
-#include <aerodynamics/non_aerodynamics.hpp>
+#include <spdlog/spdlog.h>
 
-#ifndef NODEBUG
-#include <iostream>
-#define DEBUG_PRINT(x) std::cerr << x << std::endl
-#else
-#define DEBUG_PRINT(x)
-#endif
+#include <aerodynamics/non_aerodynamics.hpp>
 
 namespace aerodynamics
 {

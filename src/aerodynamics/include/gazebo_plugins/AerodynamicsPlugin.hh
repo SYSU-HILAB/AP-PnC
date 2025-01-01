@@ -19,6 +19,7 @@
 #include <aerodynamics/non_aerodynamics.hpp>
 #include <aerodynamics/phi_aerodynamics.hpp>
 #include <aerodynamics/zhang_lyu_aerodynamics.hpp>
+#include <aerodynamics/advanced_lift_drag.hpp>
 #include <gz/sim/System.hh>
 #include <memory>
 
