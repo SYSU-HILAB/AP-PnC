@@ -4,7 +4,7 @@
 - [yamlcpp](https://github.com/jbeder/yaml-cpp)
 - [gcopter](https://github.com/ZJU-FAST-Lab/GCOPTER)  *Heavily modified*
 - [ScopeProfiler] (https://github.com/parallel101/course/blob/2d30da61b442008c003f69225e6feca20a4ca7df/stlseries/stl_map/experiment/ScopeProfiler.h)
-
+- [CSVWriter] (https://github.com/al-eax/CSVWriter/blob/master/include/CSVWriter.h)
 1. **Disable the magnetometer**: Set the EKF2_MAG_TYPE parameter to "None" to completely disable the magnetometer and prevent it from influencing the EKF2's calculations.
 ## Preliminary
 ### Clone

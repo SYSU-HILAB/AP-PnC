@@ -1,6 +1,8 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <gcopter/gcopter.hpp>
+#include <gcopter/trajectory.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -13,9 +15,6 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <string>
 #include <vector>
-
-#include "gcopter/gcopter.hpp"
-#include "gcopter/trajectory.hpp"
 using std::chrono_literals::operator""s;
 using RefTrajectory   = interface::msg::RefTrajectory;
 using TrajectoryPoint = interface::msg::TrajectoryPoint;
@@ -62,6 +61,16 @@ std::ofstream &init_planning_csv_file()
              << "av_y"
              << ","
              << "av_z"
+             << ","
+             << "av_x_S"
+             << ","
+             << "av_z_S"
+             << ","
+             << "B_Omega_b_y"
+             << ","
+             << "alpha_dot"
+             << ","
+             << "B_aeroForce_z"
              << "\n";
     return csv_file;
 }
@@ -361,10 +370,6 @@ class GlobalPlanner : public rclcpp::Node
         RCLCPP_INFO(this->get_logger(), "Planning");
         create_basic_trajecotry_sfc(hPolys);
 
-        // std::cerr << "iniState: " << iniState << std::endl;
-        // std::cerr << "finState: " << finState << std::endl;
-        // finState << route.back(), Eigen::Vector3d::Zero(),
-        // Eigen::Vector3d::Zero();
         Eigen::Matrix3d iniState, finState;
         auto            route = basic_traj->samplingPointArray(config.pieceN);
         iniState << route.front().col(0), Eigen::Vector3d::Zero(),
@@ -398,7 +403,6 @@ class GlobalPlanner : public rclcpp::Node
                   << std::endl;
         // print end point
         std::cerr << "finState: \n" << finState << std::endl;
-        // return ;
         if (!init_setup)
         {
             if (!gcopter.setup_basic_trajectory(
@@ -418,42 +422,52 @@ class GlobalPlanner : public rclcpp::Node
             route_msg.header.stamp    = this->get_clock()->now();
             this->trajVizPub->publish(route_msg);
 
-            auto &tailsitter_data  = tailsitter_df::Data::getInstance();
-            auto &tailsitter_model = tailsitter_df::Model::getInstance();
-            tailsitter_data.reset(tailsitter_model, config.trajecotry_cirled);
+            auto &tailsitter_data = tailsitter_df::Data::getInstance();
+            tailsitter_data.reset(config.trajecotry_cirled);
             control_traj_msg.points.clear();
             auto &csv_file = init_planning_csv_file();
             for (double t = 0.0; t <= traj.getTotalDuration() + FLT_EPSILON;
                  t += config.traj_pub_rsl)
             {
                 // get model attitude and thrust and omg
-                Eigen::Vector4d       quat;
-                Eigen::Vector3d       omg;
-                autodiff::VectorXreal z;
-                z.resize(9);
-                z << traj.getVel(t), traj.getAcc(t), traj.getAcc(t);
-                double thrust;
-                tailsitter_df::df_backward_auto(z, thrust, omg);
+                Eigen::Vector4d quat;
+                Eigen::Vector3d omg;
+                double          thrust;
+
+                tailsitter_data.df_backward_auto(traj.getVel(t), traj.getAcc(t),
+                                                 traj.getAcc(t), thrust, omg);
 
                 {
-                    double alpha        = tailsitter_data.alpha.val();
-                    double aero_force_z = tailsitter_data.aeroForceB(2).val();
+                    // Get all required data from tailsitter model
+                    const auto &pos = traj.getPos(t);
+                    const auto &vel = traj.getVel(t);
+                    const auto &acc = traj.getAcc(t);
+                    const auto &yb  = tailsitter_data.getYb();
 
-                    // CSV cpp write
-                    Eigen::Vector3d       acc = traj.getAcc(t);
+                    // Calculate acceleration without gravity
                     const Eigen::Vector3d gravity(0, 0, 9.81);
-                    Eigen::Vector3d       av = acc - gravity;
-                    // write data
-                    csv_file
-                        << t << "," << traj.getPos(t)(0) << ","
-                        << traj.getPos(t)(1) << "," << traj.getPos(t)(2) << ","
-                        << traj.getVel(t)(0) << "," << traj.getVel(t)(1) << ","
-                        << traj.getVel(t)(2) << "," << thrust << "," << alpha
-                        << "," << aero_force_z << ","
-                        << tailsitter_data.yb.x().val() << ","
-                        << tailsitter_data.yb.y().val() << ","
-                        << -tailsitter_data.yb.z().val() << "," << av(0) << ","
-                        << av(1) << "," << av(2) << "\n";
+                    const Eigen::Vector3d av = acc - gravity;
+
+                    // Get aerodynamic data
+                    const double alpha     = tailsitter_data.getAlpha();
+                    const double alpha_dot = tailsitter_data.getAlphaDot();
+                    const double aero_force_z =
+                        tailsitter_data.getAeroForceB()(2);
+                    const double B_aeroForce_z =
+                        tailsitter_data.getBAeroForceZ();
+                    const double av_x_S      = tailsitter_data.getSAvX();
+                    const double av_z_S      = tailsitter_data.getSAvZ();
+                    const double B_Omega_b_y = tailsitter_data.getBOmegaY();
+
+                    // Write data to CSV in consistent order
+                    csv_file << t << "," << pos(0) << "," << pos(1) << ","
+                             << pos(2) << "," << vel(0) << "," << vel(1) << ","
+                             << vel(2) << "," << thrust << "," << alpha << ","
+                             << aero_force_z << "," << yb(0) << "," << yb(1)
+                             << "," << -yb(2) << "," << av(0) << "," << av(1)
+                             << "," << av(2) << "," << av_x_S << "," << av_z_S
+                             << "," << B_Omega_b_y << "," << alpha_dot << ","
+                             << B_aeroForce_z << "\n";
                 }
 
                 auto               quat_df = tailsitter_data.getQuaternion();
@@ -472,10 +486,10 @@ class GlobalPlanner : public rclcpp::Node
                 auto p = traj.getPos(t);
                 auto v = traj.getVel(t);
 
-                auto            yb_df = tailsitter_data.yb;
-                Eigen::Vector3d YB    = (Eigen::Vector3d() << -yb_df.x().val(),
-                                      -yb_df.y().val(), yb_df.z().val())
-                                         .finished();
+                auto            yb_df = tailsitter_data.getYb();
+                Eigen::Vector3d YB =
+                    (Eigen::Vector3d() << -yb_df(0), -yb_df(1), yb_df(2))
+                        .finished();
 
                 control_traj_msg.timestamp = this->get_clock()->now();
                 auto traj_point            = TrajectoryPoint();
@@ -491,8 +505,6 @@ class GlobalPlanner : public rclcpp::Node
                 // default set to zero
                 control_traj_msg.points.push_back(traj_point);
             }
-            // clsoe file
-            csv_file.close();
 
             trajPub->publish(control_traj_msg);
             RCLCPP_WARN(this->get_logger(), "Trajectory Published !!!\n");
@@ -505,6 +517,8 @@ class GlobalPlanner : public rclcpp::Node
             {
                 trajStamp = this->get_clock()->now().seconds();
             }
+            // clsoe csv file
+            csv_file.close();
         }
     }
 };

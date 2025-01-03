@@ -54,3 +54,5 @@ env/
 *.stl
 *.STL
 *.db
+*.pdf
+

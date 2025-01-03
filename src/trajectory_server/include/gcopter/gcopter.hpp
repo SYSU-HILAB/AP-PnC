@@ -29,10 +29,9 @@
 #include <cfloat>
 #include <cmath>
 #include <iostream>
-#include <tailsitter_df/df.hpp>
+#include <tailsitter_df/tailsitter_df.hpp>
 #include <vector>
 
-#include "gcopter/flatness.hpp"
 #include "gcopter/geo_utils.hpp"
 #include "gcopter/lbfgs.hpp"
 #include "gcopter/minco.hpp"
@@ -93,7 +92,6 @@ namespace gcopter
        private:
         minco::MINCO_S3NU minco;
 
-        double          rho;
         Eigen::Matrix3d headPVA;
         Eigen::Matrix3d tailPVA;
 
@@ -103,9 +101,7 @@ namespace gcopter
 
         Eigen::VectorXi pieceIdx;
         Eigen::VectorXi vPolyIdx;
-        // Eigen::VectorXi hPolyIdx;
 
-        int polyN;
         int pieceN;
 
         int spatialDim;
@@ -358,20 +354,13 @@ namespace gcopter
             }
         }
 
-        // magnitudeBounds = [v_max, omg_max, theta_max, thrust_min,
-        // thrust_max]^T penaltyWeights = [pos_weight, vel_weight, omg_weight,
-        // theta_weight, thrust_weight]^T physicalParams = [vehicle_mass,
-        // gravitational_acceleration, horitonral_drag_coeff,
-        //                   vertical_drag_coeff, parasitic_drag_coeff,
-        //                   speed_smooth_factor]^T
         static inline void attachPenaltyFunctional(
             const Eigen::VectorXd &T, const Eigen::MatrixX3d &coeffs,
             const double &smoothFactor, const int &integralResolution,
             const CostConfig &config, double &cost, Eigen::VectorXd &gradT,
             Eigen::MatrixX3d &gradC)
         {
-            const double velSqrMax = config.v_max * config.v_max;
-            // const double omgSqrMax = config.omg_max * config.omg_max;
+            const double velSqrMax  = config.v_max * config.v_max;
             const double omgxSqrMax = config.omg_x_max * config.omg_x_max;
             const double omgySqrMax = config.omg_y_max * config.omg_y_max;
             const double omgzSqrMax = config.omg_z_max * config.omg_z_max;
@@ -384,15 +373,13 @@ namespace gcopter
             const double thrustSqrRadi = thrustRadi * thrustRadi;
 
             // const double weightPos = penaltyWeights(0);
-            const double weightVel             = config.vel_weight;
-            const double weightAcc             = config.acc_weight;
-            const double weightThrust          = config.thrust_weight;
-            const double weight_consistent_omg = config.omg_consistent_weight;
+            const double    weightVel    = config.vel_weight;
+            const double    weightAcc    = config.acc_weight;
+            const double    weightThrust = config.thrust_weight;
             Eigen::Vector3d pos, vel, acc, jer, sna;
             Eigen::Vector3d totalGradPos, totalGradVel, totalGradAcc,
                 totalGradJer;
-            double          totalGradPsi, totalGradPsiD;
-            double          thr, cos_theta;
+            double          thr;
             Eigen::Vector4d quat;
             Eigen::Vector3d omg;
             double          gradThr;
@@ -404,16 +391,15 @@ namespace gcopter
             double                      s1, s2, s3, s4, s5;
             Eigen::Matrix<double, 6, 1> beta0, beta1, beta2, beta3, beta4;
             Eigen::Vector3d             outerNormal;
-            int                         K, L;
-            double                      violaPos, violaVel, violaAcc;
-            double                      violaOmg, violaThrust;
-            double       violaPosPenaD, violaVelPenaD, violaAccPenaD;
-            double       violaOmgPenaD, violaThrustPenaD;
-            double       violaPosPena, violaVelPena, violaAccPena;
-            double       violaOmgPena, violaThetaPena, violaThrustPena;
-            double       node, pena;
-            const int    pieceNum     = T.size();
-            const double integralFrac = 1.0 / integralResolution;
+            double                      violaVel, violaAcc;
+            double                      violaThrust;
+            double                      violaVelPena, violaAccPena;
+            double                      violaThrustPena;
+            double                      violaVelPenaD, violaAccPenaD;
+            double                      violaThrustPenaD;
+            double                      node, pena;
+            const int                   pieceNum     = T.size();
+            const double                integralFrac = 1.0 / integralResolution;
             for (int i = 0; i < pieceNum; i++)
             {
                 const Eigen::Matrix<double, 6, 3> &c =
@@ -444,23 +430,27 @@ namespace gcopter
                     jer = c.transpose() * beta3;
                     sna = c.transpose() * beta4;
 
-                    auto z = tailsitter_df::init(vel, acc, jer);
-                    tailsitter_df::df_backward_auto(z, thr, omg);
-
-                    // tailsitter_backward to return  [thr, quat, omg]
-                    // grad back
-                    // flat output to thrust, quat, rate
-                    // flatMap.forward(vel, acc, jer, 0.0, 0.0, thr, quat, omg);
+                    // auto z = tailsitter_df::init(vel, acc, jer);
+                    tailsitter_df::Data::getInstance().df_backward_auto(
+                        vel, acc, jer, thr, omg);
 
                     violaVel = vel.squaredNorm() - velSqrMax;
-                    // violaOmg = omg.squaredNorm() - omgSqrMax;
                     violaAcc = acc.squaredNorm() - accSqrMax;
 
-                    // double vio_all_omg = omg.squaredNorm();
-                    // this is tilt angle
-                    // cos_theta = 1.0 - 2.0 * (quat(1) * quat(1) + quat(2) *
-                    // quat(2)); violaTheta = acos(cos_theta) - thetaMax;
-                    // actually, thrust cost is (T-T_max)(T-T_min)  range cost
+                    /*
+                     * Additional knowledge about violation costs:
+                     *
+                     * 1. Angular velocity magnitude constraint:
+                     *    - Could use: vio_all_omg = omg.squaredNorm()
+                     *
+                     * 2. Tilt angle constraint:
+                     *    - cos_theta = 1.0 - 2.0 * (quat(1)^2 + quat(2)^2)
+                     *    - violaTheta = acos(cos_theta) - thetaMax
+                     *
+                     * 3. Thrust constraint:
+                     *    - Uses range cost: (T-T_max)(T-T_min)
+                     *    - Penalizes thrust outside [T_min, T_max]
+                     */
                     violaThrust =
                         (thr - thrustMean) * (thr - thrustMean) - thrustSqrRadi;
                     gradThr = 0.0;
@@ -488,7 +478,6 @@ namespace gcopter
                         totalGradAcc += gradAcc;
                     }
 
-                    // omg x y z cost
                     double violaOmgX     = omg(0) * omg(0) - omgxSqrMax;
                     double violaOmgY     = omg(1) * omg(1) - omgySqrMax;
                     double violaOmgZ     = omg(2) * omg(2) - omgzSqrMax;
@@ -515,9 +504,10 @@ namespace gcopter
                         pena += config.omg_x_weight * violaOmgXPena;
                         pena += config.omg_y_weight * violaOmgYPena;
                         pena += config.omg_z_weight * violaOmgZPena;
-                        auto &Jv = tailsitter_df::getVelJacobOmega();
-                        auto &Ja = tailsitter_df::getAccJacobOmega();
-                        auto &Jj = tailsitter_df::getJerJacobOmega();
+
+                        Eigen::Matrix3d Jv, Ja, Jj;
+                        tailsitter_df::Data::getInstance().jacobian_omega(
+                            Jv, Ja, Jj);
                         totalGradVel += Jv * gradOmg;
                         totalGradAcc += Ja * gradOmg;
                         totalGradJer += Jj * gradOmg;
@@ -531,17 +521,12 @@ namespace gcopter
                         pena += weightThrust * violaThrustPena;
 
                         Eigen::Vector3d tmp_gv, tmp_ga, tmp_gj;
-                        tailsitter_df::jacobian_at(tmp_gv, tmp_ga, tmp_gj);
+                        tailsitter_df::Data::getInstance().jacobian_at(
+                            tmp_gv, tmp_ga, tmp_gj);
                         totalGradVel += tmp_gv * gradThr;
                         totalGradAcc += tmp_ga * gradThr;
                         totalGradJer += tmp_gj * gradThr;
                     }
-
-                    // flatMap.backward(gradPos, gradVel, gradThr, gradQuat,
-                    // gradOmg,
-                    //                  totalGradPos, totalGradVel,
-                    //                  totalGradAcc, totalGradJer,
-                    //                  totalGradPsi, totalGradPsiD);
 
                     node  = (j == 0 || j == integralResolution) ? 0.5 : 1.0;
                     alpha = j * integralFrac;
@@ -577,8 +562,8 @@ namespace gcopter
 
             forwardT(tau, obj.times);
             forwardP(xi, obj.vPolyIdx, obj.vPolytopes, obj.points);
-            tailsitter_df::Data::getInstance().reset(
-                tailsitter_df::Model::getInstance());
+            // TODO actually, this is not correct.
+            tailsitter_df::Data::getInstance().reset();
 
             double cost;
             obj.minco.setParameters(obj.points, obj.times);
@@ -840,12 +825,6 @@ namespace gcopter
             int size_corridor = sfc_control_points.size();
             pieceN            = size_corridor + 1;
             temporalDim       = pieceN;
-            // for (int i = 0; i < size_corridor; i++) {
-            //   spatialDim += sfc_control_points[i].rows();
-            //   std::cerr << "i " << i << " size " <<
-            //   sfc_control_points[i].rows() <<
-            //   "\n";
-            // }
 
             minco.setConditions(headPVA, tailPVA, pieceN);
 
