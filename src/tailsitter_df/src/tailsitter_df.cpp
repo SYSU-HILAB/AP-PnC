@@ -163,11 +163,12 @@ namespace tailsitter_df
         real omega_vy = (z_v.transpose() * g);
         omega_vy      = (-S_av_z - omega_vy) / V;
 
-        double phi_zz  = tailsitter_model.getPhi().row(2)(2).val();
-        aeroForceB     = tailsitter_model.getAeroForceB(v);
-        B_aeroForce_z  = aeroForceB(2);
-        real V_squared = V * V;
-        alpha          = atan2(-S_av_z, S_av_x - phi_zz * V_squared);
+        double phi_zz              = tailsitter_model.getPhi().row(2)(2).val();
+        aeroForceB                 = tailsitter_model.getAeroForceB(v);
+        B_aeroForce_z              = aeroForceB(2);
+        real             V_squared = V * V;
+        constexpr double phi_33    = -0.09408;
+        alpha = atan2(-S_av_z, S_av_x - phi_33 * V_squared);
 
         yb    = y_v;
         xb    = cos(alpha) * x_v - sin(alpha) * z_v;

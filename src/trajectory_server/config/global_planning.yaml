@@ -8,11 +8,11 @@
     BasicTrajectoryType: 2
     BasicTrajectoryWaveLen: 50.0
     BoxBackLength: 0.5
-    BoxDownLength: 0.5
+    BoxDownLength: 0.2
     BoxFrontLength: 0.5
     BoxSideInsideLength: 0.1
     BoxSideOutsideLength: 0.1
-    BoxUpLength: 0.5
+    BoxUpLength: 0.2
     Frame: world
     IntegralIntervs: 30
     PieceN: 10
@@ -29,7 +29,7 @@
     omg_y_weight: 10000.0
     omg_z_max: 0.8
     omg_z_weight: 20000.0
-    thrust_max: 5.5
+    thrust_max: 4.5
     thrust_min: -4.5
     thrust_weight: 10000.0
     time_weight: 10000.0

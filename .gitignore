@@ -55,4 +55,5 @@ env/
 *.STL
 *.db
 *.pdf
-
+*.py.bak
+output_csv/*

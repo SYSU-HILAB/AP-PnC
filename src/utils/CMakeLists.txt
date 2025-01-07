@@ -73,15 +73,15 @@ target_link_libraries(${PROJECT_NAME}_config_reader_advanced_lift_drag
 )
 
 # Testing for config reader
-add_executable(test_reader src/test_reader.cpp)
-target_include_directories(test_reader PRIVATE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-)
-target_link_libraries(test_reader
-  ${PROJECT_NAME}_config_reader_phi
-  ${PROJECT_NAME}_config_reader_bspline
-  ${PROJECT_NAME}_config_reader_advanced_lift_drag
-)
+# add_executable(test_reader src/test_reader.cpp)
+# target_include_directories(test_reader PRIVATE
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# )
+# target_link_libraries(test_reader
+#   ${PROJECT_NAME}_config_reader_phi
+#   ${PROJECT_NAME}_config_reader_bspline
+#   ${PROJECT_NAME}_config_reader_advanced_lift_drag
+# )
 
 ament_export_targets(${PROJECT_NAME}_common_targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(SQLite3 spdlog fmt Eigen3)

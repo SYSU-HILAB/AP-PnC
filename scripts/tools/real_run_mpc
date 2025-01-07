@@ -3,4 +3,4 @@ PIDS=$(pgrep -f "c_nmpc")
 if [ -n "$PIDS" ]; then
   echo $PIDS | xargs kill
 fi
-ros2 run c_nmpc cnmpc.launch.py
+ros2 launch c_nmpc cnmpc.launch.py

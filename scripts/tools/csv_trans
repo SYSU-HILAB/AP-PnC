@@ -17,15 +17,19 @@ fi
 
 # Set the output directory
 FATHER_HOME="$TAILSITTER_PLANNING_DIR/ulgs"
+OUTPUT_DIR="$FATHER_HOME/output_csv"
 
-# Ensure the output directory exists
-mkdir -p "$FATHER_HOME/output_csv"
+# Remove output directory if it exists and create fresh
+if [ -d "$OUTPUT_DIR" ]; then
+    rm -rf "$OUTPUT_DIR"
+fi
+mkdir -p "$OUTPUT_DIR"
 
 # Convert .ulg to CSV using different message types
-ulog2csv "$latest_ulg" -m tracking_info -o "$FATHER_HOME/output_csv"
-ulog2csv "$latest_ulg" -m vehicle_angular_velocity -o "$FATHER_HOME/output_csv"
-ulog2csv "$latest_ulg" -m vehicle_rates_setpoint -o "$FATHER_HOME/output_csv"
-ulog2csv "$latest_ulg" -m vehicle_thrust_acc_setpoint -o "$FATHER_HOME/output_csv"
-ulog2csv "$latest_ulg" -m vehicle_acceleration -o "$FATHER_HOME/output_csv"
-ulog2csv "$latest_ulg" -m vehicle_attitude -o "$FATHER_HOME/output_csv"
-ulog2csv "$latest_ulg" -m vehicle_odometry -o "$FATHER_HOME/output_csv"
+ulog2csv "$latest_ulg" -m tracking_info -o "$OUTPUT_DIR"
+ulog2csv "$latest_ulg" -m vehicle_angular_velocity -o "$OUTPUT_DIR"
+ulog2csv "$latest_ulg" -m vehicle_rates_setpoint -o "$OUTPUT_DIR"
+ulog2csv "$latest_ulg" -m vehicle_thrust_acc_setpoint -o "$OUTPUT_DIR"
+ulog2csv "$latest_ulg" -m vehicle_acceleration -o "$OUTPUT_DIR"
+ulog2csv "$latest_ulg" -m vehicle_attitude -o "$OUTPUT_DIR"
+ulog2csv "$latest_ulg" -m vehicle_odometry -o "$OUTPUT_DIR"
