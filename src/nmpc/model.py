@@ -5,11 +5,12 @@
 # author: WarriorHanamy ; email: rongerch@mail2.sysu.edu.cn
 #
 from acados_template import AcadosModel
-from casadi import MX, SX, vertcat, sin, cos
+from casadi import SX, vertcat
 import numpy as np
 import casadi as cs
 from config import MpcConfig
-
+# import torch
+# import l4casadi as l4c
 
 def skew(w):
     if isinstance(w,np.ndarray):
@@ -24,19 +25,6 @@ def skew(w):
         )
 
 def skew_symmetric(v):
-    """
-    Computes the skew-symmetric matrix of a 3D vector (PAMPC version)
-
-    :param v: 3D numpy vector or CasADi MX
-    :return: the corresponding skew-symmetric matrix of v with the same data type as v
-    """
-
-    if isinstance(v, np.ndarray):
-        return np.array([[0, -v[0], -v[1], -v[2]],
-                         [v[0], 0, v[2], -v[1]],
-                         [v[1], -v[2], 0, v[0]],
-                         [v[2], v[1], -v[0], 0]])
-
     return cs.vertcat(
         cs.horzcat(0, -v[0], -v[1], -v[2]),
         cs.horzcat(v[0], 0, v[2], -v[1]),
@@ -44,39 +32,27 @@ def skew_symmetric(v):
         cs.horzcat(v[2], v[1], -v[0], 0))
 
 def v_dot_q(v, q):
-    rot_mat = q_to_rot_mat(q)
+    rotation_matrix = Quat2RotMat(q)
     if isinstance(q, np.ndarray):
-        return rot_mat.dot(v)
+        return rotation_matrix.dot(v)
 
-    return cs.mtimes(rot_mat, v)
+    return cs.mtimes(rotation_matrix, v)
 
 def v_dot_q_inverse(v, q):
-    rot_mat = q_to_rot_mat(q)
-    if isinstance(q, np.ndarray):
-        return np.transpose(rot_mat).dot(v)
+    rotation_matrix = Quat2RotMat(q)
+    return cs.mtimes(rotation_matrix.T, v)
 
-    return cs.mtimes(rot_mat.T, v)
-
-def q_to_rot_mat(q):
+def Quat2RotMat(q):
     qw, qx, qy, qz = q[0], q[1], q[2], q[3]
+    rotation_matrix = cs.vertcat(
+        cs.horzcat(1 - 2 * (qy ** 2 + qz ** 2), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy)),
+        cs.horzcat(2 * (qx * qy + qw * qz), 1 - 2 * (qx ** 2 + qz ** 2), 2 * (qy * qz - qw * qx)),
+        cs.horzcat(2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), 1 - 2 * (qx ** 2 + qy ** 2)))
 
-    if isinstance(q, np.ndarray):
-        rot_mat = np.array([
-            [1 - 2 * (qy ** 2 + qz ** 2), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy)],
-            [2 * (qx * qy + qw * qz), 1 - 2 * (qx ** 2 + qz ** 2), 2 * (qy * qz - qw * qx)],
-            [2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), 1 - 2 * (qx ** 2 + qy ** 2)]])
-
-    else:
-        rot_mat = cs.vertcat(
-            cs.horzcat(1 - 2 * (qy ** 2 + qz ** 2), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy)),
-            cs.horzcat(2 * (qx * qy + qw * qz), 1 - 2 * (qx ** 2 + qz ** 2), 2 * (qy * qz - qw * qx)),
-            cs.horzcat(2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), 1 - 2 * (qx ** 2 + qy ** 2)))
-
-    return rot_mat
+    return rotation_matrix
 
 def tailsitter_flu():
     model_name = "tailsitter_flu"
-    # c_tau = cs.DM(0.016)
     mass = cs.DM(1.0)
     c_tau = cs.DM(0.013)
     J_data = np.array([0.01715066, 0.01818037, 0.01987597])
@@ -121,17 +97,10 @@ def tailsitter_flu():
     # calculate alpha
     alpha = cs.atan2(vb[0], (vb[2] + 0.1))
     
-    # alpha = cs.if_else(alpha < 0.0, alpha+cs.pi, alpha)
-    aero_comp = cs.if_else(
-        alpha > 0.0,
-        cz_rate * (alpha - cur_alpha),
-        0.0
-    )
     F_aero_b_frd = cs.SX([0, 0, 0])
     F_aero_b_frd[0] = 0.0
     F_aero_b_frd[1] = 0.0
-     
-    
+
     # MARKER
     F_aero_b_frd[2] =   - 1.0*(cz_state) * cs.dot(v,v)
     
@@ -140,15 +109,8 @@ def tailsitter_flu():
     
     
     q_tf = np.array([0, 0.707, 0, 0.707])
-    R_tf = q_to_rot_mat(q_tf)
+    R_tf = Quat2RotMat(q_tf)
     F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)
-    print(F_aero_b_flu_quad_frame)
-    # print(F_aero_b_flu)
-    # caused by tau_b 
-    # data driven simulator configuration
-    # 2 yb 3
-    #      xb
-    # 1    0
     tau_b = cs.veccat(
         dy * (-u[0] - u[1] + u[2] + u[3]),
         dx * (-u[0] + u[1] + u[2] - u[3]),
@@ -163,7 +125,6 @@ def tailsitter_flu():
         -cz_rate * alpha_dot,
         0.0
     )
-
     # dynamics
     f_expl_x = vertcat(
         v,
