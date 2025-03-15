@@ -27,44 +27,6 @@ int status;  // acados operation state
 #include <cmath>
 #include <vector>
 using namespace Eigen;
-double RLSUpdate(const double x, const double y,
-                 const double forgetting_factor = 0.75)
-{
-    // Static covariance matrix (2x2) for parameters theta0 and theta1
-    static Matrix2d P =
-        Matrix2d::Identity() * 100;  // Initial large value for P
-
-    // Static model parameters (theta0 = intercept, theta1 = slope)
-    static double theta_0 = 0.4;
-    static double theta_1 = 0.0;
-
-    // Create the input vector [1, x] (1 for bias term)
-    Vector2d x_(2);
-    x_ << 1.0, x;
-
-    // Current parameter vector [theta0, theta1]
-    Vector2d theta(2);
-    theta << theta_0, theta_1;
-
-    // Compute the prediction error (y - predicted_y)
-    double error = y - x_.transpose() * theta;
-
-    // Gain vector K (used to update the parameters)
-    Vector2d K = P * x_ / (forgetting_factor + x_.transpose() * P * x_);
-
-    // Update the parameter vector theta
-    theta = theta + K * error;
-
-    // Update the covariance matrix P with forgetting factor
-    P = (P - K * x_.transpose() * P) / forgetting_factor;
-
-    // Store updated theta values back into static variables
-    theta_0 = theta(0);
-    theta_1 = theta(1);
-
-    // Return the updated slope theta_1
-    return theta_1;
-}
 
 // Template function to bind a member function to a std::function
 template <typename T1, class T2>

@@ -10,11 +10,35 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.gridspec as gridspec
 from scipy.spatial import geometric_slerp
 
+from exp_data_loader import UlgDataLoader   
+from specify_figure_dirs import tracking_plots_dir, root_dir
+import sciplots
 colors = {
     "red": "#B43734",
     "cyan": "#397E77",
     "blue": "#00159D"
 }
+
+LabelsConfig = {
+    "TrajXlabel": r'$\mathbf{p}_x~\mathrm{[m]}$',
+    "TrajYlabel": r'$\mathbf{p}_y~\mathrm{[m]}$',
+    "OthersXlablel": r'Time [s]',
+    "PosErrorYlabel": r'$\mathbf{e}_{\mathrm{p}}~\mathrm{[m]}$',
+    "AnglesYlabel": r'Angles [rad]',
+    "VelYlabel": r'$\left\|\mathbf{v}\right\|~\mathrm{[m/s]}$',
+    "AngVelYlabel": r'$\prescript{\mathcal{B}}{}{\boldsymbol{\Omega}_b}~\mathrm{[rad/s]}$',
+    "PosErrorLim": [-0.7, 0.7],
+    "AnglesLim": [-np.pi-0.5, np.pi+0.5],
+    "AngVelLim": [-3.0, 3.0],
+}
+
+ExtraConfig = {
+    "fix_yaw_angle": -np.pi/2,
+    # "fix_yaw_angle": 0,
+    # "ulg_file": os.path.join(root_dir(), 'scripts/paper_plots/ulgs/log_4_UnknownDate.ulg'),
+    "ulg_file": None,
+}
+
 
 def calculate_distance(ref_p, p):
     return np.sqrt(np.sum((ref_p - p)**2, axis=1))
@@ -31,52 +55,7 @@ def slerp(t, q0, q1, t0, t1):
     return slerped_quat
 
 
-def find_nearest_neighbors(t, original_timestamps):
-    """
-    Find the indices of the two nearest neighbors in original_timestamps for a given time t.
-    :param t: The timestamp for which neighbors are to be found.
-    :param original_timestamps: A sorted array of original timestamps.
-    :return: Indices of the two nearest neighbors (idx1, idx2).
-    """
-    idx = (original_timestamps <= t).nonzero()[0].max()  # Find the largest timestamp <= t
-    left_idx = max(idx, 0)  # Ensure left_idx is within bounds
-    right_idx = min(idx + 1, len(original_timestamps) - 1)  # Ensure right_idx is within bounds
-    return left_idx, right_idx
 
-def set_plot_styles():
-    """Set global matplotlib styles."""
-    plt.rcParams.update({
-        'font.size': 8,
-        'font.family': 'serif',
-        'font.serif': ['Times New Roman'],
-        'axes.labelsize': 8,
-        'axes.titlesize': 8,
-        'legend.fontsize': 8,
-        'xtick.labelsize': 8,
-        'ytick.labelsize': 8,
-        'xtick.minor.size': 2,
-        'ytick.minor.size': 2,
-        'xtick.minor.width': .5,
-        'ytick.minor.width': .5,
-        'axes.labelpad': 0,
-        'figure.dpi': 300,
-        'grid.linestyle': '--',
-        'grid.linewidth': 0.5,
-        'lines.linewidth': 1,
-        'xtick.direction': 'in',
-        'ytick.direction': 'in',
-        'axes.prop_cycle': plt.cycler(color=[
-            f'{colors["red"]}',
-            f'{colors["blue"]}',
-            f'{colors["cyan"]}'
-        ]),
-        'figure.facecolor': 'none',
-        'axes.facecolor': 'none',
-        'grid.color': 'gray',
-        'grid.alpha': 0.5,
-        'axes.edgecolor': 'black',
-        'axes.grid': True,
-    })
 # Utility functions
 def normalize_quaternions(quaternions):
     """Normalize quaternions to unit length."""
@@ -109,107 +88,6 @@ def read_csv_by_topic(directory, topic_name, start_time=None, end_time=None):
     if end_time:
         df = df[df['timestamp'] < end_time]
     return df
-
-def read_csv_by_topic_timeline_align(directory, topic_name, new_timestamps):
-    """Read a CSV file by topic name and filter by time range if specified.
-    timestamps is a vector that containing timestamps from timestamp[0] and timestamp[1].
-    and it is uniformly spaced.
-    """
-    quaternion_columns = ['q[1]', 'q[2]', 'q[3]', 'q[0]']
-    
-    directory = directory or os.getenv('TAILSITTER_PLANNING_DIR') or '.'
-    directory = os.path.join(directory, 'ulgs/output_csv/')
-    pattern = re.compile(fr'{topic_name}')
-    
-    # Convert new_timestamps to numpy array if it's a pandas Series
-    if isinstance(new_timestamps, pd.Series):
-        new_timestamps = new_timestamps.values
-    
-    # Find the relevant CSV file
-    csv_file_name = None
-    for file in os.listdir(directory):
-        if pattern.search(file) and file.endswith('.csv'):
-            csv_file_name = file
-            break
-    
-    if csv_file_name is None:
-        raise FileNotFoundError(f"No CSV found for topic: {topic_name} in {directory}")
-
-    # Read the CSV file
-    df = pd.read_csv(os.path.join(directory, csv_file_name), delimiter=',')
-    
-    if 'timestamp' not in df.columns:
-        raise ValueError("CSV does not contain a 'timestamp' column.")
-    
-    # Sort both timestamp arrays
-    original_timestamps = df['timestamp'].values
-    
-    try:
-        if new_timestamps[0] < original_timestamps[0] or new_timestamps[-1] > original_timestamps[-1]:
-            raise ValueError(f"New timestamps {new_timestamps[0]}-{new_timestamps[-1]} are outside the original range {original_timestamps[0]}-{original_timestamps[-1]}")
-    except (IndexError, TypeError) as e:
-        raise ValueError("Invalid timestamp format or empty timestamp array") from e
-    
-    df.set_index('timestamp', inplace=True)
-    
-    # Check if quaternion columns exist
-    has_quaternions = all(col in df.columns for col in quaternion_columns)
-    
-    scalar_columns = [col for col in df.columns if (not has_quaternions or col not in quaternion_columns) and col != 'timestamp']
-
-    # Interpolate scalar values linearly, but keep NaN values as NaN
-    scalar_df_interpolated = pd.DataFrame(index=new_timestamps)
-    for col in scalar_columns:
-        # Only interpolate non-NaN values
-        mask = ~df[col].isna()
-        if mask.any():  # If there are any non-NaN values
-            valid_data = df[col][mask]
-            scalar_df_interpolated[col] = np.interp(
-                new_timestamps,
-                valid_data.index.values,
-                valid_data.values,
-                left=np.nan,  # Use NaN for extrapolation
-                right=np.nan
-            )
-        else:  # If column is all NaN
-            scalar_df_interpolated[col] = np.nan
-
-    # Only do quaternion interpolation if the columns exist
-    if has_quaternions:
-        # Get quaternions and normalize them
-        quaternions = df[quaternion_columns].values
-        # Only normalize non-NaN quaternions
-        valid_quat_mask = ~np.any(np.isnan(quaternions), axis=1)
-        quaternions[valid_quat_mask] = quaternions[valid_quat_mask] / np.linalg.norm(quaternions[valid_quat_mask], axis=1, keepdims=True)
-
-        # Interpolate quaternion columns with SLERP, but only if both neighbors are valid
-        interpolated_quaternions = []
-        for t in new_timestamps:
-            idx1, idx2 = find_nearest_neighbors(t, original_timestamps)
-            t0, t1 = original_timestamps[idx1], original_timestamps[idx2]
-            q0 = quaternions[idx1]
-            q1 = quaternions[idx2]
-            
-            # Check if either quaternion contains NaN
-            if np.any(np.isnan(q0)) or np.any(np.isnan(q1)):
-                interpolated_quaternions.append([np.nan] * 4)
-            else:
-                interpolated_quaternions.append(slerp(t, q0, q1, t0, t1))
-
-        # Create quaternion DataFrame with proper index
-        quat_df = pd.DataFrame(interpolated_quaternions, 
-                             index=new_timestamps,
-                             columns=quaternion_columns)
-        
-        # Concatenate with matching indices
-        df_interpolated = pd.concat([scalar_df_interpolated, quat_df], axis=1)
-    else:
-        df_interpolated = scalar_df_interpolated
-    
-    df_interpolated['timestamp'] = new_timestamps
-    
-    return df_interpolated
-
 
 
 
@@ -251,61 +129,66 @@ def add_yaw_and_right_multiply_frd(quaternions, yaw_angle):
 # Plotting functions
 def initialize_figure():
     """Initialize a multi-panel figure with a grid layout."""
-    a4_width, a4_height = 7.25, 9
-    fig = plt.figure(figsize=(a4_width, 0.3 * a4_height), constrained_layout=True)
+    fig = plt.figure(figsize=(7.5, 3.0))
     gs = gridspec.GridSpec(2, 10, height_ratios=[1, 1], hspace=0.4, figure=fig)
-    gs.update(wspace=0.3, hspace=0.0)
+    gs.update(wspace=2.0, hspace=0.6)
     
     # Create subplots
-    ax1 = fig.add_subplot(gs[:, :4], projection='3d')  # Main 3D plot
+    ax1 = fig.add_subplot(gs[:, :4])  # Main 3D plot
     ax2 = fig.add_subplot(gs[0, 4:7])  # Position error
     ax3 = fig.add_subplot(gs[1, 4:7])  # Velocity
     ax4 = fig.add_subplot(gs[0, 7:10])  # Angles
     ax5 = fig.add_subplot(gs[1, 7:10])  # Angular velocities
     return fig, [ax1, ax2, ax3, ax4, ax5]
 
-def plot_trajectory(ax, ref_p, p, padding=5):
+def plot_trajectory(ax, ref_p, p):
     """Plot 3D trajectory."""
-    ax.plot3D(ref_p[:, 0], ref_p[:, 1], ref_p[:, 2], '--',
-              label='Reference', color=f'{colors["red"]}', zorder=3)
-    ax.plot3D(p[:, 0], p[:, 1], p[:, 2], label='Measured', 
+    ax.plot(ref_p[:, 0], ref_p[:, 1], '--',
+              label='Ref.', color=f'{colors["red"]}', zorder=3)
+    ax.plot(p[:, 0], p[:, 1], label='Meas.', 
               color=f'{colors["blue"]}', zorder=2)
-    ax.view_init(elev=30, azim=65)
+    ax.set_xlabel(LabelsConfig["TrajXlabel"])
+    ax.set_ylabel(LabelsConfig["TrajYlabel"])
+    pos = ax.get_position()  # 获取 axes 位置
+    ax.legend(bbox_to_anchor=(0.5, 1.02), 
+              ncol=2, columnspacing=1.0,
+              borderaxespad=0, handletextpad=0.2,
+              loc='lower center'
+              )
 
-    ax.set_zlim(np.min(ref_p[:, 2])-padding, np.max(ref_p[:, 2])+padding)  # Adjust z limits based on your data
-    # ax2 content
-        # Set tick lines opacity
-    for axis in [ax.xaxis, ax.yaxis, ax.zaxis]:
-        for line in axis.get_ticklines():
-            line.set_alpha(0.8)  # Set tick line transparency
-         
+
             
 def plot_position_error(ax, time, ref_p, p):
     """Plot position error over time."""
     position_error = ref_p - p
-    ax.plot(time, position_error[:, 0], label='X Error')
-    ax.plot(time, position_error[:, 1], label='Y Error')
-    ax.plot(time, position_error[:, 2], label='Z Error')
-    # ax.set_title("Delta Position")
-    
-    ax.set_ylabel(r'$\mathbf{p}_{e}$ [m]')
-    ax.set_xlabel('Time [s]')
-    ax.grid(True)
-augment_dashed_line_width = 1.5
+    ax.plot(time, position_error[:, 0], color=f'{colors["red"]}', label='X')
+    ax.plot(time, position_error[:, 1], color=f'{colors["cyan"]}', label='Y')
+    ax.plot(time, position_error[:, 2], color=f'{colors["blue"]}', label='Z')
+    ax.set_ylabel(LabelsConfig["PosErrorYlabel"], labelpad=-4)
+    ax.set_ylim(LabelsConfig["PosErrorLim"])
+    ax.legend(bbox_to_anchor=(0.5, 1.05), 
+            ncol=3, columnspacing=1.0,
+            borderaxespad=0, handletextpad=0.2,
+            loc='lower center'
+            )
+
 def plot_velocity(ax, time, ref_v, v):
     """Plot velocity over time."""
     ref_v_norm = np.linalg.norm(ref_v, axis=1)
     v_norm = np.linalg.norm(v, axis=1)
-    ax.plot(time, ref_v_norm, '--', label='Reference Velocity', 
+    ax.plot(time, ref_v_norm, '--', label='Ref.', 
             color=f'{colors["red"]}', zorder=3, linewidth=1.5)
-    ax.plot(time, v_norm, label='Measured Velocity', 
+    ax.plot(time, v_norm, label='Meas.', 
             color=f'{colors["blue"]}', zorder=2)
     # ax.set_title("Velocity")
     
-    ax.set_ylabel(r'$\mathbf{v}$ [m/s]')
-    ax.set_xlabel('Time [s]')
-    ax.grid(True)
-
+    ax.set_ylabel(LabelsConfig["VelYlabel"])
+    ax.set_xlabel(LabelsConfig["OthersXlablel"])
+    ax.legend(bbox_to_anchor=(0.5, 1.05), 
+            ncol=2, columnspacing=1.0,
+            borderaxespad=0, handletextpad=0.2,
+            loc='lower center'
+            )
 def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
     """
     Plot yb tracking performance and automatically determined pitch angle.
@@ -320,39 +203,38 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
     # Extract yaw and roll from the reference yb
     ref_angles = extract_yaw_roll_from_yb(ref_yb)  # Shape: (N1, 2)
 
-    # Define y-axis limits dynamically based on the data range
-    pitch_min, pitch_max = np.min(actual_euler_angles[:, 2]) * 180/np.pi , np.max(actual_euler_angles[:, 2]) * 180/np.pi 
-    yaw_min, yaw_max = np.min(actual_euler_angles[:, 0]), np.max(actual_euler_angles[:, 0])
-    roll_max = np.max(actual_euler_angles[:, 1])
-    border_more = 0.5  # Add buffer to axis limits
 
-
-
-
-    # Plot reference yaw and roll from yb
-    ax.plot(main_time, -ref_angles[:, 0] * 180/np.pi, '--', label='Reference Yaw', 
-            color=f'{colors["blue"]}', zorder=3, linewidth=augment_dashed_line_width)
-    ax.plot(main_time, ref_angles[:, 1] * 180/np.pi, '--', label='Reference Roll', 
-            color=f'{colors["red"]}', zorder=3, linewidth=augment_dashed_line_width)
 
     
     # Plot actual yaw, roll, and pitch
-    ax.plot(odometry_time, actual_euler_angles[:, 0] * 180/np.pi, label='Actual Yaw',
+    ax.plot(odometry_time, actual_euler_angles[:, 0], label=r'$\psi$',
             color=f'{colors["blue"]}', zorder=2)
-    ax.plot(odometry_time, actual_euler_angles[:, 1] * 180/np.pi, label='Actual Roll', 
-            color=f'{colors["red"]}', zorder=2)
-    ax.plot(odometry_time, actual_euler_angles[:, 2] * 180/np.pi, label='Actual Pitch', 
+    ax.plot(odometry_time, actual_euler_angles[:, 2], label=r'$\theta$', 
             color=f'{colors["cyan"]}', zorder=2)
+    ax.plot(odometry_time, actual_euler_angles[:, 1], label=r'$\phi$', 
+            color=f'{colors["red"]}', zorder=2)
+        # Plot reference yaw and roll from yb
+    ax.plot(main_time, -ref_angles[:, 0], '--',
+            color=f'{colors["blue"]}', zorder=3)
+    ax.plot(main_time, ref_angles[:, 1], '--',
+            color=f'{colors["red"]}', zorder=3)
+
     # tick that point on y-axis
     # set tick at the position pitch_min  not 0
-    ax.set_yticks([pitch_min, 0, 180])
-    ax.set_yticklabels([f'{pitch_min:.1f}', f'{0:.1f}', f'{180:.1f}'])
-    # Configure axis labels, title, and grid
-    ax.set_ylabel('Angles [rad]')
-    ax.set_xlabel('Time [s]')
-    # ax.set_title('yb Tracking and Pitch Angle Performance')
-    ax.grid(True)
+    # ax.set_yticks([pitch_min, 0, 180])
+    # ax.set_yticklabels([f'{pitch_min:.1f}', f'{0:.1f}', f'{180:.1f}'])
+    pad = 0.5
+    ax.set_ylim(-np.pi - pad, np.pi + pad)
     
+    ax.set_yticks([np.pi, np.pi/2, 0, -np.pi/2, -np.pi])
+    ax.set_yticklabels([r'$\pi$', r'$\frac{\pi}{2}$', r'$0$', r'$-\frac{\pi}{2}$', r'$-\pi$'])
+    # Configure axis labels, title, and grid
+    ax.set_ylabel(LabelsConfig["AnglesYlabel"], labelpad=-1)
+    ax.legend(bbox_to_anchor=(0.5, 1.05), 
+            ncol=3, columnspacing=1.0,
+            borderaxespad=0, handletextpad=0.2,
+            loc='lower center'
+            )
 
 
 
@@ -360,30 +242,29 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
 def plot_angular_velocity(ax, time, ang_vel=None, ang_vel_sp=None):
     """Plot angular velocity and setpoints."""
     if ang_vel_sp is not None:
-        ax.plot(time, ang_vel_sp[:, 0], '--', color=f'{colors["red"]}', label='Roll Rate Setpoint',zorder=3, linewidth=augment_dashed_line_width)
-        ax.plot(time, ang_vel_sp[:, 1], '--', color=f'{colors["cyan"]}', label='Pitch Rate Setpoint',zorder=3, linewidth=augment_dashed_line_width)
-        ax.plot(time, ang_vel_sp[:, 2], '--', color=f'{colors["blue"]}', label='Yaw Rate Setpoint',zorder=3, linewidth=augment_dashed_line_width)
+        ax.plot(time, ang_vel_sp[:, 0], '--', color=f'{colors["red"]}',zorder=3)
+        ax.plot(time, ang_vel_sp[:, 1], '--', color=f'{colors["cyan"]}',zorder=3)
+        ax.plot(time, ang_vel_sp[:, 2], '--', color=f'{colors["blue"]}',zorder=3)
     if ang_vel is not None:
-        ax.plot(time, ang_vel[:, 0], color=f'{colors["red"]}', label='Measured Roll Rate',zorder=2)
-        ax.plot(time, ang_vel[:, 1], color=f'{colors["cyan"]}', label='Measured Pitch Rate',zorder=2)
-        ax.plot(time, ang_vel[:, 2], color=f'{colors["blue"]}', label='Measured Yaw Rate',zorder=2)    
+        ax.plot(time, ang_vel[:, 0], color=f'{colors["red"]}', label='X',zorder=2)
+        ax.plot(time, ang_vel[:, 1], color=f'{colors["cyan"]}', label='Y',zorder=2)
+        ax.plot(time, ang_vel[:, 2], color=f'{colors["blue"]}', label='Z',zorder=2)    
     # ax.set_title("Angular Velocities")
     
     #using latex
-    ax.set_ylabel(r'$\Omega$ [rad/s]')
-    ax.set_xlabel('Time [s]')
-    ax.grid(True)
-
-def save_plot(fig, save_path):
-    """Save the figure to a specified path."""
-    fig.savefig(save_path, format='pdf')
-
+    ax.set_ylabel(LabelsConfig["AngVelYlabel"], labelpad=-2)
+    ax.set_xlabel(LabelsConfig["OthersXlablel"])
+    ax.set_ylim(LabelsConfig["AngVelLim"])
+    ax.legend(bbox_to_anchor=(0.5, 1.05), 
+            ncol=3, columnspacing=1.0,
+            borderaxespad=0, handletextpad=0.2,
+            loc='lower center'
+            )
+# Reserved for export blender animation.
 def create_df_export(df_odometry):
     """Create a DataFrame for exporting to CSV."""
     # create a new df_export, the header is time (starting from 0.0), px, py,pz, vx, vy, vz, qw, qx, qy, qz
     df_export = pd.DataFrame()
-    
-
     
     df_export['time'] = df_odometry['timestamp']
     df_export['px'] = df_odometry['position[0]']
@@ -420,75 +301,77 @@ def create_df_export(df_odometry):
     return df_export
 
 # Main processing pipeline
-def main_plotting_pipeline(directory=None):
+def main_plotting_pipeline():
     """Main function to process data and generate plots."""
-    set_plot_styles()
-    directory = directory or os.getenv('TAILSITTER_PLANNING_DIR')
+
+    # tracking_plots_dir = tracking_plots_dir()
+    ulg_loader = UlgDataLoader(ExtraConfig["ulg_file"])
+    ulg_loader.load_data()
     
-    # Load data & remove 2:inf circles, only keep the first circle
-    df_tracking = read_csv_by_topic(directory, 'tracking_info')# 
+    # First, interpolate all topics to common timeline
+    print("Interpolating all topics to common timeline...")
+    ulg_loader.interpolate_topics_to_common_timeline()
+    
+    # # Apply zero-velocity data shifting to all topics
+    # print("Shifting zero-velocity data from the end to the beginning for all topics...")
+    # shifted_data = ulg_loader.shift_zero_velocity_data(velocity_threshold=2.0)
+    
+    # Get the shifted tracking_info data
+    df_tracking = ulg_loader.get_topic_data('tracking_info')
+    
     ref_p = df_tracking[['ref_position[0]', 'ref_position[1]', 'ref_position[2]']].values
-    find_idx = np.where(ref_p[1:,0] == ref_p[0,0])[0][0]
-    
-    df_tracking = df_tracking.iloc[0:find_idx]
-    ref_p = df_tracking[['ref_position[0]', 'ref_position[1]', 'ref_position[2]']].values   
     p = df_tracking[['actual_position[0]', 'actual_position[1]', 'actual_position[2]']].values
     ref_v = df_tracking[['ref_velocity[0]', 'ref_velocity[1]', 'ref_velocity[2]']].values
     v = df_tracking[['actual_velocity[0]', 'actual_velocity[1]', 'actual_velocity[2]']].values  
-    start_time, end_time = df_tracking['timestamp'].values[0], df_tracking['timestamp'].values[-1]
-    main_time = (df_tracking['timestamp'].values - start_time) * 1e-6
-    print(start_time, end_time)
-
+    main_time = df_tracking['time_from_start'].values
+    
     # calculate the RMSE of the position error
     position_error = ref_p - p
     RMSE_position_error = np.sqrt(np.sum(np.sum(position_error**2, axis=1), axis=0)/len(position_error))
     print(f"RMSE of position error: {RMSE_position_error:.4f} m")
 
 
-
-    main_time_line = df_tracking['timestamp'].values
-    df_odometry = read_csv_by_topic_timeline_align(directory, 'odometry', main_time_line)
-    
-    odometry_time = (df_odometry['timestamp'].values - start_time) * 1e-6    
-    df_odometry['timestamp'] = odometry_time
+    # Get the shifted vehicle_odometry data
+    df_odometry = ulg_loader.get_topic_data('vehicle_odometry')
+    odometry_time = df_odometry['time_from_start'].values
     quat = df_odometry[['q[0]', 'q[1]', 'q[2]', 'q[3]']].values
     # print(quat)
-    quat = add_yaw_and_right_multiply_frd(quat, -np.pi/2)
+    quat = add_yaw_and_right_multiply_frd(quat, ExtraConfig["fix_yaw_angle"])
     new_q = np.column_stack((quat[:, 1:], quat[:, 0]))
     
     rotation = R.from_quat(new_q)
     euler_angles = rotation.as_euler('ZXY', degrees=False)  # In radians by default
 
     # Initialize figure
-    fig, axes = initialize_figure()
-    ref_yb = df_tracking[['ref_yb[0]', 'ref_yb[1]', 'ref_yb[2]']].values
-    # Plot content
-    plot_trajectory(axes[0], ref_p, p)
-    plot_position_error(axes[1], main_time, ref_p, p)
-    plot_velocity(axes[2], main_time, ref_v, v)
-    plot_angles(axes[3], main_time, odometry_time, ref_yb=ref_yb, actual_euler_angles=euler_angles)  # Replace with correct angle data
-
-
-    df_ang_vel_sp = read_csv_by_topic_timeline_align(directory, 'vehicle_rates_setpoint',
-                                                     main_time_line)
-    ang_vel_sp = df_ang_vel_sp[['roll', 'pitch', 'yaw']].values
-    ang_vel_sp_time = (df_ang_vel_sp['timestamp'].values - start_time) * 1e-6
-    plot_angular_velocity(axes[4], ang_vel_sp_time, 
-                          ang_vel_sp=ang_vel_sp, ang_vel=None)  # Replace with correct angular velocity data
-       
-
- 
-    df_ang_vel = read_csv_by_topic_timeline_align(directory, 'angular_velocity', 
-                                                  main_time_line)
-    ang_vel = df_ang_vel[['xyz[0]', 'xyz[1]', 'xyz[2]']].values
-    ang_vel_time = (df_ang_vel['timestamp'].values - start_time) * 1e-6
-    plot_angular_velocity(axes[4], ang_vel_time, 
-                          ang_vel_sp=None, ang_vel=ang_vel)  # Replace with correct angular velocity data
+    with plt.style.context(['ieee', 'latex', 'ticks-inward']):
     
+        fig, axes = initialize_figure()
+        ref_yb = df_tracking[['ref_yb[0]', 'ref_yb[1]', 'ref_yb[2]']].values
+        # Plot content
+        plot_trajectory(axes[0], ref_p, p)
+        plot_position_error(axes[1], main_time, ref_p, p)
+        plot_velocity(axes[2], main_time, ref_v, v)
+        plot_angles(axes[3], main_time, odometry_time, ref_yb=ref_yb, actual_euler_angles=euler_angles)  # Replace with correct angle data
 
-    # Save figure
-    save_plot(fig, f"{directory}/traj-view.pdf")
-    plt.show()
+
+        df_ang_vel_sp = ulg_loader.get_topic_data('vehicle_rates_setpoint')
+        ang_vel_sp = df_ang_vel_sp[['roll', 'pitch', 'yaw']].values
+        ang_vel_sp_time = df_ang_vel_sp['time_from_start'].values
+        plot_angular_velocity(axes[4], ang_vel_sp_time, 
+                            ang_vel_sp=ang_vel_sp, ang_vel=None)  # Replace with correct angular velocity data
+        
+
+    
+        df_ang_vel = ulg_loader.get_topic_data('vehicle_angular_velocity')
+        ang_vel = df_ang_vel[['xyz[0]', 'xyz[1]', 'xyz[2]']].values
+        ang_vel_time = df_ang_vel['time_from_start'].values
+        plot_angular_velocity(axes[4], ang_vel_time, 
+                            ang_vel_sp=None, ang_vel=ang_vel)  # Replace with correct angular velocity data
+        
+
+        # Save figure
+        fig.savefig(f"{tracking_plots_dir()}/traj-view.pdf", backend='pgf')
+    # plt.show()
 
 # Execute pipeline
 if __name__ == "__main__":
