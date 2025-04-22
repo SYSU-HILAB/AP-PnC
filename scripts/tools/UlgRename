@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Script to find the latest ULg file based on timestamp in the filename
+# and either rename it or list all files with the latest highlighted.
+
+# Usage:
+#   ./rename_latest_ulg.sh <new_filename>  (to rename)
+#   ./rename_latest_ulg.sh                 (to list files with latest highlighted)
+
+# ANSI color codes
+GREEN='\033[32m'
+YELLOW='\033[33m'
+RED='\033[31m'
+NC='\033[0m' # No Color
+
+# Find all ULg files matching the YYYY-MM-DD_HH-MM-SS.ulg pattern
+ulg_files=$(ls -t -- *[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]_[0-9][0-9]-[0-9][0-9]-[0-9][0-9].ulg 2>/dev/null)
+
+# Check if any ULg files were found
+if [ -z "$ulg_files" ]; then
+  echo "${RED}Error: No ULg files found matching the YYYY-MM-DD_HH-MM-SS.ulg naming convention in the current directory.${NC}"
+  exit 1
+fi
+
+# Determine the latest ULg file
+latest_ulg=$(echo "$ulg_files" | head -n 1)
+
+
+# Handle the case where no argument is provided (list and highlight)
+if [ $# -eq 0 ]; then
+  echo -e "${GREEN}ULg files found (newest first):${NC}"  # Highlight the header
+  i=1
+  while IFS= read -r file; do
+      if [ "$file" = "$latest_ulg" ]; then
+          echo -e "${GREEN}  $i: $file (Latest)${NC}"
+      else
+          echo "  $i: $file"
+      fi
+      i=$((i+1))
+  done <<< "$ulg_files"
+  exit 0
+fi
+
+
+# Handle the case where a new filename *is* provided (rename)
+
+new_filename="$1"
+
+# Check if the new filename already has the .ulg extension.  If not, add it.
+if [[ ! "$new_filename" == *".ulg" ]]; then
+  new_filename="$new_filename.ulg"
+fi
+
+
+# Check if the new filename already exists
+if [ -f "$new_filename" ]; then
+  echo -e "${RED}Error: File '$new_filename' already exists. Please choose a different name.${NC}"
+  exit 1
+fi
+
+# Rename the file
+mv "$latest_ulg" "$new_filename"
+
+# Check if the rename was successful
+if [ $? -eq 0 ]; then
+  echo -e "${GREEN}Successfully renamed '$latest_ulg' to '$new_filename'${NC}"
+else
+  echo -e "${RED}Error: Failed to rename '$latest_ulg' to '$new_filename'${NC}"
+  exit 1
+fi
+
+exit 0

@@ -22,21 +22,76 @@ colors = {
 LabelsConfig = {
     "TrajXlabel": r'$\mathbf{p}_x~\mathrm{[m]}$',
     "TrajYlabel": r'$\mathbf{p}_y~\mathrm{[m]}$',
-    "OthersXlablel": r'Time [s]',
+    "OthersXlablel": r'时间 [s]',
     "PosErrorYlabel": r'$\mathbf{e}_{\mathrm{p}}~\mathrm{[m]}$',
-    "AnglesYlabel": r'Angles [rad]',
+    "AnglesYlabel": r'角度 [rad]',
     "VelYlabel": r'$\left\|\mathbf{v}\right\|~\mathrm{[m/s]}$',
     "AngVelYlabel": r'$\prescript{\mathcal{B}}{}{\boldsymbol{\Omega}_b}~\mathrm{[rad/s]}$',
-    "PosErrorLim": [-0.7, 0.7],
+    "PosErrorLim": [-1.0, 1.0],
     "AnglesLim": [-np.pi-0.5, np.pi+0.5],
     "AngVelLim": [-3.0, 3.0],
 }
 
+if_chinese = True
+
+# TestName = "ma_v_4"
+
+TestName = "outdoor_v_12"
+# TestName = "sim_proposed_circle_v_4v2"
+
+'''lyu_v_14
+simulation_v_14_cz_0.15_yb
+indoor_v_2
+indoor_v_2_yaw
+outdoor_v_10
+outdoor_v_12
+lyu_v_14
+sim_baseline_v_14
+sim_baseline_v_13
+sim_baseline_v_10
+sim_baseline_v_7
+sim_baseline_v_4
+sim_baseline_v_2
+sim_baseline_lem_v_2
+sim_baseline_lem_v_4
+sim_baseline_lem_v_7
+sim_baseline_lem_v_10
+sim_baseline_lem_v_13
+sim_yb_lem_v_13
+sim_yb_lem_v_10
+sim_yb_lem_v_7
+sim_yb_lem_v_4
+sim_yb_lem_v_2
+sim_yb_circle_v_2
+sim_yb_circle_v_4
+sim_yb_circle_v_7
+sim_yb_circle_v_10
+sim_yb_circle_v_13
+sim_cz_circle_v_13
+sim_cz_circle_v_10
+sim_cz_circle_v_7
+sim_cz_circle_v_4
+sim_cz_circle_v_2
+sim_cz_lem_v_13
+sim_cz_lem_v_10
+sim_cz_lem_v_7
+sim_cz_lem_v_4
+sim_cz_lem_v_2
+sim_proposed_circle_v_13
+sim_proposed_circle_v_10
+sim_proposed_circle_v_7
+sim_proposed_circle_v_4
+sim_proposed_circle_v_2
+'''
+
+
 ExtraConfig = {
     "fix_yaw_angle": -np.pi/2,
-    # "fix_yaw_angle": 0,
+    # "fix_yaw_angle": 0.0,
+    # "fix_yaw_angle": -np.pi/4,
     # "ulg_file": os.path.join(root_dir(), 'scripts/paper_plots/ulgs/log_4_UnknownDate.ulg'),
-    "ulg_file": None,
+    "ulg_file": os.path.join(root_dir(), f'ulgs/{TestName}.ulg'),
+    # "ulg_file": None,
 }
 
 
@@ -143,12 +198,20 @@ def initialize_figure():
 
 def plot_trajectory(ax, ref_p, p):
     """Plot 3D trajectory."""
-    ax.plot(ref_p[:, 0], ref_p[:, 1], '--',
-              label='Ref.', color=f'{colors["red"]}', zorder=3)
-    ax.plot(p[:, 0], p[:, 1], label='Meas.', 
+    if if_chinese:
+        ax.plot(ref_p[:, 0], ref_p[:, 1], '--',
+              label=r'参考值', color=f'{colors["red"]}', zorder=3)
+        ax.plot(p[:, 0], p[:, 1], label=r'测量值', 
               color=f'{colors["blue"]}', zorder=2)
-    ax.set_xlabel(LabelsConfig["TrajXlabel"])
-    ax.set_ylabel(LabelsConfig["TrajYlabel"])
+        ax.set_xlabel(LabelsConfig["TrajXlabel"])
+        ax.set_ylabel(LabelsConfig["TrajYlabel"])
+    else:
+        ax.plot(ref_p[:, 0], ref_p[:, 1], '--',
+              label='Ref.', color=f'{colors["red"]}', zorder=3)
+        ax.plot(p[:, 0], p[:, 1], label='Meas.', 
+              color=f'{colors["blue"]}', zorder=2)
+        ax.set_xlabel(LabelsConfig["TrajXlabel"])
+        ax.set_ylabel(LabelsConfig["TrajYlabel"])
     pos = ax.get_position()  # 获取 axes 位置
     ax.legend(bbox_to_anchor=(0.5, 1.02), 
               ncol=2, columnspacing=1.0,
@@ -176,10 +239,17 @@ def plot_velocity(ax, time, ref_v, v):
     """Plot velocity over time."""
     ref_v_norm = np.linalg.norm(ref_v, axis=1)
     v_norm = np.linalg.norm(v, axis=1)
-    ax.plot(time, ref_v_norm, '--', label='Ref.', 
-            color=f'{colors["red"]}', zorder=3, linewidth=1.5)
-    ax.plot(time, v_norm, label='Meas.', 
+    if if_chinese:
+        ax.plot(time, ref_v_norm, '--', label='参考量', 
+                color=f'{colors["red"]}', zorder=3, linewidth=1.5)
+        ax.plot(time, v_norm, label='测量值', 
             color=f'{colors["blue"]}', zorder=2)
+
+    else:
+        ax.plot(time, ref_v_norm, '--', label='Ref.', 
+                color=f'{colors["red"]}', zorder=3, linewidth=1.5)
+        ax.plot(time, v_norm, label='Meas.', 
+                color=f'{colors["blue"]}', zorder=2)
     # ax.set_title("Velocity")
     
     ax.set_ylabel(LabelsConfig["VelYlabel"])
@@ -203,7 +273,8 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
     # Extract yaw and roll from the reference yb
     ref_angles = extract_yaw_roll_from_yb(ref_yb)  # Shape: (N1, 2)
 
-
+    max_ref_roll = np.max(np.abs(ref_angles[:, 1]))
+    print(f"Max reference roll angle: {max_ref_roll:.4f} rad ({np.degrees(max_ref_roll):.4f} deg)")
 
     
     # Plot actual yaw, roll, and pitch
@@ -213,7 +284,7 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
             color=f'{colors["cyan"]}', zorder=2)
     ax.plot(odometry_time, actual_euler_angles[:, 1], label=r'$\phi$', 
             color=f'{colors["red"]}', zorder=2)
-        # Plot reference yaw and roll from yb
+    # Plot reference yaw and roll from yb
     ax.plot(main_time, -ref_angles[:, 0], '--',
             color=f'{colors["blue"]}', zorder=3)
     ax.plot(main_time, ref_angles[:, 1], '--',
@@ -221,10 +292,8 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
 
     # tick that point on y-axis
     # set tick at the position pitch_min  not 0
-    # ax.set_yticks([pitch_min, 0, 180])
-    # ax.set_yticklabels([f'{pitch_min:.1f}', f'{0:.1f}', f'{180:.1f}'])
-    pad = 0.5
-    ax.set_ylim(-np.pi - pad, np.pi + pad)
+
+    ax.set_ylim(LabelsConfig['AnglesLim'])
     
     ax.set_yticks([np.pi, np.pi/2, 0, -np.pi/2, -np.pi])
     ax.set_yticklabels([r'$\pi$', r'$\frac{\pi}{2}$', r'$0$', r'$-\frac{\pi}{2}$', r'$-\pi$'])
@@ -260,6 +329,57 @@ def plot_angular_velocity(ax, time, ang_vel=None, ang_vel_sp=None):
             borderaxespad=0, handletextpad=0.2,
             loc='lower center'
             )
+
+def plot_angles_solo(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
+    """
+    Plot yb tracking performance and automatically determined pitch angle.
+
+    Parameters:
+    - ax: Matplotlib axis object to plot on.
+    - main_time: Time array of shape (N1,), corresponding to the timeline for ref_yb.
+    - odometry_time: Time array of shape (N2,), corresponding to the timeline for actual_euler_angles.
+    - ref_yb: Reference yb vector array of shape (N1, 3).
+    - actual_euler_angles: Actual Euler angles (yaw, roll, pitch) array of shape (N2, 3).
+    """
+    # Extract yaw and roll from the reference yb
+    ref_angles = extract_yaw_roll_from_yb(ref_yb)  # Shape: (N1, 2)
+
+
+
+    
+    # Plot actual yaw, roll, and pitch
+    ax.plot(odometry_time, actual_euler_angles[:, 0], label=r'$\psi$',
+            color=f'{colors["blue"]}', zorder=2)
+    ax.plot(odometry_time, actual_euler_angles[:, 2], label=r'$\theta$', 
+            color=f'{colors["cyan"]}', zorder=2)
+    ax.plot(odometry_time, actual_euler_angles[:, 1], label=r'$\phi$', 
+            color=f'{colors["red"]}', zorder=2)
+        # Plot reference yaw and roll from yb
+    ax.plot(main_time, -ref_angles[:, 0], '--',
+            color=f'{colors["blue"]}', label=r'$\psi_{ref}$', zorder=3)
+    ax.plot(main_time, ref_angles[:, 1], '--',
+            color=f'{colors["red"]}', label=r'$\phi_{ref}$', zorder=3)
+
+    # tick that point on y-axis
+    # set tick at the position pitch_min  not 0
+    # ax.set_yticks([pitch_min, 0, 180])
+    # ax.set_yticklabels([f'{pitch_min:.1f}', f'{0:.1f}', f'{180:.1f}'])
+    pad = 0.5
+    ax.set_ylim(-np.pi - pad, np.pi + pad)
+    
+    ax.set_yticks([np.pi, np.pi/2, 0, -np.pi/2, -np.pi])
+    ax.set_yticklabels([r'$\pi$', r'$\frac{\pi}{2}$', r'$0$', r'$-\frac{\pi}{2}$', r'$-\pi$'])
+    # Configure axis labels, title, and grid
+    ax.set_ylabel(LabelsConfig["AnglesYlabel"], labelpad=-1)
+    ax.legend(bbox_to_anchor=(0.2, 0.8), 
+            ncol=3, columnspacing=1.0,
+            borderaxespad=0, handletextpad=0.2,
+            loc='lower center'
+            )
+    ax.set_xlabel(LabelsConfig["OthersXlablel"])
+    return ax
+
+
 # Reserved for export blender animation.
 def create_df_export(df_odometry):
     """Create a DataFrame for exporting to CSV."""
@@ -312,10 +432,6 @@ def main_plotting_pipeline():
     print("Interpolating all topics to common timeline...")
     ulg_loader.interpolate_topics_to_common_timeline()
     
-    # # Apply zero-velocity data shifting to all topics
-    # print("Shifting zero-velocity data from the end to the beginning for all topics...")
-    # shifted_data = ulg_loader.shift_zero_velocity_data(velocity_threshold=2.0)
-    
     # Get the shifted tracking_info data
     df_tracking = ulg_loader.get_topic_data('tracking_info')
     
@@ -330,52 +446,71 @@ def main_plotting_pipeline():
     RMSE_position_error = np.sqrt(np.sum(np.sum(position_error**2, axis=1), axis=0)/len(position_error))
     print(f"RMSE of position error: {RMSE_position_error:.4f} m")
 
+    # Calculate max height
+    max_height = np.max(np.abs(position_error[:, 2]))
+    print(f"Max height Error: {max_height:.4f} m")
+
+    # Calculate max position
+    max_pos = np.max(np.sqrt(np.sum(position_error**2, axis=1)))
+    print(f"Max position Error magnitude: {max_pos:.4f} m")
+
+    # Calculate velocity ratios
+    ref_vel_mag = np.sqrt(np.sum(ref_v**2, axis=1))
+    meas_vel_mag = np.sqrt(np.sum(v**2, axis=1))
+    max_ref_vel = np.max(ref_vel_mag)
+    max_meas_vel = np.max(meas_vel_mag)
+    print(f"Max reference velocity: {max_ref_vel:.4f} m/s")
+    print(f"Max measured velocity: {max_meas_vel:.4f} m/s")
+    print(f"Velocity ratio (ref/meas): {max_ref_vel/max_meas_vel:.4f}")
 
     # Get the shifted vehicle_odometry data
     df_odometry = ulg_loader.get_topic_data('vehicle_odometry')
     odometry_time = df_odometry['time_from_start'].values
     quat = df_odometry[['q[0]', 'q[1]', 'q[2]', 'q[3]']].values
-    # print(quat)
     quat = add_yaw_and_right_multiply_frd(quat, ExtraConfig["fix_yaw_angle"])
     new_q = np.column_stack((quat[:, 1:], quat[:, 0]))
     
     rotation = R.from_quat(new_q)
     euler_angles = rotation.as_euler('ZXY', degrees=False)  # In radians by default
 
+    # Calculate max roll
+    max_roll = np.max(np.abs(euler_angles[:, 1]))  # X axis for roll in ZXY order
+    print(f"Max roll angle: {max_roll:.4f} rad ({np.degrees(max_roll):.4f} deg)")
+
+    max_pitch = np.max(np.abs(euler_angles[:, 2]))
+    print(f"Max pitch angle: {max_pitch:.4f} rad ({np.degrees(max_pitch):.4f} deg)")
+
     # Initialize figure
-    with plt.style.context(['ieee', 'latex', 'ticks-inward']):
-    
+    with plt.style.context(['ieee', 'latex-sc', 'ticks-inward']):
         fig, axes = initialize_figure()
         ref_yb = df_tracking[['ref_yb[0]', 'ref_yb[1]', 'ref_yb[2]']].values
         # Plot content
         plot_trajectory(axes[0], ref_p, p)
         plot_position_error(axes[1], main_time, ref_p, p)
         plot_velocity(axes[2], main_time, ref_v, v)
-        plot_angles(axes[3], main_time, odometry_time, ref_yb=ref_yb, actual_euler_angles=euler_angles)  # Replace with correct angle data
-
+        plot_angles(axes[3], main_time, odometry_time, ref_yb=ref_yb, actual_euler_angles=euler_angles)
 
         df_ang_vel_sp = ulg_loader.get_topic_data('vehicle_rates_setpoint')
         ang_vel_sp = df_ang_vel_sp[['roll', 'pitch', 'yaw']].values
         ang_vel_sp_time = df_ang_vel_sp['time_from_start'].values
         plot_angular_velocity(axes[4], ang_vel_sp_time, 
-                            ang_vel_sp=ang_vel_sp, ang_vel=None)  # Replace with correct angular velocity data
-        
+                            ang_vel_sp=ang_vel_sp, ang_vel=None)
 
-    
         df_ang_vel = ulg_loader.get_topic_data('vehicle_angular_velocity')
         ang_vel = df_ang_vel[['xyz[0]', 'xyz[1]', 'xyz[2]']].values
         ang_vel_time = df_ang_vel['time_from_start'].values
         plot_angular_velocity(axes[4], ang_vel_time, 
-                            ang_vel_sp=None, ang_vel=ang_vel)  # Replace with correct angular velocity data
-        
+                            ang_vel_sp=None, ang_vel=ang_vel)
 
         # Save figure
-        fig.savefig(f"{tracking_plots_dir()}/traj-view.pdf", backend='pgf')
-    # plt.show()
+        fig.savefig(f"{tracking_plots_dir()}/traj-view{TestName}.pdf", backend='pgf')
+
+    fig1 = plt.figure(figsize=(7.5, 4.5))
+    ax = fig1.add_subplot(111)  # Single subplot
+    plot_angles_solo(ax, main_time, odometry_time, ref_yb=ref_yb, actual_euler_angles=euler_angles)
+    # Save figure
+    fig1.savefig(f"{tracking_plots_dir()}/ang-view{TestName}.pdf", backend='pgf')
 
 # Execute pipeline
 if __name__ == "__main__":
     main_plotting_pipeline()
-    
-    
-    

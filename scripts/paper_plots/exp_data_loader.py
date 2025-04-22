@@ -17,7 +17,7 @@ RequiredTopics = [
     'vehicle_angular_velocity'
 ]
 
-ulg_file = os.path.join(root_dir(), 'scripts/paper_plots/ulgs/log_2_UnkownDate.ulg')
+ulg_file = os.path.join(root_dir(), 'scripts/paper_plots/ulgs/log_3_UnknownDate.ulg')
 
 
 class UlgDataLoader:
@@ -105,12 +105,16 @@ class UlgDataLoader:
         Get the time range specification.
         """
         tracking_data = self._ulog_data.get_dataset('tracking_info')
-        
         #locate the first timestamp that  ref_vel_norm < 0.1 
         ref_vel_norm = np.sqrt(tracking_data.data['ref_velocity[0]']**2 + tracking_data.data['ref_velocity[1]']**2 + tracking_data.data['ref_velocity[2]']**2)
-        start_index = np.where(ref_vel_norm < 0.1)[0][0]
-        self.__time_start = tracking_data.data['timestamp'][start_index]
         
+        # We assume that 
+        
+        start_index = np.where((ref_vel_norm > 0.1) & (ref_vel_norm < 3))[0][0]
+        print(f"start index is {start_index}")
+        
+        self.__time_start = tracking_data.data['timestamp'][start_index]
+        print(f"start index is {start_index}")
         
         
         self.__time_end_v1 = (tracking_data.data['timestamp'][-1] - self.__time_start)/1e6
@@ -119,7 +123,17 @@ class UlgDataLoader:
         ref_position_0 = tracking_data.data['ref_position[0]']
         ref_position_1 = tracking_data.data['ref_position[1]']
         ref_position_2 = tracking_data.data['ref_position[2]']
-        a_cirle_completed_index = np.where((ref_position_0 == ref_position_0[start_index]) & (ref_position_1 == ref_position_1[start_index]) & (ref_position_2 == ref_position_2[start_index]))[0][1]
+        
+        end_index = np.where(ref_vel_norm < 0.1)
+        print(f"end_index: {end_index}")
+        a_cirle_completed_index = -1
+        if end_index[0][0] > start_index + 100:
+            a_cirle_completed_index = end_index[0][0]
+        else :
+            a_cirle_completed_index = np.where((ref_position_0 == ref_position_0[start_index]) & (ref_position_1 == ref_position_1[start_index]) & (ref_position_2 == ref_position_2[start_index]))[0][1]
+        
+        print(f"a_cirlce_completed_index end is {a_cirle_completed_index}")
+        # a_cirle_completed_index = np.where((ref_position_0 == ref_position_0[start_index]) & (ref_position_1 == ref_position_1[start_index]) & (ref_position_2 == ref_position_2[start_index]))[0][1]
         self.__time_end_v2 = (tracking_data.data['timestamp'][a_cirle_completed_index] - self.__time_start)/1e6
         
     
@@ -197,7 +211,7 @@ class UlgDataLoader:
         """
         if not self.__dataframes or 'tracking_info' not in self.__dataframes:
             self.load_data()
-        
+        df = self.__dataframes
         # Get the reference timeline from tracking_info
         ref_timeline = self.__dataframes['tracking_info']['time_from_start'].values
 
