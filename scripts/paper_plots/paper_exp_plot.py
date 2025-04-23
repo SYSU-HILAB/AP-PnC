@@ -36,7 +36,7 @@ if_chinese = True
 
 # TestName = "ma_v_4"
 
-TestName = "outdoor_v_12"
+TestName = "NN_NMPC_v14"
 # TestName = "sim_proposed_circle_v_4v2"
 
 '''lyu_v_14
@@ -82,6 +82,8 @@ sim_proposed_circle_v_10
 sim_proposed_circle_v_7
 sim_proposed_circle_v_4
 sim_proposed_circle_v_2
+GC_v_12
+GC_v_14
 '''
 
 
