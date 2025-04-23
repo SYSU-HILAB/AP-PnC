@@ -32,7 +32,7 @@ radius = 30.0
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
 type = 2
-v_max = 13.0
+v_max = 14.0
 
 [px4_interface]
 pos_init_dis_threshold = 0.01
