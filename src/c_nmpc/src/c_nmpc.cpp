@@ -28,6 +28,92 @@ int status;  // acados operation state
 #include <vector>
 using namespace Eigen;
 
+class ButterworthLPF
+{
+   public:
+    // Constructor: sets sampling frequency (Hz) and cutoff frequency (Hz)
+    ButterworthLPF(double sampleRate, double cutoffFreq);
+
+    // Process a single sample
+    double process(double input);
+
+    // Update filter parameters (sampleRate in Hz, cutoffFreq in Hz)
+    void updateParameters(double sampleRate, double cutoffFreq);
+
+   private:
+    void computeCoefficients();
+
+    // Filter coefficients
+    double b0, b1, b2;  // Numerator coefficients
+    double a1, a2;      // Denominator coefficients
+
+    // Previous input and output states (for filtering)
+    double x1 = 0.0, x2 = 0.0;  // Past inputs (x[n-1], x[n-2])
+    double y1 = 0.0, y2 = 0.0;  // Past outputs (y[n-1], y[n-2])
+
+    // Filter parameters
+    double sampleRate;
+    double cutoffFreq;
+};
+
+ButterworthLPF::ButterworthLPF(double sampleRate, double cutoffFreq)
+    : sampleRate(sampleRate), cutoffFreq(cutoffFreq)
+{
+    computeCoefficients();
+}
+
+void ButterworthLPF::computeCoefficients()
+{
+    // Compute angular frequency (normalized to Nyquist)
+    double omega    = 2.0 * M_PI * cutoffFreq / sampleRate;
+    double tanOmega = tan(omega / 2.0);
+
+    // Compute intermediate values
+    double sqrt2 = sqrt(2.0);
+    double alpha = sin(omega) / (2.0 * sqrt2);  // Damping factor
+
+    // Compute coefficients (bilinear transform)
+    double a0 = 1.0 + alpha;
+
+    b0 = (1.0 - cos(omega)) / (2.0 * a0);
+    b1 = (1.0 - cos(omega)) / a0;
+    b2 = b0;
+
+    a1 = -2.0 * cos(omega) / a0;
+    a2 = (1.0 - alpha) / a0;
+}
+
+double ButterworthLPF::process(double input)
+{
+    // Apply the filter: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] -
+    // a2*y[n-2]
+    double output = b0 * input + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+
+    // Update state variables
+    x2 = x1;
+    x1 = input;
+    y2 = y1;
+    y1 = output;
+
+    return output;
+}
+
+void ButterworthLPF::updateParameters(double newSampleRate,
+                                      double newCutoffFreq)
+{
+    if (newSampleRate <= 0.0 || newCutoffFreq <= 0.0 ||
+        newCutoffFreq >= newSampleRate / 2.0)
+    {
+        return;  // Invalid parameters (cutoff must be < Nyquist)
+    }
+
+    sampleRate = newSampleRate;
+    cutoffFreq = newCutoffFreq;
+    computeCoefficients();
+
+    // Reset filter state (optional)
+    x1 = x2 = y1 = y2 = 0.0;
+}
 // Template function to bind a member function to a std::function
 template <typename T1, class T2>
 std::function<void(const T1&)> bindHandler(void (T2::*func)(const T1&), T2* obj)
@@ -156,6 +242,8 @@ class AcadosInterface
         return status;
     }
 };
+
+ButterworthLPF lpf(100.0, 1.0);
 
 class NmpcCallbacks
 {
@@ -314,11 +402,11 @@ void NMPC::solve()
     ctrl_msg.timestamp     = this->get_clock()->now().nanoseconds() / 1000;
     ctrl_msg.pitch_sp      = pitch;
     ctrl_msg.thrust_acc_sp = (u_[0] + u_[1] + u_[2] + u_[3]) / mass_;
-    ctrl_pub_->publish(ctrl_msg);
+    t_end_                 = std::chrono::high_resolution_clock::now();
 
-    t_end_ = std::chrono::high_resolution_clock::now();
-    time_statistic.emplace_back(
-        std::chrono::duration<double, std::milli>(t_end_ - t_start_).count());
+    ctrl_msg.sol_time =
+        std::chrono::duration<double, std::milli>(t_end_ - t_start_).count();
+    ctrl_pub_->publish(ctrl_msg);
 }
 
 void NMPC::accCallback(const AccelerationMsg& msg)
@@ -401,6 +489,8 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     // 1)(2);
     // TODO: add the actual cz
     // tracking_info_msg.cz    = static_cast<float>(cz_predict_);
+    // cz_filtered_ = lpf.process(cz_filtered_);
+
     tracking_info_msg.cz = static_cast<float>(cz_filtered_);
     // tracking_info_msg.cz =
     if (tracking_valid)
@@ -475,23 +565,11 @@ NMPC::NMPC() : Node("NMPC")
     this->get_parameter("cz_rate", cz_rate_);
     RCLCPP_INFO(this->get_logger(), "mass: %f", mass_);
     initSubsPubs();
-    time_statistic.reserve(10000);
     u_.fill(9.8 / 4 * mass_);
     // NMPC setup code here (not shown, specific to your application)
 }
 
-NMPC::~NMPC()
-{
-    Eigen::VectorXd time_record;
-    time_record.resize(time_statistic.size());
-    for (size_t i = 0; i < time_statistic.size(); i++)
-    {
-        time_record[i] = time_statistic[i];
-    }
-    // save the time record to a csv file
-    Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, "",
-                              "\n");
-}
+NMPC::~NMPC() {}
 
 int main(int argc, char** argv)
 {

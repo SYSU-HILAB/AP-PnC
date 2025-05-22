@@ -2,7 +2,7 @@
   ros__parameters:
     BasicTrajectoryCirled: true
     BasicTrajectoryCurvatureFactor: 0.8
-    BasicTrajectoryHeight: 6.5
+    BasicTrajectoryHeight: 10.5
     BasicTrajectoryRadius: 30.0
     BasicTrajectoryRate: 0.5
     BasicTrajectoryType: 2

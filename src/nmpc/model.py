@@ -106,8 +106,6 @@ def tailsitter_flu():
     
     
     
-    
-    
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = Quat2RotMat(q_tf)
     F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)
@@ -119,10 +117,19 @@ def tailsitter_flu():
     vv_dot = v_dot_q(tb/mass, q)  + g + v_dot_q(F_aero_b_flu_quad_frame / mass, q)
     vb_dot = -skew(r)*vb + v_dot_q_inverse(vv_dot, q)
 
-    alpha_dot = (vb_dot[2]*vb[0] - vb[2]*vb_dot[0]) / (cs.dot(v,v))
+    vx_vy_squres = cs.dot(vb[0:2], vb[0:2])
+    
+    acc_b = v_dot_q_inverse(v_dot_q(tb/mass, q)  + g + v_dot_q(F_aero_b_flu_quad_frame / mass, q), q)
+    
+    # alpha_dot = (vb_dot[2]*vb[0] - vb[2]*vb_dot[0]) / (cs.dot(v,v) + 0.1) 
+    alpha_dot = (acc_b[2] * vb[0] - acc_b[0] * vb[2]) / (cs.dot(v,v)) + r[1]
+    
+    # alpha_dot = (
+    # maybe we should estimate the alpha_dot data out
+    # I guess that when gaussian-newton implicitly estimate the alpha_dot, it is damped. But if formulated as equations, it is very noisy.
     cz_dot = cs.if_else(
         cs.dot(v,v) > 1.0,
-        -cz_rate * alpha_dot,
+        -0.1 * alpha_dot,
         0.0
     )
     # dynamics

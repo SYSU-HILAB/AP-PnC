@@ -7,5 +7,6 @@ float64 pitch_sp
 # rates is in FLU
 float64[3] rates_sp
 float64 thrust_acc_sp
+float64 sol_time
 
 # version 1 used in px4 is total_thrust, rates_sp
