@@ -10,6 +10,7 @@
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/tracking_info.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
+#include <px4_msgs/msg/vehicle_status.hpp>
 #include <px4_msgs/msg/vehicle_thrust_acc_setpoint.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/publisher.hpp>
@@ -101,6 +102,9 @@ class PX4Interface : public rclcpp::Node
                 "/fmu/in/tracking_info", 10);
         state_publisher_ = this->create_publisher<interface::msg::State>(
             "/cur_state", reliable_qos);
+        vehicle_thrust_acc_setpoint_publisher_ =
+            this->create_publisher<VehicleThrustAccSetpoint>(
+                "/fmu/in/vehicle_thrust_acc_setpoint", 10);
 
         state_odom_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>(
             "/cur_state_odom", reliable_qos);
@@ -109,9 +113,6 @@ class PX4Interface : public rclcpp::Node
                 "/fmu/out/vehicle_odometry", keep_last_qos,
                 std::bind(&PX4Interface::vehicle_odometry_callback, this,
                           std::placeholders::_1));
-        vehicle_thrust_acc_setpoint_publisher_ =
-            this->create_publisher<VehicleThrustAccSetpoint>(
-                "/fmu/in/vehicle_thrust_acc_setpoint", 10);
         controls_subscriber_ =
             this->create_subscription<interface::msg::Controls>(
                 "/mpc_controls", rclcpp::SensorDataQoS(),
@@ -122,6 +123,10 @@ class PX4Interface : public rclcpp::Node
                 "/tracking_info", keep_last_qos,
                 std::bind(&PX4Interface::tracking_info_cb, this,
                           std::placeholders::_1));
+        vehicle_status_subscriber_ = this->create_subscription<VehicleStatus>(
+            "/fmu/out/vehicle_status", keep_last_qos,
+            std::bind(&PX4Interface::init_status_check, this,
+                      std::placeholders::_1));
 
         auto heartbeat_callback = [this]() -> void
         { publish_offboard_control_mode(); };
@@ -129,8 +134,13 @@ class PX4Interface : public rclcpp::Node
     }
 
    public:
+    bool everything_is_ok      = false;
+    bool is_init_check         = false;
+    bool is_pos_orien_estimate = false;
+    bool is_takeoff_enter      = false;
+    bool is_takeoff_complete   = false;
+
     std::unique_ptr<Transcribe> trans_;
-    bool                        is_init_ = false;
     interface::msg::Controls    controls_;
     interface::msg::State       state_;
 
@@ -156,6 +166,8 @@ class PX4Interface : public rclcpp::Node
         controls_subscriber_;
     rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr
         vehicle_odometry_subscriber_;
+    rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr
+        vehicle_status_subscriber_;
 
     // bool
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr trigger_subscriber_;
@@ -177,7 +189,83 @@ class PX4Interface : public rclcpp::Node
     static double quaternion_tiny_nls(void* ptr, const Eigen::VectorXd& X,
                                       Eigen::VectorXd& gradX);
     void tracking_info_cb(const interface::msg::TrackingInfo::SharedPtr msg);
+    void init_status_check(const px4_msgs::msg::VehicleStatus::SharedPtr msg);
 };
+
+void PX4Interface::init_status_check(
+    const px4_msgs::msg::VehicleStatus::SharedPtr msg)
+{
+    // POS_CTRL == 2 in nav_state
+    // ARM_STATE == 2 is armed in arming_state.
+
+    static std::string WARN_START =
+        "[PX4Interface:WARNING]===============================\n";
+
+    static std::string WARN_END =
+        "====================================================\n";
+
+    if (is_init_check)
+    {
+        return;
+    }
+
+    bool is_armed =
+        msg->arming_state == px4_msgs::msg::VehicleStatus::ARMING_STATE_ARMED;
+
+    if (!is_armed)
+    {
+        RCLCPP_WARN_STREAM(
+            this->get_logger(),
+            WARN_START + "Vehicle is not armed! you can not start NMPC\n" +
+                WARN_END);
+        return;
+    }
+
+    if (msg->nav_state ==
+        px4_msgs::msg::VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF)
+    {
+        is_takeoff_enter = true;
+    }
+
+    bool is_position_ctrl =
+        msg->nav_state == px4_msgs::msg::VehicleStatus::NAVIGATION_STATE_POSCTL;
+
+    if (msg->nav_state ==
+        px4_msgs::msg::VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF)
+    {
+        RCLCPP_WARN_STREAM(this->get_logger(),
+                           WARN_START +
+                               "Vehicle is in auto takeoff mode! you can not "
+                               "start NMPC\n" +
+                               WARN_END);
+        return;
+    }
+
+    if (!is_position_ctrl)
+    {
+        RCLCPP_WARN_STREAM(this->get_logger(),
+                           WARN_START +
+                               "Vehicle is not in position control mode! you "
+                               "can not start NMPC\n" +
+                               WARN_END);
+        return;
+    }
+    is_takeoff_complete = is_takeoff_enter && is_position_ctrl;
+    if (is_takeoff_complete)
+    {
+        RCLCPP_INFO_STREAM(this->get_logger(),
+                           "Vehicle is in position control mode and takeoff "
+                           "completed");
+    }
+
+    is_init_check = is_armed && is_position_ctrl;
+    if (is_init_check)
+    {
+        RCLCPP_INFO_STREAM(this->get_logger(),
+                           "Vehicle is armed and in position control mode");
+        return;
+    }
+}
 
 void PX4Interface::tracking_info_cb(
     const interface::msg::TrackingInfo::SharedPtr msg)
@@ -206,8 +294,12 @@ void PX4Interface::controls_callback(
     px4_control.rates_sp      = trans_->toFRD(msg->rates_sp);
     px4_control.thrust_acc_sp = msg->thrust_acc_sp;
     px4_control.pitch_sp      = msg->pitch_sp;
+    px4_control.sol_time      = msg->sol_time;
 
-    vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
+    if (everything_is_ok)
+    {
+        vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
+    }
 }
 
 double PX4Interface::position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
@@ -272,6 +364,12 @@ void PX4Interface::vehicle_odometry_callback(
     static Eigen::Vector3d    pos_dec;
     static Eigen::Quaterniond quat_dec(Eigen::Quaterniond::Identity());
     static size_t             index = 0;
+
+    if (!is_takeoff_complete && !is_init_check)
+    {
+        return;
+    }
+
     if (index < nums_to_to_collect)
     {
         index++;
@@ -296,13 +394,14 @@ void PX4Interface::vehicle_odometry_callback(
         this->trans_->setInitInertial(pos_dec, quat_dec);
     }
 
-    if (!is_init_)
+    if (!is_pos_orien_estimate)
     {
-        is_init_         = true;
-        state_pub_timer_ = this->create_wall_timer(
-            20ms, std::bind(&PX4Interface::publish_state, this));
+        is_pos_orien_estimate = true;
+        state_pub_timer_      = this->create_wall_timer(
+                 20ms, std::bind(&PX4Interface::publish_state, this));
         this->trans_->setInitInertial(pos_dec, quat_dec);
     }
+    everything_is_ok = is_pos_orien_estimate && is_takeoff_complete;
     this->trans_->toFLU(msg->position, msg->velocity, msg->angular_velocity,
                         msg->q, state_);
 }
@@ -310,6 +409,13 @@ void PX4Interface::vehicle_odometry_callback(
 void PX4Interface::publish_state()
 {
     state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+    // Add a logic that we should first Arm the vehicle and complte the position
+    // and orientation estimate, and then we can publish the state otherwise,
+    // the MPC should not start
+    if (!everything_is_ok)
+    {
+        return;
+    }
     state_publisher_->publish(state_);
     nav_msgs::msg::Odometry odom;
     odom.header.stamp    = this->get_clock()->now();

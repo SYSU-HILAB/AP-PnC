@@ -39,10 +39,10 @@ target_link_libraries(
         autodiff::autodiff
 )
 
-install(DIRECTORY
-        launch config meshes
-        DESTINATION share/${PROJECT_NAME}
-)
+# install(DIRECTORY
+#         launch config meshes
+#         DESTINATION share/${PROJECT_NAME}
+# )
 
 # Specify libraries to link a library or executable target against
 # ament_target_dependencies(${PROJECT_NAME}_node rclcpp pcl_conversions pcl_ros)
