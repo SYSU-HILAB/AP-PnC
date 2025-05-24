@@ -29,7 +29,7 @@ class MpcConfig:
     qPos = np.array([ 15,  15,  25]) * 1 * 1.0
 
     qh = 1.5
-    qv = 1.8
+    qv = 1.8 * 1.0 * 2.0
     qYB = np.array([qh*1e2, qh*1e2, qv*1e2]) * 1.0 * 0.1 * 3.5
     
     qvelh = 1.0 # 5.0
@@ -37,7 +37,7 @@ class MpcConfig:
 
     qVel = np.array([qvelh, qvelh, qvelv]) * 1 
 
-    wx=.1
+    wx=.1   
     wy=0.5
     wz=.1
     qAngV = np.array([wx, wy, wz]) * 1 

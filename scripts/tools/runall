@@ -1,5 +1,27 @@
 #!/bin/bash
 planConfigSync
-taskset -c 13 syncRunPlanning &
-taskset -c 14 pxinterface &
-taskset -c 15 real_run_mpc > /dev/null &
+
+# compatible to 6800U and N100 
+# 6800U is 16threads, N100 is 4 threads
+
+cores=$(nproc --all)
+
+# 根据核心数执行不同操作
+if [ "$cores" -eq 4 ]; then
+    echo "Detected 4 CPU cores, distributing tasks to cores 1-3"
+    taskset -c $((cores-3)) syncRunPlanning &
+    taskset -c $((cores-2)) pxinterface &
+    taskset -c $((cores-1)) real_run_mpc > /dev/null &
+elif [ "$cores" -eq 8 ]; then
+    echo "Detected 8 CPU cores, distributing tasks to cores 5-7"
+    taskset -c $((cores-3)) syncRunPlanning &
+    taskset -c $((cores-2)) pxinterface &
+    taskset -c $((cores-1)) real_run_mpc > /dev/null &
+elif [ "$cores" -eq 16 ]; then
+    echo "Detected 16 CPU cores, distributing tasks to cores 13-15"
+    taskset -c $((cores-3)) syncRunPlanning &
+    taskset -c $((cores-2)) pxinterface &
+    taskset -c $((cores-1)) real_run_mpc > /dev/null &
+else
+    echo "CPU cores not supported, please check your CPU configuration"
+fi

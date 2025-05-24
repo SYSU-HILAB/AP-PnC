@@ -15,7 +15,7 @@
     BoxUpLength: 0.2
     Frame: world
     IntegralIntervs: 30
-    PieceN: 10
+    PieceN: 20
     RelCostTol: 1.0e-05
     SmoothingEps: 0.01
     TrajectoryCirled: false

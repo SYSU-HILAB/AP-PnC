@@ -426,7 +426,7 @@ class GlobalPlanner : public rclcpp::Node
             tailsitter_data.reset(config.trajecotry_cirled);
             control_traj_msg.points.clear();
             auto &csv_file = init_planning_csv_file();
-            for (double t = 0.0; t <= traj.getTotalDuration() + FLT_EPSILON;
+            for (double t = 0.0; t <= traj.getTotalDuration() + DBL_EPSILON;
                  t += config.traj_pub_rsl)
             {
                 // get model attitude and thrust and omg

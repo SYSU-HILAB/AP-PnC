@@ -106,7 +106,7 @@ if 'B_Omega_b_y' in df.columns and 'alpha_dot' in df.columns:
     ax2.tick_params(axis='y', labelcolor='r')
 
     # Add legend
-    lines1, labels1 = ax.get_legend_handles_labels()
+    lines1, labels1 = ax.get_legend_handles_labels() 
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
 
@@ -136,3 +136,24 @@ if 'aero_force_z' in df.columns and 'B_aeroForce_z' in df.columns:
     plt.show()
 else:
     print("Warning: aero_force_z and/or B_aeroForce_z columns not found in CSV file")
+    
+    
+    
+# Fourth plot: Compare aero_force_z and B_aeroForce_z
+if 'av_x_S' in df.columns and 'av_z_S' in df.columns:
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Plot both forces on the same axis
+    ax.plot(time, df['av_x_S'].values, label='av_x_S', color='b')
+    ax.plot(time, df['av_z_S'].values, label='av_z_S', color='r')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Force (N)')
+    ax.legend()
+    ax.grid(True)
+
+    ax.set_title('Aerodynamic Forces Comparison')
+
+    plt.tight_layout()
+    plt.show()
+else:
+    print("Warning: av_x_S and/or av_z_S columns not found in CSV file")
