@@ -41,4 +41,4 @@ real_world = false
 [c_nmpc]
 #cz_rate = 0.15
 #cz_rate = 0.1365
-cz_rate = 0.20
+cz_rate = 0.10

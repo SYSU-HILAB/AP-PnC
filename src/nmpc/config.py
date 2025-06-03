@@ -37,12 +37,12 @@ class MpcConfig:
 
     qVel = np.array([qvelh, qvelh, qvelv]) * 1 
 
-    wx=.1   
-    wy=0.5
-    wz=.1
+    wx=.1 * 0.0   
+    wy=0.5 * 0.0
+    wz=.1 * 0.0
     qAngV = np.array([wx, wy, wz]) * 1 
     qDynamicVel = np.zeros((1,))
-    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 1
+    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 3
 
     Metrics = False
 

@@ -234,6 +234,7 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
         {
             point.point[TrajecotryPoint::POS_START_INDEX] -= init_pos[0];
             point.point[TrajecotryPoint::POS_START_INDEX + 1] -= init_pos[1];
+            point.point[TrajecotryPoint::POS_START_INDEX + 2] -= init_pos[2];
             point.point[TrajecotryPoint::THR_START_INDEX]     = kThrustPerRotor;
             point.point[TrajecotryPoint::THR_START_INDEX + 1] = kThrustPerRotor;
             point.point[TrajecotryPoint::THR_START_INDEX + 2] = kThrustPerRotor;

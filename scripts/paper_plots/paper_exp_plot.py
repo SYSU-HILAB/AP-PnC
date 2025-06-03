@@ -36,7 +36,7 @@ if_chinese = True
 
 # TestName = "ma_v_4"
 
-TestName = "NN_NMPC_v14"
+TestName = "irk_news"
 # TestName = "sim_proposed_circle_v_4v2"
 
 '''lyu_v_14

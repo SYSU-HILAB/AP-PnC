@@ -128,6 +128,20 @@ class PX4Interface : public rclcpp::Node
             std::bind(&PX4Interface::init_status_check, this,
                       std::placeholders::_1));
 
+        est_cmd_subscriber_ = this->create_subscription<std_msgs::msg::Bool>(
+            "/est_cmd", keep_last_qos,
+            [this](const std_msgs::msg::Bool::SharedPtr msg) -> void
+            {
+                if (msg->data)
+                {
+                    is_takeoff_complete = true;
+                    RCLCPP_INFO_STREAM(
+                        this->get_logger(),
+                        "Takeoff enter command received, please wait for "
+                        "takeoff complete");
+                }
+            });
+
         auto heartbeat_callback = [this]() -> void
         { publish_offboard_control_mode(); };
         heartbeat_timer_ = this->create_wall_timer(100ms, heartbeat_callback);
@@ -137,7 +151,6 @@ class PX4Interface : public rclcpp::Node
     bool everything_is_ok      = false;
     bool is_init_check         = false;
     bool is_pos_orien_estimate = false;
-    bool is_takeoff_enter      = false;
     bool is_takeoff_complete   = false;
 
     std::unique_ptr<Transcribe> trans_;
@@ -171,6 +184,7 @@ class PX4Interface : public rclcpp::Node
 
     // bool
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr trigger_subscriber_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr est_cmd_subscriber_;
     rclcpp::Subscription<interface::msg::TrackingInfo>::SharedPtr
         tracking_info_subscriber_;
 
@@ -221,25 +235,8 @@ void PX4Interface::init_status_check(
         return;
     }
 
-    if (msg->nav_state ==
-        px4_msgs::msg::VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF)
-    {
-        is_takeoff_enter = true;
-    }
-
     bool is_position_ctrl =
         msg->nav_state == px4_msgs::msg::VehicleStatus::NAVIGATION_STATE_POSCTL;
-
-    if (msg->nav_state ==
-        px4_msgs::msg::VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF)
-    {
-        RCLCPP_WARN_STREAM(this->get_logger(),
-                           WARN_START +
-                               "Vehicle is in auto takeoff mode! you can not "
-                               "start NMPC\n" +
-                               WARN_END);
-        return;
-    }
 
     if (!is_position_ctrl)
     {
@@ -250,19 +247,13 @@ void PX4Interface::init_status_check(
                                WARN_END);
         return;
     }
-    is_takeoff_complete = is_takeoff_enter && is_position_ctrl;
-    if (is_takeoff_complete)
-    {
-        RCLCPP_INFO_STREAM(this->get_logger(),
-                           "Vehicle is in position control mode and takeoff "
-                           "completed");
-    }
 
-    is_init_check = is_armed && is_position_ctrl;
+    is_init_check = (is_armed && is_position_ctrl);
     if (is_init_check)
     {
         RCLCPP_INFO_STREAM(this->get_logger(),
-                           "Vehicle is armed and in position control mode");
+                           "Vehicle is armed and in position control mode\n "
+                           "Please give a estimation command");
         return;
     }
 }
@@ -365,7 +356,7 @@ void PX4Interface::vehicle_odometry_callback(
     static Eigen::Quaterniond quat_dec(Eigen::Quaterniond::Identity());
     static size_t             index = 0;
 
-    if (!is_takeoff_complete && !is_init_check)
+    if (!is_takeoff_complete || !is_init_check)
     {
         return;
     }

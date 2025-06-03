@@ -160,10 +160,10 @@ namespace tailsitter_df
         omega_vz      = omega_vz / V;
         real omega_vx = (y_v.transpose() * j);
         omega_vx      = ((omega_vz * S_av_x) - omega_vx) / S_av_z;
-        real omega_vy = (z_v.transpose() * g);
+        // real omega_vy = (z_v.transpose() * g);
         // omega_vy      = (-S_av_z - omega_vy) / V;
-        omega_vy = (z_v.transpose() * a);
-        omega_vy = omega_vy / V;
+        real omega_vy = -z_v.transpose() * a;
+        omega_vy      = omega_vy / V;
         // omega_vy = () / V;
 
         double phi_zz              = tailsitter_model.getPhi().row(2)(2).val();
@@ -198,10 +198,29 @@ namespace tailsitter_df
         //
         real denominator = (S_av_z * S_av_z + increment * increment);
 
-        real numerator = (S_av_x_dot - phi_dot_xx);
-        numerator      = numerator * S_av_z;
+        // real numerator = (S_av_x_dot - phi_dot_xx);
+
+        real acc_on_vel = v.transpose() * a;
+
+        real numerator1 =
+            phi_33 * (V_squared * S_av_z_dot - 2 * S_av_z * acc_on_vel);
+
+        real numerator2 = S_av_z * S_av_x_dot - S_av_x * S_av_z_dot;
+
+        real numerator = numerator1 + numerator2;
 
         alpha_dot = numerator / denominator;
+
+        // A = Sapz ; B = Sapx;
+
+        // procedure1
+        // realV3 ab   = attitude.transpose() * a;
+        // real   ab_x = x_v.transpose() * a;
+        // real   ab_z = z_v.transpose() * a;
+
+        // real infs = ab_z * cos(alpha) - ab_x * sin(alpha);
+        // infs      = infs / V;
+        // alpha_dot = (infs - omega_vy) / 2.0;
 
         // real term1 = zb.transpose() * a;
         // term1      = term1 * vb(0);

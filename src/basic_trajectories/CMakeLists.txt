@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(basic_trajectorys)
+project(basic_trajectories)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -26,10 +26,18 @@ target_link_libraries(sin Eigen3::Eigen)
 ament_auto_add_library(line SHARED src/line.cpp)
 target_link_libraries(line Eigen3::Eigen)
 
+ament_auto_add_library(verloop SHARED src/vertical_loop.cpp)
+target_link_libraries(verloop Eigen3::Eigen)
 
 
-ament_auto_add_executable(example src/example.cpp)
-target_link_libraries(circle Eigen3::Eigen)
+
+ament_auto_add_executable(trajectory_csv src/trajectory_csv.cpp)
+target_link_libraries(trajectory_csv
+Eigen3::Eigen 
+basic_trajectory
+sin
+verloop
+)
 
 
 if(BUILD_TESTING)

@@ -23,6 +23,7 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 #include <basic_trajectories/lemniscate.hpp>
 #include <basic_trajectories/line.hpp>
 #include <basic_trajectories/sin.hpp>
+#include <basic_trajectories/vertical_loop.hpp>
 
 std::ofstream &init_planning_csv_file()
 {
@@ -321,8 +322,14 @@ class GlobalPlanner : public rclcpp::Node
         Eigen::MatrixX4d H;
         H.resize(6, 4);
 
-        std::cerr << "H\n" << H << std::endl;
+        std::cerr << "Init H\n" << H << std::endl;
+        std::cerr << "Set up\n" << std::endl;
         auto route = basic_traj->samplingPointArray(config.pieceN);
+
+        for (size_t i = 0; i < route.size(); i++)
+        {
+            std::cerr << "route[" << i << "]\n" << route[i] << std::endl;
+        }
 
         auto traj_vis_msg            = basic_traj->toMsg();
         traj_vis_msg.header.frame_id = config.frame;
@@ -332,29 +339,33 @@ class GlobalPlanner : public rclcpp::Node
         Eigen::Vector3d pc, v_direction, u_direction;
         for (size_t i = 1; i < route.size() - 1; i++)
         {
-            auto point  = route[i];
-            pc          = point.col(0);
-            v_direction = point.col(1);
-            v_direction.normalize();
-            u_direction =
-                (Eigen::Vector3d() << -v_direction(1), v_direction(0), 0)
-                    .finished();
-            u_direction.normalize();
-            if (pc[0] >= 0)
-            {
-                // u_direction = -u_direction;
-                u_direction = -u_direction;
-            }
-            h1 << v_direction.transpose(),
-                -v_direction.dot(pc) - config.box_front_length;
-            h2 << -v_direction.transpose(),
-                v_direction.dot(pc) - config.box_back_length;
-            h3 << u_direction.transpose(),
-                -u_direction.dot(pc) - config.box_side_outside_length;
-            h4 << -u_direction.transpose(),
-                u_direction.dot(pc) - config.box_side_inside_length;
-            h5 << 0, 0, 1, -pc.z() - config.box_up_length;
-            h6 << 0, 0, -1, pc.z() - config.box_down_length;
+            auto point = route[i];
+            pc         = point.col(0);  // Center of the box
+
+            // Define the half-lengths of the box in each direction
+            double front   = config.box_front_length;
+            double back    = config.box_back_length;
+            double outside = config.box_side_outside_length;
+            double inside  = config.box_side_inside_length;
+            double up      = config.box_up_length;
+            double down    = config.box_down_length;
+
+            // Create the six planes of the box (axis-aligned)
+            // Each plane is defined as [a, b, c, d] where ax + by + cz + d <= 0
+            // Front (x+)
+            h1 << 1, 0, 0, -pc.x() - front;
+            // Back (x-)
+            h2 << -1, 0, 0, pc.x() - back;
+            // Outside (y+)
+            h3 << 0, 1, 0, -pc.y() - outside;
+            // Inside (y-)
+            h4 << 0, -1, 0, pc.y() - inside;
+            // Up (z+)
+            h5 << 0, 0, 1, -pc.z() - up;
+            // Down (z-)
+            h6 << 0, 0, -1, pc.z() - down;
+
+            // Stack the planes into a matrix
             H << h1, h2, h3, h4, h5, h6;
             hPolys.push_back(H);
         }
@@ -411,10 +422,20 @@ class GlobalPlanner : public rclcpp::Node
             {
                 return;
             }
+            auto opt_start = std::chrono::high_resolution_clock::now();
+
             if (std::isinf(gcopter.optimize(traj, config.relCostTol)))
             {
                 return;
             }
+            auto opt_end = std::chrono::high_resolution_clock::now();
+
+            std::cerr << "planning duration"
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(
+                             opt_end - opt_start)
+                             .count()
+                      << "ms" << std::endl;
+
             init_setup = true;
 
             auto route_msg            = basic_traj->toMsg(100);

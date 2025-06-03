@@ -114,7 +114,6 @@ def ocp_nls() -> AcadosOcp:
     ocp.constraints.Jbu = np.eye(nu)
     ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1.0 * 0.8
     ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1.0 * 0.8
-    ocp.solver_options.levenberg_marquardt = 0.1
     
 
     print(ocp.dims)
@@ -123,12 +122,12 @@ def ocp_nls() -> AcadosOcp:
     # PARTIAL_CONDENSING_OSQP
     # FULL_CONDENSING_HPIPM
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"  # 'GAUSS_NEWTON', 'EXACT'
-    ocp.solver_options.integrator_type = "ERK"
+    ocp.solver_options.integrator_type = "IRK"
     ocp.solver_options.nlp_solver_type = "SQP_RTI"  # SQP_RTI, SQP
     # ocp.solver_options.nlp_solver_ext_qp_res = 1
     ocp.solver_options.nlp_solver_max_iter = 5
     # ocp.solver_options.nlp_solver_max_iter = 20
-    ocp.solver_options.qp_solver_iter_max = 50
+    ocp.solver_options.qp_solver_iter_max = 10
     # ocp.solver_options.eps_sufficient_descent = 1e-8
     # ocp.solver_options.qp_tol_eq = 1e-04
     # ocp.solver_options.qp_solver_tol_stat = 1e-02
