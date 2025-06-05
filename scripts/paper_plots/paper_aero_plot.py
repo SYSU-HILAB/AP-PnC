@@ -16,8 +16,8 @@ def read_aero_data(filename):
 def initialize_figure():
     """Initialize a multi-panel figure with a grid layout."""
     letter_width, a4_height = 7.0, 9.5
-    letter_column_width = 3.25
-    fig = plt.figure(figsize=(letter_column_width, 4), constrained_layout=False)
+    letter_column_width = 3.5
+    fig = plt.figure(figsize=(letter_column_width, 2.3622), constrained_layout=False)
     gs = gridspec.GridSpec(2, 1, figure=fig)
     gs.update(wspace=0.3, hspace=0.25)
     
@@ -78,11 +78,11 @@ def plot_aero_coefficients(data_files):
             
             # Plot Cz
             if name == 'ZhangLyu':
-                axes[1].plot(alpha, cz, label=r"Lyu等人", color=color)
+                axes[1].plot(alpha, cz, label=r"Lyu et al.", color=color)
             elif name == 'BSpline':
-                axes[1].plot(alpha, cz, label=r"Ma等人", color=color)
+                axes[1].plot(alpha, cz, label=r"Ma et al.", color=color)
             elif name == 'Phi':
-                axes[1].plot(alpha, cz, label=r"$\phi$理论", color=color)
+                axes[1].plot(alpha, cz, label=r"$\phi$-theory", color=color)
             else:
                 axes[1].plot(alpha, cz, label="Gazebo", color=color)
             
@@ -101,13 +101,13 @@ def plot_aero_coefficients(data_files):
             minor_spacing = major_spacing/5  # 4 minor ticks between majors
             axes[1].yaxis.set_minor_locator(MultipleLocator(minor_spacing))   
             # # Set legend with specified line length and reduced text spacing
-            axes[1].legend(handlelength=1.2, handletextpad=0.2, ncol=2, columnspacing=0.4,
-                        bbox_to_anchor=(1.0, 0.95), loc='upper right')
+            axes[1].legend(handlelength=1.2, handletextpad=0.2, ncol=4, columnspacing=0.4,
+                        bbox_to_anchor=(0.5, 2.3), loc='lower center')
 
         directory = os.getenv('TAILSITTER_PLANNING_DIR') or None
         
         plt.subplots_adjust(left=0.2)
-        fig.savefig(f"{directory}/paper_plots/aero-comparison.pdf", backend='pgf')
+        fig.savefig(f"{directory}/scripts/paper_plots_figures/aero-comparison.pdf", backend='pgf')
         # Set scientific style for both axes
 
 

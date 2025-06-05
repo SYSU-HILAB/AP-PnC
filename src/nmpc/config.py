@@ -26,7 +26,7 @@ class MpcConfig:
     ub_u = np.array([10., 10., 10., 10.]) * 0.55
     drag_est = 0.00
     # 1e1 15 15 20 OK
-    qPos = np.array([ 15,  15,  25]) * 1 * 1.0
+    qPos = np.array([ 15,  15,  10]) * 1 * 1.0
 
     qh = 1.5
     qv = 1.8 * 1.0 * 2.0

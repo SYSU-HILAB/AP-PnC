@@ -14,8 +14,8 @@ def read_aero_data(filename):
 
 def initialize_figure():
     """Initialize a multi-panel figure with a grid layout."""
-    fig_height = 3
-    letter_column_width = 3.25
+    fig_height = 2.36
+    letter_column_width = 3.5
     fig = plt.figure(figsize=(letter_column_width, fig_height), constrained_layout=False)
     gs = gridspec.GridSpec(2, 1, figure=fig)
     gs.update(wspace=0.3, hspace=0.25)
@@ -46,7 +46,7 @@ def plot_aero_coefficients(data_files):
       # Adjust tick parameters for closer spacing
       ax.tick_params(axis='x', pad=2)  # Reduced from 8 to 2
       ax.tick_params(axis='y', pad=2)  # Also adjust y-axis for consistency
-    with plt.style.context(['ieee', 'latex-sc', 'ticks-inward']):
+    with plt.style.context(['ieee', 'latex', 'ticks-inward']):
 
         for i, (name, file) in enumerate(data_files.items()):
             data = read_aero_data(file)
@@ -102,7 +102,7 @@ def plot_aero_coefficients(data_files):
         directory = None
         directory = directory or os.getenv('TAILSITTER_PLANNING_DIR')
         
-        fig.savefig(f"{directory}/paper_plots/aero-lyu.pdf", backend='pgf')
+        fig.savefig(f"{directory}/scripts/paper_plots_figures/aero-lyu.pdf", backend='pgf')
         # Set scientific style for both axes
 
 
