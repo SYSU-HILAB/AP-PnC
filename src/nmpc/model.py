@@ -13,16 +13,10 @@ from config import MpcConfig
 # import l4casadi as l4c
 
 def skew(w):
-    if isinstance(w,np.ndarray):
-        return np.array([[0, -w[2], w[1]],
-                            [w[2], 0, -w[0]],
-                            [-w[1], w[0], 0]])
-    else:
-        return cs.vertcat(
+    return cs.vertcat(
             cs.horzcat(0, -w[2], w[1]),
             cs.horzcat(w[2], 0, -w[0]),
-            cs.horzcat(-w[1], w[0], 0)
-        )
+            cs.horzcat(-w[1], w[0], 0))
 
 def skew_symmetric(v):
     return cs.vertcat(
@@ -31,14 +25,11 @@ def skew_symmetric(v):
         cs.horzcat(v[1], -v[2], 0, v[0]),
         cs.horzcat(v[2], v[1], -v[0], 0))
 
-def v_dot_q(v, q):
+def q_oproduct_vec(v, q):
     rotation_matrix = Quat2RotMat(q)
-    if isinstance(q, np.ndarray):
-        return rotation_matrix.dot(v)
-
     return cs.mtimes(rotation_matrix, v)
 
-def v_dot_q_inverse(v, q):
+def q_inv_oproduct_vec(v, q):
     rotation_matrix = Quat2RotMat(q)
     return cs.mtimes(rotation_matrix.T, v)
 
@@ -93,7 +84,7 @@ def tailsitter_flu():
     tb = cs.vertcat(0.0, 0.0, U)
 
     # aerodynamics
-    vb = v_dot_q_inverse(v, q)
+    vb = q_inv_oproduct_vec(v, q)
     # calculate alpha
     alpha = cs.atan2(vb[0], (vb[2] + 0.1))
     
@@ -115,11 +106,11 @@ def tailsitter_flu():
         dx * (-u[0] + u[1] + u[2] - u[3]),
         c_tau * (-u[0] + u[1] - u[2] + u[3])
     )
-    vv_dot = v_dot_q(tb/mass, q)  + g + v_dot_q(F_aero_b_flu_quad_frame / mass, q)
-    vb_dot = -skew(r)*vb + v_dot_q_inverse(vv_dot, q)
+    vv_dot = q_oproduct_vec(tb/mass, q)  + g + q_oproduct_vec(F_aero_b_flu_quad_frame / mass, q)
+    vb_dot = -skew(r)*vb + q_inv_oproduct_vec(vv_dot, q)
 
     
-    acc_b = v_dot_q_inverse(v_dot_q(tb/mass, q)  + g + v_dot_q(F_aero_b_flu_quad_frame / mass, q), q)
+    acc_b = q_inv_oproduct_vec(q_oproduct_vec(tb/mass, q)  + g + q_oproduct_vec(F_aero_b_flu_quad_frame / mass, q), q)
     
     # alpha_dot = (vb_dot[2]*vb[0] - vb[2]*vb_dot[0]) / (cs.dot(v,v) + 0.1) 
     # alpha_dot = (acc_b[2] * vb[0] - acc_b[0] * vb[2]) / (cs.dot(v,v)) + r[1]
@@ -133,13 +124,13 @@ def tailsitter_flu():
     # I guess that when gaussian-newton implicitly estimate the alpha_dot, it is damped. But if formulated as equations, it is very noisy.
     cz_dot = cs.if_else(
         cs.dot(v,v) > 1.0,
-        -0.1 * alpha_dot,
+        -cz_rate * alpha_dot,
         0.0
     )
     # dynamics
     f_expl_x = vertcat(
         v,
-        v_dot_q(tb/mass, q)  + g + v_dot_q(F_aero_b_flu_quad_frame / mass, q),
+        q_oproduct_vec(tb/mass, q)  + g + q_oproduct_vec(F_aero_b_flu_quad_frame / mass, q),
         cs.mtimes(cs.inv(J), (tau_b - cs.cross(r, cs.mtimes(J, r)))),
         1 / 2 * cs.mtimes(skew_symmetric(r), q),
     )

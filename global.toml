@@ -31,7 +31,7 @@ deacc_aero_fix_factor = 0.9
 radius = 30.0
 real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
-type = 2
+type = 1
 v_max = 14.0
 
 [px4_interface]

@@ -20,12 +20,12 @@ colors = {
 }
 
 LabelsConfig = {
-    "TrajXlabel": r'$\mathbf{p}_x~\mathrm{[m]}$',
-    "TrajYlabel": r'$\mathbf{p}_y~\mathrm{[m]}$',
-    "OthersXlablel": r'时间 [s]',
-    "PosErrorYlabel": r'$\mathbf{e}_{\mathrm{p}}~\mathrm{[m]}$',
-    "AnglesYlabel": r'角度 [rad]',
-    "VelYlabel": r'$\left\|\mathbf{v}\right\|~\mathrm{[m/s]}$',
+    "TrajXlabel": r'$\boldsymbol{p}_x~\text{[m]}$',
+    "TrajYlabel": r'$\boldsymbol{p}_y~\text{[m]}$',
+    "OthersXlablel": r'Time [s]',
+    "PosErrorYlabel": r'$\boldsymbol{p}_{z}~\text{[m]}$',
+    "AnglesYlabel": r'Angles [rad]',
+    "VelYlabel": r'$V~\text{[m/s]}$',
     "AngVelYlabel": r'$\prescript{\mathcal{B}}{}{\boldsymbol{\Omega}_b}~\mathrm{[rad/s]}$',
     "PosErrorLim": [-1.0, 1.0],
     "AnglesLim": [-np.pi-0.5, np.pi+0.5],
@@ -36,7 +36,7 @@ if_chinese = True
 
 # TestName = "ma_v_4"
 
-TestName = "irk_news"
+TestName = "lemniscate-v-14"
 # TestName = "sim_proposed_circle_v_4v2"
 
 '''lyu_v_14
@@ -202,8 +202,8 @@ def plot_trajectory(ax, ref_p, p):
     """Plot 3D trajectory."""
     if if_chinese:
         ax.plot(ref_p[:, 0], ref_p[:, 1], '--',
-              label=r'参考值', color=f'{colors["red"]}', zorder=3)
-        ax.plot(p[:, 0], p[:, 1], label=r'测量值', 
+              label=r'Ref.', color=f'{colors["red"]}', zorder=3)
+        ax.plot(p[:, 0], p[:, 1], label=r'Est.', 
               color=f'{colors["blue"]}', zorder=2)
         ax.set_xlabel(LabelsConfig["TrajXlabel"])
         ax.set_ylabel(LabelsConfig["TrajYlabel"])
@@ -220,15 +220,12 @@ def plot_trajectory(ax, ref_p, p):
               borderaxespad=0, handletextpad=0.2,
               loc='lower center'
               )
-
-
             
 def plot_position_error(ax, time, ref_p, p):
     """Plot position error over time."""
     position_error = ref_p - p
-    ax.plot(time, position_error[:, 0], color=f'{colors["red"]}', label='X')
-    ax.plot(time, position_error[:, 1], color=f'{colors["cyan"]}', label='Y')
-    ax.plot(time, position_error[:, 2], color=f'{colors["blue"]}', label='Z')
+    ax.plot(time, ref_p[:, 2],'--', color=f'{colors["red"]}', label='Ref.')
+    ax.plot(time, p[:, 2], '-', color=f'{colors["blue"]}', label='Est.')
     ax.set_ylabel(LabelsConfig["PosErrorYlabel"], labelpad=-4)
     ax.set_ylim(LabelsConfig["PosErrorLim"])
     ax.legend(bbox_to_anchor=(0.5, 1.05), 
@@ -242,9 +239,9 @@ def plot_velocity(ax, time, ref_v, v):
     ref_v_norm = np.linalg.norm(ref_v, axis=1)
     v_norm = np.linalg.norm(v, axis=1)
     if if_chinese:
-        ax.plot(time, ref_v_norm, '--', label='参考量', 
+        ax.plot(time, ref_v_norm, '--', label='Ref.', 
                 color=f'{colors["red"]}', zorder=3, linewidth=1.5)
-        ax.plot(time, v_norm, label='测量值', 
+        ax.plot(time, v_norm, label='Est.', 
             color=f'{colors["blue"]}', zorder=2)
 
     else:
@@ -261,6 +258,7 @@ def plot_velocity(ax, time, ref_v, v):
             borderaxespad=0, handletextpad=0.2,
             loc='lower center'
             )
+    
 def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
     """
     Plot yb tracking performance and automatically determined pitch angle.
@@ -282,8 +280,8 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
     # Plot actual yaw, roll, and pitch
     ax.plot(odometry_time, actual_euler_angles[:, 0], label=r'$\psi$',
             color=f'{colors["blue"]}', zorder=2)
-    ax.plot(odometry_time, actual_euler_angles[:, 2], label=r'$\theta$', 
-            color=f'{colors["cyan"]}', zorder=2)
+    # ax.plot(odometry_time, actual_euler_angles[:, 2], label=r'$\theta$', 
+    #         color=f'{colors["cyan"]}', zorder=2)
     ax.plot(odometry_time, actual_euler_angles[:, 1], label=r'$\phi$', 
             color=f'{colors["red"]}', zorder=2)
     # Plot reference yaw and roll from yb
@@ -294,9 +292,7 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
 
     # tick that point on y-axis
     # set tick at the position pitch_min  not 0
-
     ax.set_ylim(LabelsConfig['AnglesLim'])
-    
     ax.set_yticks([np.pi, np.pi/2, 0, -np.pi/2, -np.pi])
     ax.set_yticklabels([r'$\pi$', r'$\frac{\pi}{2}$', r'$0$', r'$-\frac{\pi}{2}$', r'$-\pi$'])
     # Configure axis labels, title, and grid
@@ -331,55 +327,6 @@ def plot_angular_velocity(ax, time, ang_vel=None, ang_vel_sp=None):
             borderaxespad=0, handletextpad=0.2,
             loc='lower center'
             )
-
-def plot_angles_solo(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
-    """
-    Plot yb tracking performance and automatically determined pitch angle.
-
-    Parameters:
-    - ax: Matplotlib axis object to plot on.
-    - main_time: Time array of shape (N1,), corresponding to the timeline for ref_yb.
-    - odometry_time: Time array of shape (N2,), corresponding to the timeline for actual_euler_angles.
-    - ref_yb: Reference yb vector array of shape (N1, 3).
-    - actual_euler_angles: Actual Euler angles (yaw, roll, pitch) array of shape (N2, 3).
-    """
-    # Extract yaw and roll from the reference yb
-    ref_angles = extract_yaw_roll_from_yb(ref_yb)  # Shape: (N1, 2)
-
-
-
-    
-    # Plot actual yaw, roll, and pitch
-    ax.plot(odometry_time, actual_euler_angles[:, 0], label=r'$\psi$',
-            color=f'{colors["blue"]}', zorder=2)
-    ax.plot(odometry_time, actual_euler_angles[:, 2], label=r'$\theta$', 
-            color=f'{colors["cyan"]}', zorder=2)
-    ax.plot(odometry_time, actual_euler_angles[:, 1], label=r'$\phi$', 
-            color=f'{colors["red"]}', zorder=2)
-        # Plot reference yaw and roll from yb
-    ax.plot(main_time, -ref_angles[:, 0], '--',
-            color=f'{colors["blue"]}', label=r'$\psi_{ref}$', zorder=3)
-    ax.plot(main_time, ref_angles[:, 1], '--',
-            color=f'{colors["red"]}', label=r'$\phi_{ref}$', zorder=3)
-
-    # tick that point on y-axis
-    # set tick at the position pitch_min  not 0
-    # ax.set_yticks([pitch_min, 0, 180])
-    # ax.set_yticklabels([f'{pitch_min:.1f}', f'{0:.1f}', f'{180:.1f}'])
-    pad = 0.5
-    ax.set_ylim(-np.pi - pad, np.pi + pad)
-    
-    ax.set_yticks([np.pi, np.pi/2, 0, -np.pi/2, -np.pi])
-    ax.set_yticklabels([r'$\pi$', r'$\frac{\pi}{2}$', r'$0$', r'$-\frac{\pi}{2}$', r'$-\pi$'])
-    # Configure axis labels, title, and grid
-    ax.set_ylabel(LabelsConfig["AnglesYlabel"], labelpad=-1)
-    ax.legend(bbox_to_anchor=(0.2, 0.8), 
-            ncol=3, columnspacing=1.0,
-            borderaxespad=0, handletextpad=0.2,
-            loc='lower center'
-            )
-    ax.set_xlabel(LabelsConfig["OthersXlablel"])
-    return ax
 
 
 # Reserved for export blender animation.
@@ -508,8 +455,6 @@ def main_plotting_pipeline():
         fig.savefig(f"{tracking_plots_dir()}/traj-view{TestName}.pdf", backend='pgf')
 
     fig1 = plt.figure(figsize=(7.5, 4.5))
-    ax = fig1.add_subplot(111)  # Single subplot
-    plot_angles_solo(ax, main_time, odometry_time, ref_yb=ref_yb, actual_euler_angles=euler_angles)
     # Save figure
     fig1.savefig(f"{tracking_plots_dir()}/ang-view{TestName}.pdf", backend='pgf')
 

@@ -17,5 +17,12 @@ if [ -z "$2" ]; then
 fi
 DEVICE_PATH=$1
 RIGID_BODY=$2
+
 MicroXRCEAgent serial -b 921600 --dev $DEVICE_PATH &
+
+if [ "$2" = "none" ]; then
+  echo "No rigid body specified, skipping mocap_px4.launch.yaml"
+  exit 0
+fi
+
 ros2 launch  frame_transform mocap_px4.launch.yaml rb:=$RIGID_BODY

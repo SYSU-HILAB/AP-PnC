@@ -5,17 +5,17 @@
     BasicTrajectoryHeight: 0.0
     BasicTrajectoryRadius: 30.0
     BasicTrajectoryRate: 0.1
-    BasicTrajectoryType: 2
+    BasicTrajectoryType: 1
     BasicTrajectoryWaveLen: 50.0
     BoxBackLength: 0.5
-    BoxDownLength: 0.5
+    BoxDownLength: 0.1
     BoxFrontLength: 0.5
-    BoxSideInsideLength: 0.1
-    BoxSideOutsideLength: 0.1
-    BoxUpLength: 0.5
+    BoxSideInsideLength: 0.3
+    BoxSideOutsideLength: 0.3
+    BoxUpLength: 0.1
     Frame: world
     IntegralIntervs: 30
-    PieceN: 20
+    PieceN: 10
     RelCostTol: 1.0e-05
     SmoothingEps: 0.01
     TrajectoryCirled: false

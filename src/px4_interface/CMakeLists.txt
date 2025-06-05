@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.12)
 project(px4_interface)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -33,27 +33,6 @@ target_link_libraries(
   Eigen3::Eigen
 )
 
-
-# set(QUADROTOR True)
-
-# ament_auto_add_executable(traj_buffer src/traj_buffer.cpp)
-# target_link_libraries(
-#   traj_buffer
-#   Eigen3::Eigen
-# )
-
-ament_auto_add_executable(fixed_ref src/fixed_ref.cpp)
-target_link_libraries(
-  fixed_ref
-  Eigen3::Eigen
-)
-
-# target_compile_definitions(traj_buffer PRIVATE QUADROTOR="True")
-# ament_target_dependencies(
-#   px4_interface
-#   rclcpp
-#   px4_msgs
-# )
 
 
 if(BUILD_TESTING)
