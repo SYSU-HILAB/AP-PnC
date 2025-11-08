@@ -16,7 +16,7 @@
 	url = git@github.com:SYSU-HILAB/mocap-ros2.git
 [submodule "src/external_libraries/BSplinebasis"]
 	path = src/external_libraries/BSplinebasis
-	url = https://github.com/okruz/BSplinebasis.git
+	url = https://github.com/WarriorHanamy/BSplinebasis.git
 [submodule "scripts/sciplots"]
 	path = scripts/sciplots
 	url = https://github.com/WarriorHanamy/sciplots.git
