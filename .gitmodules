@@ -23,6 +23,3 @@
 [submodule "px4-vtol"]
 	path = px4-vtol
 	url = https://github.com/WarriorHanamy/px4-vtol.git
-[submodule "px4_vtol"]
-	path = px4_vtol
-	url = https://github.com/WarriorHanamy/px4-vtol.git
