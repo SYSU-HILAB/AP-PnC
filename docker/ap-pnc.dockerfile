@@ -12,6 +12,7 @@ RUN apt update && apt install -y \
     python3-pip python3-venv \
     curl lsb-release gnupg wget
 
+WORKDIR /ap-pnc
 COPY . /ap-pnc
 
-RUN bash ap-pnc/px4-vtol/Tools/setup/ubuntu.sh
+RUN bash px4_vtol/Tools/setup/ubuntu.sh

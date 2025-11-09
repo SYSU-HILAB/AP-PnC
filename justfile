@@ -7,7 +7,7 @@ build:
 
 run:
     docker run -it --rm \
-        --privileged --gpus all --net=host \
+        --privileged --net=host \
         -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
         -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
         -v $HOME/.Xauthority:/root/.Xauthority \

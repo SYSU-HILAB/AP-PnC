@@ -1,0 +1,15 @@
+.gitignore
+
+__pycache__/
+.venv/
+env/
+
+*.log
+build/
+dist/
+
+README.md
+LICENSE
+.vscode/
+
+docker/
