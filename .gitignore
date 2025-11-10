@@ -57,3 +57,7 @@ env/
 *.pdf
 *.py.bak
 output_csv/*
+
+
+# virtual envs
+.*venv/

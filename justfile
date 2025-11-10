@@ -12,6 +12,7 @@ run:
         -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
         -v $HOME/.Xauthority:/root/.Xauthority \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -v "$(pwd)":/ap-pnc \
         --name ap-pnc \
         ap-pnc bash
 

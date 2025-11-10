@@ -17,6 +17,7 @@
 [submodule "src/external_libraries/BSplinebasis"]
 	path = src/external_libraries/BSplinebasis
 	url = https://github.com/WarriorHanamy/BSplinebasis.git
+	branch = main
 [submodule "scripts/sciplots"]
 	path = scripts/sciplots
 	url = https://github.com/WarriorHanamy/sciplots.git
