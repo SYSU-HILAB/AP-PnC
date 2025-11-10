@@ -21,7 +21,3 @@
 [submodule "scripts/sciplots"]
 	path = scripts/sciplots
 	url = https://github.com/WarriorHanamy/sciplots.git
-[submodule "px4_vtol"]
-	path = px4_vtol
-	url = https://github.com/WarriorHanamy/px4-vtol.git
-	branch = docker
