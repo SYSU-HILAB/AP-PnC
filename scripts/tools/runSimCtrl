@@ -1,8 +1,0 @@
-#!/usr/bin/bash
-PIDS=$(pgrep -f "tailsitter_simu")
-if [ -n "$PIDS" ]; then
-  echo $PIDS | xargs kill
-fi
-
-ros2 launch tailsitter_simulator sim_interface.launch.py &
-ros2 run c_nmpc c_nmpc_node --ros-args -p mass:=1.0
