@@ -7,13 +7,6 @@ RUN apt update && apt install -y \
 
 WORKDIR /ap-pnc
 
-COPY px4_vtol/Tools /ap-pnc/px4_vtol/Tools
-RUN bash /ap-pnc/px4_vtol/Tools/setup/ubuntu.sh
-
-COPY px4_vtol /ap-pnc/px4_vtol
-RUN bash /ap-pnc/px4_vtol/install-dds-agent.bash
-
-
 RUN apt install -y libceres-dev direnv
 COPY installations /ap-pnc/installations
 COPY .envrc /ap-pnc/.envrc
