@@ -1,3 +1,30 @@
+# Installations
+## QGC
+Enable serial withou sudo
+```bash
+sudo usermod -aG dialout "$(id -un)"
+```
+QGC deps
+```bash
+sudo apt install gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl -y
+sudo apt install libfuse2 -y
+sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
+```
+Optional
+```bash
+sudo apt update
+sudo apt install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-shm0 libxcb-keysyms1 libxcb-randr0 libxcb-shape0 libxcb-sync1 libxcb-util1 libxcb-xfixes0
+sudo apt update
+sudo apt install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-shm0 libxcb-keysyms1 libxcb-randr0 libxcb-shape0 libxcb-sync1 libxcb-util1 libxcb-xfixes0
+```
+
+```bash
+curl -L -O https://github.com/mavlink/qgroundcontrol/releases/download/v4.4.4/QGroundControl.AppImage
+chmod +x QGroundControl-x86_64.AppImage
+mv QGroundControl-x86_64.AppImage QGC
+```
+
+
 ## External Libraries
 - [BSplinebasis](https://github.com/SYSU-HILAB/BSplinebasis)  *Remove test module*
 - [tomlplusplus](https://github.com/skystrife/tomlplusplus)
@@ -14,12 +41,12 @@ git clone git@github.com:SYSU-HILAB/minco-ros2.git --recursive
 ### Environment Variables
 Define the environment variable TAILSITTER_PLANING_DIR to point to the root directory of the cloned repository. For example:
 ```shell
-export TAILSITTER_PLANNING_DIR=$PWD
+export AP_PNC_DIR=$PWD
 ```
 
 ### Install ros2
 ```shell
-source $TAILSITTER_PLANNING_DIR/install-ros.sh
+source $AP_PNC_DIR/install-ros.sh
 ```
 
 ## Build & Install dependencies
@@ -35,13 +62,13 @@ bash Miniconda3-latest-Linux-x86_64.sh
 Create a .colcon directory in your home directory and link the default configuration file:
 ```shell
 mkdir $HOME/.colcon
-ln -s $TAILSITTER_PLANNING_DIR/colcon_default.yaml $HOME/.colcon/default.yaml
+ln -s $AP_PNC_DIR/colcon_default.yaml $HOME/.colcon/default.yaml
 ``` 
 
 ### Installing Additional Dependencies
 Install Acados, PX4, and other dependencies using the provided script:
 ```shell
-source $TAILSITTER_PLANNING_DIR/install-others.sh
+source $AP_PNC_DIR/install-others.sh
 ```
 
 ## Building the System:

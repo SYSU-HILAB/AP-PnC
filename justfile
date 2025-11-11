@@ -12,6 +12,7 @@ run:
         -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
         -v $HOME/.Xauthority:/root/.Xauthority \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -v $(pwd)/src/tailsitter_df:/ap-pnc/src/tailsitter_df \
         --name ap-pnc \
         ap-pnc bash
 
