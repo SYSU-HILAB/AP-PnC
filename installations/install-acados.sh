@@ -1,4 +1,5 @@
 #!/usr/bin/bash
+set -e
 
 if [ -d "$ACADOS_SOURCE_DIR/build" ]; then
   echo "Acados Framework build folder exists, not start to build"

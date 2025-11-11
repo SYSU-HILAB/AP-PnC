@@ -3,9 +3,6 @@ FROM px4io/px4-dev-simulation-jammy
 RUN apt update && apt install -y software-properties-common \
     && add-apt-repository universe
 
-RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache \
-    apt update
-
 RUN apt install -y \
     vim \
     python3-pip python3-venv \

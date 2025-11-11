@@ -2,7 +2,7 @@
 
 build:
     docker build -f docker/ap-pnc.dockerfile \
-    --network=host --progress=plain \
+    --network=host \
     -t ap-pnc:latest .
 
 run:
@@ -12,7 +12,6 @@ run:
         -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
         -v $HOME/.Xauthority:/root/.Xauthority \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
-        -v "$(pwd)":/ap-pnc \
         --name ap-pnc \
         ap-pnc bash
 
