@@ -2,7 +2,7 @@
  * Created on Wed Sep 13 2023
  *
  * Copyright (c) 2023 SYSU
- * author: WarriorHanamy ; email: rongerch@mail2.sysu.edu.cn
+ * author: WarriorHanamy ; email: rongerch@outlook.com
  */
 
 #pragma once

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2025 SYSU
  * Author: WarriorHanamy ;
- * Email: rongerch@mail2.sysu.edu.cn; rongerch@outlook.com
+ * Email: rongerch@outlook.com; rongerch@outlook.com
  *
  */
 

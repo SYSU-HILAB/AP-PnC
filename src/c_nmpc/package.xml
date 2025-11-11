@@ -4,7 +4,7 @@
   <name>c_nmpc</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="rongerch@mail2.sysu.edu.cn">root</maintainer>
+  <maintainer email="rongerch@outlook.com">root</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

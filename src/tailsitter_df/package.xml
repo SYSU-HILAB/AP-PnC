@@ -4,14 +4,14 @@
   <name>tailsitter_df</name>
   <version>0.0.0</version>
   <description>tailsiiter differential flatness based on modified phi</description>
-  <maintainer email="rongerch@mail2.sysu.edu.cn">rec</maintainer>
+  <maintainer email="rongerch@outlook.com">rec</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>ament_index_cpp</depend>
   <depend>rclcpp</depend>
-  <depend>utils</depend>
+  <!-- <depend>utils</depend> -->
   <depend>external_libraries</depend>
 
   <test_depend>ament_lint_auto</test_depend>

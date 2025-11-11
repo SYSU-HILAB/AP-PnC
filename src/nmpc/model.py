@@ -2,7 +2,7 @@
 # Created on Wed Aug 16 2023
 #
 # Copyright (c) 2023 SYSU
-# author: WarriorHanamy ; email: rongerch@mail2.sysu.edu.cn
+# author: WarriorHanamy ; email: rongerch@outlook.com
 #
 from acados_template import AcadosModel
 from casadi import SX, vertcat

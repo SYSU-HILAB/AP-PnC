@@ -4,8 +4,8 @@
   <name>px4_msgs</name>
   <version>2.0.1</version>
   <description>Package with the ROS-equivalent of PX4 uORB msgs</description>
-  <maintainer email="rongerch@mail2.sysu.edu.cn">WarriorHanamy</maintainer>
-  <author email="rongerch@mail2.sysu.edu.cn">WarriorHanamy</author>
+  <maintainer email="rongerch@outlook.com">WarriorHanamy</maintainer>
+  <author email="rongerch@outlook.com">WarriorHanamy</author>
   <license>BSD 3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

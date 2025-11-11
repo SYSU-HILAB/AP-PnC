@@ -2,7 +2,7 @@
  * Created on Wed Sep 13 2023
  *
  * Copyright (c) 2023 SYSU
- * Author: WarriorHanamy ; Email: rongerch@mail2.sysu.edu.cn
+ * Author: WarriorHanamy ; Email: rongerch@outlook.com
  */
 #pragma once
 
@@ -70,7 +70,7 @@ namespace basic_trajectories
          * @param resolution The time segments of the whole trajectory
          * @return PoseArray&
          */
-        PoseArray& toMsg(int resolution = 50);
+        PoseArray &toMsg(int resolution = 50);
 
         /**
          * @brief Sampling points of the trajectory

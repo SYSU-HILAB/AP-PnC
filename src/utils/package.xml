@@ -9,7 +9,7 @@
         This package should not depend on ROS2 libraries except for the 
         ament_cmake build system.
     </description>
-    <maintainer email="rongerch@mail2.sysu.edu.cn">WarriorHanamy</maintainer>
+    <maintainer email="rongerch@outlook.com">WarriorHanamy</maintainer>
     <license>TODO: License declaration</license>
 
     <buildtool_depend>ament_cmake</buildtool_depend>

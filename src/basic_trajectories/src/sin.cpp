@@ -2,7 +2,7 @@
  * Created on Wed Sep 13 2023
  *
  * Copyright (c) 2023 SYSU
- * Author: WarriorHanamy ; Email: rongerch@mail2.sysu.edu.cn
+ * Author: WarriorHanamy ; Email: rongerch@outlook.com
  */
 
 #include <basic_trajectories/sin.hpp>
