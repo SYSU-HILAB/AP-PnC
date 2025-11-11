@@ -22,7 +22,7 @@ class MPCConfig:
         return os.path.join(root_dir(), 'src', 'nmpc', 'model.py')
 
 def root_dir():
-    return os.environ.get('TAILSITTER_PLANNING_DIR')
+    return os.environ.get('AP_PNC_DIR')
 
 def qv_modify():
     config = MPCConfig()

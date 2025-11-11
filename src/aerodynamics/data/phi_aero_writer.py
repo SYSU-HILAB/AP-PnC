@@ -19,7 +19,7 @@ class PhiAeroWriterConfig:
         PHI_AERO_TABLE_NAME: Table name for phi data
         PHI_COEFS_DUMP_KEY: Key for phi coefficients in database
     """
-    ROOT_DIR: str = 'TAILSITTER_PLANNING_DIR'
+    ROOT_DIR: str = 'AP_PNC_DIR'
     SUB_FOLDER: str = 'src/aerodynamics'
     DB_FILENAME: str = 'meta_params.db'
     PHI_AERO_TABLE_NAME: str = 'phi_aero_config'

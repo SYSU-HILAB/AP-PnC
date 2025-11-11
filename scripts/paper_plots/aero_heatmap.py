@@ -39,9 +39,9 @@ def create_nonlinear_blues():
 
 def create_heatmap():
     # Read the data
-    directory = os.getenv('TAILSITTER_PLANNING_DIR')
+    directory = os.getenv('AP_PNC_DIR')
     if not directory:
-        raise ValueError("TAILSITTER_PLANNING_DIR environment variable not set")
+        raise ValueError("AP_PNC_DIR environment variable not set")
     
     df = pd.read_csv(os.path.join(directory, 'src',
                                   'aerodynamics', 'data', 'aero_diff_tracking.csv'))

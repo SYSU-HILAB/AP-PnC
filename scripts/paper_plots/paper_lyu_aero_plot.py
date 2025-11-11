@@ -100,7 +100,7 @@ def plot_aero_coefficients(data_files):
         plt.subplots_adjust(left=0.2)
 
         directory = None
-        directory = directory or os.getenv('TAILSITTER_PLANNING_DIR')
+        directory = directory or os.getenv('AP_PNC_DIR')
         
         fig.savefig(f"{directory}/scripts/paper_plots_figures/aero-lyu.pdf", backend='pgf')
         # Set scientific style for both axes
@@ -112,10 +112,10 @@ def save_plot(fig, save_path):
 
 def main_plotting_pipeline(directory=None):
     """Main function to process data and generate plots."""
-    directory = directory or os.getenv('TAILSITTER_PLANNING_DIR')
+    directory = directory or os.getenv('AP_PNC_DIR')
     
     if not directory:
-        raise ValueError("TAILSITTER_PLANNING_DIR environment variable not set")
+        raise ValueError("AP_PNC_DIR environment variable not set")
     
     # Define the data files
     data_files = {

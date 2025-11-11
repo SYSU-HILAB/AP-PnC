@@ -17,7 +17,7 @@ class AdvancedLiftDragWriterConfig:
         DB_FILENAME: SQLite database filename
         TABLE_NAME: Table name for advanced lift drag data
     """
-    ROOT_DIR: str = 'TAILSITTER_PLANNING_DIR'
+    ROOT_DIR: str = 'AP_PNC_DIR'
     DB_FILENAME: str = 'meta_params.db'
     TABLE_NAME: str = 'advanced_lift_drag_config'
     

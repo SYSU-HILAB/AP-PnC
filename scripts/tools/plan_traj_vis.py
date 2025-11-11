@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # Load the environment variable and the CSV file
-csv_file_path = os.path.join(os.getenv('TAILSITTER_PLANNING_DIR'), 'planning.csv')
+csv_file_path = os.path.join(os.getenv('AP_PNC_DIR'), 'planning.csv')
 
 df = pd.read_csv(csv_file_path, on_bad_lines='skip')
 

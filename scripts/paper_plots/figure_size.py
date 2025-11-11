@@ -253,14 +253,14 @@ def read_topic_from_ulog_export_csv(topic_name:str):
 
     Parameters:
     tracking_info_dir (str): The directory to search for the tracking info file.
-                             Defaults to the environment variable 'TAILSITTER_PLANNING_DIR'
+                             Defaults to the environment variable 'AP_PNC_DIR'
                              or the current directory if the environment variable is not set.
 
     Returns:
     pd.DataFrame: The data from the tracking info CSV file as a DataFrame.
     """
     # Set directory to environment variable or current directory if not provided
-    directory = os.getenv('TAILSITTER_PLANNING_DIR') or '.'
+    directory = os.getenv('AP_PNC_DIR') or '.'
 
     # Update the directory to the 'output_csv/' subdirectory
     directory = os.path.join(directory, 'output_csv/')
@@ -442,7 +442,7 @@ ax4.plot(new_timestamp, euler_angles[:, 2], label='Actual Yaw', color='cyan')
 
 ax4.set_ylabel('Angles [rad]')
 ax4.grid()
-directory = os.getenv('TAILSITTER_PLANNING_DIR')
+directory = os.getenv('AP_PNC_DIR')
 
 
 

@@ -67,7 +67,7 @@ def analyze_solve_times(csv_file, column_name='solve_time_ms'):
 
 # Example usage
 if __name__ == "__main__":
-    BaseDir = os.getenv('TAILSITTER_PLANNING_DIR')
+    BaseDir = os.getenv('AP_PNC_DIR')
     # Replace 'solve_times.csv' with your actual CSV file path
     csv_file_path = os.path.join(BaseDir, 'record_nmpc.csv')
     analyze_solve_times(csv_file_path)

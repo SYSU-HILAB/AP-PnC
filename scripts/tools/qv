@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ $PWD != $TAILSITTER_PLANNING_DIR ]
+if [ $PWD != $AP_PNC_DIR ]
 then
     echo "Please run this script in the tailsitter_planning directory"
     exit 1

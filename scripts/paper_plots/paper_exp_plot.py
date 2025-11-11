@@ -120,7 +120,7 @@ def normalize_quaternions(quaternions):
 
 def read_csv_by_topic(directory, topic_name, start_time=None, end_time=None):
     """Read a CSV file by topic name and filter by time range if specified."""
-    directory = directory or os.getenv('TAILSITTER_PLANNING_DIR') or '.'
+    directory = directory or os.getenv('AP_PNC_DIR') or '.'
     directory = os.path.join(directory, 'ulgs/output_csv/')
     pattern = re.compile(fr'{topic_name}')
     

@@ -38,8 +38,8 @@ def sync_circled_property(toml_file_path, yaml_file_path):
 
 
 
-toml_file_path = os.getenv("TAILSITTER_PLANNING_DIR") + "/global.toml"
-yaml_file = os.getenv("TAILSITTER_PLANNING_DIR") + "/src/trajectory_server/config/global_planning.yaml"
+toml_file_path = os.getenv("AP_PNC_DIR") + "/global.toml"
+yaml_file = os.getenv("AP_PNC_DIR") + "/src/trajectory_server/config/global_planning.yaml"
 sync_circled_property(toml_file_path, yaml_file)
 
 print(f"Synced 'circled' property from '{toml_file_path}' to 'TrajectoryCirled' in '{yaml_file}'")

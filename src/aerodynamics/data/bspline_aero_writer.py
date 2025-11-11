@@ -24,7 +24,7 @@ class BSplineAeroWriterConfig:
         SCALE_FACTOR_DUMP_KEY: Key for scale factor in database
         SCALE_FACTOR_VALUE: Computed scale factor value
     """
-    ROOT_DIR: str = 'TAILSITTER_PLANNING_DIR'
+    ROOT_DIR: str = 'AP_PNC_DIR'
     SUB_FOLDER: str = 'src/aerodynamics'
     DB_FILENAME: str = 'meta_params.db'
     BSPLINE_AERO_TABLE_NAME: str = 'bspline_aero_config'

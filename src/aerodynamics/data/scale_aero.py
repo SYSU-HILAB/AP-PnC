@@ -57,7 +57,7 @@ def plot_aero_coefficients(data_files):
 
 def main():
     # Define the data files
-    DIR = os.environ['TAILSITTER_PLANNING_DIR']
+    DIR = os.environ['AP_PNC_DIR']
     data_files = {
         'Advanced': os.path.join(DIR, 'zAdvancedLDAero.csv'),
         'BSpline': os.path.join(DIR, 'zBSplineAero.csv'),

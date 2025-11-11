@@ -8,16 +8,16 @@ endif()
 set(CMAKE_BUILD_TYPE Release)
 
 set(MODEL "tailsitter_flu" CACHE STRING "The model_name of NMPC")
-set(TAILSITTER_PLANNING_DIR $ENV{TAILSITTER_PLANNING_DIR} CACHE PATH "The root path of pnc")
+set(AP_PNC_DIR $ENV{AP_PNC_DIR} CACHE PATH "The root path of pnc")
 set(ACADOS_ROOT  $ENV{ACADOS_SOURCE_DIR} CACHE PATH "The root path of acados")
 
 include_directories(${ACADOS_ROOT}/include)
 include_directories(${ACADOS_ROOT}/include/blasfeo/include)
 include_directories(${ACADOS_ROOT}/include/hpipm/include)
 include_directories(${ACADOS_ROOT}/include/acados)
-include_directories(${TAILSITTER_PLANNING_DIR}/c_generated_code)
+include_directories(${AP_PNC_DIR}/c_generated_code)
 link_directories(${ACADOS_ROOT}/lib)
-link_directories(${TAILSITTER_PLANNING_DIR}/c_generated_code)
+link_directories(${AP_PNC_DIR}/c_generated_code)
 
 
 

@@ -1,11 +1,11 @@
 #!/usr/bin/bash
+set -e
 
-if [ $PWD != $TAILSITTER_PLANNING_DIR ]
-then
-    echo "Please run this script in the tailsitter_planning directory"
-    exit 1
-fi
-source $TAILSITTER_PLANNING_DIR/.acados_venv/bin/activate
-python3 src/nmpc/create_ocp_or_sim.py 
-deactivate
+PROJECT_ROOT=$(dirname $(dirname $(dirname $(realpath "$0"))))
+(
+    cd $PROJECT_ROOT
+    source $PROJECT_ROOT/.acados_venv/bin/activate
+    python3 src/nmpc/create_ocp_or_sim.py 
+    deactivate
+)
 

@@ -8,7 +8,7 @@ import re
 import os
 plt.style.use('_mpl-gallery')
 # get env as dir
-directory = os.getenv('TAILSITTER_PLANNING_DIR')
+directory = os.getenv('AP_PNC_DIR')
 
 print(directory)
 def calculate_distance(ref_x, ref_y, x, y):

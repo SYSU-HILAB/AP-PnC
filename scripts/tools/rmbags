@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# check environment variable TAILSITTER_PLANNING_DIR if exist
-if [ -z "$TAILSITTER_PLANNING_DIR" ]; then
-  echo "Please set the environment variable TAILSITTER_PLANNING_DIR"
+# check environment variable AP_PNC_DIR if exist
+if [ -z "$AP_PNC_DIR" ]; then
+  echo "Please set the environment variable AP_PNC_DIR"
   exit 1
 fi
 

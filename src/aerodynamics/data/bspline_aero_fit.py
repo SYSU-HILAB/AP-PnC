@@ -27,7 +27,7 @@ class AeroConfig:
         CX/CZ_COEFS/KNOTS_DUMP_KEY: Keys for storing results
         PLOT: Whether to plot results
     """
-    DATA_DIR: str = os.environ.get('TAILSITTER_PLANNING_DIR', '')
+    DATA_DIR: str = os.environ.get('AP_PNC_DIR', '')
     DATA_PATH: str = 'src/aerodynamics/data/MaAero.csv'
     BSPLINE_FIT_RESULTS_DIR: str = 'src/aerodynamics/data/bspline_fit_results'
     PLOT: bool = True   
@@ -278,7 +278,7 @@ def main() -> None:
         config = AeroConfig()
         
         if not config.DATA_DIR:
-            raise BSplineFitError("TAILSITTER_PLANNING_DIR environment variable not set")
+            raise BSplineFitError("AP_PNC_DIR environment variable not set")
         
         # Read data
         data = pd.read_csv(config.full_data_path)

@@ -77,7 +77,7 @@ namespace tailsitter_df
     Model::Model()
     {
         // Update staitc parameter;
-        const char *env_p = std::getenv("TAILSITTER_PLANNING_DIR");
+        const char *env_p = std::getenv("AP_PNC_DIR");
         std::string sv(env_p);
         sv += "/global.toml";
         toml::table tbl    = toml::parse_file(sv);

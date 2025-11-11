@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 
-# Check if TAILSITTER_PLANNING_DIR is set
-if [ -z "$TAILSITTER_PLANNING_DIR" ]; then
-    echo "TAILSITTER_PLANNING_DIR is not set"
+# Check if AP_PNC_DIR is set
+if [ -z "$AP_PNC_DIR" ]; then
+    echo "AP_PNC_DIR is not set"
     exit 1
 fi
 
@@ -16,7 +16,7 @@ if [ -z "$latest_ulg" ]; then
 fi
 
 # Set the output directory
-FATHER_HOME="$TAILSITTER_PLANNING_DIR/ulgs"
+FATHER_HOME="$AP_PNC_DIR/ulgs"
 OUTPUT_DIR="$FATHER_HOME/output_csv"
 
 # Remove output directory if it exists and create fresh

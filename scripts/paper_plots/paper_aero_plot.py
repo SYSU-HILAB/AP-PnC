@@ -104,7 +104,7 @@ def plot_aero_coefficients(data_files):
             axes[1].legend(handlelength=1.2, handletextpad=0.2, ncol=4, columnspacing=0.4,
                         bbox_to_anchor=(0.5, 2.3), loc='lower center')
 
-        directory = os.getenv('TAILSITTER_PLANNING_DIR') or None
+        directory = os.getenv('AP_PNC_DIR') or None
         
         plt.subplots_adjust(left=0.2)
         fig.savefig(f"{directory}/scripts/paper_plots_figures/aero-comparison.pdf", backend='pgf')
@@ -117,7 +117,7 @@ def main_plotting_pipeline(directory=None):
 
     # Define the data files
 
-    directory = os.getenv('TAILSITTER_PLANNING_DIR') or None
+    directory = os.getenv('AP_PNC_DIR') or None
 
     data_files = {
         'BSpline': os.path.join(directory, 'zBSplineAero.csv'),

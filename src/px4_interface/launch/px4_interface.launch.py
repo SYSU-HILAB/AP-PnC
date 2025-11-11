@@ -7,8 +7,8 @@ from ament_index_python.packages import get_package_share_directory
 import toml
 import os
 
-tailsitter_planning_dir = os.environ.get('TAILSITTER_PLANNING_DIR')
-toml_file_path = os.path.join(tailsitter_planning_dir, 'global.toml')
+AP_PNC_DIR = os.environ.get('AP_PNC_DIR')
+toml_file_path = os.path.join(AP_PNC_DIR, 'global.toml')
 
 with open(toml_file_path, 'r') as f:
     data = toml.load(f)
