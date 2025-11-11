@@ -7,7 +7,6 @@
 #include <interface/msg/trajectory_point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
-#include <traj_buffer/aerodyn.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 using TrajecotryPoint  = interface::msg::TrajectoryPoint;
@@ -62,25 +61,24 @@ class TrajectoryBufferCallbacks
 class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
 {
    private:
-    size_t index_          = 0;
-    bool   init_traj_set_  = false;
-    bool   tracking_valid_ = false;
-    double cz_predict_     = 0.0;
-    double acc_aero_fix_factor     = 1.0;
-    double deacc_aero_fix_factor     = 1.0;
+    size_t index_                = 0;
+    bool   init_traj_set_        = false;
+    bool   tracking_valid_       = false;
+    double cz_predict_           = 0.0;
+    double acc_aero_fix_factor   = 1.0;
+    double deacc_aero_fix_factor = 1.0;
     // bool
-    Trajectory              trajectory_;
-    TrajecotryBullet        msg_planning_traj_;
-    TrajecotryBullet        msg_fixed_point_;
-    Eigen::Vector3d         yb_eigen_ = Eigen::Vector3d(1.0, 0.0, 0.0);
-    double                  traj_sampling_time_  = 0.02;
-    double                  traj_control_time_   = kControlTime;
-    uint                    down_sampling_factor = kDownSamplingFactor;
-    bool                    circled_             = false;
-    bool                    real_world_          = false;
-    std::vector<double>     sim_coefs_;
-    std::vector<double>     exp_coefs_;
-    aerodyn::BsplineAeroDyn aero_dyn_;
+    Trajectory          trajectory_;
+    TrajecotryBullet    msg_planning_traj_;
+    TrajecotryBullet    msg_fixed_point_;
+    Eigen::Vector3d     yb_eigen_            = Eigen::Vector3d(1.0, 0.0, 0.0);
+    double              traj_sampling_time_  = 0.02;
+    double              traj_control_time_   = kControlTime;
+    uint                down_sampling_factor = kDownSamplingFactor;
+    bool                circled_             = false;
+    bool                real_world_          = false;
+    std::vector<double> sim_coefs_;
+    std::vector<double> exp_coefs_;
 
    private:
     void initSubsPubs() override;

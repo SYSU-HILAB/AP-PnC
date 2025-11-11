@@ -5,11 +5,10 @@
 #include <cstddef>
 #include <interface/msg/detail/trajectory_point__struct.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <traj_buffer/aerodyn.hpp>
 #include <traj_buffer/traj_buffer.hpp>
 #include <visualization_msgs/msg/detail/marker_array__struct.hpp>
 
-void push_to_vis(visualization_msgs::msg::MarkerArray& vis, Trajectory& traj)
+void push_to_vis(visualization_msgs::msg::MarkerArray &vis, Trajectory &traj)
 {
     auto marker            = visualization_msgs::msg::Marker();
     marker.header.frame_id = "world";
@@ -65,7 +64,7 @@ bool TrajectoryBuffer::checkTrajectoryTermination()
     {
         RCLCPP_WARN(this->get_logger(), "Trajectory is terminated");
         auto traj_last_point = trajectory_.points.back();
-        for (auto& point : msg_fixed_point_.points)
+        for (auto &point : msg_fixed_point_.points)
         {
             for (int i = 0; i < 3; i++)
             {
@@ -102,25 +101,6 @@ void TrajectoryBuffer::stateCallback(const interface::msg::State::SharedPtr msg)
     auto v = Eigen::Vector3d(state[3], state[4], state[5]);
     auto q = Eigen::Quaterniond(state[9], state[10], state[11], state[12]);
     Eigen::Vector3d vb = q.toRotationMatrix().transpose() * v;
-
-    if (real_world_)
-    {
-        cz_predict_ = aero_dyn_.getAeroCzVb(
-            vb, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
-    }
-    else
-    {
-        cz_predict_ = aero_dyn_.getAeroCzVb(
-            vb, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
-    }
-    static bool first = true;
-    if (first)
-    {
-        if (real_world_)
-            RCLCPP_WARN(this->get_logger(), "Caution: Real World Mode");
-        RCLCPP_WARN(this->get_logger(), "cz_predict_ %f", cz_predict_);
-        first = false;
-    }
 };
 
 void TrajectoryBuffer::refTrajectoryBulletPublish(
@@ -230,7 +210,7 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
                 .point[interface::msg::TrajectoryPoint::POS_START_INDEX + 1];
 
         // change ref_thrust to gravity force.
-        for (auto& point : trajectory_.points)
+        for (auto &point : trajectory_.points)
         {
             point.point[TrajecotryPoint::POS_START_INDEX] -= init_pos[0];
             point.point[TrajecotryPoint::POS_START_INDEX + 1] -= init_pos[1];
@@ -246,7 +226,7 @@ void TrajectoryBuffer::updateTrajCallback(const Trajectory::SharedPtr msg)
                 trajectory_.points[0]
                     .point[interface::msg::TrajectoryPoint::YB_START_INDEX + i];
         }
-        for (auto& point : msg_fixed_point_.points)
+        for (auto &point : msg_fixed_point_.points)
         {
             point.point[TrajecotryPoint::POS_START_INDEX] =
                 trajectory_.points[0].point[TrajecotryPoint::POS_START_INDEX];
@@ -309,8 +289,6 @@ void TrajectoryBuffer::updateParameters()
     this->get_parameter("deacc_aero_fix_factor", deacc_aero_fix_factor);
     assert(std::abs(down_sampling_factor * traj_sampling_time_ -
                     traj_control_time_) < 1e-9);
-    aero_dyn_.setCoefs(exp_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Exp);
-    aero_dyn_.setCoefs(sim_coefs_, aerodyn::BsplineAeroDyn::AeroDynType::Sim);
 }
 
 void TrajectoryBuffer::modeTriggerCallback(std_msgs::msg::Bool::SharedPtr msg)
@@ -358,7 +336,7 @@ void TrajectoryBuffer::initSubsPubs()
         "ref_trajectory_bullet", reliabe_qos_keep_last);
 };
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<TrajectoryBuffer>());

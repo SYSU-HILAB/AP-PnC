@@ -21,7 +21,6 @@ set(HOME $ENV{HOME})
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 find_package(Eigen3 REQUIRED)
-# sincle autodiff is not easily found
 
 # Include directories
 
@@ -30,13 +29,9 @@ file(GLOB ${PROJECT_NAME}_SRCS src/*.cpp)
 # Declare a C++ executable
 # include_directories(include/gcopter)
 ament_auto_add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_SRCS}) # Add other source files as needed
-list(APPEND CMAKE_PREFIX_PATH "${HOME}/miniconda3")
-find_package(autodiff REQUIRED)
-find_package(yaml-cpp REQUIRED)
 target_link_libraries(
         ${PROJECT_NAME}_node
         Eigen3::Eigen  # Eigen support namespace CMake
-        autodiff::autodiff
 )
 
 install(DIRECTORY

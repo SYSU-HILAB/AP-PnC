@@ -15,6 +15,7 @@
   <depend>interface</depend>
   <depend>ament_index_cpp</depend>
   <depend>visualization_msgs</depend>
+  <depend>external_libraries</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
