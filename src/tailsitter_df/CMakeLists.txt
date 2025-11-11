@@ -15,11 +15,9 @@ find_package(Eigen3 REQUIRED)
 ament_auto_find_build_dependencies()
 ament_auto_add_library(tailsitter_df  SHARED  src/tailsitter_df.cpp)
 
-list(APPEND CMAKE_PREFIX_PATH "${HOME}/miniconda3")
-find_package(autodiff REQUIRED)
 
-target_link_libraries(tailsitter_df  
-  autodiff::autodiff 
+target_link_libraries(tailsitter_df
+  Eigen3::Eigen
 )
 
 if(BUILD_TESTING)

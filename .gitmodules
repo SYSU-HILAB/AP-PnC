@@ -13,7 +13,7 @@
 	url = https://github.com/acados/acados.git
 [submodule "src/mocap-px4/src/mocap-ros2"]
 	path = src/mocap-px4/src/mocap-ros2
-	url = git@github.com:SYSU-HILAB/mocap-ros2.git
+	url = https://github.com/SYSU-HILAB/mocap-ros2.git
 [submodule "src/external_libraries/BSplinebasis"]
 	path = src/external_libraries/BSplinebasis
 	url = https://github.com/WarriorHanamy/BSplinebasis.git
@@ -21,3 +21,11 @@
 [submodule "scripts/sciplots"]
 	path = scripts/sciplots
 	url = https://github.com/WarriorHanamy/sciplots.git
+[submodule "src/utils"]
+	path = src/utils
+	url = https://github.com/WarriorHanamy/ROS2-Utils.git
+	branch = main
+[submodule "src/tailsitter_df/include/autodiff"]
+	path = src/tailsitter_df/include/autodiff
+	url = https://github.com/WarriorHanamy/autodiff.git
+	branch = main
