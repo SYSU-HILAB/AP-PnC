@@ -1,0 +1,16 @@
+colcon build --packages-select \
+    aerodynamics \
+    basic_trajectories \
+    c_nmpc \
+    external_libraries \
+    interface \
+    map_gen \
+    mocap-px4 \
+    nmpc \
+    px4_interface \
+    px4_msg \
+    tailsitter_df \
+    tailsitter_simulator \
+    traj_buffer \
+    trajectory_server \
+    utils
