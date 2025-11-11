@@ -29,3 +29,7 @@
 	path = src/tailsitter_df/include/autodiff
 	url = https://github.com/WarriorHanamy/autodiff.git
 	branch = main
+[submodule "src/mockamp"]
+	path = src/mockamp
+	url = https://github.com/WarriorHanamy/mockamp-ros2.git
+	branch = main
