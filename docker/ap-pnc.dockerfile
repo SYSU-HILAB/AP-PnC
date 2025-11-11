@@ -11,7 +11,8 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_lists_cache \
         ros-dev-tools ccache fzf cloc \
         ros-humble-vrpn \
         ros-humble-plotjuggler* \
-        libceres-dev direnv
+        libceres-dev direnv \
+        ccache fzf cloc
 
 WORKDIR /ap-pnc
 
@@ -24,5 +25,11 @@ WORKDIR /ap-pnc
 COPY installations/install-acados.sh /ap-pnc/installations/install-acados.sh
 COPY ./mpc_framework/ /ap-pnc/mpc_framework/
 RUN direnv exec /ap-pnc ./installations/install-acados.sh
+
+COPY installations/custom_funcs.sh /tmp/custom_bash_functions.sh
+
+RUN echo "" >> /root/.bashrc && \
+    cat /tmp/custom_bash_functions.sh >> /root/.bashrc && \
+    rm /tmp/custom_bash_functions.sh
 
 COPY . /ap-pnc
