@@ -36,6 +36,8 @@ WORKDIR /px4-vtol
 ENV PATH="/px4-vtol/Tools:$PATH"
 RUN make px4_sitl_default
 
+ENTRYPOINT ["runpx4", "2"]
+
 # FROM osrf/ros:humble-desktop AS ros-deps
 
 # WORKDIR /plugins

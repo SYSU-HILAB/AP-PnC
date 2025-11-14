@@ -33,5 +33,5 @@ RUN echo "" >> /root/.bashrc && \
 COPY . /ap-pnc/
 RUN direnv exec /ap-pnc /ap-pnc/scripts/tools/cocp 
 RUN source /opt/ros/humble/setup.bash && \
-    direnv exec /ap-pnc colcon build
+    direnv exec /ap-pnc     colcon build
 
