@@ -8,4 +8,3 @@ uint8 POINT_DIM=16
 float64[16] point
 
 float64  cz_prediction
-

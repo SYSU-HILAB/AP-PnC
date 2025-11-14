@@ -20,7 +20,7 @@ run:
 build-px4:
     docker build -f docker/px4-simulator.dockerfile \
     --network=host \
-    -t px4-simulator:latest . 
+    -t px4-simulator:latest .
 
 run-px4:
     docker run -it --rm \

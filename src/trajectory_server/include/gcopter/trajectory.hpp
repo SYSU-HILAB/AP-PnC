@@ -4,78 +4,67 @@
     Copyright (c) 2021 Zhepei Wang (wangzhepei@live.com)
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
+    of this software and associated documentation files (the "Software"), to
+   deal in the Software without restriction, including without limitation the
+   rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+   sell copies of the Software, and to permit persons to whom the Software is
     furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+    The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
 
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+   IN THE SOFTWARE.
 */
 
 #ifndef TRAJECTORY_HPP
 #define TRAJECTORY_HPP
 
-#include "gcopter/root_finder.hpp"
-
 #include <Eigen/Eigen>
-
-#include <iostream>
-#include <cmath>
 #include <cfloat>
+#include <cmath>
+#include <iostream>
 #include <vector>
+
+#include "gcopter/root_finder.hpp"
 
 template <int D>
 class Piece
 {
-public:
+   public:
     typedef Eigen::Matrix<double, 3, D + 1> CoefficientMat;
-    typedef Eigen::Matrix<double, 3, D> VelCoefficientMat;
+    typedef Eigen::Matrix<double, 3, D>     VelCoefficientMat;
     typedef Eigen::Matrix<double, 3, D - 1> AccCoefficientMat;
 
-private:
-    double duration;
+   private:
+    double         duration;
     CoefficientMat coeffMat;
 
-public:
+   public:
     Piece() = default;
 
     Piece(double dur, const CoefficientMat &cMat)
-        : duration(dur), coeffMat(cMat) {}
-
-    inline int getDim() const
+        : duration(dur), coeffMat(cMat)
     {
-        return 3;
     }
 
-    inline int getDegree() const
-    {
-        return D;
-    }
+    inline int getDim() const { return 3; }
 
-    inline double getDuration() const
-    {
-        return duration;
-    }
+    inline int getDegree() const { return D; }
 
-    inline const CoefficientMat &getCoeffMat() const
-    {
-        return coeffMat;
-    }
+    inline double getDuration() const { return duration; }
+
+    inline const CoefficientMat &getCoeffMat() const { return coeffMat; }
 
     inline Eigen::Vector3d getPos(const double &t) const
     {
         Eigen::Vector3d pos(0.0, 0.0, 0.0);
-        double tn = 1.0;
+        double          tn = 1.0;
         for (int i = D; i >= 0; i--)
         {
             pos += tn * coeffMat.col(i);
@@ -87,8 +76,8 @@ public:
     inline Eigen::Vector3d getVel(const double &t) const
     {
         Eigen::Vector3d vel(0.0, 0.0, 0.0);
-        double tn = 1.0;
-        int n = 1;
+        double          tn = 1.0;
+        int             n  = 1;
         for (int i = D - 1; i >= 0; i--)
         {
             vel += n * tn * coeffMat.col(i);
@@ -101,9 +90,9 @@ public:
     inline Eigen::Vector3d getAcc(const double &t) const
     {
         Eigen::Vector3d acc(0.0, 0.0, 0.0);
-        double tn = 1.0;
-        int m = 1;
-        int n = 2;
+        double          tn = 1.0;
+        int             m  = 1;
+        int             n  = 2;
         for (int i = D - 2; i >= 0; i--)
         {
             acc += m * n * tn * coeffMat.col(i);
@@ -117,10 +106,10 @@ public:
     inline Eigen::Vector3d getJer(const double &t) const
     {
         Eigen::Vector3d jer(0.0, 0.0, 0.0);
-        double tn = 1.0;
-        int l = 1;
-        int m = 2;
-        int n = 3;
+        double          tn = 1.0;
+        int             l  = 1;
+        int             m  = 2;
+        int             n  = 3;
         for (int i = D - 3; i >= 0; i--)
         {
             jer += l * m * n * tn * coeffMat.col(i);
@@ -135,7 +124,7 @@ public:
     inline CoefficientMat normalizePosCoeffMat() const
     {
         CoefficientMat nPosCoeffsMat;
-        double t = 1.0;
+        double         t = 1.0;
         for (int i = D; i >= 0; i--)
         {
             nPosCoeffsMat.col(i) = coeffMat.col(i) * t;
@@ -147,8 +136,8 @@ public:
     inline VelCoefficientMat normalizeVelCoeffMat() const
     {
         VelCoefficientMat nVelCoeffMat;
-        int n = 1;
-        double t = duration;
+        int               n = 1;
+        double            t = duration;
         for (int i = D - 1; i >= 0; i--)
         {
             nVelCoeffMat.col(i) = n * coeffMat.col(i) * t;
@@ -161,9 +150,9 @@ public:
     inline AccCoefficientMat normalizeAccCoeffMat() const
     {
         AccCoefficientMat nAccCoeffMat;
-        int n = 2;
-        int m = 1;
-        double t = duration * duration;
+        int               n = 2;
+        int               m = 1;
+        double            t = duration * duration;
         for (int i = D - 2; i >= 0; i--)
         {
             nAccCoeffMat.col(i) = n * m * coeffMat.col(i) * t;
@@ -177,7 +166,7 @@ public:
     inline double getMaxVelRate() const
     {
         VelCoefficientMat nVelCoeffMat = normalizeVelCoeffMat();
-        Eigen::VectorXd coeff = RootFinder::polySqr(nVelCoeffMat.row(0)) +
+        Eigen::VectorXd   coeff = RootFinder::polySqr(nVelCoeffMat.row(0)) +
                                 RootFinder::polySqr(nVelCoeffMat.row(1)) +
                                 RootFinder::polySqr(nVelCoeffMat.row(2));
         int N = coeff.size();
@@ -195,28 +184,30 @@ public:
         {
             double l = -0.0625;
             double r = 1.0625;
-            while (fabs(RootFinder::polyVal(coeff.head(N - 1), l)) < DBL_EPSILON)
+            while (fabs(RootFinder::polyVal(coeff.head(N - 1), l)) <
+                   DBL_EPSILON)
             {
                 l = 0.5 * l;
             }
-            while (fabs(RootFinder::polyVal(coeff.head(N - 1), r)) < DBL_EPSILON)
+            while (fabs(RootFinder::polyVal(coeff.head(N - 1), r)) <
+                   DBL_EPSILON)
             {
                 r = 0.5 * (r + 1.0);
             }
-            std::set<double> candidates = RootFinder::solvePolynomial(coeff.head(N - 1), l, r,
-                                                                      FLT_EPSILON / duration);
+            std::set<double> candidates = RootFinder::solvePolynomial(
+                coeff.head(N - 1), l, r, FLT_EPSILON / duration);
             candidates.insert(0.0);
             candidates.insert(1.0);
             double maxVelRateSqr = -INFINITY;
             double tempNormSqr;
             for (std::set<double>::const_iterator it = candidates.begin();
-                 it != candidates.end();
-                 it++)
+                 it != candidates.end(); it++)
             {
                 if (0.0 <= *it && 1.0 >= *it)
                 {
-                    tempNormSqr = getVel((*it) * duration).squaredNorm();
-                    maxVelRateSqr = maxVelRateSqr < tempNormSqr ? tempNormSqr : maxVelRateSqr;
+                    tempNormSqr   = getVel((*it) * duration).squaredNorm();
+                    maxVelRateSqr = maxVelRateSqr < tempNormSqr ? tempNormSqr
+                                                                : maxVelRateSqr;
                 }
             }
             return sqrt(maxVelRateSqr);
@@ -226,7 +217,7 @@ public:
     inline double getMaxAccRate() const
     {
         AccCoefficientMat nAccCoeffMat = normalizeAccCoeffMat();
-        Eigen::VectorXd coeff = RootFinder::polySqr(nAccCoeffMat.row(0)) +
+        Eigen::VectorXd   coeff = RootFinder::polySqr(nAccCoeffMat.row(0)) +
                                 RootFinder::polySqr(nAccCoeffMat.row(1)) +
                                 RootFinder::polySqr(nAccCoeffMat.row(2));
         int N = coeff.size();
@@ -244,28 +235,30 @@ public:
         {
             double l = -0.0625;
             double r = 1.0625;
-            while (fabs(RootFinder::polyVal(coeff.head(N - 1), l)) < DBL_EPSILON)
+            while (fabs(RootFinder::polyVal(coeff.head(N - 1), l)) <
+                   DBL_EPSILON)
             {
                 l = 0.5 * l;
             }
-            while (fabs(RootFinder::polyVal(coeff.head(N - 1), r)) < DBL_EPSILON)
+            while (fabs(RootFinder::polyVal(coeff.head(N - 1), r)) <
+                   DBL_EPSILON)
             {
                 r = 0.5 * (r + 1.0);
             }
-            std::set<double> candidates = RootFinder::solvePolynomial(coeff.head(N - 1), l, r,
-                                                                      FLT_EPSILON / duration);
+            std::set<double> candidates = RootFinder::solvePolynomial(
+                coeff.head(N - 1), l, r, FLT_EPSILON / duration);
             candidates.insert(0.0);
             candidates.insert(1.0);
             double maxAccRateSqr = -INFINITY;
             double tempNormSqr;
             for (std::set<double>::const_iterator it = candidates.begin();
-                 it != candidates.end();
-                 it++)
+                 it != candidates.end(); it++)
             {
                 if (0.0 <= *it && 1.0 >= *it)
                 {
-                    tempNormSqr = getAcc((*it) * duration).squaredNorm();
-                    maxAccRateSqr = maxAccRateSqr < tempNormSqr ? tempNormSqr : maxAccRateSqr;
+                    tempNormSqr   = getAcc((*it) * duration).squaredNorm();
+                    maxAccRateSqr = maxAccRateSqr < tempNormSqr ? tempNormSqr
+                                                                : maxAccRateSqr;
                 }
             }
             return sqrt(maxAccRateSqr);
@@ -283,7 +276,7 @@ public:
         else
         {
             VelCoefficientMat nVelCoeffMat = normalizeVelCoeffMat();
-            Eigen::VectorXd coeff = RootFinder::polySqr(nVelCoeffMat.row(0)) +
+            Eigen::VectorXd   coeff = RootFinder::polySqr(nVelCoeffMat.row(0)) +
                                     RootFinder::polySqr(nVelCoeffMat.row(1)) +
                                     RootFinder::polySqr(nVelCoeffMat.row(2));
             double t2 = duration * duration;
@@ -303,7 +296,7 @@ public:
         else
         {
             AccCoefficientMat nAccCoeffMat = normalizeAccCoeffMat();
-            Eigen::VectorXd coeff = RootFinder::polySqr(nAccCoeffMat.row(0)) +
+            Eigen::VectorXd   coeff = RootFinder::polySqr(nAccCoeffMat.row(0)) +
                                     RootFinder::polySqr(nAccCoeffMat.row(1)) +
                                     RootFinder::polySqr(nAccCoeffMat.row(2));
             double t2 = duration * duration;
@@ -317,14 +310,14 @@ public:
 template <int D>
 class Trajectory
 {
-private:
+   private:
     typedef std::vector<Piece<D>> Pieces;
-    Pieces pieces;
+    Pieces                        pieces;
 
-public:
+   public:
     Trajectory() = default;
 
-    Trajectory(const std::vector<double> &durs,
+    Trajectory(const std::vector<double>                            &durs,
                const std::vector<typename Piece<D>::CoefficientMat> &cMats)
     {
         int N = std::min(durs.size(), cMats.size());
@@ -335,14 +328,11 @@ public:
         }
     }
 
-    inline int getPieceNum() const
-    {
-        return pieces.size();
-    }
+    inline int getPieceNum() const { return pieces.size(); }
 
     inline Eigen::VectorXd getDurations() const
     {
-        int N = getPieceNum();
+        int             N = getPieceNum();
         Eigen::VectorXd durations(N);
         for (int i = 0; i < N; i++)
         {
@@ -353,7 +343,7 @@ public:
 
     inline double getTotalDuration() const
     {
-        int N = getPieceNum();
+        int    N             = getPieceNum();
         double totalDuration = 0.0;
         for (int i = 0; i < N; i++)
         {
@@ -364,7 +354,7 @@ public:
 
     inline Eigen::Matrix3Xd getPositions() const
     {
-        int N = getPieceNum();
+        int              N = getPieceNum();
         Eigen::Matrix3Xd positions(3, N + 1);
         for (int i = 0; i < N; i++)
         {
@@ -374,15 +364,9 @@ public:
         return positions;
     }
 
-    inline const Piece<D> &operator[](int i) const
-    {
-        return pieces[i];
-    }
+    inline const Piece<D> &operator[](int i) const { return pieces[i]; }
 
-    inline Piece<D> &operator[](int i)
-    {
-        return pieces[i];
-    }
+    inline Piece<D> &operator[](int i) { return pieces[i]; }
 
     inline void clear(void)
     {
@@ -395,20 +379,11 @@ public:
         return pieces.begin();
     }
 
-    inline typename Pieces::const_iterator end() const
-    {
-        return pieces.end();
-    }
+    inline typename Pieces::const_iterator end() const { return pieces.end(); }
 
-    inline typename Pieces::iterator begin()
-    {
-        return pieces.begin();
-    }
+    inline typename Pieces::iterator begin() { return pieces.begin(); }
 
-    inline typename Pieces::iterator end()
-    {
-        return pieces.end();
-    }
+    inline typename Pieces::iterator end() { return pieces.end(); }
 
     inline void reserve(const int &n)
     {
@@ -422,7 +397,7 @@ public:
         return;
     }
 
-    inline void emplace_back(const double &dur,
+    inline void emplace_back(const double                            &dur,
                              const typename Piece<D>::CoefficientMat &cMat)
     {
         pieces.emplace_back(dur, cMat);
@@ -437,13 +412,10 @@ public:
 
     inline int locatePieceIdx(double &t) const
     {
-        int N = getPieceNum();
-        int idx;
+        int    N = getPieceNum();
+        int    idx;
         double dur;
-        for (idx = 0;
-             idx < N &&
-             t > (dur = pieces[idx].getDuration());
-             idx++)
+        for (idx = 0; idx < N && t > (dur = pieces[idx].getDuration()); idx++)
         {
             t -= dur;
         }
@@ -487,7 +459,8 @@ public:
         }
         else
         {
-            return pieces[juncIdx - 1].getPos(pieces[juncIdx - 1].getDuration());
+            return pieces[juncIdx - 1].getPos(
+                pieces[juncIdx - 1].getDuration());
         }
     }
 
@@ -499,7 +472,8 @@ public:
         }
         else
         {
-            return pieces[juncIdx - 1].getVel(pieces[juncIdx - 1].getDuration());
+            return pieces[juncIdx - 1].getVel(
+                pieces[juncIdx - 1].getDuration());
         }
     }
 
@@ -511,18 +485,19 @@ public:
         }
         else
         {
-            return pieces[juncIdx - 1].getAcc(pieces[juncIdx - 1].getDuration());
+            return pieces[juncIdx - 1].getAcc(
+                pieces[juncIdx - 1].getDuration());
         }
     }
 
     inline double getMaxVelRate() const
     {
-        int N = getPieceNum();
+        int    N          = getPieceNum();
         double maxVelRate = -INFINITY;
         double tempNorm;
         for (int i = 0; i < N; i++)
         {
-            tempNorm = pieces[i].getMaxVelRate();
+            tempNorm   = pieces[i].getMaxVelRate();
             maxVelRate = maxVelRate < tempNorm ? tempNorm : maxVelRate;
         }
         return maxVelRate;
@@ -530,12 +505,12 @@ public:
 
     inline double getMaxAccRate() const
     {
-        int N = getPieceNum();
+        int    N          = getPieceNum();
         double maxAccRate = -INFINITY;
         double tempNorm;
         for (int i = 0; i < N; i++)
         {
-            tempNorm = pieces[i].getMaxAccRate();
+            tempNorm   = pieces[i].getMaxAccRate();
             maxAccRate = maxAccRate < tempNorm ? tempNorm : maxAccRate;
         }
         return maxAccRate;
@@ -543,7 +518,7 @@ public:
 
     inline bool checkMaxVelRate(const double &maxVelRate) const
     {
-        int N = getPieceNum();
+        int  N        = getPieceNum();
         bool feasible = true;
         for (int i = 0; i < N && feasible; i++)
         {
@@ -554,7 +529,7 @@ public:
 
     inline bool checkMaxAccRate(const double &maxAccRate) const
     {
-        int N = getPieceNum();
+        int  N        = getPieceNum();
         bool feasible = true;
         for (int i = 0; i < N && feasible; i++)
         {

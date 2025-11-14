@@ -30,8 +30,8 @@ def get_planning_config():
       print(f'v_max is {v_max}')
       print(f'basic_trajectory_height is {basic_trajectory_height}')
       print(f'BasicTrajectoryRadius is {BasicTrajectoryRadius}')
-   
-    
-    
+
+
+
 if __name__ == "__main__":
     main()

@@ -9,7 +9,7 @@ set(CMAKE_BUILD_TYPE Release)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
-ament_auto_find_build_dependencies() 
+ament_auto_find_build_dependencies()
 ament_auto_add_library(${PROJECT_NAME}_lib src/frame_transform.cpp)
 ament_auto_add_executable(mocap_to_visual_odometry src/mocap_to_visual_odometry.cpp)
 target_link_libraries(${PROJECT_NAME}_lib Eigen3::Eigen)

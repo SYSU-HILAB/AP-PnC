@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 @dataclass
 class AdvancedLiftDragWriterConfig:
     """Configuration for advanced lift drag aerodynamics data writing.
-    
+
     Attributes:
         ROOT_DIR: Environment variable name for root directory
         DB_FILENAME: SQLite database filename
@@ -20,10 +20,10 @@ class AdvancedLiftDragWriterConfig:
     ROOT_DIR: str = 'AP_PNC_DIR'
     DB_FILENAME: str = 'meta_params.db'
     TABLE_NAME: str = 'advanced_lift_drag_config'
-    
+
     # Default values from the C++ code
     params: Dict[str, float] = None
-    
+
     def __post_init__(self):
         if self.params is None:
             self.params = {
@@ -46,7 +46,7 @@ class AdvancedLiftDragError(Exception):
         self.message = message
         self.details = details
         super().__init__(self.full_message)
-    
+
     @property
     def full_message(self) -> str:
         error_msg = [f"Advanced Lift Drag Error: {self.message}"]
@@ -57,13 +57,13 @@ class AdvancedLiftDragError(Exception):
 
 def get_root_path(config: AdvancedLiftDragWriterConfig) -> Path:
     """Get the root path from environment variable.
-    
+
     Args:
         config: Configuration object containing ROOT_DIR
-        
+
     Returns:
         Path object for root directory
-        
+
     Raises:
         AdvancedLiftDragError: If environment variable is not set
     """
@@ -74,16 +74,16 @@ def get_root_path(config: AdvancedLiftDragWriterConfig) -> Path:
                 f"Environment variable {config.ROOT_DIR} is not set",
                 "Please set the environment variable before running the script"
             )
-        
+
         root_path = Path(root_dir)
         if not root_path.exists():
             raise AdvancedLiftDragError(
                 f"Directory {root_path} does not exist",
                 "Please check if the path exists and you have correct permissions"
             )
-            
+
         return root_path
-        
+
     except Exception as e:
         if isinstance(e, AdvancedLiftDragError):
             raise
@@ -92,10 +92,10 @@ def get_root_path(config: AdvancedLiftDragWriterConfig) -> Path:
 
 def validate_parameters(params: Dict[str, float]) -> None:
     """Validate advanced lift drag parameters.
-    
+
     Args:
         params: Dictionary of parameter values
-        
+
     Raises:
         AdvancedLiftDragError: If parameters are invalid
     """
@@ -105,20 +105,20 @@ def validate_parameters(params: Dict[str, float]) -> None:
             'eff', 'CD_0', 'CD_flat_plate', 'CY_beta', 'CL_beta_loss',
             'scale_factor'
         }
-        
+
         if not params:
             raise AdvancedLiftDragError(
                 "Parameters dictionary is empty",
                 "Please ensure parameters are properly initialized"
             )
-            
+
         missing_params = required_params - set(params.keys())
         if missing_params:
             raise AdvancedLiftDragError(
                 "Missing required parameters",
                 f"Missing parameters: {missing_params}"
             )
-            
+
         # Validate parameter types and values
         for param, value in params.items():
             if not isinstance(value, (int, float)):
@@ -126,7 +126,7 @@ def validate_parameters(params: Dict[str, float]) -> None:
                     f"Invalid parameter type for {param}",
                     f"Expected numeric type, got {type(value)}"
                 )
-                
+
     except Exception as e:
         if isinstance(e, AdvancedLiftDragError):
             raise
@@ -135,26 +135,26 @@ def validate_parameters(params: Dict[str, float]) -> None:
 
 def update_database_for_advanced_lift_drag(config: AdvancedLiftDragWriterConfig) -> None:
     """Create or update database with advanced lift drag configuration.
-    
+
     Args:
         config: Configuration object containing data to store
-        
+
     Raises:
         AdvancedLiftDragError: If database operations fail
     """
     try:
         root_path = get_root_path(config)
         db_path = root_path / config.DB_FILENAME
-        
+
         # Validate parameters before database operations
         validate_parameters(config.params)
 
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
-            
+
             # Drop and recreate table
             cursor.execute(f'DROP TABLE IF EXISTS {config.TABLE_NAME}')
-            
+
             # Create table with columns for each parameter
             columns = ', '.join(f'{param} REAL' for param in config.params.keys())
             cursor.execute(f'''
@@ -163,18 +163,18 @@ def update_database_for_advanced_lift_drag(config: AdvancedLiftDragWriterConfig)
                     {columns}
                 )
             ''')
-            
+
             # Insert data
             columns = ', '.join(config.params.keys())
             placeholders = ', '.join(['?'] * len(config.params))
             cursor.execute(f'''
-                INSERT INTO {config.TABLE_NAME} 
+                INSERT INTO {config.TABLE_NAME}
                 ({columns})
                 VALUES ({placeholders})
             ''', tuple(config.params.values()))
-            
+
         print(f"[Advanced Lift Drag Writer] Database updated successfully at {db_path}")
-        
+
     except sqlite3.Error as e:
         raise AdvancedLiftDragError(
             "Database operation failed",
@@ -208,4 +208,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main() 
+    main()

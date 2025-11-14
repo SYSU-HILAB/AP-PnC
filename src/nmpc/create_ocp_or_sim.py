@@ -28,12 +28,12 @@ def ocp_nls() -> AcadosOcp:
     sym_v = model.x[3:6]
     sym_r = model.x[6:9]
     sym_q = model.x[9:13]
-    
+
     # du    = model.u
     sym_u = model.u
 
-    
-    
+
+
     qw = sym_q[0]
     qx = sym_q[1]
     qy = sym_q[2]
@@ -104,17 +104,17 @@ def ocp_nls() -> AcadosOcp:
     ocp.dims.N = MpcConfig.nodes
     ocp.solver_options.tf = MpcConfig.T_horizon
     ocp.solver_options.exact_hess_cost = False
-    
+
     ocp.constraints.x0 = np.zeros((nx_aug))
     # bound part of x
     ocp.constraints.idxbx = np.array([6,7,8,13,14,15,16])
     ocp.constraints.lbx = np.concatenate((MpcConfig.lb_r, MpcConfig.lb_u))
     ocp.constraints.ubx = np.concatenate((MpcConfig.ub_r, MpcConfig.ub_u))
-    
+
     ocp.constraints.Jbu = np.eye(nu)
     ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1.0 * 0.8
     ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1.0 * 0.8
-    
+
 
     print(ocp.dims)
     # set options
@@ -162,7 +162,7 @@ def create_sim_solver_with_model_defined(Nodes, T):
     sim.solver_options.integrator_type = 'ERK'
     sim.solver_options.sens_forw = True
     sim.model = tailsitter_flu_sim()
-    
+
 
     return sim
 

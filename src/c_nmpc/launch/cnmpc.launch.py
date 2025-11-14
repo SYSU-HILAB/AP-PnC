@@ -18,8 +18,8 @@ def generate_launch_description():
 
     return launch.LaunchDescription([
         launch_ros.actions.Node(
-            package='c_nmpc', 
-            executable='c_nmpc_node', 
+            package='c_nmpc',
+            executable='c_nmpc_node',
             name='c_nmpc_node',
             parameters=[
                 {
@@ -28,5 +28,5 @@ def generate_launch_description():
             ]
             # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
         ),
-        
+
         ])

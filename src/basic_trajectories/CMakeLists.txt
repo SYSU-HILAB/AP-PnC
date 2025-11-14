@@ -33,7 +33,7 @@ target_link_libraries(verloop Eigen3::Eigen)
 
 ament_auto_add_executable(trajectory_csv src/trajectory_csv.cpp)
 target_link_libraries(trajectory_csv
-Eigen3::Eigen 
+Eigen3::Eigen
 basic_trajectory
 sin
 verloop

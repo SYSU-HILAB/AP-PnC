@@ -42,21 +42,21 @@ def create_heatmap():
     directory = os.getenv('AP_PNC_DIR')
     if not directory:
         raise ValueError("AP_PNC_DIR environment variable not set")
-    
+
     df = pd.read_csv(os.path.join(directory, 'src',
                                   'aerodynamics', 'data', 'aero_diff_tracking.csv'))
-    
+
     # Convert data to matrix format
     matrix_data = df.set_index('Type').values
-    
+
     # Create figure with specific size
     fig, ax = plt.subplots(figsize=(5, 3))
-    
+
     # Create velocity labels
     velocity_labels = [f'{v} m/s' for v in range(4, 15, 2)]
-    
+
     # Create heatmap
-    hm = sns.heatmap(matrix_data, 
+    hm = sns.heatmap(matrix_data,
                 annot=True,  # Show values in cells
                 fmt='.2f',   # Format for the values (2 decimal places)
                 cmap=create_nonlinear_blues(),  # Use custom reversed Blues colormap
@@ -64,22 +64,22 @@ def create_heatmap():
                 yticklabels=df['Type'],
                 cbar_kws={'label': 'RMSE [m]'},
                 ax=ax)
-    
+
     # Explicitly remove tick marks while keeping labels
     ax.tick_params(axis='both', length=0)
-    
+
     # Remove colorbar tick marks but keep labels and adjust label padding
     colorbar = hm.collections[0].colorbar
     colorbar.ax.tick_params(length=0)
     colorbar.ax.set_ylabel('RMSE [m]', labelpad=5)
-    
+
     # Rotate x-axis labels for better readability
     plt.xticks(rotation=0)
     plt.yticks(rotation=0)
-    
+
     # Adjust layout
     plt.tight_layout()
-    
+
     # Save the plot using the same directory handling as paper_exp_plot.py
     save_path = os.path.join(directory, 'paper_plots', 'aero-heatmap.pdf')
     plt.savefig(save_path, format='pdf', bbox_inches='tight', dpi=300)
@@ -87,4 +87,4 @@ def create_heatmap():
 
 if __name__ == "__main__":
     set_plot_styles()
-    create_heatmap() 
+    create_heatmap()

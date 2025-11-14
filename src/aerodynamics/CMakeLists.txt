@@ -38,7 +38,7 @@ target_link_libraries(${PROJECT_NAME}_lyu
 )
 
 # Advanced Lift Drag aerodynamics
-ament_auto_add_library(${PROJECT_NAME}_advanced_lift_drag 
+ament_auto_add_library(${PROJECT_NAME}_advanced_lift_drag
     src/advanced_lift_drag.cpp
 )
 # Phi aerodynamics
@@ -50,7 +50,7 @@ ament_auto_add_library(${PROJECT_NAME}_non src/non_aerodynamics.cpp)
 
 # Testing for aerodynamics
 ament_auto_add_executable(aero_comparison src/aero_comparison.cpp)
-target_link_libraries(aero_comparison 
+target_link_libraries(aero_comparison
   ${PROJECT_NAME}_phi
   ${PROJECT_NAME}_lyu
   ${PROJECT_NAME}_non
@@ -71,7 +71,7 @@ set(GZ_SIM_VER ${gz-sim7_VERSION_MAJOR})
 add_library(AerodynamicsPlugin
   SHARED
   src/gazebo_plugins/AerodynamicsPlugin.cc
-) 
+)
 
 target_link_libraries(AerodynamicsPlugin
   ${PROJECT_NAME}_phi
@@ -81,7 +81,7 @@ target_link_libraries(AerodynamicsPlugin
   ${PROJECT_NAME}_bspline
   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
 )
-# install target *_gazebo to ~/.gz/sim/plugins 
+# install target *_gazebo to ~/.gz/sim/plugins
 install(
   FILES ${CMAKE_BINARY_DIR}/libAerodynamicsPlugin.so
   DESTINATION ~/.gz/sim/plugins/

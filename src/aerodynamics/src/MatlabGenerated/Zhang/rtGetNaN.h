@@ -15,11 +15,12 @@
 #include "rtwtypes.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-extern real_T rtGetNaN(void);
-extern real32_T rtGetNaNF(void);
+    extern real_T   rtGetNaN(void);
+    extern real32_T rtGetNaNF(void);
 
 #ifdef __cplusplus
 }

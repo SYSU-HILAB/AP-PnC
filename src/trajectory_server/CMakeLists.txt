@@ -35,7 +35,7 @@ target_link_libraries(
 )
 
 install(DIRECTORY
-        launch config 
+        launch config
         DESTINATION share/${PROJECT_NAME}
 )
 

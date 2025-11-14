@@ -1,7 +1,7 @@
 FROM osrf/ros:humble-desktop
 SHELL ["/bin/bash", "-c"]
 
-RUN apt update 
+RUN apt update
 
 RUN apt-get remove modemmanager -y \
     && apt install -y gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl \

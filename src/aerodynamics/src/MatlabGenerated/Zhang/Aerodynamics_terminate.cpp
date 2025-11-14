@@ -10,6 +10,7 @@
 
 // Include Files
 #include "Aerodynamics_terminate.h"
+
 #include "rt_nonfinite.h"
 
 // Function Definitions
@@ -17,9 +18,7 @@
 // Arguments    : void
 // Return Type  : void
 //
-void Aerodynamics_terminate()
-{
-}
+void Aerodynamics_terminate() {}
 
 //
 // File trailer for Aerodynamics_terminate.cpp

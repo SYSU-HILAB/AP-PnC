@@ -78,7 +78,7 @@ def tailsitter_flu():
     x_aut_dot = cs.vertcat(x_dot, u_dot)
     cz_state_dot = SX.sym('cz_state_dot', 1)
     x_aut_dot = cs.vertcat(x_aut_dot, cz_state_dot)
-    
+
     # body frame
     U = u[0] + u[1] + u[2] + u[3]
     tb = cs.vertcat(0.0, 0.0, U)
@@ -87,17 +87,17 @@ def tailsitter_flu():
     vb = q_inv_oproduct_vec(v, q)
     # calculate alpha
     alpha = cs.atan2(vb[0], (vb[2] + 0.1))
-    
-    
+
+
     F_aero_b_frd = cs.SX([0, 0, 0])
     F_aero_b_frd[0] = 0.0
     F_aero_b_frd[1] = 0.0
 
     # MARKER
     F_aero_b_frd[2] =   - 1.0*(cz_state) * cs.dot(v,v)
-    
-    
-    
+
+
+
     q_tf = np.array([0, 0.707, 0, 0.707])
     R_tf = Quat2RotMat(q_tf)
     F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)
@@ -109,16 +109,16 @@ def tailsitter_flu():
     vv_dot = q_oproduct_vec(tb/mass, q)  + g + q_oproduct_vec(F_aero_b_flu_quad_frame / mass, q)
     vb_dot = -skew(r)*vb + q_inv_oproduct_vec(vv_dot, q)
 
-    
+
     acc_b = q_inv_oproduct_vec(q_oproduct_vec(tb/mass, q)  + g + q_oproduct_vec(F_aero_b_flu_quad_frame / mass, q), q)
-    
-    # alpha_dot = (vb_dot[2]*vb[0] - vb[2]*vb_dot[0]) / (cs.dot(v,v) + 0.1) 
+
+    # alpha_dot = (vb_dot[2]*vb[0] - vb[2]*vb_dot[0]) / (cs.dot(v,v) + 0.1)
     # alpha_dot = (acc_b[2] * vb[0] - acc_b[0] * vb[2]) / (cs.dot(v,v)) + r[1]
 
     # print(alpha_dot)
     # exit()
     alpha_dot = (acc_b[2] * cs.cos(alpha) - acc_b[0] * cs.sin(alpha)) / (cs.norm_2(v) + 0.1) + r[1]
-    
+
     # alpha_dot = (
     # maybe we should estimate the alpha_dot data out
     # I guess that when gaussian-newton implicitly estimate the alpha_dot, it is damped. But if formulated as equations, it is very noisy.
@@ -135,7 +135,7 @@ def tailsitter_flu():
         1 / 2 * cs.mtimes(skew_symmetric(r), q),
     )
     f_expl_u = du
-    
+
     f_expl = vertcat(f_expl_x, f_expl_u)
     f_expl = vertcat(f_expl, cz_dot)
     f_impl = x_aut_dot - f_expl

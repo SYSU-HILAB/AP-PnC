@@ -16,14 +16,14 @@ def launch_px4_interface(height, quat):
             bufsize=1,
             universal_newlines=True
         )
-        
+
         while True:
             output = process.stdout.readline()
             if output == '' and process.poll() is not None:
                 break
             if output:
                 print(output.strip())
-        
+
         rc = process.poll()
         if rc == 0:
             print("Launch successful!")

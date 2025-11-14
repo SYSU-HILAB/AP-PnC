@@ -54,7 +54,7 @@ source $AP_PNC_DIR/install-ros.sh
 ### Installing Miniconda
 ```shell
 bash Miniconda3-latest-Linux-x86_64.sh
-``` 
+```
 **WARNING**: not automatically activate conda
 
 
@@ -63,7 +63,7 @@ Create a .colcon directory in your home directory and link the default configura
 ```shell
 mkdir $HOME/.colcon
 ln -s $AP_PNC_DIR/colcon_default.yaml $HOME/.colcon/default.yaml
-``` 
+```
 
 ### Installing Additional Dependencies
 Install Acados, PX4, and other dependencies using the provided script:
@@ -106,7 +106,7 @@ cocp
 ### Building All Packages
 Build all packages in the workspace:
 ```shell
-colcon build 
+colcon build
 ```
 
 
@@ -144,13 +144,13 @@ trigger
 
 ## Knowledge
 ###  Modern CMake
-- [CMake Tutorial](https://kubasejdak.com/modern-cmake-is-like-inheritance#modern-cmake-targets-properties) 
+- [CMake Tutorial](https://kubasejdak.com/modern-cmake-is-like-inheritance#modern-cmake-targets-properties)
 - [ament_cmake](https://docs.ros.org/en/foxy/How-To-Guides/Ament-CMake-Documentation.html)
 - [ament_cmake_auto](https://zhuanlan.zhihu.com/p/438191834)
 
 
 
-# Ai-generated 
+# Ai-generated
 
 ## Control Theory × Software Architecture Design Mapping
 

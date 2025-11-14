@@ -43,7 +43,7 @@ ENTRYPOINT ["runpx4", "2"]
 # WORKDIR /plugins
 # COPY ../src/aerodynamics plugins/aerodynamics
 # COPY ../src/external_libraries plugins/external_libraries
-# RUN colcon build 
+# RUN colcon build
 
 
 # Version2 is FROM osrf/ros:humble-desktop to install px4-depencies and gazebo-deps,

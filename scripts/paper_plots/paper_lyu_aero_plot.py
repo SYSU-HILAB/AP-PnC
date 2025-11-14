@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MultipleLocator
-import sciplots 
+import sciplots
 colors = sciplots.colors
 
 def read_aero_data(filename):
@@ -19,13 +19,13 @@ def initialize_figure():
     fig = plt.figure(figsize=(letter_column_width, fig_height), constrained_layout=False)
     gs = gridspec.GridSpec(2, 1, figure=fig)
     gs.update(wspace=0.3, hspace=0.25)
-    
+
     ax1 = fig.add_subplot(gs[0, 0])  # Cx plot
     ax2 = fig.add_subplot(gs[1, 0])  # Cz plot
-    
+
     # Add more padding at the bottom for x-axis labels
     plt.subplots_adjust(bottom=0.15)
-    
+
     return fig, [ax1, ax2]
 
 def plot_aero_coefficients(data_files):
@@ -33,7 +33,7 @@ def plot_aero_coefficients(data_files):
     # Get baseline data for scaling
     # Initialize figure
     fig, axes = initialize_figure()
-    
+
     data = read_aero_data(data_files['ZhangLyu'])
     cz_30_baseline = data[data['alpha_deg'] == 30]['cz'].values[0]
     print(f"Cz at alpha = 30 degrees: cz = {cz_30_baseline}")
@@ -53,20 +53,20 @@ def plot_aero_coefficients(data_files):
             cz_30 = data[data['alpha_deg'] == 30]['cz'].values[0]
             scale_factor = cz_30_baseline / cz_30
             print(f"Scale factor for {name}: {scale_factor}")
-            
+
             # Convert to numpy arrays
             alpha = data['alpha_deg'].to_numpy()
             cx = data['cx'].to_numpy() * scale_factor
             cz = data['cz'].to_numpy() * scale_factor
-            
+
             # Get color for this dataset
             color = colors['blue']
-            
+
             # Plot Cx
             axes[0].plot(alpha, cx, label=name, color=color)
             axes[0].set_ylabel(r'$\prescript{\mathcal{B}}{}{\boldsymbol{c}_x}~\mathrm{[kg/m]}$')
             axes[0].grid(True)
-            
+
 
             # set ticks points for first plot (cx)
             axes[0].set_yticks([-0.04, -0.02, 0, 0.02, 0.04])
@@ -74,14 +74,14 @@ def plot_aero_coefficients(data_files):
             major_spacing = 0.02  # Distance between major ticks
             minor_spacing = major_spacing/5  # 4 minor ticks between majors
             axes[0].yaxis.set_minor_locator(MultipleLocator(minor_spacing))
-            
+
             # Plot Cz
             if name == 'ZhangLyu':
                 axes[1].plot(alpha, cz, label="Lyu et al.", color=color)
 
             axes[1].set_xlabel(r'$\alpha~[\mathrm{deg}]$', labelpad=4)
             axes[1].grid(True)
-            
+
             axes[1].set_ylabel(r'$\prescript{\mathcal{B}}{}{\boldsymbol{c}_z}~\mathrm{[kg/m]}$')
 
             # set ticks points for second plot (cz)
@@ -90,9 +90,9 @@ def plot_aero_coefficients(data_files):
             major_spacing = 0.15  # Distance between major ticks
 
 
-                    
+
             minor_spacing = major_spacing/5  # 4 minor ticks between majors
-            axes[1].yaxis.set_minor_locator(MultipleLocator(minor_spacing))   
+            axes[1].yaxis.set_minor_locator(MultipleLocator(minor_spacing))
         # # Set legend with specified line length and reduced text spacing
         # axes[1].legend(handlelength=1.2, handletextpad=0.2, ncol=2, columnspacing=0.4,
         #               bbox_to_anchor=(1.0, 0.95), loc='upper right')
@@ -101,7 +101,7 @@ def plot_aero_coefficients(data_files):
 
         directory = None
         directory = directory or os.getenv('AP_PNC_DIR')
-        
+
         fig.savefig(f"{directory}/scripts/paper_plots_figures/aero-lyu.pdf", backend='pgf')
         # Set scientific style for both axes
 
@@ -113,22 +113,22 @@ def save_plot(fig, save_path):
 def main_plotting_pipeline(directory=None):
     """Main function to process data and generate plots."""
     directory = directory or os.getenv('AP_PNC_DIR')
-    
+
     if not directory:
         raise ValueError("AP_PNC_DIR environment variable not set")
-    
+
     # Define the data files
     data_files = {
         'ZhangLyu': os.path.join(directory, 'zZhangLyuAero.csv'),
     }
-    
 
-    
+
+
     # Plot content
     plot_aero_coefficients(data_files)
-    
-    
+
+
 
 
 if __name__ == "__main__":
-    main_plotting_pipeline() 
+    main_plotting_pipeline()

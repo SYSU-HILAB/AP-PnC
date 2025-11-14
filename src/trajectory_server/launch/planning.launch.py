@@ -42,8 +42,8 @@ def generate_launch_description():
             ]
         ),
         # launch_ros.actions.Node(
-        #     package='rqt_plot', 
-        #     executable='rqt_plot', 
+        #     package='rqt_plot',
+        #     executable='rqt_plot',
         #     name='pos_vel_plot',
         #     arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
         # ),

@@ -44,7 +44,7 @@ def getEulerAnglesZXY(rotation):
 
     # Calculate Euler angles (ψ, φ, θ) from the rotation matrix
     # For ZXY intrinsic, the following formulas are used:
-    
+
     # theta (rotation about y-axis)
     theta = np.arctan2(-R31, np.sqrt(R32**2 + R33**2))
 
@@ -88,11 +88,11 @@ def quaternion_to_axes(quaternions):
     """
     Converts a sequence of quaternions (N, 4) into separate sequences of rotated axes (xb, yb, zb).
     Each quaternion describes a rotation applied to the original basis vectors (x, y, z).
-    
+
     Parameters:
-    quaternions (numpy.ndarray): Array of quaternions with shape (N, 4), 
+    quaternions (numpy.ndarray): Array of quaternions with shape (N, 4),
                                   where each quaternion is [w, x, y, z].
-    
+
     Returns:
     tuple: Three numpy arrays representing the rotated x, y, and z axes for each quaternion:
            (xb, yb, zb) where:
@@ -104,7 +104,7 @@ def quaternion_to_axes(quaternions):
         raise ValueError("Input quaternion array must have shape (N, 4)")
 
     N = quaternions.shape[0]
-    
+
     # Prepare arrays to store the rotated axes for each quaternion
     xb = np.zeros((N, 3))
     yb = np.zeros((N, 3))
@@ -112,14 +112,14 @@ def quaternion_to_axes(quaternions):
 
     for i in range(N):
         w, x, y, z = quaternions[i]
-        
+
         # Compute the rotation matrix from the quaternion
         R = np.array([
             [1 - 2 * (y**2 + z**2),  2 * (x * y - z * w),  2 * (x * z + y * w)],
             [2 * (x * y + z * w),    1 - 2 * (x**2 + z**2), 2 * (y * z - x * w)],
             [2 * (x * z - y * w),    2 * (y * z + x * w),   1 - 2 * (x**2 + y**2)]
         ])
-        
+
         # The columns of the rotation matrix are the rotated axes
         xb[i] = R[:, 0]  # x-axis (first column)
         yb[i] = R[:, 1]  # y-axis (second column)
@@ -131,11 +131,11 @@ def quaternion_to_axes(quaternions):
 def add_yaw_and_right_multiply_frd(quaternions, yaw_angle):
     """
     Add a yaw rotation to all quaternions and right-multiply by the FRD quaternion [0, 1, 0, 0].
-    
+
     Args:
     - quaternions (N x 4): Array of quaternions, each quaternion is of the form [w, x, y, z].
     - yaw_angle (float): Yaw angle in radians to be added to all quaternions.
-    
+
     Returns:
     - new_quaternions (N x 4): Array of new quaternions after adding yaw and applying right-multiply by [0, 1, 0, 0].
     """
@@ -152,33 +152,33 @@ def add_yaw_and_right_multiply_frd(quaternions, yaw_angle):
 
     # Initialize array for new quaternions
     new_quaternions = np.zeros_like(quaternions)
-    
+
     # Perform quaternion multiplication (yaw_quaternion * q)
     for i in range(quaternions.shape[0]):
         q = quaternions[i]
-        
+
         # First apply the yaw rotation: yaw_quaternion * q
         w1, x1, y1, z1 = yaw_quaternion
         w2, x2, y2, z2 = q
-        
+
         # Perform quaternion multiplication (yaw_quaternion * q)
         w_yaw_new = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
         x_yaw_new = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
         y_yaw_new = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
         z_yaw_new = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-        
+
         # Now, right multiply by the FRD quaternion [0, 1, 0, 0]
         w_frd, x_frd, y_frd, z_frd = frd_quaternion
-        
+
         # Perform right multiplication (yaw quaternion * FRD quaternion)
         w_final = w_yaw_new * w_frd - x_yaw_new * x_frd - y_yaw_new * y_frd - z_yaw_new * z_frd
         x_final = w_yaw_new * x_frd + x_yaw_new * w_frd + y_yaw_new * z_frd - z_yaw_new * y_frd
         y_final = w_yaw_new * y_frd - x_yaw_new * z_frd + y_yaw_new * w_frd + z_yaw_new * x_frd
         z_final = w_yaw_new * z_frd + x_yaw_new * y_frd - y_yaw_new * x_frd + z_yaw_new * w_frd
-        
+
         # Store the final result
         new_quaternions[i] = np.array([w_final, x_final, y_final, z_final])
-    
+
     return new_quaternions
 
 
@@ -196,16 +196,16 @@ def quaternion_to_ZXY_euler_batch(q):
 
     # Stack the Euler angles into a (N, 3) array
     euler_angles = np.column_stack((phi, theta, psi))
-    
+
     return euler_angles
 
 def normalize_angle_to_2pi(angles):
     """
     Normalize an angle to the range [0, 2π].
-    
+
     Parameters:
         angle (float): The input angle in radians.
-    
+
     Returns:
         float: The angle normalized to the range [0, 2π].
     """
@@ -216,11 +216,11 @@ def normalize_angle_to_2pi(angles):
 def extract_yaw_roll_from_yb(yb):
     """
     Extract yaw (psi) and roll (phi) from the input 3D numpy array.
-    
+
     Parameters:
         yb (numpy.ndarray): A 3D numpy array with dimensions (..., 3),
                             where each element along the last axis is a vector [yb_x, yb_y, yb_z].
-    
+
     Returns:
         numpy.ndarray: A 2D numpy array with two columns:
                        - The first column contains yaw (psi).
@@ -229,20 +229,20 @@ def extract_yaw_roll_from_yb(yb):
     # Ensure the input array has the correct shape (..., 3)
     if yb.shape[-1] != 3:
         raise ValueError("The last dimension of the input array must be 3.")
-    
+
     # Extract components of yb
     yb_x = yb[..., 0]
     yb_y = yb[..., 1]
     yb_z = yb[..., 2]
-    
+
     # Compute yaw (psi) and roll (phi)
     psi = np.arctan2(-yb_x, yb_y)  # yaw
     phi = np.arcsin(yb_z)          # roll
-    
+
     # Stack the results into a 2D array
     result = np.stack((psi, phi), axis=-1)
     # scaling to deg
-    result = result 
+    result = result
     return result
 
 
@@ -264,10 +264,10 @@ def read_topic_from_ulog_export_csv(topic_name:str):
 
     # Update the directory to the 'output_csv/' subdirectory
     directory = os.path.join(directory, 'output_csv/')
-    
+
     # Compile regex pattern to search for 'tracking_info' in filenames
     pattern = re.compile(fr'{topic_name}')
-    
+
     # Find the first CSV file that matches the pattern
     csv_file_name = None
     for file in os.listdir(directory):
@@ -278,7 +278,7 @@ def read_topic_from_ulog_export_csv(topic_name:str):
     # If no matching file is found, return None or raise an error
     if csv_file_name is None:
         raise FileNotFoundError("No tracking_info CSV file found in the specified directory.")
-    
+
     # Read and return the CSV file as a DataFrame
     return pd.read_csv(os.path.join(directory, csv_file_name), delimiter=',')
 
@@ -324,12 +324,12 @@ stride = 3
 ax2 = fig.add_subplot(gs[0, first_plot_end:first_plot_end+stride])  # Top row, last 2 columns
 ax2.set_title("Delta position")
 ax2.minorticks_on()
-# 
-# 
-# 
-# 
-# 
-# 
+#
+#
+#
+#
+#
+#
 # Subfigure 3: Another smaller subplot below Subfigure 2
 ax3 = fig.add_subplot(gs[1,  first_plot_end:first_plot_end+stride])  # Bottom row, last 2 columns
 ax3.set_title("Velocity")
@@ -415,7 +415,7 @@ max_roll = np.max(euler_angles[:,1])
 
 border_more = 0.5
 
-ax4.set_ylim(-np.pi-border_more, np.pi+border_more) 
+ax4.set_ylim(-np.pi-border_more, np.pi+border_more)
 ticks = [-np.pi,-np.pi/2,  0, np.pi/2, np.pi]
 # add ticks with max_pitch
 ticks.append(max_pitch)
@@ -455,7 +455,7 @@ df = df[df['timestamp'] < end_time_point]
 new_time = (df['timestamp'].values - df['timestamp'].values[0]) * 1e-6
 ang_vel = df[['xyz[0]', 'xyz[1]', 'xyz[2]']].values
 #ang_vel is rad/s to deg/s
-ang_vel = ang_vel 
+ang_vel = ang_vel
 # gc_acc_norm = np.linalg.norm(gc_acc, axis=1)
 ax5.plot(new_time, ang_vel[:,0], label='omg_x', color='red')
 ax5.plot(new_time, ang_vel[:,1], label='omg_y', color='blue')
@@ -469,7 +469,7 @@ df = df[df['timestamp'] < end_time_point]
 
 new_time = (df['timestamp'].values - df['timestamp'].values[0]) * 1e-6
 ang_vel_sp = df[['roll', 'pitch', 'yaw']].values
-ang_vel_sp = ang_vel_sp 
+ang_vel_sp = ang_vel_sp
 
 ax5.plot(new_time, ang_vel_sp[:,0], label='omg_x_sp', color='orange')
 ax5.plot(new_time, ang_vel_sp[:,1], label='omg_y_sp', color='purple')
@@ -479,8 +479,8 @@ ax5.grid(True)
 
 
 
-plt.savefig(f"{directory}/paper_plots/traj-view.pdf", format='pdf')  
+plt.savefig(f"{directory}/paper_plots/traj-view.pdf", format='pdf')
 
 plt.show()
 
-print(fig.get_size_inches()) 
+print(fig.get_size_inches())

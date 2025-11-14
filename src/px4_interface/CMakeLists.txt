@@ -18,7 +18,7 @@ ament_auto_add_executable(offboard_mode src/offboard_mode.cpp)
 ament_auto_add_library(helper src/helper.cpp)
 target_link_libraries(
   helper
-  Ceres::ceres 
+  Ceres::ceres
   Eigen3::Eigen
 )
 # ament_target_dependencies(
@@ -46,7 +46,7 @@ if(BUILD_TESTING)
   # set(ament_cmake_cpplint_FOUND TRUE)
   # ament_add_gtest(test_px4_interface test/test_px4_interface.cpp)
   # ament_target_dependencies(test_px4_interface rclcpp px4_msgs "interface" nav_msgs std_msgs Eigen3)
-  
+
 
   # ament_lint_auto_find_test_dependencies()
 endif()
@@ -58,7 +58,7 @@ install(TARGETS
 )
 
 install(DIRECTORY
-        launch 
+        launch
         DESTINATION share/${PROJECT_NAME}
 )
 

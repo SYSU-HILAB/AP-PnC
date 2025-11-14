@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 import toml
 import yaml
-import os 
+import os
 
 
 def sync_circled_property(toml_file_path, yaml_file_path):

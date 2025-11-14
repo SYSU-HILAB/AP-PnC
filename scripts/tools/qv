@@ -12,4 +12,4 @@ if [ -d "ulgs/output_csv" ]; then
     fi
 fi
 csv_trans
-csv_plots   
+csv_plots

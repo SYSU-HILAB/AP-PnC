@@ -389,7 +389,7 @@ void PX4Interface::vehicle_odometry_callback(
     {
         is_pos_orien_estimate = true;
         state_pub_timer_      = this->create_wall_timer(
-                 20ms, std::bind(&PX4Interface::publish_state, this));
+            20ms, std::bind(&PX4Interface::publish_state, this));
         this->trans_->setInitInertial(pos_dec, quat_dec);
     }
     everything_is_ok = is_pos_orien_estimate && is_takeoff_complete;

@@ -12,9 +12,10 @@
 #define AERODYNAMICS_TERMINATE_H
 
 // Include Files
-#include "rtwtypes.h"
 #include <cstddef>
 #include <cstdlib>
+
+#include "rtwtypes.h"
 
 // Function Declarations
 extern void Aerodynamics_terminate();

@@ -73,6 +73,3 @@ PIDS=$(pgrep -f "px4_interface")
 if [ -n "$PIDS" ]; then
   echo $PIDS | xargs kill
 fi
-
-
-

@@ -24,7 +24,7 @@ source $AP_PNC_DIR/.acados_venv/bin/activate
 if ! pip list | grep acados > /dev/null 2>&1; then
   pip install -e $ACADOS_SOURCE_DIR/interfaces/acados_template
   pip install numpy pandas
-else 
+else
   echo "Acados python interface is already installed"
 fi
 deactivate

@@ -23,7 +23,7 @@ RUN echo 'eval "$(direnv hook bash)"' >> /root/.bashrc && \
 COPY installations/install-acados.sh /ap-pnc/installations/install-acados.sh
 COPY ./mpc_framework/ /ap-pnc/mpc_framework/
 COPY ./scripts/tools/ /ap-pnc/scripts/tools/
-RUN direnv exec /ap-pnc ./installations/install-acados.sh 
+RUN direnv exec /ap-pnc ./installations/install-acados.sh
 
 COPY installations/custom_funcs.sh /tmp/custom_bash_functions.sh
 RUN echo "" >> /root/.bashrc && \
@@ -31,7 +31,6 @@ RUN echo "" >> /root/.bashrc && \
     rm /tmp/custom_bash_functions.sh
 
 COPY . /ap-pnc/
-RUN direnv exec /ap-pnc /ap-pnc/scripts/tools/cocp 
+RUN direnv exec /ap-pnc /ap-pnc/scripts/tools/cocp
 RUN source /opt/ros/humble/setup.bash && \
     direnv exec /ap-pnc     colcon build
-

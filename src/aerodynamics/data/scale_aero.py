@@ -16,11 +16,11 @@ plt.rcParams['axes.prop_cycle'] = (
 def plot_aero_coefficients(data_files):
     """Plot Cx and Cz vs alpha for multiple data files."""
     plt.figure(figsize=(12, 6))
-    
+
     # Create two subplots side by side
     ax1 = plt.subplot(121)  # For Cx
     ax2 = plt.subplot(122)  # For Cz
-    
+
     # Colors for different datasets
     data = read_aero_data(data_files['ZhangLyu'])
     cz_60_baseline = data[data['alpha_deg'] == 60]['cz'].values[0]
@@ -35,7 +35,7 @@ def plot_aero_coefficients(data_files):
         alpha = data['alpha_deg'].to_numpy()
         cx = data['cx'].to_numpy() * scale_factor
         cz = data['cz'].to_numpy() * scale_factor
-        
+
         # Plot Cx
         ax1.plot(alpha, cx, label=name)
         ax1.set_xlabel('Alpha (degrees)')
@@ -43,7 +43,7 @@ def plot_aero_coefficients(data_files):
         ax1.grid(True)
         ax1.legend()
         ax1.set_title('cx vs Alpha')
-        
+
         # Plot Cz
         ax2.plot(alpha, cz, label=name)
         ax2.set_xlabel('Alpha (degrees)')
@@ -51,7 +51,7 @@ def plot_aero_coefficients(data_files):
         ax2.grid(True)
         ax2.legend()
         ax2.set_title('cz vs Alpha')
-    
+
     plt.tight_layout()
     plt.show()
 
@@ -65,8 +65,8 @@ def main():
         'Phi': os.path.join(DIR, 'zPhiAero.csv'),
         'ZhangLyu': os.path.join(DIR, 'zZhangLyuAero.csv')
     }
-    
+
     plot_aero_coefficients(data_files)
 
 if __name__ == '__main__':
-    main() 
+    main()

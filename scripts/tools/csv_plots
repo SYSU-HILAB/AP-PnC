@@ -24,7 +24,7 @@ pattern = re.compile(r'tracking_info')
 directory = f'{directory}/ulgs/output_csv/'
 # List all files in the directory
 files = os.listdir(directory)
-# csv_file_name = args.f 
+# csv_file_name = args.f
 csv_file_name = None
 for file in files:
     if pattern.search(file) and file.endswith('.csv'):
@@ -34,8 +34,8 @@ for file in files:
 df = pd.read_csv(f'{directory}{csv_file_name}', delimiter=',')
 # Convert necessary columns to numpy arrays
 time = df['timestamp'].values
-ref_px = df['ref_position[0]'].values 
-ref_py = df['ref_position[1]'].values 
+ref_px = df['ref_position[0]'].values
+ref_py = df['ref_position[1]'].values
 px = df['actual_position[0]'].values
 py = df['actual_position[1]'].values
 ref_pz = df['ref_position[2]'].values
@@ -109,12 +109,12 @@ plt.tight_layout()
 plt.show()
 
 
-# as a function 
+# as a function
 pattern = re.compile(r'vehicle_angular_velocity')
 
 # List all files in the directory
 files = os.listdir(directory)
-# csv_file_name = args.f 
+# csv_file_name = args.f
 csv_file_name = None
 for file in files:
     if pattern.search(file) and file.endswith('.csv'):
@@ -125,7 +125,7 @@ cur_ang_df = pd.read_csv(f'{directory}{csv_file_name}', delimiter=',')
 pattern = re.compile(r'vehicle_rates_setpoint')
 # List all files in the directory
 files = os.listdir(directory)
-# csv_file_name = args.f 
+# csv_file_name = args.f
 csv_file_name = None
 for file in files:
     if pattern.search(file) and file.endswith('.csv'):
@@ -174,7 +174,7 @@ plt.show()
 
 
 
-# csv_file_name at 
+# csv_file_name at
 csv_file_name = None
 pattern = re.compile(r'vehicle_thrust_acc_setpoint')
 for file in files:

@@ -10,10 +10,10 @@ from dataclasses import dataclass
 class MPCConfig:
     qv_baseline: float = 0.0
     qv_yb: float = 1.8
-    
+
     cz_add: str = "F_aero_b_frd[2] =   - 1.0*(cz_state) * cs.dot(v,v)"
     cz_no: str = "F_aero_b_frd[2] =   0.0"
-    
+
     @property
     def config_path(self):
         return os.path.join(root_dir(), 'src', 'nmpc', 'config.py')
@@ -27,7 +27,7 @@ def root_dir():
 def qv_modify():
     config = MPCConfig()
     config_path = config.config_path
-    
+
     with fileinput.FileInput(config_path, inplace=True, backup='.bak') as file:
         for line in file:
             if "qv =" in line.strip():
@@ -35,11 +35,11 @@ def qv_modify():
             else:
                 print(line, end='')
     print("[CTRL-PROPOSED] yb: qv modified")
-    
+
 def cz_modify():
     config = MPCConfig()
     model_path = config.model_path
-    
+
     with fileinput.FileInput(model_path, inplace=True, backup='.bak') as file:
         skip_next = False
         for line in file:
@@ -55,6 +55,6 @@ def compile_acados():
     subprocess.run(['cocp'], check=True)
     print("[CTRL-PROPOSED] : acados compiled")
 if __name__ == "__main__":
-    qv_modify() 
-    cz_modify() 
+    qv_modify()
+    cz_modify()
     compile_acados()

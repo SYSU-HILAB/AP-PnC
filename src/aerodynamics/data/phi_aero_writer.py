@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 @dataclass
 class PhiAeroWriterConfig:
     """Configuration for phi aerodynamics data writing.
-    
+
     Attributes:
         ROOT_DIR: Environment variable name for root directory
         SUB_FOLDER: Subfolder path for aerodynamics data
@@ -24,7 +24,7 @@ class PhiAeroWriterConfig:
     DB_FILENAME: str = 'meta_params.db'
     PHI_AERO_TABLE_NAME: str = 'phi_aero_config'
     PHI_COEFS_DUMP_KEY: str = 'phi_coefs'
-    
+
     phi_coefs_values: NDArray = np.array([])
 
 
@@ -34,7 +34,7 @@ class PhiAeroError(Exception):
         self.message = message
         self.details = details
         super().__init__(self.full_message)
-    
+
     @property
     def full_message(self) -> str:
         error_msg = [f"Phi Aero Error: {self.message}"]
@@ -45,29 +45,29 @@ class PhiAeroError(Exception):
 
 def to_csv(data: NDArray) -> str:
     """Convert numpy array to CSV string format.
-    
+
     Args:
         data: Numpy array to convert
-        
+
     Returns:
         Comma-separated string of values
     """
     try:
         return ','.join(map(str, data.flatten('C')))
     except Exception as e:
-        raise PhiAeroError("Failed to convert array to CSV", 
+        raise PhiAeroError("Failed to convert array to CSV",
                           f"Error: {str(e)}\nArray shape: {data.shape}")
 
 
 def get_root_path(config: PhiAeroWriterConfig) -> Path:
     """Get the root path from environment variable.
-    
+
     Args:
         config: Configuration object containing ROOT_DIR
-        
+
     Returns:
         Path object for root directory
-        
+
     Raises:
         PhiAeroError: If environment variable is not set
     """
@@ -78,16 +78,16 @@ def get_root_path(config: PhiAeroWriterConfig) -> Path:
                 f"Environment variable {config.ROOT_DIR} is not set",
                 "Please set the environment variable before running the script"
             )
-        
+
         root_path = Path(root_dir)
         if not root_path.exists():
             raise PhiAeroError(
                 f"Directory {root_path} does not exist",
                 "Please check if the path exists and you have correct permissions"
             )
-            
+
         return root_path
-        
+
     except Exception as e:
         if isinstance(e, PhiAeroError):
             raise
@@ -96,13 +96,13 @@ def get_root_path(config: PhiAeroWriterConfig) -> Path:
 
 def validate_phi_coefficients(phi_coefs: NDArray) -> Tuple[int, int]:
     """Validate phi coefficients array.
-    
+
     Args:
         phi_coefs: Array of phi coefficients
-        
+
     Returns:
         Tuple of (rows, cols) dimensions
-        
+
     Raises:
         PhiAeroError: If coefficients are invalid
     """
@@ -112,15 +112,15 @@ def validate_phi_coefficients(phi_coefs: NDArray) -> Tuple[int, int]:
                 "Phi coefficients array is empty",
                 "Please ensure coefficients are properly initialized"
             )
-            
+
         if len(phi_coefs.shape) != 2:
             raise PhiAeroError(
                 "Phi coefficients must be a 2D array",
                 f"Current array shape: {phi_coefs.shape}"
             )
-            
+
         return phi_coefs.shape
-        
+
     except Exception as e:
         if isinstance(e, PhiAeroError):
             raise
@@ -129,24 +129,24 @@ def validate_phi_coefficients(phi_coefs: NDArray) -> Tuple[int, int]:
 
 def update_database_for_phi(config: PhiAeroWriterConfig) -> None:
     """Create or update database with phi configuration.
-    
+
     Args:
         config: Configuration object containing data to store
-        
+
     Raises:
         PhiAeroError: If database operations fail
     """
     try:
         root_path = get_root_path(config)
         db_path = root_path / config.DB_FILENAME
-        
+
         # Validate coefficients before database operations
         rows, cols = validate_phi_coefficients(config.phi_coefs_values)
         phi_coefs_csv = to_csv(config.phi_coefs_values)
 
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
-            
+
             # Drop and recreate table
             cursor.execute(f'DROP TABLE IF EXISTS {config.PHI_AERO_TABLE_NAME}')
             cursor.execute(f'''
@@ -157,16 +157,16 @@ def update_database_for_phi(config: PhiAeroWriterConfig) -> None:
                     cols INTEGER
                 )
             ''')
-            
+
             # Insert data
             cursor.execute(f'''
-                INSERT INTO {config.PHI_AERO_TABLE_NAME} 
+                INSERT INTO {config.PHI_AERO_TABLE_NAME}
                 ({config.PHI_COEFS_DUMP_KEY}, rows, cols)
                 VALUES (?, ?, ?)
             ''', (phi_coefs_csv, rows, cols))
-            
+
         print(f"[Phi Aero Writer] Database updated successfully at {db_path}")
-        
+
     except sqlite3.Error as e:
         raise PhiAeroError(
             "Database operation failed",
@@ -184,7 +184,7 @@ def update_database_for_phi(config: PhiAeroWriterConfig) -> None:
 # Initialize the coefficients with default values
 phi_coefs_values = np.array([
     [-0.1, 0, 0],
-    [0, 0, 0], 
+    [0, 0, 0],
     [0, 0, -1.0]
 ]) * 0.19049796483935222 * 1.5123623345126984
 

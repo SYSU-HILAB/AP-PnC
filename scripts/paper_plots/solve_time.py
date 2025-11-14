@@ -2,14 +2,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os 
+import os
 
 from scipy import stats
 
 def analyze_solve_times(csv_file, column_name='solve_time_ms'):
     """
     Analyze solve times from a CSV file by calculating RMSE, MAX, and plotting distribution.
-    
+
     Parameters:
     - csv_file: Path to the CSV file containing solve times
     - column_name: Name of the column containing solve times (default: 'solve_time_ms')
@@ -21,40 +21,40 @@ def analyze_solve_times(csv_file, column_name='solve_time_ms'):
     except Exception as e:
         print(f"Error reading CSV file: {e}")
         return
-    
+
     # Calculate statistics
     rmse = np.sqrt(np.mean(np.square(solve_times)))
     max_time = np.max(solve_times)
     mean_time = np.mean(solve_times)
     median_time = np.median(solve_times)
-    
+
     print(f"Number of samples: {len(solve_times)}")
     print(f"Mean solve time: {mean_time:.4f} ms")
     print(f"Median solve time: {median_time:.4f} ms")
     print(f"MAX solve time: {max_time:.4f} ms")
     print(f"RMSE of solve times: {rmse:.4f} ms")
-    
+
     # Plot distribution
     plt.figure(figsize=(12, 6))
-    
+
     # Histogram with KDE
     plt.subplot(1, 2, 1)
-    
+
     solve_times_array = np.array(solve_times, dtype=np.float64).ravel()
     # sns.histplot(solve_times_array, kde=True, bins=50)
     # plt.title('Distribution of Solve Times')
     # plt.xlabel('Solve Time (ms)')
     # plt.ylabel('Frequency')
-    
+
     # Boxplot
     plt.subplot(1, 2, 2)
     sns.boxplot(x=solve_times_array)
     plt.title('Boxplot of Solve Times')
     plt.xlabel('Solve Time (ms)')
-    
+
     plt.tight_layout()
     plt.show()
-    
+
     # Print percentile information
     percentiles = np.percentile(solve_times_array, [25, 50, 75, 90, 95, 99])
     print("\nPercentiles:")

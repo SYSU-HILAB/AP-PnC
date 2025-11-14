@@ -12,6 +12,7 @@
 //       MATLAB for code generation function to initialize non-finite, NaN
 // Include Files
 #include "rtGetNaN.h"
+
 #include "rt_nonfinite.h"
 
 // Function: rtGetNaN
@@ -21,7 +22,7 @@
 //  NaN is initialized as non-signaling. Assumes IEEE.
 real_T rtGetNaN(void)
 {
-  return rtNaN;
+    return rtNaN;
 }
 
 // Function: rtGetNaNF
@@ -31,7 +32,7 @@ real_T rtGetNaN(void)
 //  NaN is initialized as non-signaling. Assumes IEEE
 real32_T rtGetNaNF(void)
 {
-  return rtNaNF;
+    return rtNaNF;
 }
 
 //

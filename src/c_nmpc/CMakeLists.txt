@@ -55,7 +55,7 @@ if(BUILD_TESTING)
 endif()
 
 install(DIRECTORY
-        launch 
+        launch
         DESTINATION share/${PROJECT_NAME}
 )
 # install(DIRECTORY

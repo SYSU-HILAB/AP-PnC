@@ -28,8 +28,8 @@ def generate_launch_description():
     return launch.LaunchDescription([
         frame_arg,
         launch_ros.actions.Node(
-            package=f'{px4_interface}', 
-            executable='px4_interface', 
+            package=f'{px4_interface}',
+            executable='px4_interface',
             name='px4_interface',
             parameters=[
                 {
@@ -41,5 +41,5 @@ def generate_launch_description():
             ]
             # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
         ),
-        
+
         ])

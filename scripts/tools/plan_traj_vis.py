@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import pandas as pd
 import numpy as np
@@ -14,8 +15,8 @@ print("Available columns:", df.columns.tolist())
 
 # Alternatively, for newer versions of pandas (1.3.0+), you can use:
 # df = pd.read_csv(csv_file_path, on_bad_lines='skip')
-columns_to_convert = ['time', 'pos_x', 'pos_y', 'pos_z', 'vel_x', 'vel_y', 'vel_z', 
-                     'thrust', 'alpha', 'aero_force_z', "av_x", "av_y", "av_z", 
+columns_to_convert = ['time', 'pos_x', 'pos_y', 'pos_z', 'vel_x', 'vel_y', 'vel_z',
+                     'thrust', 'alpha', 'aero_force_z', "av_x", "av_y", "av_z",
                      "av_x_S", "av_z_S", "B_Omega_b_y", "alpha_dot", "B_aeroForce_z"]
 
 # Apply pd.to_numeric to each column in the list
@@ -106,7 +107,7 @@ if 'B_Omega_b_y' in df.columns and 'alpha_dot' in df.columns:
     ax2.tick_params(axis='y', labelcolor='r')
 
     # Add legend
-    lines1, labels1 = ax.get_legend_handles_labels() 
+    lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
 
@@ -136,9 +137,9 @@ if 'aero_force_z' in df.columns and 'B_aeroForce_z' in df.columns:
     plt.show()
 else:
     print("Warning: aero_force_z and/or B_aeroForce_z columns not found in CSV file")
-    
-    
-    
+
+
+
 # Fourth plot: Compare aero_force_z and B_aeroForce_z
 if 'av_x_S' in df.columns and 'av_z_S' in df.columns:
     fig, ax = plt.subplots(figsize=(10, 6))

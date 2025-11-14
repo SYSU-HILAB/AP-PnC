@@ -1,7 +1,7 @@
 #!/bin/bash
 planConfigSync
 
-# compatible to 6800U and N100 
+# compatible to 6800U and N100
 # 6800U is 16threads, N100 is 4 threads
 
 cores=$(nproc --all)

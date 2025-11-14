@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 @dataclass
 class BSplineAeroWriterConfig:
     """Configuration for B-spline aerodynamics data writing.
-    
+
     Attributes:
         ROOT_DIR: Environment variable name for root directory
         SUB_FOLDER: Subfolder path for aerodynamics data
@@ -36,7 +36,7 @@ class BSplineAeroWriterConfig:
     CZ_KNOTS_DUMP_KEY: str = 'cz_knots'
     CX_COEFS_DUMP_KEY: str = 'cx_coefs'
     CZ_COEFS_DUMP_KEY: str = 'cz_coefs'
-    
+
     SCALE_FACTOR_DUMP_KEY: str = 'scale_factor'
     SCALE_FACTOR_VALUE: float = 0.5 * 1.184 * 0.24 / 2.0 * 3 * 0.5483863461851688 * 1.177888074834827
 
@@ -47,10 +47,10 @@ class BSplineAeroWriterConfig:
 
 def to_csv(data_list: NDArray) -> str:
     """Convert numpy array to CSV string format.
-    
+
     Args:
         data_list: Numpy array to convert
-        
+
     Returns:
         Comma-separated string of values
     """
@@ -62,13 +62,13 @@ class BSplineFitError(Exception):
 
 def get_root_path(config: BSplineAeroWriterConfig) -> Path:
     """Get the root path from environment variable.
-    
+
     Args:
         config: Configuration object containing ROOT_DIR
-        
+
     Returns:
         Path object for root directory
-        
+
     Raises:
         BSplineFitError: If environment variable is not set
     """
@@ -79,26 +79,26 @@ def get_root_path(config: BSplineAeroWriterConfig) -> Path:
 
 def read_bspline_fit_results(config: BSplineAeroWriterConfig) -> None:
     """Read B-spline fit results and populate config object.
-    
+
     Args:
         config: Configuration object to populate with fit results
-        
+
     Raises:
         BSplineFitError: If files are missing or have invalid format
     """
     try:
         root_path = get_root_path(config)
         sub_folder = root_path / config.SUB_FOLDER
-        
+
         cx_path = sub_folder / config.CX_BSPLINE_FIT_RESULTS_PATH
         cz_path = sub_folder / config.CZ_BSPLINE_FIT_RESULTS_PATH
-        
+
         if not cx_path.exists() or not cz_path.exists():
             raise BSplineFitError(f"Missing fit results files at {cx_path} or {cz_path}")
-            
+
         cx_data = np.load(cx_path)
         cz_data = np.load(cz_path)
-        
+
         # Validate data keys
         for data, keys, prefix in [
             (cx_data, [config.CX_KNOTS_DUMP_KEY, config.CX_COEFS_DUMP_KEY], 'CX'),
@@ -106,22 +106,22 @@ def read_bspline_fit_results(config: BSplineAeroWriterConfig) -> None:
         ]:
             if not all(key in data.files for key in keys):
                 raise BSplineFitError(f"Missing expected keys in {prefix} fit results")
-        
+
         # Load data into config
         config.cx_coefs_values = cx_data[config.CX_COEFS_DUMP_KEY]
         config.cz_coefs_values = cz_data[config.CZ_COEFS_DUMP_KEY]
         config.cx_knots_values = cx_data[config.CX_KNOTS_DUMP_KEY]
         config.cz_knots_values = cz_data[config.CZ_KNOTS_DUMP_KEY]
-        
+
     except Exception as e:
         raise BSplineFitError(f"Error reading fit results: {str(e)}")
 
 def check_bspline_fit_exists(config: BSplineAeroWriterConfig) -> bool:
     """Check if both CX and CZ B-spline fit files exist.
-    
+
     Args:
         config: Configuration object with file paths
-        
+
     Returns:
         True if both files exist, False otherwise
     """
@@ -136,10 +136,10 @@ def check_bspline_fit_exists(config: BSplineAeroWriterConfig) -> bool:
 
 def update_database_for_bspline(config: BSplineAeroWriterConfig) -> None:
     """Create or update database with B-spline configuration.
-    
+
     Args:
         config: Configuration object containing data to store
-        
+
     Raises:
         BSplineFitError: If database operations fail
     """
@@ -149,7 +149,7 @@ def update_database_for_bspline(config: BSplineAeroWriterConfig) -> None:
 
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
-            
+
             # Drop and recreate table
             cursor.execute(f'DROP TABLE IF EXISTS {config.BSPLINE_AERO_TABLE_NAME}')
             cursor.execute(f'''
@@ -162,12 +162,12 @@ def update_database_for_bspline(config: BSplineAeroWriterConfig) -> None:
                     {config.SCALE_FACTOR_DUMP_KEY} REAL
                 )
             ''')
-            
+
             # Insert data
             cursor.execute(f'''
-                INSERT INTO {config.BSPLINE_AERO_TABLE_NAME} 
-                (id, {config.CX_COEFS_DUMP_KEY}, {config.CX_KNOTS_DUMP_KEY}, 
-                {config.CZ_COEFS_DUMP_KEY}, {config.CZ_KNOTS_DUMP_KEY}, 
+                INSERT INTO {config.BSPLINE_AERO_TABLE_NAME}
+                (id, {config.CX_COEFS_DUMP_KEY}, {config.CX_KNOTS_DUMP_KEY},
+                {config.CZ_COEFS_DUMP_KEY}, {config.CZ_KNOTS_DUMP_KEY},
                 {config.SCALE_FACTOR_DUMP_KEY})
                 VALUES (1, ?, ?, ?, ?, ?)
             ''', (
@@ -177,9 +177,9 @@ def update_database_for_bspline(config: BSplineAeroWriterConfig) -> None:
                 to_csv(config.cz_knots_values),
                 config.SCALE_FACTOR_VALUE
             ))
-            
+
         print(f"[B-spline Aero Writer] Database updated successfully at {db_path}")
-        
+
     except Exception as e:
         raise BSplineFitError(f"Database update failed: {str(e)}")
 
@@ -195,5 +195,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
+
     # Read and display the bspline fit results

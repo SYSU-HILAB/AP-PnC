@@ -3,7 +3,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR"
 
-PX4_DIR=$PWD 
+PX4_DIR=$PWD
 echo "Working directory set to: $PX4_DIR"
 
 NUM_CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)

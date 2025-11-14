@@ -47,7 +47,7 @@ namespace aerodynamics
         };
 
         // Function to load parameters from config reader
-        bool loadAeroParams(AeroParams& params)
+        bool loadAeroParams(AeroParams &params)
         {
             sq_config_reader::AdvancedLiftDragConfigReader reader;
             if (!reader.access_and_fetch_data())
@@ -73,9 +73,9 @@ namespace aerodynamics
         AeroParams aero_params{};
 
         bool getAeroWrenchCoefsInStabilizationFrame(
-            const double& alpha, const double& beta,
-            Eigen::Vector3d& aero_force_coefs,
-            Eigen::Vector3d& aero_moment_coefs)
+            const double &alpha, const double &beta,
+            Eigen::Vector3d &aero_force_coefs,
+            Eigen::Vector3d &aero_moment_coefs)
         {
             // Calculate sigmoid blending function for pre/post stall
             double sigma = (1 +
@@ -140,10 +140,10 @@ namespace aerodynamics
        public:
         AdvancedLiftDragDataPrivate() = default;
 
-        bool getAeroWrench(const Eigen::Vector3d& body_speed,
-                           Eigen::Vector3d&       aero_force_b,
-                           Eigen::Vector3d& aero_moment_b, double& alpha,
-                           double& beta)
+        bool getAeroWrench(const Eigen::Vector3d &body_speed,
+                           Eigen::Vector3d       &aero_force_b,
+                           Eigen::Vector3d &aero_moment_b, double &alpha,
+                           double &beta)
         {
             // Calculate airspeed magnitude
             const double vNorm = body_speed.norm();
@@ -203,17 +203,17 @@ namespace aerodynamics
     AdvancedLiftDrag::~AdvancedLiftDrag() = default;
 
     // Move constructor implementation
-    AdvancedLiftDrag::AdvancedLiftDrag(AdvancedLiftDrag&&) noexcept = default;
+    AdvancedLiftDrag::AdvancedLiftDrag(AdvancedLiftDrag &&) noexcept = default;
 
     // Move assignment implementation
-    AdvancedLiftDrag& AdvancedLiftDrag::operator=(AdvancedLiftDrag&&) noexcept =
-        default;
+    AdvancedLiftDrag &AdvancedLiftDrag::operator=(
+        AdvancedLiftDrag &&) noexcept = default;
 
     // Forward the getAeroWrench call to implementation
-    bool AdvancedLiftDrag::getAeroWrench(const Eigen::Vector3d& body_speed,
-                                         Eigen::Vector3d&       aero_force_b,
-                                         Eigen::Vector3d&       aero_moment_b,
-                                         double& alpha, double& beta)
+    bool AdvancedLiftDrag::getAeroWrench(const Eigen::Vector3d &body_speed,
+                                         Eigen::Vector3d       &aero_force_b,
+                                         Eigen::Vector3d       &aero_moment_b,
+                                         double &alpha, double &beta)
     {
         return pimpl_->getAeroWrench(body_speed, aero_force_b, aero_moment_b,
                                      alpha, beta);

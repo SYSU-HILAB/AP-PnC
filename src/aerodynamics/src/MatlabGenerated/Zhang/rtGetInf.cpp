@@ -13,6 +13,7 @@
 //       MinusInf
 // Include Files
 #include "rtGetInf.h"
+
 #include "rt_nonfinite.h"
 
 // Function: rtGetInf
@@ -21,7 +22,7 @@
 //  Initialize rtInf needed by the generated code.
 real_T rtGetInf(void)
 {
-  return rtInf;
+    return rtInf;
 }
 
 // Function: rtGetInfF
@@ -30,7 +31,7 @@ real_T rtGetInf(void)
 //  Initialize rtInfF needed by the generated code.
 real32_T rtGetInfF(void)
 {
-  return rtInfF;
+    return rtInfF;
 }
 
 // Function: rtGetMinusInf
@@ -39,7 +40,7 @@ real32_T rtGetInfF(void)
 //  Initialize rtMinusInf needed by the generated code.
 real_T rtGetMinusInf(void)
 {
-  return rtMinusInf;
+    return rtMinusInf;
 }
 
 // Function: rtGetMinusInfF
@@ -48,7 +49,7 @@ real_T rtGetMinusInf(void)
 //  Initialize rtMinusInfF needed by the generated code.
 real32_T rtGetMinusInfF(void)
 {
-  return rtMinusInfF;
+    return rtMinusInfF;
 }
 
 //

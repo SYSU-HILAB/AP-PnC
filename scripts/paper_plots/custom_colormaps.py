@@ -29,24 +29,24 @@ def demonstrate_colormaps():
     # Create data for demonstration
     data = np.linspace(0, 1, 256).reshape(1, -1)
     data = np.vstack((data, data))
-    
+
     # Create and register all colormaps
     cmaps = [
         create_custom_blues_1(),
         create_custom_blues_2()
     ]
-    
+
     # Plot all colormaps
     fig, axes = plt.subplots(len(cmaps), 1, figsize=(8, 4))
     fig.suptitle('Custom Blues Colormap Variants')
-    
+
     for ax, cmap in zip(axes, cmaps):
         im = ax.imshow(data, aspect='auto', cmap=cmap)
         plt.colorbar(im, ax=ax, orientation='horizontal')
         ax.set_title(cmap.name)
         ax.set_xticks([])
         ax.set_yticks([])
-    
+
     plt.tight_layout()
     plt.show()
 
@@ -65,4 +65,4 @@ create_custom_blues_1()
 plt.imshow(data, cmap='CustomBlues1')
 # or
 plt.imshow(data, cmap=plt.cm.get_cmap('CustomBlues1'))
-""" 
+"""
