@@ -1,31 +1,6 @@
 # Installations
-## QGC
-Enable serial withou sudo
-```bash
-sudo usermod -aG dialout "$(id -un)"
-```
-QGC deps
-```bash
-sudo apt install gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl -y
-sudo apt install libfuse2 -y
-sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
-```
-Optional
-```bash
-sudo apt update
-sudo apt install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-shm0 libxcb-keysyms1 libxcb-randr0 libxcb-shape0 libxcb-sync1 libxcb-util1 libxcb-xfixes0
-sudo apt update
-sudo apt install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-shm0 libxcb-keysyms1 libxcb-randr0 libxcb-shape0 libxcb-sync1 libxcb-util1 libxcb-xfixes0
-```
-
-```bash
-curl -L -O https://github.com/mavlink/qgroundcontrol/releases/download/v4.4.4/QGroundControl.AppImage
-chmod +x QGroundControl-x86_64.AppImage
-mv QGroundControl-x86_64.AppImage QGC
-```
-
-
 ## External Libraries
+All these are installed by git submodule things.
 - [BSplinebasis](https://github.com/SYSU-HILAB/BSplinebasis)  *Remove test module*
 - [tomlplusplus](https://github.com/skystrife/tomlplusplus)
 - [yamlcpp](https://github.com/jbeder/yaml-cpp)
@@ -34,112 +9,58 @@ mv QGroundControl-x86_64.AppImage QGC
 - [CSVWriter] (https://github.com/al-eax/CSVWriter/blob/master/include/CSVWriter.h)
 1. **Disable the magnetometer**: Set the EKF2_MAG_TYPE parameter to "None" to completely disable the magnetometer and prevent it from influencing the EKF2's calculations.
 ## Preliminary
-### Clone
 ```shell
-git clone git@github.com:SYSU-HILAB/minco-ros2.git --recursive
-```
-### Environment Variables
-Define the environment variable TAILSITTER_PLANING_DIR to point to the root directory of the cloned repository. For example:
-```shell
-export AP_PNC_DIR=$PWD
+git clone https://github.com/WarriorHanamy/AP-PnC.git --recursive
 ```
 
-### Install ros2
-```shell
-source $AP_PNC_DIR/install-ros.sh
+## Build and Run Commands
+
+The project uses Docker containers managed through Just commands. Make sure you have [Just](https://github.com/casey/just) installed.
+
+#### Main AP-PnC Container
+```bash
+# Build the main AP-PnC container
+just build
+
+# Run the AP-PnC container (with GUI support)
+just run
 ```
 
-## Build & Install dependencies
+#### PX4 Simulator Container
+```bash
+# Build the PX4 simulator container
+just build-px4
 
-### Installing Miniconda
-```shell
-bash Miniconda3-latest-Linux-x86_64.sh
-```
-**WARNING**: not automatically activate conda
-
-
-### Linking Colcon Configuration
-Create a .colcon directory in your home directory and link the default configuration file:
-```shell
-mkdir $HOME/.colcon
-ln -s $AP_PNC_DIR/colcon_default.yaml $HOME/.colcon/default.yaml
+# Run the PX4 simulator container
+just run-px4
 ```
 
-### Installing Additional Dependencies
-Install Acados, PX4, and other dependencies using the provided script:
-```shell
-source $AP_PNC_DIR/install-others.sh
+#### QGroundControl Container
+```bash
+# Build the QGroundControl container
+just build-qgc
+
+# Run QGroundControl
+just run-qgc
 ```
 
-## Building the System:
-### pre-Build
-Set colcon default build behavior for you $USER
-For example, copy the following content to your $USER/.colcon/defaults.yaml
-```yaml
-build:
-  # Set the build type for all packages (can be Debug, Release, RelWithDebInfo, MinSizeRel)
-  build-base: build
-  install-base: install
-  log-base: log
-  test-result-base: test_results
-  cmake-args:
-    - -DCMAKE_BUILD_TYPE=Release  # Set the build type to Release
-    - -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-  symlink-install: true            # Create symlinks to the install space instead of copying files
+#### Manual Docker Commands
+If you prefer to use Docker directly:
 
-# Specify parallelism (adjust based on your hardware capabilities)
-parallel:
-  jobs: 4  # Number of parallel jobs during the build (e.g., -j4)
+```bash
+# Build AP-PnC container
+docker build -f docker/ap-pnc.dockerfile --network=host -t ap-pnc:latest .
 
-test:
-  # Specify where to put test results
-  result-base: test_results
-
-```
-
-### Building Acados and MPC
-When building for the first time or making changes to the nmpc (Python) code, you need to build the Acados code. Run the following script:
-```shell
-cocp
-```
-
-### Building All Packages
-Build all packages in the workspace:
-```shell
-colcon build
-```
-
-
-### Building Specific Packages
-Build a specific package:
-```shell
-colcon build --packages-select [pkg]
-```
-For example, to build the tailsitter_df package:
-```shell
-colcon build --packages-select tailsitter_df
-```
-
-
-
-
-##  Running the Simulation:
-
-### gazebo simulation
-Starting Gazebo: Start the Gazebo simulation:
-```shell
-runpx4 1
-```
-Running other codes: Once the Gazebo GUI is visible, run the experiments
-### Experiments
-```shell
-srunall
-```
-
-### Triggering Trajectory Mode
-To enable trajectory mode, run the following command
-```shell
-trigger
+# Run AP-PnC container
+docker run -it --rm \
+    --privileged --net=host \
+    -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
+    -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
+    -v $HOME/.Xauthority:/root/.Xauthority \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v $(pwd)/src/tailsitter_df:/ap-pnc/src/tailsitter_df \
+    --name ap-pnc \
+    ap-pnc bash
 ```
 
 ## Knowledge
