@@ -6,5 +6,3 @@ uint8 THR_START_INDEX=12
 uint8 POINT_DIM=16
 #p,v,r,yb,u
 float64[16] point
-
-float64  cz_prediction

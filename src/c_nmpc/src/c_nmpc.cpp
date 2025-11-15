@@ -28,95 +28,10 @@ int status;  // acados operation state
 #include <vector>
 using namespace Eigen;
 
-class ButterworthLPF
-{
-   public:
-    // Constructor: sets sampling frequency (Hz) and cutoff frequency (Hz)
-    ButterworthLPF(double sampleRate, double cutoffFreq);
-
-    // Process a single sample
-    double process(double input);
-
-    // Update filter parameters (sampleRate in Hz, cutoffFreq in Hz)
-    void updateParameters(double sampleRate, double cutoffFreq);
-
-   private:
-    void computeCoefficients();
-
-    // Filter coefficients
-    double b0, b1, b2;  // Numerator coefficients
-    double a1, a2;      // Denominator coefficients
-
-    // Previous input and output states (for filtering)
-    double x1 = 0.0, x2 = 0.0;  // Past inputs (x[n-1], x[n-2])
-    double y1 = 0.0, y2 = 0.0;  // Past outputs (y[n-1], y[n-2])
-
-    // Filter parameters
-    double sampleRate;
-    double cutoffFreq;
-};
-
-ButterworthLPF::ButterworthLPF(double sampleRate, double cutoffFreq)
-    : sampleRate(sampleRate), cutoffFreq(cutoffFreq)
-{
-    computeCoefficients();
-}
-
-void ButterworthLPF::computeCoefficients()
-{
-    // Compute angular frequency (normalized to Nyquist)
-    double omega    = 2.0 * M_PI * cutoffFreq / sampleRate;
-    double tanOmega = tan(omega / 2.0);
-
-    // Compute intermediate values
-    double sqrt2 = sqrt(2.0);
-    double alpha = sin(omega) / (2.0 * sqrt2);  // Damping factor
-
-    // Compute coefficients (bilinear transform)
-    double a0 = 1.0 + alpha;
-
-    b0 = (1.0 - cos(omega)) / (2.0 * a0);
-    b1 = (1.0 - cos(omega)) / a0;
-    b2 = b0;
-
-    a1 = -2.0 * cos(omega) / a0;
-    a2 = (1.0 - alpha) / a0;
-}
-
-double ButterworthLPF::process(double input)
-{
-    // Apply the filter: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] -
-    // a2*y[n-2]
-    double output = b0 * input + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
-
-    // Update state variables
-    x2 = x1;
-    x1 = input;
-    y2 = y1;
-    y1 = output;
-
-    return output;
-}
-
-void ButterworthLPF::updateParameters(double newSampleRate,
-                                      double newCutoffFreq)
-{
-    if (newSampleRate <= 0.0 || newCutoffFreq <= 0.0 ||
-        newCutoffFreq >= newSampleRate / 2.0)
-    {
-        return;  // Invalid parameters (cutoff must be < Nyquist)
-    }
-
-    sampleRate = newSampleRate;
-    cutoffFreq = newCutoffFreq;
-    computeCoefficients();
-
-    // Reset filter state (optional)
-    x1 = x2 = y1 = y2 = 0.0;
-}
 // Template function to bind a member function to a std::function
 template <typename T1, class T2>
-std::function<void(const T1&)> bindHandler(void (T2::*func)(const T1&), T2* obj)
+std::function<void(const T1 &)> bindHandler(void (T2::*func)(const T1 &),
+                                            T2 *obj)
 {
     return std::bind(func, obj, std::placeholders::_1);
 }
@@ -141,13 +56,13 @@ class AcadosInterface
     };
 
    private:
-    std::function<int(int, void*)>   set_reference_stage;
-    std::function<int(int, double*)> set_model_parameter;
-    std::function<int(void*)>        set_current_state_lbx;
-    std::function<int(void*)>        set_current_state_ubx;
-    std::function<void(void*)>       get_nlp_out_u;
-    std::function<void(void*)>       get_nlp_out_x_next;
-    tailsitter_flu_solver_capsule*   acados_ocp_capsule =
+    std::function<int(int, void *)>   set_reference_stage;
+    std::function<int(int, double *)> set_model_parameter;
+    std::function<int(void *)>        set_current_state_lbx;
+    std::function<int(void *)>        set_current_state_ubx;
+    std::function<void(void *)>       get_nlp_out_u;
+    std::function<void(void *)>       get_nlp_out_x_next;
+    tailsitter_flu_solver_capsule    *acados_ocp_capsule =
         tailsitter_flu_acados_create_capsule();
 
     AcadosInterface()
@@ -167,18 +82,18 @@ class AcadosInterface
         }
 
         // some important structure of ocp
-        ocp_nlp_config* nlp_config =
+        ocp_nlp_config *nlp_config =
             tailsitter_flu_acados_get_nlp_config(acados_ocp_capsule);
-        ocp_nlp_dims* nlp_dims =
+        ocp_nlp_dims *nlp_dims =
             tailsitter_flu_acados_get_nlp_dims(acados_ocp_capsule);
         // update N, nx, nu
         N  = nlp_dims->N;
         nx = nlp_dims->nx[0];
         nu = nlp_dims->nu[0];
 
-        ocp_nlp_in* nlp_in =
+        ocp_nlp_in *nlp_in =
             tailsitter_flu_acados_get_nlp_in(acados_ocp_capsule);
-        ocp_nlp_out* nlp_out =
+        ocp_nlp_out *nlp_out =
             tailsitter_flu_acados_get_nlp_out(acados_ocp_capsule);
 
         set_current_state_lbx =
@@ -205,13 +120,13 @@ class AcadosInterface
     int                     N;
     int                     nx;
     int                     nu;
-    static AcadosInterface& getInstance()
+    static AcadosInterface &getInstance()
     {
         static AcadosInterface instance;
         return instance;
     }
 
-    void setReference(double* y_ref, double* p, int i)
+    void setReference(double *y_ref, double *p, int i)
     {
         assert(i <= N);
         // the user should take care of y_ref is 16D
@@ -220,21 +135,21 @@ class AcadosInterface
             set_model_parameter(i, p);
     }
 
-    void setReference(double* y_ref, int i)
+    void setReference(double *y_ref, int i)
     {
         assert(i == N);
         // the user should take care of y_ref is 12D
         set_reference_stage(i, y_ref);
     }
 
-    void setState(double* x_current)
+    void setState(double *x_current)
     {
         set_current_state_lbx(x_current);
         set_current_state_ubx(x_current);
     }
 
     // solve result is u_sol & x_next
-    int solve(void* u_sol, void* x_next)
+    int solve(void *u_sol, void *x_next)
     {
         status = tailsitter_flu_acados_solve(acados_ocp_capsule);
         get_nlp_out_u(u_sol);
@@ -243,14 +158,12 @@ class AcadosInterface
     }
 };
 
-ButterworthLPF lpf(100.0, 1.0);
-
 class NmpcCallbacks
 {
    public:
-    virtual void stateCallback(const StateMsg& msg)            = 0;
-    virtual void referenceCallback(const ReferenceBullet& msg) = 0;
-    virtual void accCallback(const AccelerationMsg& msg)       = 0;
+    virtual void stateCallback(const StateMsg &msg)            = 0;
+    virtual void referenceCallback(const ReferenceBullet &msg) = 0;
+    virtual void accCallback(const AccelerationMsg &msg)       = 0;
     virtual void initSubsPubs()                                = 0;
 
    public:
@@ -274,9 +187,9 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     // std::array<double, 4> u_sol_;
     // std::array<double, 16> y_ref_;
     void   initSubsPubs() override;
-    void   stateCallback(const StateMsg& msg) override;
-    void   referenceCallback(const ReferenceBullet& msg) override;
-    void   accCallback(const AccelerationMsg& msg) override;
+    void   stateCallback(const StateMsg &msg) override;
+    void   referenceCallback(const ReferenceBullet &msg) override;
+    void   accCallback(const AccelerationMsg &msg) override;
     double mass_;
     double cz_rate_;
 
@@ -290,7 +203,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     std::vector<double>                        time_statistic;
     std::chrono::_V2::system_clock::time_point t_start_;
     std::chrono::_V2::system_clock::time_point t_end_;
-    AcadosInterface& acados = AcadosInterface::getInstance();
+    AcadosInterface &acados = AcadosInterface::getInstance();
 
     double               cur_vel_norm;
     constexpr static int controls_size    = 4;
@@ -308,8 +221,6 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
     // p,v,r,q
     // augment the state with the controls
     std::array<double, state_size + controls_size> x_next;
-    // store reference msg
-    double cz_predict_;
     // double cz_filtered_ = 0.0;
     double cz_filtered_;
 };
@@ -409,7 +320,7 @@ void NMPC::solve()
     ctrl_pub_->publish(ctrl_msg);
 }
 
-void NMPC::accCallback(const AccelerationMsg& msg)
+void NMPC::accCallback(const AccelerationMsg &msg)
 {
     cz_filtered_ = -msg.xyz[0] / (cur_vel_norm * cur_vel_norm + 0.1) * 1.0;
     // bound to -0.4 to 0.4
@@ -423,12 +334,11 @@ void NMPC::accCallback(const AccelerationMsg& msg)
     }
 }
 
-void NMPC::referenceCallback(const ReferenceBullet& msg)
+void NMPC::referenceCallback(const ReferenceBullet &msg)
 {
     // info entering the callback
-    auto& refs           = const_cast<ReferenceBullet&>(msg);
-    bool  tracking_valid = refs.tracking_valid;
-    cz_predict_          = refs.points[0].cz_prediction;
+    auto           &refs           = const_cast<ReferenceBullet &>(msg);
+    bool            tracking_valid = refs.tracking_valid;
     TrackingInfoMsg tracking_info_msg;
     tracking_info_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     tracking_info_msg.ref_position = {
@@ -484,13 +394,6 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     double v_norm           = vb.norm();
     tracking_info_msg.alpha = static_cast<float>(atan2(vb(0), vb(2)));
 
-    // for recording pitch , temply trans
-    // tracking_info_msg.alpha = q_cur.toRotationMatrix().eulerAngles(2, 0,
-    // 1)(2);
-    // TODO: add the actual cz
-    // tracking_info_msg.cz    = static_cast<float>(cz_predict_);
-    // cz_filtered_ = lpf.process(cz_filtered_);
-
     tracking_info_msg.cz = static_cast<float>(cz_filtered_);
     // tracking_info_msg.cz =
     if (tracking_valid)
@@ -534,7 +437,7 @@ void NMPC::referenceCallback(const ReferenceBullet& msg)
     solve();
 }
 
-void NMPC::stateCallback(const StateMsg& msg)
+void NMPC::stateCallback(const StateMsg &msg)
 {
     t_start_ = std::chrono::high_resolution_clock::now();
     // msg.mpc_state.data();
@@ -548,7 +451,7 @@ void NMPC::stateCallback(const StateMsg& msg)
         std::sqrt(x_cur_[vel_start_index] * x_cur_[vel_start_index] +
                   x_cur_[vel_start_index + 1] * x_cur_[vel_start_index + 1] +
                   x_cur_[vel_start_index + 2] * x_cur_[vel_start_index + 2]);
-    acados.setState(const_cast<double*>(x_cur_.data()));
+    acados.setState(const_cast<double *>(x_cur_.data()));
 
     std_msgs::msg::Bool ready_msg;
     ready_msg.data = true;
@@ -571,7 +474,7 @@ NMPC::NMPC() : Node("NMPC")
 
 NMPC::~NMPC() {}
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<NMPC>();

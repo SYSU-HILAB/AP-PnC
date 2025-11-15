@@ -61,12 +61,9 @@ class TrajectoryBufferCallbacks
 class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
 {
    private:
-    size_t index_                = 0;
-    bool   init_traj_set_        = false;
-    bool   tracking_valid_       = false;
-    double cz_predict_           = 0.0;
-    double acc_aero_fix_factor   = 1.0;
-    double deacc_aero_fix_factor = 1.0;
+    size_t index_          = 0;
+    bool   init_traj_set_  = false;
+    bool   tracking_valid_ = false;
     // bool
     Trajectory          trajectory_;
     TrajecotryBullet    msg_planning_traj_;
@@ -76,7 +73,6 @@ class TrajectoryBuffer : public rclcpp::Node, private TrajectoryBufferCallbacks
     double              traj_control_time_   = kControlTime;
     uint                down_sampling_factor = kDownSamplingFactor;
     bool                circled_             = false;
-    bool                real_world_          = false;
     std::vector<double> sim_coefs_;
     std::vector<double> exp_coefs_;
 

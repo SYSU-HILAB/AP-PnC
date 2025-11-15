@@ -25,57 +25,7 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 #include <basic_trajectories/sin.hpp>
 #include <basic_trajectories/vertical_loop.hpp>
 
-std::ofstream &init_planning_csv_file()
-{
-    static std::ofstream csv_file;
-    csv_file.open("planning.csv", std::ios::out | std::ios::trunc);
-    // header t, p, v, thrust, alpha, aero_force_z  with header
-    // name
-    csv_file << "time"
-             << ","
-             << "pos_x"
-             << ","
-             << "pos_y"
-             << ","
-             << "pos_z"
-             << ","
-             << "vel_x"
-             << ","
-             << "vel_y"
-             << ","
-             << "vel_z"
-             << ","
-             << "thrust"
-             << ","
-             << "alpha"
-             << ","
-             << "aero_force_z"
-             << ","
-             << "yb_x"
-             << ","
-             << "yb_y"
-             << ","
-             << "yb_z"
-             << ","
-             << "av_x"
-             << ","
-             << "av_y"
-             << ","
-             << "av_z"
-             << ","
-             << "av_x_S"
-             << ","
-             << "av_z_S"
-             << ","
-             << "B_Omega_b_y"
-             << ","
-             << "alpha_dot"
-             << ","
-             << "B_aeroForce_z"
-             << "\n";
-    return csv_file;
-}
-
+std::ofstream &init_planning_csv_file();
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType
 {
@@ -552,4 +502,55 @@ int main(int argc, char **argv)
     rclcpp::shutdown();
 
     return 0;
+}
+
+std::ofstream &init_planning_csv_file()
+{
+    static std::ofstream csv_file;
+    csv_file.open("planning.csv", std::ios::out | std::ios::trunc);
+    // header t, p, v, thrust, alpha, aero_force_z  with header
+    // name
+    csv_file << "time"
+             << ","
+             << "pos_x"
+             << ","
+             << "pos_y"
+             << ","
+             << "pos_z"
+             << ","
+             << "vel_x"
+             << ","
+             << "vel_y"
+             << ","
+             << "vel_z"
+             << ","
+             << "thrust"
+             << ","
+             << "alpha"
+             << ","
+             << "aero_force_z"
+             << ","
+             << "yb_x"
+             << ","
+             << "yb_y"
+             << ","
+             << "yb_z"
+             << ","
+             << "av_x"
+             << ","
+             << "av_y"
+             << ","
+             << "av_z"
+             << ","
+             << "av_x_S"
+             << ","
+             << "av_z_S"
+             << ","
+             << "B_Omega_b_y"
+             << ","
+             << "alpha_dot"
+             << ","
+             << "B_aeroForce_z"
+             << "\n";
+    return csv_file;
 }

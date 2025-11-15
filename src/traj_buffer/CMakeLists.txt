@@ -10,13 +10,11 @@ endif()
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(fmt REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_executable(traj_buffer src/traj_buffer.cpp)
-target_link_libraries(traj_buffer
+ament_auto_add_executable(traj_buffer_node src/traj_buffer.cpp)
+target_link_libraries(traj_buffer_node
   Eigen3::Eigen
-  fmt::fmt
 )
 
 

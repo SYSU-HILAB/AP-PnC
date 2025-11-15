@@ -69,7 +69,9 @@ docker run -it --rm \
 - [ament_cmake](https://docs.ros.org/en/foxy/How-To-Guides/Ament-CMake-Documentation.html)
 - [ament_cmake_auto](https://zhuanlan.zhihu.com/p/438191834)
 
-
+# TODO
+1. Add a timeline of nodes lifttime.
+2. Add a data flow about nodes.
 
 # Ai-generated
 

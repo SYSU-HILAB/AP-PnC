@@ -33,8 +33,8 @@ class Transcribe
 
    public:
     explicit Transcribe() { q_flu_frd.normalize(); };
-    void setInitInertial(const Eigen::Vector3d&    pos,
-                         const Eigen::Quaterniond& quat)
+    void setInitInertial(const Eigen::Vector3d    &pos,
+                         const Eigen::Quaterniond &quat)
     {
         init_p      = pos;
         q_transform = quat * q_flu_frd;
@@ -42,9 +42,9 @@ class Transcribe
     }
 
     template <typename T>
-    void toFLU(const std::array<T, 3>& pos, const std::array<T, 3>& vel,
-               const std::array<T, 3>& rate, const std::array<T, 4>& quat,
-               interface::msg::State& state)
+    void toFLU(const std::array<T, 3> &pos, const std::array<T, 3> &vel,
+               const std::array<T, 3> &rate, const std::array<T, 4> &quat,
+               interface::msg::State &state)
     {
         Eigen::Vector3d    p{pos[0], pos[1], pos[2]};
         Eigen::Vector3d    v{vel[0], vel[1], vel[2]};
@@ -71,7 +71,7 @@ class Transcribe
     }
 
     template <typename T>
-    std::array<float, 3>& toFRD(const std::array<T, 3>& rate)
+    std::array<float, 3> &toFRD(const std::array<T, 3> &rate)
     {
         static std::array<float, 3> rate_frd;
 
@@ -197,11 +197,11 @@ class PX4Interface : public rclcpp::Node
     void publish_state();
 
     Eigen::Quaterniond AverageQuaternions(
-        const std::vector<Eigen::Quaterniond>& quaternions);
-    static double position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
-                                    Eigen::VectorXd& gradX);
-    static double quaternion_tiny_nls(void* ptr, const Eigen::VectorXd& X,
-                                      Eigen::VectorXd& gradX);
+        const std::vector<Eigen::Quaterniond> &quaternions);
+    static double position_tiny_nls(void *ptr, const Eigen::VectorXd &X,
+                                    Eigen::VectorXd &gradX);
+    static double quaternion_tiny_nls(void *ptr, const Eigen::VectorXd &X,
+                                      Eigen::VectorXd &gradX);
     void tracking_info_cb(const interface::msg::TrackingInfo::SharedPtr msg);
     void init_status_check(const px4_msgs::msg::VehicleStatus::SharedPtr msg);
 };
@@ -293,10 +293,10 @@ void PX4Interface::controls_callback(
     }
 }
 
-double PX4Interface::position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
-                                       Eigen::VectorXd& gradX)
+double PX4Interface::position_tiny_nls(void *ptr, const Eigen::VectorXd &X,
+                                       Eigen::VectorXd &gradX)
 {
-    const PX4Interface* obj  = static_cast<PX4Interface*>(ptr);
+    const PX4Interface *obj  = static_cast<PX4Interface *>(ptr);
     double              cost = 0;
     gradX                    = Eigen::Vector3d::Zero();
     for (auto pos : obj->pos_collecter_)
@@ -307,8 +307,9 @@ double PX4Interface::position_tiny_nls(void* ptr, const Eigen::VectorXd& X,
     return cost;
 }
 
+// TODO: can be removed ?
 Eigen::Quaterniond PX4Interface::AverageQuaternions(
-    const std::vector<Eigen::Quaterniond>& quaternions)
+    const std::vector<Eigen::Quaterniond> &quaternions)
 {
     // Create a 4x4 accumulator matrix for the covariance
     if (quaternions.empty())
@@ -318,7 +319,7 @@ Eigen::Quaterniond PX4Interface::AverageQuaternions(
     Eigen::Matrix4d covariance = Eigen::Matrix4d::Zero();
 
     // Accumulate the outer product of each quaternion (as a vector) with itself
-    for (const auto& q : quaternions)
+    for (const auto &q : quaternions)
     {
         Eigen::Vector4d q_vec(q.w(), q.x(), q.y(),
                               q.z());  // Convert quaternion to a 4D vector
@@ -399,6 +400,8 @@ void PX4Interface::vehicle_odometry_callback(
 
 void PX4Interface::publish_state()
 {
+    // TODO, 25.11.16, we should offload the cz estimation here, not in
+    // c_nmpc.cpp
     state_.timestamp = this->get_clock()->now().nanoseconds() / 1000;
     // Add a logic that we should first Arm the vehicle and complte the position
     // and orientation estimate, and then we can publish the state otherwise,
@@ -436,7 +439,7 @@ void PX4Interface::publish_offboard_control_mode()
 std::vector<Eigen::Vector3d>    PX4Interface::pos_collecter_;
 std::vector<Eigen::Quaterniond> PX4Interface::quat_collector_;
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     std::cout << "Starting PX4 Interface Node..." << std::endl;
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);

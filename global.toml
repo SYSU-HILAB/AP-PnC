@@ -1,42 +1,17 @@
-[tailsitter_simulator]
-aero_force_on = true
-aero_moment_on = false
-arm_length = 0.125
-inertia = [0.00715066, 0.00818037, 0.00987597]
-kf = 0.00000854858
-mass = 1.0
-max_rpm = 1000.0
-min_rpm = 0.0
-motor_time = 0.035
-tau = 0.013
-
 [tailsitter_df]
 mass = 2.0
-phi = [
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  -0.09408,
-]
+phi = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09408]
 
 [setup]
-acc_aero_fix_factor = 0.0
 circled = true
 curvature = 0.5
-deacc_aero_fix_factor = 0.9
 radius = 30.0
-real_world = true
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
 type = 1
 v_max = 14.0
 
 [px4_interface]
 pos_init_dis_threshold = 0.01
-real_world = false
 
 [c_nmpc]
 #cz_rate = 0.15
