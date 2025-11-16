@@ -17,51 +17,32 @@ git clone https://github.com/WarriorHanamy/AP-PnC.git --recursive
 
 The project uses Docker containers managed through Just commands. Make sure you have [Just](https://github.com/casey/just) installed.
 
-#### Main AP-PnC Container
+#### Main AP-PnC Containers
 ```bash
 # Build the main AP-PnC container
 just build
 
-# Run the AP-PnC container (with GUI support)
-just run
-```
-
-#### PX4 Simulator Container
-```bash
 # Build the PX4 simulator container
 just build-px4
 
-# Run the PX4 simulator container
-just run-px4
-```
-
-#### QGroundControl Container
-```bash
 # Build the QGroundControl container
 just build-qgc
-
-# Run QGroundControl
-just run-qgc
 ```
+
+Run containers
+```bash
+# Docker Compose will start the three containers background.
+just up
+```
+Normally, you should attach two shell to `ap-pnc` as
+```bash
+just attach
+```
+to manually start nmpc, and watch nmpc procedure.
+
 
 #### Manual Docker Commands
-If you prefer to use Docker directly:
-
-```bash
-# Build AP-PnC container
-docker build -f docker/ap-pnc.dockerfile --network=host -t ap-pnc:latest .
-
-# Run AP-PnC container
-docker run -it --rm \
-    --privileged --net=host \
-    -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
-    -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
-    -v $HOME/.Xauthority:/root/.Xauthority \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    -v $(pwd)/src/tailsitter_df:/ap-pnc/src/tailsitter_df \
-    --name ap-pnc \
-    ap-pnc bash
-```
+See justfiles.
 
 ## Knowledge
 ###  Modern CMake
