@@ -1,0 +1,2 @@
+#!/bin/bash
+ros2 launch trajectory_server planning.launch.py

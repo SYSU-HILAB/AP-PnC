@@ -1,5 +1,5 @@
 #!/bin/bash
-planConfigSync
+# planConfigSync
 # start px4_interface
 
 
@@ -8,25 +8,19 @@ cores=$(nproc --all)
 # 根据核心数执行不同操作
 if [ "$cores" -eq 4 ]; then
     echo "Detected 4 CPU cores, distributing tasks to cores 1-3"
-    taskset -c $((cores-3)) syncRunPlanning &
-    taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py frame:=NED &
+    taskset -c $((cores-3)) ros2 launch trajectory_server planning.launch.py &
+    taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py &
     taskset -c $((cores-1)) real_run_mpc > /dev/null &
 elif [ "$cores" -eq 8 ]; then
     echo "Detected 8 CPU cores, distributing tasks to cores 5-7"
-    taskset -c $((cores-3)) syncRunPlanning &
-    taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py frame:=NED &
+    taskset -c $((cores-3)) ros2 launch trajectory_server planning.launch.py &
+    taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py &
     taskset -c $((cores-1)) real_run_mpc > /dev/null &
 elif [ "$cores" -eq 16 ]; then
     echo "Detected 16 CPU cores, distributing tasks to cores 13-15"
-    taskset -c $((cores-3)) syncRunPlanning &
-    taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py frame:=NED &
+    taskset -c $((cores-3)) ros2 launch trajectory_server planning.launch.py &
+    taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py &
     taskset -c $((cores-1)) real_run_mpc > /dev/null &
 else
     echo "CPU cores not supported, please check your CPU configuration"
 fi
-
-
-# ros2 launch px4_interface px4_interface.launch.py frame:=NED&
-
-# taskset -c 14 syncRunPlanning &
-# taskset -c 15 sim_run_mpc > /dev/null &

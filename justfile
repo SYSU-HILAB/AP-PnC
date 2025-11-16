@@ -13,6 +13,7 @@ run-algs:
         -v $HOME/.Xauthority:/root/.Xauthority \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v $(pwd)/src/tailsitter_df:/ap-pnc/src/tailsitter_df \
+        -v $(pwd)/src/trajectory_server:/ap-pnc/src/trajectory_server \
         -v $(pwd)/scripts/tools:/ap-pnc/scripts/tools \
         -v $(pwd)/temp_data:/ap-pnc/temp_data \
         --name ap-pnc \

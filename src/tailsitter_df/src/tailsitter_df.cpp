@@ -246,7 +246,7 @@ namespace tailsitter_df
 
         B_Omega_b_y = omega_vy + alpha_dot;
 
-        return (Eigen::Vector4<real>() << at_dot, omega_vx, B_Omega_b_y,
+        return (Eigen::Vector4<real>() << S_a_x, omega_vx, B_Omega_b_y,
                 omega_vz)
             .finished();
     }

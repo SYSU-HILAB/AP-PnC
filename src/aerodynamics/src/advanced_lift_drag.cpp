@@ -8,7 +8,7 @@
 // 4. simplify the to the minimal parameters for the aerodynamics invocatoin
 // The original parameters is from
 // https://github.com/PX4/PX4-gazebo-models/blob/230450cc817dd7675612ed5ec72ee59b6989d367/models/quadtailsitter/model.sdf
-// Author: HanamyWarrior email: warriorhanamyxx@gmail.com
+// Author: HanamyWarrior email: rongerch@outlook.com
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
 

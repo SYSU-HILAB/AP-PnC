@@ -15,6 +15,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <string>
 #include <vector>
+#include <filesystem>
 using std::chrono_literals::operator""s;
 using RefTrajectory   = interface::msg::RefTrajectory;
 using TrajectoryPoint = interface::msg::TrajectoryPoint;
@@ -397,6 +398,7 @@ class GlobalPlanner : public rclcpp::Node
             tailsitter_data.reset(config.trajecotry_cirled);
             control_traj_msg.points.clear();
             auto &csv_file = init_planning_csv_file();
+            RCLCPP_INFO(this->get_logger(), "CSV file opened");
             for (double t = 0.0; t <= traj.getTotalDuration() + DBL_EPSILON;
                  t += config.traj_pub_rsl)
             {
@@ -488,7 +490,6 @@ class GlobalPlanner : public rclcpp::Node
             {
                 trajStamp = this->get_clock()->now().seconds();
             }
-            // clsoe csv file
             csv_file.close();
         }
     }

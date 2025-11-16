@@ -14,7 +14,7 @@ namespace tailsitter_df
     using realV3              = autodiff::Vector3real;
     using realM3              = autodiff::Matrix3real;
     const realV3   g          = (realV3() << 0, 0, 9.8).finished();
-    constexpr real vThreshold = 1.0;
+    constexpr real vThreshold = 0.5;
 
     class Data
     {

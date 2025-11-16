@@ -5,14 +5,14 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_lists_cache \
     --mount=type=cache,target=/var/cache/apt/archives,id=apt_pkg_cache \
     apt update && \
     apt install -y \
-        vim \
-        python3-pip python3-venv \
-        curl lsb-release gnupg wget \
-        ros-dev-tools ccache fzf cloc \
-        ros-humble-vrpn \
-        ros-humble-plotjuggler* \
-        libceres-dev direnv \
-        ccache fzf cloc
+    vim \
+    python3-pip python3-venv \
+    curl lsb-release gnupg wget \
+    ros-dev-tools ccache fzf cloc \
+    ros-humble-vrpn \
+    ros-humble-plotjuggler* \
+    libceres-dev direnv \
+    ccache fzf cloc
 
 WORKDIR /ap-pnc
 
@@ -35,4 +35,4 @@ RUN direnv exec /ap-pnc /ap-pnc/scripts/tools/cocp
 
 COPY installations/colcon_config.yaml /.colcon/defaults.yaml
 RUN source /opt/ros/humble/setup.bash && \
-    direnv exec /ap-pnc     colcon build
+    direnv exec /ap-pnc colcon build --symlink-install

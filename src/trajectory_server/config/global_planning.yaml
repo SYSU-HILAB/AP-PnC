@@ -5,7 +5,7 @@
     BasicTrajectoryHeight: 0.0
     BasicTrajectoryRadius: 30.0
     BasicTrajectoryRate: 0.1
-    BasicTrajectoryType: 1
+    BasicTrajectoryType: 2
     BasicTrajectoryWaveLen: 50.0
     BoxBackLength: 0.5
     BoxDownLength: 0.1
@@ -29,8 +29,8 @@
     omg_y_weight: 10000.0
     omg_z_max: 0.8
     omg_z_weight: 20000.0
-    thrust_max: 2.5
-    thrust_min: -2.5
+    thrust_max: 10.5
+    thrust_min: -5.5
     thrust_weight: 10000.0
     time_weight: 10000.0
     trajTopic: /control_traj
