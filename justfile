@@ -14,6 +14,7 @@ run-algs:
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v $(pwd)/src/tailsitter_df:/ap-pnc/src/tailsitter_df \
         -v $(pwd)/scripts/tools:/ap-pnc/scripts/tools \
+        -v $(pwd)/temp_data:/ap-pnc/temp_data \
         --name ap-pnc \
         ap-pnc bash
 

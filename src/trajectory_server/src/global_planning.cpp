@@ -507,7 +507,30 @@ int main(int argc, char **argv)
 std::ofstream &init_planning_csv_file()
 {
     static std::ofstream csv_file;
-    csv_file.open("planning.csv", std::ios::out | std::ios::trunc);
+    try
+    {
+        std::filesystem::path dir("temp_data");
+        if (!std::filesystem::exists(dir))
+        {
+            std::filesystem::create_directories(dir);
+        }
+        csv_file.open((dir / "planning.csv").string(),
+                      std::ios::out | std::ios::trunc);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Failed to create/open temp_data/planning.csv: "
+                  << e.what() << std::endl;
+        // try fallback to current dir
+        csv_file.open("planning.csv", std::ios::out | std::ios::trunc);
+    }
+
+    if (!csv_file.is_open())
+    {
+        std::cerr << "Unable to open CSV file for writing." << std::endl;
+        return csv_file;
+    }
+
     // header t, p, v, thrust, alpha, aero_force_z  with header
     // name
     csv_file << "time"
@@ -536,15 +559,15 @@ std::ofstream &init_planning_csv_file()
              << ","
              << "yb_z"
              << ","
-             << "av_x"
+             << "ap_x"
              << ","
-             << "av_y"
+             << "ap_y"
              << ","
-             << "av_z"
+             << "ap_z"
              << ","
-             << "av_x_S"
+             << "S_ap_x"
              << ","
-             << "av_z_S"
+             << "S_ap_z"
              << ","
              << "B_Omega_b_y"
              << ","

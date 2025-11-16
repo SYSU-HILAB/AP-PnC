@@ -14,3 +14,8 @@ pl() {
 restart_ros() {
     ros2 daemon stop && ros2 daemon start
 }
+
+
+vpython() {
+    source $AP_PNC_DIR/.acados_venv/bin/activate
+}
