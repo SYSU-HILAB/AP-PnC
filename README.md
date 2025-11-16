@@ -8,7 +8,7 @@ git clone https://github.com/WarriorHanamy/AP-PnC.git --recursive
 
 The project uses Docker containers managed through Just commands. Make sure you have [Just](https://github.com/casey/just) installed.
 
-#### Main AP-PnC Containers
+### Build AP-PnC Containers
 ```bash
 # Build the main AP-PnC container
 just build-algs
@@ -20,7 +20,12 @@ just build-px4
 just build-qgc
 ```
 
-Run containers
+### Run containers
+```bash
+# Add this line to the end of ~/.profile or ~/.bashrc
+echo "xhost +local: >/dev/null" >> ~/.bashrc
+```
+
 ```bash
 # Docker Compose will start the three containers background.
 just up
@@ -35,6 +40,14 @@ to manually start nmpc, and watch nmpc procedure.
 #### Manual Docker Commands
 See justfiles.
 
+## Issues
+It is typical to be seen in ubuntu22.04 with the problem of the interactions between qt5 and x11,
+you may have to install 
+```bash
+sudo apt update
+sudo apt install libqt5gui5 libqt5core5a libqt5widgets5 libxcb-randr0 libxcb-xtest0
+sudo apt install qt5-default
+```
 
 # TODO
 1. Add a timeline of nodes lifttime.

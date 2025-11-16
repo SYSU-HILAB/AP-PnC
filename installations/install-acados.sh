@@ -19,6 +19,10 @@ else
   echo "Virtual environment for acados exists"
 fi
 
+export TERA_VERSION="0.0.34"
+export TERA_LINK="https://github.com/acados/tera_renderer/releases/download/v${TERA_VERSION}/t_renderer-v${TERA_VERSION}-linux"
+
+curl -L $TERA_LINK -o $ACADOS_SOURCE_DIR/bin/t_renderer && chmod +x $ACADOS_SOURCE_DIR/bin/t_renderer
 
 source $AP_PNC_DIR/.acados_venv/bin/activate
 if ! pip list | grep acados > /dev/null 2>&1; then
