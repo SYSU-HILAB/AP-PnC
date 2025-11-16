@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  px4-simulator:
+    build:
+      context: .
+      dockerfile: docker/px4-simulator.dockerfile
+      network: host
+    image: px4-simulator:latest
+    container_name: px4-simulator
+    privileged: true
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+    volumes:
+      - ${HOME}/.Xauthority:/root/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    command: bash
+    stdin_open: true
+    tty: true
+
+  qground_control:
+    build:
+      context: .
+      dockerfile: docker/qgc.dockerfile
+      network: host
+    image: qground_control:latest
+    container_name: qground_control
+    privileged: true
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+    volumes:
+      - ${HOME}/.Xauthority:/qgc/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    command: qgc
+
+  ap-pnc:
+    build:
+      context: .
+      dockerfile: docker/ap-pnc.dockerfile
+      network: host
+    image: ap-pnc:latest
+    container_name: ap-pnc
+    privileged: true
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+    volumes:
+      - ${HOME}/.Xauthority:/root/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./scripts/tools:/ap-pnc/scripts/tools
+    command: bash
+    stdin_open: true
+    tty: true
+    depends_on:
+      - qground_control
+      - px4-simulator

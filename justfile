@@ -51,3 +51,8 @@ qgc:
         qground_control qgc
 
 # --build-arg CACHE_BUSTER=$(date +%s) \
+up:
+    docker compose up -d
+
+down:
+    docker compose down
