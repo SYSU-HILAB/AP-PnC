@@ -26,7 +26,7 @@ class BSplineAeroWriterConfig:
     """
     ROOT_DIR: str = 'AP_PNC_DIR'
     SUB_FOLDER: str = 'src/aerodynamics'
-    DB_FILENAME: str = 'meta_params.db'
+    DB_FILENAME: str = 'aero_sim_params.db'
     BSPLINE_AERO_TABLE_NAME: str = 'bspline_aero_config'
 
     CX_BSPLINE_FIT_RESULTS_PATH: str = 'data/bspline_fit_results/bspline_fit_cx.npz'

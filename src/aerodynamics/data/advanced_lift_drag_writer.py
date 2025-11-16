@@ -18,7 +18,7 @@ class AdvancedLiftDragWriterConfig:
         TABLE_NAME: Table name for advanced lift drag data
     """
     ROOT_DIR: str = 'AP_PNC_DIR'
-    DB_FILENAME: str = 'meta_params.db'
+    DB_FILENAME: str = 'aero_sim_params.db'
     TABLE_NAME: str = 'advanced_lift_drag_config'
 
     # Default values from the C++ code

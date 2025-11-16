@@ -21,7 +21,7 @@ class PhiAeroWriterConfig:
     """
     ROOT_DIR: str = 'AP_PNC_DIR'
     SUB_FOLDER: str = 'src/aerodynamics'
-    DB_FILENAME: str = 'meta_params.db'
+    DB_FILENAME: str = 'aero_sim_params.db'
     PHI_AERO_TABLE_NAME: str = 'phi_aero_config'
     PHI_COEFS_DUMP_KEY: str = 'phi_coefs'
 

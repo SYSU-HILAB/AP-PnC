@@ -53,7 +53,6 @@ env/
 # intermediate mesh files
 *.stl
 *.STL
-*.db
 *.pdf
 *.py.bak
 output_csv/*
