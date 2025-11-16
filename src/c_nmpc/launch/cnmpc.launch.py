@@ -26,7 +26,5 @@ def generate_launch_description():
                   "cz_rate": cz_rate
                 }
             ]
-            # arguments=['/visualizer/speed', '/visualizer/total_thrust', '/visualizer/tilt_angle', '/visualizer/body_rate']
         ),
-
         ])
