@@ -1,11 +1,11 @@
 # PNC Tailsitter Justfile
-
-build:
+# build top algorithms image
+build-algs:
     docker build -f docker/ap-pnc.dockerfile \
     --network=host \
     -t ap-pnc:latest .
 
-run:
+run-algs:
     docker run -it --rm \
         --privileged --net=host \
         -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \

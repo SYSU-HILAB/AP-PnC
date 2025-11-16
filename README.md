@@ -11,7 +11,7 @@ The project uses Docker containers managed through Just commands. Make sure you 
 #### Main AP-PnC Containers
 ```bash
 # Build the main AP-PnC container
-just build
+just build-algs
 
 # Build the PX4 simulator container
 just build-px4
