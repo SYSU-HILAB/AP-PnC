@@ -1,0 +1,12 @@
+{
+  "lsp": {
+    "clangd": {
+      "fetch": {
+        "pre_release": true
+      },
+      "binary": {
+        "arguments": ["--compile-commands-dir=~/AP-PnC/build"]
+      }
+    }
+  }
+}

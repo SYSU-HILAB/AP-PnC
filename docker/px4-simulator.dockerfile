@@ -45,22 +45,8 @@ ENV AERO_SIM_DATA_DIR=/plugins/aerodynamics/data
 
 
 WORKDIR /plugins
-RUN rm aerodynamics/COLCON_IGNORE \
-    && . /opt/ros/humble/setup.sh \
+RUN . /opt/ros/humble/setup.sh \
     && colcon build --symlink-install
 
 WORKDIR /px4-vtol
 ENTRYPOINT ["runpx4", "1"]
-
-# FROM osrf/ros:humble-desktop AS ros-deps
-
-# WORKDIR /plugins
-# COPY ../src/aerodynamics plugins/aerodynamics
-# COPY ../src/external_libraries plugins/external_libraries
-# RUN colcon build
-
-
-# Version2 is FROM osrf/ros:humble-desktop to install px4-depencies and gazebo-deps,
-# which is very slow, since the downloading speed of gazebo server is only around 20KB/s.
-# Both two deps can be install by scripts in <PX4-ROOT>Tools/setup/ubuntu.sh
-# Here, we provide in docker/px4-setup to avoid the nuttx toolchain installation.

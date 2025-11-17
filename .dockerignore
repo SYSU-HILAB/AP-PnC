@@ -13,3 +13,10 @@ LICENSE
 .vscode/
 
 docker/
+
+c_generated_code/
+acados*
+.cached/
+install/
+log/
+.acados_venv/

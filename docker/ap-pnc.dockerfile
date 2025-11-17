@@ -20,19 +20,22 @@ COPY .envrc /ap-pnc/.envrc
 RUN echo 'eval "$(direnv hook bash)"' >> /root/.bashrc && \
     bash -c "direnv allow /ap-pnc"
 
-COPY installations/install-acados.sh /ap-pnc/installations/install-acados.sh
-COPY ./mpc_framework/ /ap-pnc/mpc_framework/
-COPY ./scripts/tools/ /ap-pnc/scripts/tools/
-RUN direnv exec /ap-pnc ./installations/install-acados.sh
-
 COPY installations/custom_funcs.sh /tmp/custom_bash_functions.sh
 RUN echo "" >> /root/.bashrc && \
     cat /tmp/custom_bash_functions.sh >> /root/.bashrc && \
     rm /tmp/custom_bash_functions.sh
+
+COPY installations/install-acados.sh /ap-pnc/installations/install-acados.sh
+COPY ./mpc_framework/ /ap-pnc/mpc_framework/
+COPY ./scripts/tools/ /ap-pnc/scripts/tools/
+RUN direnv exec /ap-pnc ./installations/install-acados.sh
 
 COPY . /ap-pnc/
 RUN direnv exec /ap-pnc /ap-pnc/scripts/tools/cocp
 
 COPY installations/colcon_config.yaml /.colcon/defaults.yaml
 RUN source /opt/ros/humble/setup.bash && \
-    direnv exec /ap-pnc colcon build --symlink-install
+    direnv exec /ap-pnc colcon build --symlink-install \
+    --packages-ignore aerodynamics \
+    --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    ;
