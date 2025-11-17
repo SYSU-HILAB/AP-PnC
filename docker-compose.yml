@@ -58,7 +58,10 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./src/tailsitter_df:/ap-pnc/src/tailsitter_df
+      - ./src/trajectory_server:/ap-pnc/src/trajectory_server
       - ./scripts/tools:/ap-pnc/scripts/tools
+      - ./temp_data:/ap-pnc/temp_data
     command: bash
     stdin_open: true
     tty: true

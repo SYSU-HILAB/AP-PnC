@@ -46,11 +46,11 @@ build-qgc:
     -t qground_control:latest .
 
 qgc:
-    docker run -it --rm \
+    docker run --rm \
         --privileged --net=host \
         -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
         -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
-        -v $HOME/.Xauthority:/root/.Xauthority \
+        -v $HOME/.Xauthority:/qgc/.Xauthority \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         --name qground_control \
         qground_control qgc
