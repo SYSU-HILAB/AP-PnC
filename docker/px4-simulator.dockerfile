@@ -19,7 +19,7 @@ RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-inf
 
 RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache,sharing=locked \
     apt update && \
-    apt install -y ros-humble-ros-base
+    apt install -y ros-humble-ros-base ros-dev-tools
 
 RUN set -ex && \
     git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git /tmp/agent_src \
@@ -36,7 +36,21 @@ WORKDIR /px4-vtol
 ENV PATH="/px4-vtol/Tools:$PATH"
 RUN make px4_sitl_default
 
-ENTRYPOINT ["runpx4", "2"]
+COPY ./src/aerodynamics /plugins/aerodynamics
+COPY ./src/utils /plugins/utils
+COPY ./src/external_libraries /plugins/external_libraries
+
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+ENV AERO_SIM_DATA_DIR=/plugins/aerodynamics/data
+
+
+WORKDIR /plugins
+RUN rm aerodynamics/COLCON_IGNORE \
+    && . /opt/ros/humble/setup.sh \
+    && colcon build --symlink-install
+
+WORKDIR /px4-vtol
+ENTRYPOINT ["runpx4", "1"]
 
 # FROM osrf/ros:humble-desktop AS ros-deps
 

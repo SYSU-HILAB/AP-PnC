@@ -21,11 +21,14 @@ run-algs:
 
 attach:
     docker exec -it ap-pnc bash
+a:
+    docker exec -it px4-simulator bash
 
 build-px4:
     docker build -f docker/px4-simulator.dockerfile \
     --network=host \
     -t px4-simulator:latest .
+    # --build-arg CACHE_BUSTER=$(date +%s) \
 
 px4:
     docker run -it --rm \
