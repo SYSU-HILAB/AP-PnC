@@ -1,11 +1,11 @@
 /global_planning_node:
   ros__parameters:
-    BasicTrajectoryCirled: true
+    BasicTrajectoryCirled: false
     BasicTrajectoryCurvatureFactor: 0.8
     BasicTrajectoryHeight: 0.0
     BasicTrajectoryRadius: 30.0
     BasicTrajectoryRate: 0.1
-    BasicTrajectoryType: 2
+    BasicTrajectoryType: 4
     BasicTrajectoryWaveLen: 50.0
     BoxBackLength: 0.5
     BoxDownLength: 0.1
@@ -29,7 +29,7 @@
     omg_y_weight: 10000.0
     omg_z_max: 0.8
     omg_z_weight: 20000.0
-    thrust_max: 5.5
+    thrust_max: 8.5
     thrust_min: -3.5
     thrust_weight: 10000.0
     time_weight: 10000.0

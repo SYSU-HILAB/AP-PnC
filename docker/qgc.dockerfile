@@ -19,4 +19,7 @@ RUN ln -s /app/QGroundControl.AppImage /usr/local/bin/qgc
 RUN chown -R qgc:qgc /app
 
 USER qgc
+WORKDIR /home/qgc
 COPY installations/QGroundControl.ini /home/qgc/.config/QGroundControl.org/QGroundControl.ini
+RUN mkdir ulgs/
+RUN chmod 777 ulgs/
