@@ -1,3 +1,16 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
 //
 // Academic License - for use in teaching, academic research, and meeting
 // course requirements at degree granting institutions only.  Not for
@@ -22,7 +35,7 @@
 //  NaN is initialized as non-signaling. Assumes IEEE.
 real_T rtGetNaN(void)
 {
-    return rtNaN;
+  return rtNaN;
 }
 
 // Function: rtGetNaNF
@@ -32,7 +45,7 @@ real_T rtGetNaN(void)
 //  NaN is initialized as non-signaling. Assumes IEEE
 real32_T rtGetNaNF(void)
 {
-    return rtNaNF;
+  return rtNaNF;
 }
 
 //

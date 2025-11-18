@@ -1,4 +1,17 @@
 /*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
+/*
  * Copyright 1984-2018 The MathWorks, Inc.
  */
 
@@ -573,7 +586,7 @@ typedef BYTE_T byte_T;
 #ifdef REAL32_T
 typedef struct
 {
-    real32_T re, im;
+  real32_T re, im;
 } creal32_T;
 #define CREAL32_T creal32_T
 #endif
@@ -583,7 +596,7 @@ typedef struct
 #ifdef REAL64_T
 typedef struct
 {
-    real64_T re, im;
+  real64_T re, im;
 } creal64_T;
 #define CREAL64_T creal64_T
 #endif
@@ -593,7 +606,7 @@ typedef struct
 #ifdef REAL_T
 typedef struct
 {
-    real_T re, im;
+  real_T re, im;
 } creal_T;
 #define CREAL_T creal_T
 #endif
@@ -605,7 +618,7 @@ typedef struct
 #ifdef INT8_T
 typedef struct
 {
-    int8_T re, im;
+  int8_T re, im;
 } cint8_T;
 #define CINT8_T cint8_T
 #endif
@@ -615,7 +628,7 @@ typedef struct
 #ifdef UINT8_T
 typedef struct
 {
-    uint8_T re, im;
+  uint8_T re, im;
 } cuint8_T;
 #define CUINT8_T cuint8_T
 #endif
@@ -625,7 +638,7 @@ typedef struct
 #ifdef INT16_T
 typedef struct
 {
-    int16_T re, im;
+  int16_T re, im;
 } cint16_T;
 #define CINT16_T cint16_T
 #endif
@@ -635,7 +648,7 @@ typedef struct
 #ifdef UINT16_T
 typedef struct
 {
-    uint16_T re, im;
+  uint16_T re, im;
 } cuint16_T;
 #define CUINT16_T cuint16_T
 #endif
@@ -645,7 +658,7 @@ typedef struct
 #ifdef INT32_T
 typedef struct
 {
-    int32_T re, im;
+  int32_T re, im;
 } cint32_T;
 #define CINT32_T cint32_T
 #endif
@@ -655,7 +668,7 @@ typedef struct
 #ifdef UINT32_T
 typedef struct
 {
-    uint32_T re, im;
+  uint32_T re, im;
 } cuint32_T;
 #define CUINT32_T cuint32_T
 #endif
@@ -665,7 +678,7 @@ typedef struct
 #ifdef INT64_T
 typedef struct
 {
-    int64_T re, im;
+  int64_T re, im;
 } cint64_T;
 #define CINT64_T cint64_T
 #endif
@@ -675,7 +688,7 @@ typedef struct
 #ifdef UINT64_T
 typedef struct
 {
-    uint64_T re, im;
+  uint64_T re, im;
 } cuint64_T;
 #define CUINT64_T cuint64_T
 #endif
@@ -743,23 +756,23 @@ typedef struct
  * max, the macro below provides a workaround for casting a uint64 value to a
  * double in windows.
  */
-#define uint64_to_double(u)                                             \
-    (((u) > _I64_MAX)                                                   \
-         ? (double)(__int64)((u) - _I64_MAX - 1) + (double)_I64_MAX + 1 \
-         : (double)(__int64)(u))
+#define uint64_to_double(u)                                           \
+  (((u) > _I64_MAX)                                                   \
+       ? (double)(__int64)((u) - _I64_MAX - 1) + (double)_I64_MAX + 1 \
+       : (double)(__int64)(u))
 
 /* The following inline function should only be used in the macro
  * double_to_uint64, as it only handles the specfic range of double between 2^63
  * and 2^64-1 */
 __forceinline uint64_T double_to_uint64_helper(double d)
 {
-    union double_to_uint64_union_type
-    {
-        double   dd;
-        uint64_T i64;
-    } di;
-    di.dd = d;
-    return (((di.i64 & 0x000fffffffffffff) | 0x0010000000000000) << 11);
+  union double_to_uint64_union_type
+  {
+    double   dd;
+    uint64_T i64;
+  } di;
+  di.dd = d;
+  return (((di.i64 & 0x000fffffffffffff) | 0x0010000000000000) << 11);
 }
 
 /* The largest double value that can be cast to uint64 in windows is the
@@ -768,22 +781,21 @@ __forceinline uint64_T double_to_uint64_helper(double d)
  */
 /* The magic number 18446744073709551616.0 is 2^64 */
 /* The magic number 9223372036854775808.0 is 2^63 */
-#define double_to_uint64(d)                                             \
-    (((d) >= 18446744073709551616.0) ? 0xffffffffffffffffULL            \
-     : ((d) >= 0.0)                  ? ((d) >= 9223372036854775808.0)   \
-                                           ? double_to_uint64_helper(d) \
-                                           : (unsigned __int64)(d)      \
-                                     : 0ULL)
+#define double_to_uint64(d)                                           \
+  (((d) >= 18446744073709551616.0) ? 0xffffffffffffffffULL            \
+   : ((d) >= 0.0)                  ? ((d) >= 9223372036854775808.0)   \
+                                         ? double_to_uint64_helper(d) \
+                                         : (unsigned __int64)(d)      \
+                                   : 0ULL)
 #else
 #define uint64_to_double(u) ((double)(u))
 #if defined(__BORLANDC__) || defined(__WATCOMC__) || defined(__TICCSC__)
 /* double_to_uint64 defined only for MSVC and UNIX */
 #else
-#define double_to_uint64(d)                          \
-    (((d) >= 18446744073709551616.0)                 \
-         ? (unsigned long long)0xffffffffffffffffULL \
-     : ((d) >= 0) ? (unsigned long long)(d)          \
-                  : (unsigned long long)0)
+#define double_to_uint64(d)                                                    \
+  (((d) >= 18446744073709551616.0) ? (unsigned long long)0xffffffffffffffffULL \
+   : ((d) >= 0)                    ? (unsigned long long)(d)                   \
+                                   : (unsigned long long)0)
 #endif
 #endif
 

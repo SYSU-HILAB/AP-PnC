@@ -1,3 +1,16 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
 //
 // Academic License - for use in teaching, academic research, and meeting
 // course requirements at degree granting institutions only.  Not for
@@ -19,14 +32,14 @@ extern "C"
 {
 #endif
 
-    static const real_T   RT_PI{3.14159265358979323846};
-    static const real32_T RT_PIF{3.1415927F};
-    static const real_T   RT_LN_10{2.30258509299404568402};
-    static const real32_T RT_LN_10F{2.3025851F};
-    static const real_T   RT_LOG10E{0.43429448190325182765};
-    static const real32_T RT_LOG10EF{0.43429449F};
-    static const real_T   RT_E{2.7182818284590452354};
-    static const real32_T RT_EF{2.7182817F};
+  static const real_T   RT_PI{3.14159265358979323846};
+  static const real32_T RT_PIF{3.1415927F};
+  static const real_T   RT_LN_10{2.30258509299404568402};
+  static const real32_T RT_LN_10F{2.3025851F};
+  static const real_T   RT_LOG10E{0.43429448190325182765};
+  static const real32_T RT_LOG10EF{0.43429449F};
+  static const real_T   RT_E{2.7182818284590452354};
+  static const real32_T RT_EF{2.7182817F};
 
 #ifdef __cplusplus
 }

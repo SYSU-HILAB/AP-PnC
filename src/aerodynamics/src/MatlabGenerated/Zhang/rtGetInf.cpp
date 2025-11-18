@@ -1,3 +1,16 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
 //
 // Academic License - for use in teaching, academic research, and meeting
 // course requirements at degree granting institutions only.  Not for
@@ -22,7 +35,7 @@
 //  Initialize rtInf needed by the generated code.
 real_T rtGetInf(void)
 {
-    return rtInf;
+  return rtInf;
 }
 
 // Function: rtGetInfF
@@ -31,7 +44,7 @@ real_T rtGetInf(void)
 //  Initialize rtInfF needed by the generated code.
 real32_T rtGetInfF(void)
 {
-    return rtInfF;
+  return rtInfF;
 }
 
 // Function: rtGetMinusInf
@@ -40,7 +53,7 @@ real32_T rtGetInfF(void)
 //  Initialize rtMinusInf needed by the generated code.
 real_T rtGetMinusInf(void)
 {
-    return rtMinusInf;
+  return rtMinusInf;
 }
 
 // Function: rtGetMinusInfF
@@ -49,7 +62,7 @@ real_T rtGetMinusInf(void)
 //  Initialize rtMinusInfF needed by the generated code.
 real32_T rtGetMinusInfF(void)
 {
-    return rtMinusInfF;
+  return rtMinusInfF;
 }
 
 //

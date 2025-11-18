@@ -1,3 +1,16 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
 /****************************************************************************
  *
  * Copyright 2020 PX4 Development Team. All rights reserved.
@@ -54,57 +67,56 @@ using namespace px4_msgs::msg;
 
 class OffboardControl : public rclcpp::Node
 {
-   public:
-    OffboardControl() : Node("offboard_control")
+ public:
+  OffboardControl() : Node("offboard_control")
+  {
+    offboard_control_mode_publisher_ =
+        this->create_publisher<OffboardControlMode>(
+            "/fmu/in/offboard_control_mode", 10);
+    trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>(
+        "/fmu/in/trajectory_setpoint", 10);
+
+    auto timer_callback = [this]() -> void
     {
-        offboard_control_mode_publisher_ =
-            this->create_publisher<OffboardControlMode>(
-                "/fmu/in/offboard_control_mode", 10);
-        trajectory_setpoint_publisher_ =
-            this->create_publisher<TrajectorySetpoint>(
-                "/fmu/in/trajectory_setpoint", 10);
+      // if (offboard_setpoint_counter_ == 10) {
+      // 	// Change to Offboard mode after 10 setpoints
+      // 	this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE,
+      // 1, 6);
 
-        auto timer_callback = [this]() -> void
-        {
-            // if (offboard_setpoint_counter_ == 10) {
-            // 	// Change to Offboard mode after 10 setpoints
-            // 	this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE,
-            // 1, 6);
+      // 	// Arm the vehicle
+      // 	// this->arm();
+      // }
 
-            // 	// Arm the vehicle
-            // 	// this->arm();
-            // }
+      // offboard_control_mode needs to be paired with trajectory_setpoint
+      publish_offboard_control_mode();
+      publish_trajectory_setpoint();
 
-            // offboard_control_mode needs to be paired with trajectory_setpoint
-            publish_offboard_control_mode();
-            publish_trajectory_setpoint();
+      // stop the counter after reaching 11
+      // if (offboard_setpoint_counter_ < 11) {
+      // 	offboard_setpoint_counter_++;
+      // }
+    };
+    timer_ = this->create_wall_timer(100ms, timer_callback);
+  }
 
-            // stop the counter after reaching 11
-            // if (offboard_setpoint_counter_ < 11) {
-            // 	offboard_setpoint_counter_++;
-            // }
-        };
-        timer_ = this->create_wall_timer(100ms, timer_callback);
-    }
+ private:
+  rclcpp::TimerBase::SharedPtr timer_;
 
-   private:
-    rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::Publisher<OffboardControlMode>::SharedPtr
+      offboard_control_mode_publisher_;
+  rclcpp::Publisher<TrajectorySetpoint>::SharedPtr
+                                               trajectory_setpoint_publisher_;
+  rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
 
-    rclcpp::Publisher<OffboardControlMode>::SharedPtr
-        offboard_control_mode_publisher_;
-    rclcpp::Publisher<TrajectorySetpoint>::SharedPtr
-                                                 trajectory_setpoint_publisher_;
-    rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
+  std::atomic<uint64_t> timestamp_;  //!< common synced timestamped
 
-    std::atomic<uint64_t> timestamp_;  //!< common synced timestamped
+  uint64_t offboard_setpoint_counter_;  //!< counter for the number of
+                                        //!< setpoints sent
 
-    uint64_t offboard_setpoint_counter_;  //!< counter for the number of
-                                          //!< setpoints sent
-
-    void publish_offboard_control_mode();
-    void publish_trajectory_setpoint();
-    void publish_vehicle_command(uint16_t command, float param1 = 0.0,
-                                 float param2 = 0.0);
+  void publish_offboard_control_mode();
+  void publish_trajectory_setpoint();
+  void publish_vehicle_command(uint16_t command, float param1 = 0.0,
+                               float param2 = 0.0);
 };
 
 /**
@@ -113,14 +125,14 @@ class OffboardControl : public rclcpp::Node
  */
 void OffboardControl::publish_offboard_control_mode()
 {
-    OffboardControlMode msg{};
-    msg.position     = true;
-    msg.velocity     = false;
-    msg.acceleration = false;
-    msg.attitude     = false;
-    msg.body_rate    = false;
-    msg.timestamp    = this->get_clock()->now().nanoseconds() / 1000;
-    offboard_control_mode_publisher_->publish(msg);
+  OffboardControlMode msg{};
+  msg.position     = true;
+  msg.velocity     = false;
+  msg.acceleration = false;
+  msg.attitude     = false;
+  msg.body_rate    = false;
+  msg.timestamp    = this->get_clock()->now().nanoseconds() / 1000;
+  offboard_control_mode_publisher_->publish(msg);
 }
 
 /**
@@ -130,20 +142,20 @@ void OffboardControl::publish_offboard_control_mode()
  */
 void OffboardControl::publish_trajectory_setpoint()
 {
-    TrajectorySetpoint msg{};
-    msg.position  = {0.0, 0.0, -0.5};
-    msg.yaw       = 0.0;  // [-PI:PI]
-    msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
-    trajectory_setpoint_publisher_->publish(msg);
+  TrajectorySetpoint msg{};
+  msg.position  = {0.0, 0.0, -0.5};
+  msg.yaw       = 0.0;  // [-PI:PI]
+  msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+  trajectory_setpoint_publisher_->publish(msg);
 }
 
 int main(int argc, char *argv[])
 {
-    std::cout << "Starting offboard control node..." << std::endl;
-    setvbuf(stdout, NULL, _IONBF, BUFSIZ);
-    rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<OffboardControl>());
+  std::cout << "Starting offboard control node..." << std::endl;
+  setvbuf(stdout, NULL, _IONBF, BUFSIZ);
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<OffboardControl>());
 
-    rclcpp::shutdown();
-    return 0;
+  rclcpp::shutdown();
+  return 0;
 }

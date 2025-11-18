@@ -1,3 +1,14 @@
+# BSD 3-Clause License
+#
+# Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+# All rights reserved.
+#
+# Authors:
+# Hanamy: rongerch@outlook.com
+#
+# Paper:
+# Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+
 from acados_template import AcadosOcp, AcadosSim, AcadosSimSolver, AcadosOcpSolver
 from config import MpcConfig
 import numpy as np

@@ -1,3 +1,16 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
 /****************************************************************************
  *
  * Copyright 2020 PX4 Development Team. All rights reserved.
@@ -53,479 +66,471 @@
 
 namespace px4_ros_interface
 {
-    namespace frame_transforms
+  namespace frame_transforms
+  {
+
+    //! Type matching rosmsg for 3x3 covariance matrix
+    using Covariance3d =
+        sensor_msgs::msg::Imu::_angular_velocity_covariance_type;
+
+    //! Type matching rosmsg for 6x6 covariance matrix
+    using Covariance6d =
+        geometry_msgs::msg::PoseWithCovariance::_covariance_type;
+
+    //! Type matching rosmsg for 9x9 covariance matrix
+    using Covariance9d = std::array<double, 81>;
+
+    //! Eigen::Map for Covariance3d
+    using EigenMapCovariance3d =
+        Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>;
+    using EigenMapConstCovariance3d =
+        Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>;
+
+    //! Eigen::Map for Covariance6d
+    using EigenMapCovariance6d =
+        Eigen::Map<Eigen::Matrix<double, 6, 6, Eigen::RowMajor>>;
+    using EigenMapConstCovariance6d =
+        Eigen::Map<const Eigen::Matrix<double, 6, 6, Eigen::RowMajor>>;
+
+    //! Eigen::Map for Covariance9d
+    using EigenMapCovariance9d =
+        Eigen::Map<Eigen::Matrix<double, 9, 9, Eigen::RowMajor>>;
+    using EigenMapConstCovariance9d =
+        Eigen::Map<const Eigen::Matrix<double, 9, 9, Eigen::RowMajor>>;
+
+    /**
+     * @brief Orientation transform options when applying rotations to data
+     */
+    enum class StaticTF
+    {
+      NED_TO_ENU,            //!< change from expressed WRT NED frame to WRT ENU
+                             //!< frame
+      ENU_TO_NED,            //!< change from expressed WRT ENU frame to WRT NED
+                             //!< frame
+      AIRCRAFT_TO_BASELINK,  //!< change from expressed WRT aircraft frame
+                             //!< to WRT to baselink frame
+      BASELINK_TO_AIRCRAFT,  //!< change from expressed WRT baselnk to WRT
+                             //!< aircraft
+      FRD_TO_FLU,   //!< change from expressed WRT baselnk to WRT aircraft
+      FLU_TO_FRD,   //!< change from expressed WRT baselnk to WRT aircraft
+      ECEF_TO_ENU,  //!< change from expressed WRT ECEF frame to WRT ENU
+                    //!< frame
+      ENU_TO_ECEF   //!< change from expressed WRT ENU frame to WRT ECEF
+                    //!< frame
+    };
+
+    // Utils to ease conversions
+    namespace utils
     {
 
-        //! Type matching rosmsg for 3x3 covariance matrix
-        using Covariance3d =
-            sensor_msgs::msg::Imu::_angular_velocity_covariance_type;
-
-        //! Type matching rosmsg for 6x6 covariance matrix
-        using Covariance6d =
-            geometry_msgs::msg::PoseWithCovariance::_covariance_type;
-
-        //! Type matching rosmsg for 9x9 covariance matrix
-        using Covariance9d = std::array<double, 81>;
-
-        //! Eigen::Map for Covariance3d
-        using EigenMapCovariance3d =
-            Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>;
-        using EigenMapConstCovariance3d =
-            Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>;
-
-        //! Eigen::Map for Covariance6d
-        using EigenMapCovariance6d =
-            Eigen::Map<Eigen::Matrix<double, 6, 6, Eigen::RowMajor>>;
-        using EigenMapConstCovariance6d =
-            Eigen::Map<const Eigen::Matrix<double, 6, 6, Eigen::RowMajor>>;
-
-        //! Eigen::Map for Covariance9d
-        using EigenMapCovariance9d =
-            Eigen::Map<Eigen::Matrix<double, 9, 9, Eigen::RowMajor>>;
-        using EigenMapConstCovariance9d =
-            Eigen::Map<const Eigen::Matrix<double, 9, 9, Eigen::RowMajor>>;
+      // Quaternion
+      namespace quaternion
+      {
 
         /**
-         * @brief Orientation transform options when applying rotations to data
+         * @brief Convert euler angles to quaternion.
          */
-        enum class StaticTF
-        {
-            NED_TO_ENU,  //!< change from expressed WRT NED frame to WRT ENU
-                         //!< frame
-            ENU_TO_NED,  //!< change from expressed WRT ENU frame to WRT NED
-                         //!< frame
-            AIRCRAFT_TO_BASELINK,  //!< change from expressed WRT aircraft frame
-                                   //!< to WRT to baselink frame
-            BASELINK_TO_AIRCRAFT,  //!< change from expressed WRT baselnk to WRT
-                                   //!< aircraft
-            FRD_TO_FLU,   //!< change from expressed WRT baselnk to WRT aircraft
-            FLU_TO_FRD,   //!< change from expressed WRT baselnk to WRT aircraft
-            ECEF_TO_ENU,  //!< change from expressed WRT ECEF frame to WRT ENU
-                          //!< frame
-            ENU_TO_ECEF   //!< change from expressed WRT ENU frame to WRT ECEF
-                          //!< frame
-        };
-
-        // Utils to ease conversions
-        namespace utils
-        {
-
-            // Quaternion
-            namespace quaternion
-            {
-
-                /**
-                 * @brief Convert euler angles to quaternion.
-                 */
-                Eigen::Quaterniond quaternion_from_euler(
-                    const Eigen::Vector3d &euler);
-
-                /**
-                 * @brief Convert euler angles to quaternion.
-                 *
-                 * @return quaternion, same as @a tf::quaternionFromeuler() but
-                 * in Eigen format.
-                 */
-                Eigen::Quaterniond quaternion_from_euler(const double roll,
-                                                         const double pitch,
-                                                         const double yaw);
-
-                /**
-                 * @brief Convert quaternion to euler angles
-                 * @return Eigen::Quaterniond
-                 */
-                Eigen::Vector3d quaternion_to_euler(
-                    const Eigen::Quaterniond &q);
-
-                /**
-                 * @brief Convert quaternion to euler angles
-                 */
-                void quaternion_to_euler(const Eigen::Quaterniond &q,
-                                         double &roll, double &pitch,
-                                         double &yaw);
-
-                /**
-                 * @brief Store Quaternion to float[4]
-                 * Eigen::Quaterniond xyzw internal order to PX4 quaternion
-                 * wxyz.
-                 */
-                void eigen_quat_to_array(const Eigen::Quaterniond &q,
-                                         std::array<float, 4>     &qarray);
-
-                /**
-                 * @brief Convert float[4] quaternion to Eigen Quaternion
-                 */
-                Eigen::Quaterniond array_to_eigen_quat(
-                    const std::array<float, 4> &q);
-
-                /**
-                 * @brief Get Yaw angle from quaternion
-                 */
-                double quaternion_get_yaw(const Eigen::Quaterniond &q);
-
-            }  // namespace quaternion
-
-            // Data types
-            namespace types
-            {
-
-                /**
-                 * @brief Convert covariance matrix to float[n]
-                 */
-                template <class T, std::size_t SIZE>
-                void covariance_to_array(const T                 &cov,
-                                         std::array<float, SIZE> &covmsg);
-
-                /**
-                 * @brief Convert upper right triangular of a covariance matrix
-                 * to float[n] array
-                 */
-                template <class T, std::size_t ARR_SIZE>
-                void covariance_urt_to_array(
-                    const T &covmap, std::array<float, ARR_SIZE> &covmsg);
-
-                /**
-                 * @brief Convert float[n] array (upper right triangular of a
-                 * covariance matrix) to Eigen::MatrixXd<n,n> full covariance
-                 * matrix
-                 */
-                template <class T, std::size_t ARR_SIZE>
-                void array_urt_to_covariance_matrix(
-                    const std::array<float, ARR_SIZE> &covmsg, T &covmat);
-
-            }  // namespace types
-        }  // namespace utils
+        Eigen::Quaterniond quaternion_from_euler(const Eigen::Vector3d &euler);
 
         /**
-         * @brief Static quaternion needed for rotating between ENU and NED
-         * frames NED to ENU: +PI/2 rotation about Z (Down) followed by a +PI
-         * rotation around X (old North/new East) ENU to NED: +PI/2 rotation
-         * about Z (Up) followed by a +PI rotation about X (old East/new North)
-         */
-        static const auto NED_ENU_Q =
-            utils::quaternion::quaternion_from_euler(M_PI, 0.0, M_PI_2);
-
-        /**
-         * @brief Static quaternion needed for rotating between aircraft and
-         * base_link frames +PI rotation around X (Forward) axis transforms from
-         * Forward, Right, Down (aircraft) Fto Forward, Left, Up (base_link)
-         * frames.
-         */
-        static const auto AIRCRAFT_BASELINK_Q =
-            utils::quaternion::quaternion_from_euler(M_PI, 0.0, 0.0);
-
-        /**
-         * @brief Static vector needed for rotating between ENU and NED frames
-         * +PI rotation around X (North) axis follwed by +PI/2 rotation about Z
-         * (Down) gives the ENU frame.  Similarly, a +PI rotation about X (East)
-         * followed by a +PI/2 roation about Z (Up) gives the NED frame.
-         */
-        static const Eigen::Affine3d NED_ENU_AFFINE(NED_ENU_Q);
-
-        /**
-         * @brief Static vector needed for rotating between aircraft and
-         * base_link frames +PI rotation around X (Forward) axis transforms from
-         * Forward, Right, Down (aircraft) Fto Forward, Left, Up (base_link)
-         * frames.
-         */
-        static const Eigen::Affine3d AIRCRAFT_BASELINK_AFFINE(
-            AIRCRAFT_BASELINK_Q);
-
-        /**
-         * @brief 3-D matrices to fill 6-D rotation matrix applied to change
-         * covariance matrices coordinate frames
-         */
-        static const auto NED_ENU_R = NED_ENU_Q.normalized().toRotationMatrix();
-        static const auto AIRCRAFT_BASELINK_R =
-            AIRCRAFT_BASELINK_Q.normalized().toRotationMatrix();
-
-        /**
-         * @brief Use reflections instead of rotations for NED <-> ENU
-         * transformation to avoid NaN/Inf floating point pollution across
-         * different axes since in NED <-> ENU the axes are perfectly aligned.
-         */
-        static const Eigen::PermutationMatrix<3> NED_ENU_REFLECTION_XY(
-            Eigen::Vector3i(1, 0, 2));
-        static const Eigen::DiagonalMatrix<double, 3> NED_ENU_REFLECTION_Z(1, 1,
-                                                                           -1);
-
-        /**
-         * @brief Auxiliar matrices to Covariance transforms
-         */
-        using Matrix6d = Eigen::Matrix<double, 6, 6>;
-        using Matrix9d = Eigen::Matrix<double, 9, 9>;
-
-        /**
-         * @brief Transform representation of orientation from 1 frame to
-         * another. (e.g. transfrom orientation from representing  from
-         * base_link -> NED to representing base_link -> ENU)
-         */
-        Eigen::Quaterniond transform_orientation(const Eigen::Quaterniond &q,
-                                                 const StaticTF transform);
-
-        /**
-         * @brief Transform data expressed in one frame to another.
-         */
-        Eigen::Vector3d transform_frame(const Eigen::Vector3d    &vec,
-                                        const Eigen::Quaterniond &q);
-
-        /**
-         * @brief Transform 3x3 convariance expressed in one frame to another.
-         */
-        Covariance3d transform_frame(const Covariance3d       &cov,
-                                     const Eigen::Quaterniond &q);
-
-        /**
-         * @brief Transform 6x6 convariance expressed in one frame to another.
-         */
-        Covariance6d transform_frame(const Covariance6d       &cov,
-                                     const Eigen::Quaterniond &q);
-
-        /**
-         * @brief Transform 9x9 convariance expressed in one frame to another.
-         */
-        Covariance9d transform_frame(const Covariance9d       &cov,
-                                     const Eigen::Quaterniond &q);
-
-        /**
-         * @brief Transform data expressed in one frame to another.
-         */
-        Eigen::Vector3d transform_static_frame(const Eigen::Vector3d &vec,
-                                               const StaticTF transform);
-
-        /**
-         * @brief Transform 3d convariance expressed in one frame to another.
-         */
-        Covariance3d transform_static_frame(const Covariance3d &cov,
-                                            const StaticTF      transform);
-
-        /**
-         * @brief Transform 6d convariance expressed in one frame to another.
-         */
-        Covariance6d transform_static_frame(const Covariance6d &cov,
-                                            const StaticTF      transform);
-
-        /**
-         * @brief Transform 9d convariance expressed in one frame to another
-         */
-        Covariance9d transform_static_frame(const Covariance9d &cov,
-                                            const StaticTF      transform);
-
-        /**
-         * @brief Transform data expressed in one frame to another frame with
-         * additional map origin parameter.
-         */
-        Eigen::Vector3d transform_static_frame(
-            const Eigen::Vector3d &vec, const Eigen::Vector3d &map_origin,
-            const StaticTF transform);
-
-        /**
-         * @brief Transform from orientation represented WRT NED frame to
-         * orientation represented WRT ENU frame
-         */
-        template <class T>
-        inline T ned_to_enu_orientation(const T &in)
-        {
-            return transform_orientation(in, StaticTF::NED_TO_ENU);
-        }
-
-        /**
-         * @brief Transform from orientation represented WRT ENU frame to
-         * orientation represented WRT NED frame
-         */
-        template <class T>
-        inline T enu_to_ned_orientation(const T &in)
-        {
-            return transform_orientation(in, StaticTF::ENU_TO_NED);
-        }
-
-        template <class T>
-        inline T frd_to_flu_orientation(const T &in)
-        {
-            return transform_orientation(in, StaticTF::FRD_TO_FLU);
-        }
-
-        /**
-         * @brief Transform from orientation represented WRT aircraft body frame
-         * to orientation represented WRT base_link body frame
-         */
-        template <class T>
-        inline T aircraft_to_baselink_orientation(const T &in)
-        {
-            return transform_orientation(in, StaticTF::AIRCRAFT_TO_BASELINK);
-        }
-
-        /**
-         * @brief Transform from orientation represented WRT base_link body
-         * frame to orientation represented WRT aircraft body frame
-         */
-        template <class T>
-        inline T baselink_to_aircraft_orientation(const T &in)
-        {
-            return transform_orientation(in, StaticTF::BASELINK_TO_AIRCRAFT);
-        }
-
-        /**
-         * @brief Transform from orientation represented in PX4 format to ROS
-         * format PX4 format is aircraft to NED ROS format is baselink to ENU
+         * @brief Convert euler angles to quaternion.
          *
-         * Two steps conversion:
-         * 1. aircraft to NED is converted to aircraft to ENU (NED_to_ENU
-         * conversion)
-         * 2. aircraft to ENU is converted to baselink to ENU
-         * (baselink_to_aircraft conversion)
+         * @return quaternion, same as @a tf::quaternionFromeuler() but
+         * in Eigen format.
          */
-        template <class T>
-        inline T px4_to_ros_orientation(const T &in)
-        {
-            return baselink_to_aircraft_orientation(ned_to_enu_orientation(in));
-        }
+        Eigen::Quaterniond quaternion_from_euler(const double roll,
+                                                 const double pitch,
+                                                 const double yaw);
 
         /**
-         * @brief Transform from orientation represented in ROS format to PX4
-         * format PX4 format is aircraft to NED ROS format is baselink to ENU
-         *
-         * Two steps conversion:
-         * 1. baselink to ENU is converted to baselink to NED (ENU_to_NED
-         * conversion)
-         * 2. baselink to NED is converted to aircraft to NED
-         * (aircraft_to_baselink conversion)
+         * @brief Convert quaternion to euler angles
+         * @return Eigen::Quaterniond
          */
-        template <class T>
-        inline T ros_to_px4_orientation(const T &in)
-        {
-            return aircraft_to_baselink_orientation(enu_to_ned_orientation(in));
-        }
+        Eigen::Vector3d quaternion_to_euler(const Eigen::Quaterniond &q);
 
         /**
-         * @brief Transform data expressed in NED to ENU local frame.
+         * @brief Convert quaternion to euler angles
          */
-        template <class T>
-        inline T ned_to_enu_local_frame(const T &in)
-        {
-            return transform_static_frame(in, StaticTF::NED_TO_ENU);
-        }
+        void quaternion_to_euler(const Eigen::Quaterniond &q, double &roll,
+                                 double &pitch, double &yaw);
 
         /**
-         * @brief Transform data expressed in ENU to NED frame.
+         * @brief Store Quaternion to float[4]
+         * Eigen::Quaterniond xyzw internal order to PX4 quaternion
+         * wxyz.
          */
-        template <class T>
-        inline T enu_to_ned_local_frame(const T &in)
-        {
-            return transform_static_frame(in, StaticTF::ENU_TO_NED);
-        }
+        void eigen_quat_to_array(const Eigen::Quaterniond &q,
+                                 std::array<float, 4>     &qarray);
 
         /**
-         * @brief Transform data expressed in aircraft body frame to base_link
-         * body frame.
+         * @brief Convert float[4] quaternion to Eigen Quaternion
          */
-        template <class T>
-        inline T aircraft_to_baselink_body_frame(const T &in)
-        {
-            return transform_static_frame(in, StaticTF::AIRCRAFT_TO_BASELINK);
-        }
+        Eigen::Quaterniond array_to_eigen_quat(const std::array<float, 4> &q);
 
         /**
-         * @brief Transform data expressed in base_link body frame to aircraft
-         * body frame.
+         * @brief Get Yaw angle from quaternion
          */
-        template <class T>
-        inline T baselink_to_aircraft_body_frame(const T &in)
-        {
-            return transform_static_frame(in, StaticTF::BASELINK_TO_AIRCRAFT);
-        }
+        double quaternion_get_yaw(const Eigen::Quaterniond &q);
+
+      }  // namespace quaternion
+
+      // Data types
+      namespace types
+      {
 
         /**
-         * @brief Transform data expressed in ECEF frame to ENU frame.
-         *
-         * @param in          local ECEF coordinates [m]
-         * @param map_origin  geodetic origin [lla]
-         * @returns local ENU coordinates [m].
+         * @brief Convert covariance matrix to float[n]
          */
-        template <class T>
-        inline T ecef_to_enu_local_frame(const T &in, const T &map_origin)
-        {
-            return transform_static_frame(in, map_origin,
-                                          StaticTF::ECEF_TO_ENU);
-        }
+        template <class T, std::size_t SIZE>
+        void covariance_to_array(const T &cov, std::array<float, SIZE> &covmsg);
 
         /**
-         * @brief Transform data expressed in ENU frame to ECEF frame.
-         *
-         * @param in          local ENU coordinates [m]
-         * @param map_origin  geodetic origin [lla]
-         * @returns local ECEF coordinates [m].
+         * @brief Convert upper right triangular of a covariance matrix
+         * to float[n] array
          */
-        template <class T>
-        inline T enu_to_ecef_local_frame(const T &in, const T &map_origin)
-        {
-            return transform_static_frame(in, map_origin,
-                                          StaticTF::ENU_TO_ECEF);
-        }
+        template <class T, std::size_t ARR_SIZE>
+        void covariance_urt_to_array(const T                     &covmap,
+                                     std::array<float, ARR_SIZE> &covmsg);
 
         /**
-         * @brief Transform data expressed in aircraft frame to NED frame.
-         * Assumes quaternion represents rotation from aircraft frame to NED
-         * frame.
+         * @brief Convert float[n] array (upper right triangular of a
+         * covariance matrix) to Eigen::MatrixXd<n,n> full covariance
+         * matrix
          */
-        template <class T>
-        inline T aircraft_to_ned_frame(const T &in, const Eigen::Quaterniond &q)
-        {
-            return transform_frame(in, q);
-        }
+        template <class T, std::size_t ARR_SIZE>
+        void array_urt_to_covariance_matrix(
+            const std::array<float, ARR_SIZE> &covmsg, T &covmat);
 
-        /**
-         * @brief Transform data expressed in NED to aircraft frame.
-         * Assumes quaternion represents rotation from NED to aircraft frame.
-         */
-        template <class T>
-        inline T ned_to_aircraft_frame(const T &in, const Eigen::Quaterniond &q)
-        {
-            return transform_frame(in, q);
-        }
+      }  // namespace types
+    }  // namespace utils
 
-        /**
-         * @brief Transform data expressed in aircraft frame to ENU frame.
-         * Assumes quaternion represents rotation from aircraft frame to ENU
-         * frame.
-         */
-        template <class T>
-        inline T aircraft_to_enu_frame(const T &in, const Eigen::Quaterniond &q)
-        {
-            return transform_frame(in, q);
-        }
+    /**
+     * @brief Static quaternion needed for rotating between ENU and NED
+     * frames NED to ENU: +PI/2 rotation about Z (Down) followed by a +PI
+     * rotation around X (old North/new East) ENU to NED: +PI/2 rotation
+     * about Z (Up) followed by a +PI rotation about X (old East/new North)
+     */
+    static const auto NED_ENU_Q =
+        utils::quaternion::quaternion_from_euler(M_PI, 0.0, M_PI_2);
 
-        /**
-         * @brief Transform data expressed in ENU to aircraft frame.
-         * Assumes quaternion represents rotation from ENU to aircraft frame.
-         */
-        template <class T>
-        inline T enu_to_aircraft_frame(const T &in, const Eigen::Quaterniond &q)
-        {
-            return transform_frame(in, q);
-        }
+    /**
+     * @brief Static quaternion needed for rotating between aircraft and
+     * base_link frames +PI rotation around X (Forward) axis transforms from
+     * Forward, Right, Down (aircraft) Fto Forward, Left, Up (base_link)
+     * frames.
+     */
+    static const auto AIRCRAFT_BASELINK_Q =
+        utils::quaternion::quaternion_from_euler(M_PI, 0.0, 0.0);
 
-        /**
-         * @brief Transform data expressed in baselink to ENU frame.
-         * Assumes quaternion represents rotation from basel_link to ENU frame.
-         */
-        template <class T>
-        inline T baselink_to_enu_frame(const T &in, const Eigen::Quaterniond &q)
-        {
-            return transform_frame(in, q);
-        }
+    /**
+     * @brief Static vector needed for rotating between ENU and NED frames
+     * +PI rotation around X (North) axis follwed by +PI/2 rotation about Z
+     * (Down) gives the ENU frame.  Similarly, a +PI rotation about X (East)
+     * followed by a +PI/2 roation about Z (Up) gives the NED frame.
+     */
+    static const Eigen::Affine3d NED_ENU_AFFINE(NED_ENU_Q);
 
-        /**
-         * @brief Transform data expressed in ENU to base_link frame.
-         * Assumes quaternion represents rotation from ENU to base_link frame.
-         */
-        template <class T>
-        inline T enu_to_baselink_frame(const T &in, const Eigen::Quaterniond &q)
-        {
-            return transform_frame(in, q);
-        }
+    /**
+     * @brief Static vector needed for rotating between aircraft and
+     * base_link frames +PI rotation around X (Forward) axis transforms from
+     * Forward, Right, Down (aircraft) Fto Forward, Left, Up (base_link)
+     * frames.
+     */
+    static const Eigen::Affine3d AIRCRAFT_BASELINK_AFFINE(AIRCRAFT_BASELINK_Q);
 
-    }  // namespace frame_transforms
+    /**
+     * @brief 3-D matrices to fill 6-D rotation matrix applied to change
+     * covariance matrices coordinate frames
+     */
+    static const auto NED_ENU_R = NED_ENU_Q.normalized().toRotationMatrix();
+    static const auto AIRCRAFT_BASELINK_R =
+        AIRCRAFT_BASELINK_Q.normalized().toRotationMatrix();
+
+    /**
+     * @brief Use reflections instead of rotations for NED <-> ENU
+     * transformation to avoid NaN/Inf floating point pollution across
+     * different axes since in NED <-> ENU the axes are perfectly aligned.
+     */
+    static const Eigen::PermutationMatrix<3> NED_ENU_REFLECTION_XY(
+        Eigen::Vector3i(1, 0, 2));
+    static const Eigen::DiagonalMatrix<double, 3> NED_ENU_REFLECTION_Z(1, 1,
+                                                                       -1);
+
+    /**
+     * @brief Auxiliar matrices to Covariance transforms
+     */
+    using Matrix6d = Eigen::Matrix<double, 6, 6>;
+    using Matrix9d = Eigen::Matrix<double, 9, 9>;
+
+    /**
+     * @brief Transform representation of orientation from 1 frame to
+     * another. (e.g. transfrom orientation from representing  from
+     * base_link -> NED to representing base_link -> ENU)
+     */
+    Eigen::Quaterniond transform_orientation(const Eigen::Quaterniond &q,
+                                             const StaticTF transform);
+
+    /**
+     * @brief Transform data expressed in one frame to another.
+     */
+    Eigen::Vector3d transform_frame(const Eigen::Vector3d    &vec,
+                                    const Eigen::Quaterniond &q);
+
+    /**
+     * @brief Transform 3x3 convariance expressed in one frame to another.
+     */
+    Covariance3d transform_frame(const Covariance3d       &cov,
+                                 const Eigen::Quaterniond &q);
+
+    /**
+     * @brief Transform 6x6 convariance expressed in one frame to another.
+     */
+    Covariance6d transform_frame(const Covariance6d       &cov,
+                                 const Eigen::Quaterniond &q);
+
+    /**
+     * @brief Transform 9x9 convariance expressed in one frame to another.
+     */
+    Covariance9d transform_frame(const Covariance9d       &cov,
+                                 const Eigen::Quaterniond &q);
+
+    /**
+     * @brief Transform data expressed in one frame to another.
+     */
+    Eigen::Vector3d transform_static_frame(const Eigen::Vector3d &vec,
+                                           const StaticTF         transform);
+
+    /**
+     * @brief Transform 3d convariance expressed in one frame to another.
+     */
+    Covariance3d transform_static_frame(const Covariance3d &cov,
+                                        const StaticTF      transform);
+
+    /**
+     * @brief Transform 6d convariance expressed in one frame to another.
+     */
+    Covariance6d transform_static_frame(const Covariance6d &cov,
+                                        const StaticTF      transform);
+
+    /**
+     * @brief Transform 9d convariance expressed in one frame to another
+     */
+    Covariance9d transform_static_frame(const Covariance9d &cov,
+                                        const StaticTF      transform);
+
+    /**
+     * @brief Transform data expressed in one frame to another frame with
+     * additional map origin parameter.
+     */
+    Eigen::Vector3d transform_static_frame(const Eigen::Vector3d &vec,
+                                           const Eigen::Vector3d &map_origin,
+                                           const StaticTF         transform);
+
+    /**
+     * @brief Transform from orientation represented WRT NED frame to
+     * orientation represented WRT ENU frame
+     */
+    template <class T>
+    inline T ned_to_enu_orientation(const T &in)
+    {
+      return transform_orientation(in, StaticTF::NED_TO_ENU);
+    }
+
+    /**
+     * @brief Transform from orientation represented WRT ENU frame to
+     * orientation represented WRT NED frame
+     */
+    template <class T>
+    inline T enu_to_ned_orientation(const T &in)
+    {
+      return transform_orientation(in, StaticTF::ENU_TO_NED);
+    }
+
+    template <class T>
+    inline T frd_to_flu_orientation(const T &in)
+    {
+      return transform_orientation(in, StaticTF::FRD_TO_FLU);
+    }
+
+    /**
+     * @brief Transform from orientation represented WRT aircraft body frame
+     * to orientation represented WRT base_link body frame
+     */
+    template <class T>
+    inline T aircraft_to_baselink_orientation(const T &in)
+    {
+      return transform_orientation(in, StaticTF::AIRCRAFT_TO_BASELINK);
+    }
+
+    /**
+     * @brief Transform from orientation represented WRT base_link body
+     * frame to orientation represented WRT aircraft body frame
+     */
+    template <class T>
+    inline T baselink_to_aircraft_orientation(const T &in)
+    {
+      return transform_orientation(in, StaticTF::BASELINK_TO_AIRCRAFT);
+    }
+
+    /**
+     * @brief Transform from orientation represented in PX4 format to ROS
+     * format PX4 format is aircraft to NED ROS format is baselink to ENU
+     *
+     * Two steps conversion:
+     * 1. aircraft to NED is converted to aircraft to ENU (NED_to_ENU
+     * conversion)
+     * 2. aircraft to ENU is converted to baselink to ENU
+     * (baselink_to_aircraft conversion)
+     */
+    template <class T>
+    inline T px4_to_ros_orientation(const T &in)
+    {
+      return baselink_to_aircraft_orientation(ned_to_enu_orientation(in));
+    }
+
+    /**
+     * @brief Transform from orientation represented in ROS format to PX4
+     * format PX4 format is aircraft to NED ROS format is baselink to ENU
+     *
+     * Two steps conversion:
+     * 1. baselink to ENU is converted to baselink to NED (ENU_to_NED
+     * conversion)
+     * 2. baselink to NED is converted to aircraft to NED
+     * (aircraft_to_baselink conversion)
+     */
+    template <class T>
+    inline T ros_to_px4_orientation(const T &in)
+    {
+      return aircraft_to_baselink_orientation(enu_to_ned_orientation(in));
+    }
+
+    /**
+     * @brief Transform data expressed in NED to ENU local frame.
+     */
+    template <class T>
+    inline T ned_to_enu_local_frame(const T &in)
+    {
+      return transform_static_frame(in, StaticTF::NED_TO_ENU);
+    }
+
+    /**
+     * @brief Transform data expressed in ENU to NED frame.
+     */
+    template <class T>
+    inline T enu_to_ned_local_frame(const T &in)
+    {
+      return transform_static_frame(in, StaticTF::ENU_TO_NED);
+    }
+
+    /**
+     * @brief Transform data expressed in aircraft body frame to base_link
+     * body frame.
+     */
+    template <class T>
+    inline T aircraft_to_baselink_body_frame(const T &in)
+    {
+      return transform_static_frame(in, StaticTF::AIRCRAFT_TO_BASELINK);
+    }
+
+    /**
+     * @brief Transform data expressed in base_link body frame to aircraft
+     * body frame.
+     */
+    template <class T>
+    inline T baselink_to_aircraft_body_frame(const T &in)
+    {
+      return transform_static_frame(in, StaticTF::BASELINK_TO_AIRCRAFT);
+    }
+
+    /**
+     * @brief Transform data expressed in ECEF frame to ENU frame.
+     *
+     * @param in          local ECEF coordinates [m]
+     * @param map_origin  geodetic origin [lla]
+     * @returns local ENU coordinates [m].
+     */
+    template <class T>
+    inline T ecef_to_enu_local_frame(const T &in, const T &map_origin)
+    {
+      return transform_static_frame(in, map_origin, StaticTF::ECEF_TO_ENU);
+    }
+
+    /**
+     * @brief Transform data expressed in ENU frame to ECEF frame.
+     *
+     * @param in          local ENU coordinates [m]
+     * @param map_origin  geodetic origin [lla]
+     * @returns local ECEF coordinates [m].
+     */
+    template <class T>
+    inline T enu_to_ecef_local_frame(const T &in, const T &map_origin)
+    {
+      return transform_static_frame(in, map_origin, StaticTF::ENU_TO_ECEF);
+    }
+
+    /**
+     * @brief Transform data expressed in aircraft frame to NED frame.
+     * Assumes quaternion represents rotation from aircraft frame to NED
+     * frame.
+     */
+    template <class T>
+    inline T aircraft_to_ned_frame(const T &in, const Eigen::Quaterniond &q)
+    {
+      return transform_frame(in, q);
+    }
+
+    /**
+     * @brief Transform data expressed in NED to aircraft frame.
+     * Assumes quaternion represents rotation from NED to aircraft frame.
+     */
+    template <class T>
+    inline T ned_to_aircraft_frame(const T &in, const Eigen::Quaterniond &q)
+    {
+      return transform_frame(in, q);
+    }
+
+    /**
+     * @brief Transform data expressed in aircraft frame to ENU frame.
+     * Assumes quaternion represents rotation from aircraft frame to ENU
+     * frame.
+     */
+    template <class T>
+    inline T aircraft_to_enu_frame(const T &in, const Eigen::Quaterniond &q)
+    {
+      return transform_frame(in, q);
+    }
+
+    /**
+     * @brief Transform data expressed in ENU to aircraft frame.
+     * Assumes quaternion represents rotation from ENU to aircraft frame.
+     */
+    template <class T>
+    inline T enu_to_aircraft_frame(const T &in, const Eigen::Quaterniond &q)
+    {
+      return transform_frame(in, q);
+    }
+
+    /**
+     * @brief Transform data expressed in baselink to ENU frame.
+     * Assumes quaternion represents rotation from basel_link to ENU frame.
+     */
+    template <class T>
+    inline T baselink_to_enu_frame(const T &in, const Eigen::Quaterniond &q)
+    {
+      return transform_frame(in, q);
+    }
+
+    /**
+     * @brief Transform data expressed in ENU to base_link frame.
+     * Assumes quaternion represents rotation from ENU to base_link frame.
+     */
+    template <class T>
+    inline T enu_to_baselink_frame(const T &in, const Eigen::Quaterniond &q)
+    {
+      return transform_frame(in, q);
+    }
+
+  }  // namespace frame_transforms
 }  // namespace px4_ros_interface
 
 #endif  // FRAME_TRANSFORMS_H

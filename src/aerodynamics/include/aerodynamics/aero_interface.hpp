@@ -1,3 +1,16 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
 #pragma once
 #include <Eigen/Dense>
 #include <memory>     // For std::unique_ptr
@@ -6,70 +19,70 @@
 namespace aerodynamics
 {
 
-    class AerodynamicsInterface
-    {
-       public:
-        /**
-         * @brief Compute aerodynamic forces and moments
-         *
-         * @param[in] body_speed Velocity vector in body frame (m/s)
-         * @param[out] aero_force_b Aerodynamic force vector in body frame (N)
-         * @param[out] aero_moment_b Aerodynamic moment vector in body frame
-         * (N⋅m)
-         * @param[out] alpha Angle of attack (rad)
-         * @param[out] beta Sideslip angle (rad)
-         * @return true if computation successful
-         */
-        virtual bool getAeroWrench(const Eigen::Vector3d& body_speed,
-                                   Eigen::Vector3d&       aero_force_b,
-                                   Eigen::Vector3d&       aero_moment_b,
-                                   double& alpha, double& beta) = 0;
+  class AerodynamicsInterface
+  {
+   public:
+    /**
+     * @brief Compute aerodynamic forces and moments
+     *
+     * @param[in] body_speed Velocity vector in body frame (m/s)
+     * @param[out] aero_force_b Aerodynamic force vector in body frame (N)
+     * @param[out] aero_moment_b Aerodynamic moment vector in body frame
+     * (N⋅m)
+     * @param[out] alpha Angle of attack (rad)
+     * @param[out] beta Sideslip angle (rad)
+     * @return true if computation successful
+     */
+    virtual bool getAeroWrench(const Eigen::Vector3d& body_speed,
+                               Eigen::Vector3d&       aero_force_b,
+                               Eigen::Vector3d& aero_moment_b, double& alpha,
+                               double& beta) = 0;
 
-        virtual ~AerodynamicsInterface() = default;
-    };
+    virtual ~AerodynamicsInterface() = default;
+  };
+
+  /**
+   * @brief Factory base class for creating aerodynamics model instances
+   */
+  class AerodynamicsCreator
+  {
+   protected:
+    std::unique_ptr<AerodynamicsInterface> _instance;
+
+   public:
+    /**
+     * @brief Create and initialize an aerodynamics model instance
+     *
+     * @return true if creation and initialization successful
+     */
+    virtual bool createAerodynamics() = 0;
 
     /**
-     * @brief Factory base class for creating aerodynamics model instances
+     * @brief Compute aerodynamic forces using the created model instance
+     *
+     * @param[in] body_speed Velocity vector in body frame (m/s)
+     * @param[out] aero_force_b Aerodynamic force vector in body frame (N)
+     * @param[out] aero_moment_b Aerodynamic moment vector in body frame
+     * (N⋅m)
+     * @param[out] alpha Angle of attack (rad)
+     * @param[out] beta Sideslip angle (rad)
+     * @return true if computation successful
+     * @throws std::runtime_error if aerodynamics instance not created
      */
-    class AerodynamicsCreator
+    bool getAeroWrench(const Eigen::Vector3d& body_speed,
+                       Eigen::Vector3d&       aero_force_b,
+                       Eigen::Vector3d& aero_moment_b, double& alpha,
+                       double& beta)
     {
-       protected:
-        std::unique_ptr<AerodynamicsInterface> _instance;
+      if (!_instance)
+      {
+        throw std::runtime_error("Aerodynamics instance not created");
+      }
+      return _instance->getAeroWrench(body_speed, aero_force_b, aero_moment_b,
+                                      alpha, beta);
+    }
 
-       public:
-        /**
-         * @brief Create and initialize an aerodynamics model instance
-         *
-         * @return true if creation and initialization successful
-         */
-        virtual bool createAerodynamics() = 0;
-
-        /**
-         * @brief Compute aerodynamic forces using the created model instance
-         *
-         * @param[in] body_speed Velocity vector in body frame (m/s)
-         * @param[out] aero_force_b Aerodynamic force vector in body frame (N)
-         * @param[out] aero_moment_b Aerodynamic moment vector in body frame
-         * (N⋅m)
-         * @param[out] alpha Angle of attack (rad)
-         * @param[out] beta Sideslip angle (rad)
-         * @return true if computation successful
-         * @throws std::runtime_error if aerodynamics instance not created
-         */
-        bool getAeroWrench(const Eigen::Vector3d& body_speed,
-                           Eigen::Vector3d&       aero_force_b,
-                           Eigen::Vector3d& aero_moment_b, double& alpha,
-                           double& beta)
-        {
-            if (!_instance)
-            {
-                throw std::runtime_error("Aerodynamics instance not created");
-            }
-            return _instance->getAeroWrench(body_speed, aero_force_b,
-                                            aero_moment_b, alpha, beta);
-        }
-
-        virtual ~AerodynamicsCreator() = default;
-    };
+    virtual ~AerodynamicsCreator() = default;
+  };
 
 }  // namespace aerodynamics

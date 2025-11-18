@@ -42,7 +42,7 @@ See justfiles.
 
 ## Issues
 It is typical to be seen in ubuntu22.04 with the problem of the interactions between qt5 and x11,
-you may have to install 
+you may have to install
 ```bash
 sudo apt update
 sudo apt install libqt5gui5 libqt5core5a libqt5widgets5 libxcb-randr0 libxcb-xtest0

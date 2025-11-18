@@ -25,3 +25,28 @@ repos:
     hooks:
       - id: prettier
         types: [yaml]
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      - id: insert-license
+        name: Insert license in C/C++ files
+        files: \.(c|h|cpp|hpp)$
+        args:
+          - --license-filepath
+          - LICENSE
+          - --comment-style
+          - "/*| *| */"
+          - --use-current-year
+          - --remove-header
+
+      - id: insert-license
+        name: Insert license in Python files
+        files: \.py$
+        args:
+          - --license-filepath
+          - LICENSE
+          - --comment-style
+          - "#"
+          - --use-current-year
+          - --remove-header
