@@ -412,7 +412,7 @@ class GlobalPlanner : public rclcpp::Node
         double          thrust;
 
         tailsitter_data.df_backward_auto(traj.getVel(t), traj.getAcc(t),
-                                         traj.getAcc(t), thrust, omg);
+                                         traj.getJer(t), thrust, omg);
 
         {
           // Get all required data from tailsitter model
