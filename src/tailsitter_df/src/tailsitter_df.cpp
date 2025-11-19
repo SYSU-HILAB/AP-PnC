@@ -8,7 +8,8 @@
  * Hanamy: rongerch@outlook.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 // C++ includes
@@ -253,8 +254,8 @@ namespace tailsitter_df
     // alpha_dot = alpha_dot - omega_vy;
     // alpha_dot = alpha_dot / 2.0;
 
-    real at_dot = (S_av_x_dot - alpha_dot * S_av_z) * cos(alpha) -
-                  (S_av_z_dot + alpha_dot * S_av_x) * sin(alpha);
+    // real at_dot = (S_av_x_dot - alpha_dot * S_av_z) * cos(alpha) -
+    //               (S_av_z_dot + alpha_dot * S_av_x) * sin(alpha);
 
     B_Omega_b_y = omega_vy + alpha_dot;
 
