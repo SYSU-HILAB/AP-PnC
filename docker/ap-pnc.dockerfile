@@ -33,7 +33,6 @@ RUN direnv exec /ap-pnc ./installations/install-acados.sh
 COPY . /ap-pnc/
 RUN direnv exec /ap-pnc /ap-pnc/scripts/tools/cocp
 
-COPY installations/colcon_config.yaml /.colcon/defaults.yaml
 RUN source /opt/ros/humble/setup.bash && \
     direnv exec /ap-pnc colcon build --symlink-install \
     --packages-ignore aerodynamics \
