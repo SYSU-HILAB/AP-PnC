@@ -1,10 +1,9 @@
 {
   "lsp": {
     "clangd": {
-      "fetch": {
-        "pre_release": true
-      },
       "binary": {
+        "ignore_system_version": true,
+        "path": "/usr/bin/clangd",
         "arguments": ["--compile-commands-dir=~/AP-PnC/build"]
       }
     }

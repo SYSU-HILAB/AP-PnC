@@ -280,6 +280,7 @@ void PX4Interface::tracking_info_cb(
   tracking_info.ref_yb          = msg->ref_yb;
   tracking_info.actual_yb       = msg->actual_yb;
   tracking_info.alpha           = msg->alpha;
+  tracking_info.beta            = msg->beta;
   tracking_info.cz              = msg->cz;
   tracking_info.ref_vxy         = msg->ref_vxy;
   tracking_info.actual_vxy      = msg->actual_vxy;

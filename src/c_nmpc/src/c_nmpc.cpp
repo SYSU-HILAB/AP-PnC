@@ -401,8 +401,18 @@ void NMPC::referenceCallback(const ReferenceBullet &msg)
                       x_cur_[vel_start_index + 2]);
 
   double v_norm           = vb.norm();
+  // u （FRONT）  w(FRD system， DOWN)
+  // ||
+  // || == == v(RIGHT) : AOA = atan2(w, u)
+  // Since, cur_state follows a typical quadtor convention:
+  // z will be u direction. x will be w direction.
+  // y will be -v direction.
+  // AOA = atan2(vb(0), vb(2))
+  //
+  // BETA = atan2(v, sqrt(w^2 + u^2))
+  // in quadsystem: beta = atan2(-vb(1), sqrt(vb(0)^2 + vb(2)^2))
   tracking_info_msg.alpha = static_cast<float>(atan2(vb(0), vb(2)));
-
+  tracking_info_msg.beta = static_cast<float>(atan2(vb(1), sqrt(vb(0) * vb(0) + vb(2) * vb(2))));
   tracking_info_msg.cz = static_cast<float>(cz_filtered_);
   // tracking_info_msg.cz =
   if (tracking_valid)

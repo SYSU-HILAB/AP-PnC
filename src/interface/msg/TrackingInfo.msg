@@ -9,4 +9,5 @@ float32 actual_vxy
 float32[3] ref_yb
 float32[3] actual_yb
 float32 alpha
+float32 beta
 float32 cz

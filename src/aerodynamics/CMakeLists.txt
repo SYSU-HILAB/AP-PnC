@@ -68,7 +68,7 @@ set(GZ_CMAKE_VER ${gz-cmake3_VERSION_MAJOR})
 gz_find_package(gz-sim7 REQUIRED)
 set(GZ_SIM_VER ${gz-sim7_VERSION_MAJOR})
 
-add_library(AerodynamicsPlugin
+ament_auto_add_library(AerodynamicsPlugin
   SHARED
   src/gazebo_plugins/AerodynamicsPlugin.cc
 )
