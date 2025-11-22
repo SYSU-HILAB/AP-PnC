@@ -3,7 +3,7 @@
     BasicTrajectoryCirled: false
     BasicTrajectoryCurvatureFactor: 0.8
     BasicTrajectoryHeight: 0.0
-    BasicTrajectoryRadius: 30.0
+    BasicTrajectoryRadius: 50.0
     BasicTrajectoryRate: 0.1
     BasicTrajectoryType: 4
     BasicTrajectoryWaveLen: 50.0
