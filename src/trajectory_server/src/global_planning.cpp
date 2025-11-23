@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <filesystem>
 #include <gcopter/gcopter.hpp>
 #include <gcopter/trajectory.hpp>
@@ -39,7 +40,10 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 #include <basic_trajectories/sin.hpp>
 #include <basic_trajectories/vertical_loop.hpp>
 
-std::ofstream &init_planning_csv_file();
+// Forward declarations
+std::string format_float_1f(double value);
+std::string get_trajectory_type_name(int type);
+
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType
 {
@@ -189,6 +193,9 @@ struct Config
     node->get_parameter("trajTopic", trajTopic);
   }
 };
+
+std::ofstream &init_routes_csv_file(const Config &config);
+std::ofstream &init_planning_csv_file(const Config &config);
 
 class GlobalPlanner : public rclcpp::Node
 {
@@ -401,7 +408,7 @@ class GlobalPlanner : public rclcpp::Node
       auto &tailsitter_data = tailsitter_df::Data::getInstance();
       tailsitter_data.reset(config.trajecotry_cirled);
       control_traj_msg.points.clear();
-      auto &csv_file = init_planning_csv_file();
+      auto &csv_file = init_planning_csv_file(config);
       RCLCPP_INFO(this->get_logger(), "CSV file opened");
       for (double t = 0.0; t <= traj.getTotalDuration() + DBL_EPSILON;
            t += config.traj_pub_rsl)
@@ -489,6 +496,26 @@ class GlobalPlanner : public rclcpp::Node
       if (traj.getPieceNum() > 0)
       {
         trajStamp = this->get_clock()->now().seconds();
+
+        // Record routes to separate CSV file after successful optimization
+        auto &routes_csv_file = init_routes_csv_file(config);
+        for (size_t i = 0; i < route.size(); i++)
+        {
+          const auto &point = route[i];
+          // Extract position, velocity, acceleration, and jerk
+          const auto &pos = point.col(0);  // position (x, y, z)
+          const auto &vel = point.col(1);  // velocity (vx, vy, vz)
+          const auto &acc = point.col(2);  // acceleration (ax, ay, az)
+          const auto &jer = point.col(3);  // jerk (jx, jy, jz)
+
+          routes_csv_file << i << ","
+                         << pos(0) << "," << pos(1) << "," << pos(2) << ","
+                         << vel(0) << "," << vel(1) << "," << vel(2) << ","
+                         << acc(0) << "," << acc(1) << "," << acc(2) << ","
+                         << jer(0) << "," << jer(1) << "," << jer(2) << "\n";
+        }
+        routes_csv_file.close();
+        RCLCPP_INFO(this->get_logger(), "Routes CSV file created");
       }
       csv_file.close();
     }
@@ -505,7 +532,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-std::ofstream &init_planning_csv_file()
+std::ofstream &init_planning_csv_file(const Config &config)
 {
   static std::ofstream csv_file;
   try
@@ -515,12 +542,20 @@ std::ofstream &init_planning_csv_file()
     {
       std::filesystem::create_directories(dir);
     }
-    csv_file.open((dir / "planning.csv").string(),
-                  std::ios::out | std::ios::trunc);
+
+    // Create filename based on config parameters to match routes naming convention
+    std::string filename = "planning_" +
+                          get_trajectory_type_name(config.basic_trajectory_type) +
+                          "_vel" + format_float_1f(config.cost_config.v_max) +
+                          "_thrust" + format_float_1f(config.cost_config.thrust_min) +
+                          "-" + format_float_1f(config.cost_config.thrust_max) +
+                          ".csv";
+
+    csv_file.open((dir / filename).string(), std::ios::out | std::ios::trunc);
   }
   catch (const std::exception &e)
   {
-    std::cerr << "Failed to create/open temp_data/planning.csv: " << e.what()
+    std::cerr << "Failed to create/open planning CSV file: " << e.what()
               << std::endl;
     // try fallback to current dir
     csv_file.open("planning.csv", std::ios::out | std::ios::trunc);
@@ -528,12 +563,11 @@ std::ofstream &init_planning_csv_file()
 
   if (!csv_file.is_open())
   {
-    std::cerr << "Unable to open CSV file for writing." << std::endl;
+    std::cerr << "Unable to open planning CSV file for writing." << std::endl;
     return csv_file;
   }
 
-  // header t, p, v, thrust, alpha, aero_force_z  with header
-  // name
+  // header t, p, v, thrust, alpha, aero_force_z  with header name
   csv_file << "time"
            << ","
            << "pos_x"
@@ -577,4 +611,66 @@ std::ofstream &init_planning_csv_file()
            << "B_aeroForce_z"
            << "\n";
   return csv_file;
+}
+
+std::string format_float_1f(double value)
+{
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "%.1f", value);
+  return std::string(buffer);
+}
+
+std::string get_trajectory_type_name(int type)
+{
+  switch(type)
+  {
+    case 1: return "lemniscate";
+    case 2: return "circle";
+    case 3: return "sin";
+    case 4: return "line";
+    default: return "unknown";
+  }
+}
+
+std::ofstream &init_routes_csv_file(const Config &config)
+{
+  static std::ofstream routes_csv_file;
+  try
+  {
+    std::filesystem::path dir("temp_data");
+    if (!std::filesystem::exists(dir))
+    {
+      std::filesystem::create_directories(dir);
+    }
+
+    // Create filename based on config parameters as specified in task2.md
+    std::string filename = "routes_" +
+                          get_trajectory_type_name(config.basic_trajectory_type) +
+                          "_vel" + format_float_1f(config.cost_config.v_max) +
+                          "_thrust" + format_float_1f(config.cost_config.thrust_min) +
+                          "-" + format_float_1f(config.cost_config.thrust_max) +
+                          ".csv";
+
+    routes_csv_file.open((dir / filename).string(), std::ios::out | std::ios::trunc);
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Failed to create/open routes CSV file: " << e.what() << std::endl;
+    // try fallback to current dir
+    routes_csv_file.open("routes.csv", std::ios::out | std::ios::trunc);
+  }
+
+  if (!routes_csv_file.is_open())
+  {
+    std::cerr << "Unable to open routes CSV file for writing." << std::endl;
+    return routes_csv_file;
+  }
+
+  // Write header
+  routes_csv_file << "index,"
+                  << "pos_x,pos_y,pos_z,"
+                  << "vel_x,vel_y,vel_z,"
+                  << "acc_x,acc_y,acc_z,"
+                  << "jerk_x,jerk_y,jerk_z\n";
+  return routes_csv_file;
 }

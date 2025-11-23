@@ -5,7 +5,7 @@
     BasicTrajectoryHeight: 0.0
     BasicTrajectoryRadius: 50.0
     BasicTrajectoryRate: 0.1
-    BasicTrajectoryType: 4
+    BasicTrajectoryType: 1
     BasicTrajectoryWaveLen: 50.0
     BoxBackLength: 0.5
     BoxDownLength: 0.1

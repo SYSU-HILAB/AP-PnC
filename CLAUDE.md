@@ -27,54 +27,12 @@ Your goal is to maintain momentum while keeping the codebase disposable and modu
 ### 4. Deletability
 - Write code knowing it might be deleted tomorrow. Avoid tight coupling with the core system.
 
-
+## Development
+Always using ${AP_PNC_DIR}/.acados.venv/bin/python to develop python code, and system development tools to develop cpp project. The docker is for user, not for development.
 
 ## Project Overview
 
 AP-PnC (Adaptive Planning and Control) is a ROS2-based framework for autonomous control of tailsitter UAVs. The system implements differential flatness-based trajectory generation combined with real-time model predictive control using the ACADOS framework.
-
-## Development Environment Setup
-
-The project uses Docker containers managed through Just commands. Ensure you have [Just](https://github.com/casey/just) installed.
-
-### Build Commands
-```bash
-# Build the main AP-PnC container
-just build-algs
-
-# Build the PX4 simulator container
-just build-px4
-
-# Build the QGroundControl container
-just build-qgc
-```
-
-### Run Commands
-```bash
-# Start all containers in background
-just up
-
-# Attach to main AP-PnC container (for running NMPC and monitoring)
-just attach
-
-# Attach to PX4 simulator container
-just a  # (shortcut alias)
-
-# Stop all containers
-just down
-```
-
-### Manual Container Access
-```bash
-# Run AP-PnC container manually
-just run-algs
-
-# Run PX4 simulator manually
-just px4
-
-# Run QGroundControl manually
-just qgc
-```
 
 ## System Architecture
 
