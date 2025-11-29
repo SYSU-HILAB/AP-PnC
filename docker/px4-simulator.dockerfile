@@ -44,9 +44,9 @@ RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 ENV AERO_SIM_DATA_DIR=/plugins/aerodynamics/data
 
 
-WORKDIR /plugins
-RUN . /opt/ros/humble/setup.sh \
-    && colcon build --symlink-install
+#WORKDIR /plugins
+#RUN . /opt/ros/humble/setup.sh \
+#    && colcon build --symlink-install
 
-WORKDIR /px4-vtol
+#WORKDIR /px4-vtol
 ENTRYPOINT ["runpx4", "1"]

@@ -332,7 +332,8 @@ void AerodynamicsPluginPrivate::Update(EntityComponentManager &_ecm)
   // this->cp.Correct();
   torqueB.Correct();
   torqueB.X() = 0;
-  torqueB.Y() = 0;
+  // torqueB.Y() = 0;
+  torqueB.Z() = 0;
   // We want to apply the force at cp. The old AerodynamicsPlugin plugin did
   // the following:
   //     this->link->AddForceAtRelativePosition(force, this->cp);

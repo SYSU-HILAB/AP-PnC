@@ -36,6 +36,7 @@ px4:
         -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
         -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
         -v $HOME/.Xauthority:/root/.Xauthority \
+        -v $HOME/.gz/sim/plugins:/root/.gz/sim/plugins \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         --name px4-simulator \
         px4-simulator bash

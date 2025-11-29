@@ -18,6 +18,7 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME}/.gz/sim:/root/.gz/sim
     command: bash
     stdin_open: true
     tty: true
