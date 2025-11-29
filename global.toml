@@ -7,7 +7,7 @@ circled = false
 curvature = 0.5
 radius = 30.0
 # 1: Lemniscate, 2: Circle, 3: Sinusoidal, 4: Line
-type = 1
+type = 2
 v_max = 14.0
 
 [px4_interface]
