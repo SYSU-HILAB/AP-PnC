@@ -168,6 +168,9 @@ namespace tailsitter_df
     real   temp_z = z_v.transpose() * (a - g);
     S_av_x        = temp_x;
     S_av_z        = temp_z;
+
+    real tan_acc = x_v.transpose() * a;
+
     real V        = v.norm();
     real omega_vz = (y_v.transpose() * g);
     omega_vz      = omega_vz / V;
@@ -259,8 +262,7 @@ namespace tailsitter_df
 
     B_Omega_b_y = omega_vy + alpha_dot;
 
-    return (Eigen::Vector4<real>() << S_a_x, omega_vx, B_Omega_b_y, omega_vz)
-        .finished();
+    return (Eigen::Vector4<real>() << tan_acc, omega_vx, B_Omega_b_y, omega_vz)
   }
 
   VectorXreal df_forward_singularity_vel(const Vector3real &v,
