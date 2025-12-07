@@ -1,64 +1,31 @@
 # PNC Tailsitter Justfile
 # build top algorithms image
-build-algs:
-    docker build -f docker/ap-pnc.dockerfile \
-    --network=host \
-    -t ap-pnc:latest .
 
-run-algs:
-    docker run -it --rm \
-        --privileged --net=host \
-        -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
-        -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
-        -v $HOME/.Xauthority:/root/.Xauthority \
-        -v /tmp/.X11-unix:/tmp/.X11-unix \
-        -v $(pwd)/src/tailsitter_df:/ap-pnc/src/tailsitter_df \
-        -v $(pwd)/src/trajectory_server:/ap-pnc/src/trajectory_server \
-        -v $(pwd)/scripts/tools:/ap-pnc/scripts/tools \
-        -v $(pwd)/temp_data:/ap-pnc/temp_data \
-        --name ap-pnc \
-        ap-pnc bash
+# Plot CL and CD coefficients across AoA
+plot-aero:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/gd_model.py
 
-attach:
-    docker exec -it ap-pnc bash
-a:
-    docker exec -it px4-simulator bash
+# Plot all aerodynamic coefficients (CL, CD, CY, Cl, Cm, Cn) across AoA
+plot-all-aero:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model import plot_all_aerodynamic_coeffs; plot_all_aerodynamic_coeffs()"
 
-build-px4:
-    docker build -f docker/px4-simulator.dockerfile \
-    --network=host \
-    -t px4-simulator:latest .
-    # --build-arg CACHE_BUSTER=$(date +%s) \
+# Plot 3D mesh surface of aerodynamic coefficients across AoA and beta
+plot-mesh-aero:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model import plot_aerodynamic_mesh; plot_aerodynamic_mesh()"
 
-px4:
-    docker run -it --rm \
-        --privileged --net=host \
-        -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
-        -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
-        -v $HOME/.Xauthority:/root/.Xauthority \
-        -v $HOME/.gz/sim/plugins:/root/.gz/sim/plugins \
-        -v /tmp/.X11-unix:/tmp/.X11-unix \
-        --name px4-simulator \
-        px4-simulator bash
+# Plot 3D mesh surface of aerodynamic coefficients using PyTorch for faster computation
+plot-mesh-aero-torch:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_torch import plot_aerodynamic_mesh_torch; plot_aerodynamic_mesh_torch()"
 
-build-qgc:
-    docker build -f docker/qgc.dockerfile \
-    --network=host \
-    -t qground_control:latest .
-
-qgc:
-    docker run --rm \
-        --privileged --net=host \
-        -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 \
-        -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
-        -v $HOME/.Xauthority:/qgc/.Xauthority \
-        -v /tmp/.X11-unix:/tmp/.X11-unix \
-        --name qground_control \
-        qground_control qgc
-
-# --build-arg CACHE_BUSTER=$(date +%s) \
-up:
-    docker compose up -d
-
-down:
-    docker compose down
+alias p := plot-aero
+alias pa := plot-all-aero
+alias pm := plot-mesh-aero
+alias pt := plot-mesh-aero-torch
