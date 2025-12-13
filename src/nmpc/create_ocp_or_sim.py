@@ -163,30 +163,3 @@ def ocp_nls() -> AcadosOcp:
     ocp.solver_options.sim_method_num_stages = 4
     # ocp.
     return ocp
-
-
-def create_sim_solver_with_model_defined(Nodes, T):
-    sim = AcadosSim()
-    sim.solver_options.num_stages = 4
-    sim.solver_options.num_steps = 1
-    sim.solver_options.T = T / Nodes
-    sim.solver_options.integrator_type = 'ERK'
-    sim.solver_options.sens_forw = True
-    sim.model = tailsitter_flu_sim()
-
-
-    return sim
-
-
-
-
-def main():
-    ocp = ocp_nls()
-    ocp: AcadosOcp = ocp_nls()
-    acados_ocp_solver:AcadosOcpSolver = AcadosOcpSolver(
-        ocp, json_file="acados_ocp_" + ocp.model.name + ".json"
-    )
-
-
-if __name__ == "__main__":
-    main()
