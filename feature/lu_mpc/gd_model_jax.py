@@ -12,6 +12,7 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+# setting jax printf options for better readability
 
 # Coefficient arrays - same as original numpy version
 kCL = jnp.array([
@@ -40,29 +41,91 @@ kCn = jnp.array([
 
 
 @jax.jit
-def logistic_func_batch(alpha, alpha1, k1, alpha2, k2):
-    """Batched logistic function with JIT compilation"""
-    # For JIT compatibility, we handle invalid parameters by returning zeros
-    # instead of using print statements and returning None
-    valid_params = (k1 >= 0) & (k2 >= 0) & (alpha1 < alpha2)
-
+def logistic_func_single(alpha, alpha1, k1, alpha2, k2):
+    """Single logistic function for use with vmap"""
     P1 = 1.0 / (1 + jnp.exp(k1 * (alpha - alpha1)))
     P2 = 1.0 / (1 + jnp.exp(-k2 * (alpha - alpha2)))
     yval = 1 - P1 - P2
+    return yval
 
-    # Return zeros for invalid parameters, yval for valid ones
-    return jnp.where(valid_params, yval, jnp.zeros_like(alpha))
+# Vectorized version using vmap
+logistic_func_batch = jax.vmap(logistic_func_single, in_axes=(0, None, None, None, None))
 
 
 @jax.jit
-def deg2rad_batch(deg):
-    """Batched degree to radian conversion with JIT compilation"""
+def deg2rad_single(deg):
+    """Single degree to radian conversion for use with vmap"""
     return deg * (jnp.pi / 180.0)
 
+# Vectorized version using vmap
+deg2rad_batch = jax.vmap(deg2rad_single)
+
 
 @jax.jit
+def reg_CL_single(alpha, beta):
+    """Single regression calculation for CL coefficient"""
+    sa = jnp.sin(alpha)
+    ca = jnp.cos(alpha)
+    sb = jnp.sin(beta)
+    cb = jnp.cos(beta)
+    sa2 = sa ** 2
+    ca2 = ca ** 2
+    sb2 = sb ** 2
+    cb2 = cb ** 2
+    sa3 = sa ** 3
+    ca3 = ca ** 3
+
+    comp_B = jnp.stack([cb2, alpha * cb2])
+
+    comp_N = jnp.stack([
+        cb2 * ca3,
+        ca * sb2,
+        ca * cb2 * sa2,
+        sa * ca2 * cb2,
+        sa * sb2,
+        sa3 * cb2,
+        jnp.abs(sb) * cb * ca2,
+        sa * ca * cb * jnp.abs(sb),
+        jnp.abs(sb) * cb * sa2,
+    ])
+
+    w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
+    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
+    reg_B1 = w_B1 * comp_B1
+
+    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5)
+    reg_N11 = w_N11 * comp_N
+
+    w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
+    reg_B2 = w_B2 * comp_B
+
+    w_N2 = logistic_func_single(alpha, deg2rad_single(18), 10, deg2rad_single(170), 1)
+    reg_N2 = w_N2 * comp_N
+
+    w_B3 = logistic_func_single(alpha, deg2rad_single(170), 1, deg2rad_single(190), 1)
+    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_single(180)) * cb2])
+    reg_B3 = w_B3 * comp_B3
+
+    reg = jnp.concatenate([reg_B1, reg_N11, reg_B2, reg_N2, reg_B3])
+    return reg
+
+# Create flexible batch function that handles 1D and 2D inputs
 def reg_CL_batch(alpha, beta):
-    """Batched regression calculation for CL coefficient with JIT compilation"""
+    """Flexible batch function that works with both 1D and 2D inputs"""
+    # Handle different input shapes
+    if alpha.ndim == 0:  # Single values
+        return reg_CL_single(alpha, beta)
+    elif alpha.ndim == 1:  # 1D arrays
+        return jax.vmap(reg_CL_single, in_axes=(0, 0))(alpha, beta)
+    elif alpha.ndim == 2:  # 2D meshgrids
+        return jax.vmap(jax.vmap(reg_CL_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+    else:
+        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+
+
+@jax.jit
+def reg_CD_single(alpha, beta):
+    """Single regression calculation for CD coefficient"""
     sa = jnp.sin(alpha)
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
@@ -74,7 +137,7 @@ def reg_CL_batch(alpha, beta):
     sa3 = sa ** 3
     ca3 = ca ** 3
 
-    comp_B = jnp.stack([cb2, alpha * cb2], axis=-1)
+    comp_B = jnp.stack([cb2, alpha * cb2])
 
     comp_N = jnp.stack([
         cb2 * ca3,
@@ -86,81 +149,92 @@ def reg_CL_batch(alpha, beta):
         jnp.abs(sb) * cb * ca2,
         sa * ca * cb * jnp.abs(sb),
         jnp.abs(sb) * cb * sa2,
-    ], axis=-1)
+    ])
 
-    w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
-    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B1 = w_B1[..., None] * comp_B1
+    w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
+    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
+    reg_B1 = w_B1 * comp_B1
 
-    w_N11 = logistic_func_batch(alpha, deg2rad_batch(-170), 1, deg2rad_batch(-20), 0.5)
-    reg_N11 = w_N11[..., None] * comp_N
+    w_N1 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-10), 0.5)
+    reg_N1 = w_N1 * comp_N
 
-    w_B2 = logistic_func_batch(alpha, deg2rad_batch(-11), 20, deg2rad_batch(18), 10)
-    reg_B2 = w_B2[..., None] * comp_B
+    w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
+    reg_B2 = w_B2 * comp_B
 
-    w_N2 = logistic_func_batch(alpha, deg2rad_batch(18), 10, deg2rad_batch(170), 1)
-    reg_N2 = w_N2[..., None] * comp_N
+    w_N2 = logistic_func_single(alpha, deg2rad_single(18), 10, deg2rad_single(170), 1)
+    reg_N2 = w_N2 * comp_N
 
-    w_B3 = logistic_func_batch(alpha, deg2rad_batch(170), 1, deg2rad_batch(190), 1)
-    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B3 = w_B3[..., None] * comp_B3
+    w_B3 = logistic_func_single(alpha, deg2rad_single(170), 1, deg2rad_single(190), 1)
+    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_single(180)) * cb2])
+    reg_B3 = w_B3 * comp_B3
 
-    reg = jnp.concatenate([reg_B1, reg_N11, reg_B2, reg_N2, reg_B3], axis=-1)
+    reg = jnp.concatenate([reg_B1, reg_N1, reg_B2, reg_N2, reg_B3])
     return reg
 
-
-@jax.jit
+# Create flexible batch function that handles 1D and 2D inputs
 def reg_CD_batch(alpha, beta):
-    """Batched regression calculation for CD coefficient with JIT compilation"""
+    """Flexible batch function that works with both 1D and 2D inputs"""
+    # Handle different input shapes
+    if alpha.ndim == 0:  # Single values
+        return reg_CD_single(alpha, beta)
+    elif alpha.ndim == 1:  # 1D arrays
+        return jax.vmap(reg_CD_single, in_axes=(0, 0))(alpha, beta)
+    elif alpha.ndim == 2:  # 2D meshgrids
+        return jax.vmap(jax.vmap(reg_CD_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+    else:
+        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+
+
+@jax.jit
+def reg_CY_single(alpha, beta):
+    """Single regression calculation for CY coefficient"""
     sa = jnp.sin(alpha)
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
     cb = jnp.cos(beta)
-    sa2 = sa ** 2
-    ca2 = ca ** 2
     sb2 = sb ** 2
     cb2 = cb ** 2
-    sa3 = sa ** 3
-    ca3 = ca ** 3
+    signb = beta * jnp.abs(beta)
 
-    comp_B = jnp.stack([cb2, alpha * cb2], axis=-1)
+    comp_N = jnp.stack([signb * sb2, sb * cb * ca, sb * cb * sa])
 
-    comp_N = jnp.stack([
-        cb2 * ca3,
-        ca * sb2,
-        ca * cb2 * sa2,
-        sa * ca2 * cb2,
-        sa * sb2,
-        sa3 * cb2,
-        jnp.abs(sb) * cb * ca2,
-        sa * ca * cb * jnp.abs(sb),
-        jnp.abs(sb) * cb * sa2,
-    ], axis=-1)
+    w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
+    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
+    reg_B1 = w_B1 * comp_B1
 
-    w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
-    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B1 = w_B1[..., None] * comp_B1
+    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-90), 1)
+    reg_N11 = w_N11 * comp_N
 
-    w_N1 = logistic_func_batch(alpha, deg2rad_batch(-170), 1, deg2rad_batch(-10), 0.5)
-    reg_N1 = w_N1[..., None] * comp_N
+    w_N12 = logistic_func_single(alpha, deg2rad_single(-90), 1, deg2rad_single(-11), 1)
+    reg_N12 = w_N12 * comp_N
 
-    w_B2 = logistic_func_batch(alpha, deg2rad_batch(-11), 20, deg2rad_batch(18), 10)
-    reg_B2 = w_B2[..., None] * comp_B
+    w_N2 = logistic_func_single(alpha, deg2rad_single(20), 1, deg2rad_single(170), 1)
+    reg_N2 = w_N2 * comp_N
 
-    w_N2 = logistic_func_batch(alpha, deg2rad_batch(18), 10, deg2rad_batch(170), 1)
-    reg_N2 = w_N2[..., None] * comp_N
+    w_B3 = logistic_func_single(alpha, deg2rad_single(170), 1, deg2rad_single(190), 1)
+    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_single(180)) * cb2])
+    reg_B3 = w_B3 * comp_B3
 
-    w_B3 = logistic_func_batch(alpha, deg2rad_batch(170), 1, deg2rad_batch(190), 1)
-    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B3 = w_B3[..., None] * comp_B3
-
-    reg = jnp.concatenate([reg_B1, reg_N1, reg_B2, reg_N2, reg_B3], axis=-1)
+    reg = jnp.concatenate([reg_B1, reg_N11, reg_N12, reg_N2, reg_B3])
     return reg
 
-
-@jax.jit
+# Create flexible batch function that handles 1D and 2D inputs
 def reg_CY_batch(alpha, beta):
-    """Batched regression calculation for CY coefficient with JIT compilation"""
+    """Flexible batch function that works with both 1D and 2D inputs"""
+    # Handle different input shapes
+    if alpha.ndim == 0:  # Single values
+        return reg_CY_single(alpha, beta)
+    elif alpha.ndim == 1:  # 1D arrays
+        return jax.vmap(reg_CY_single, in_axes=(0, 0))(alpha, beta)
+    elif alpha.ndim == 2:  # 2D meshgrids
+        return jax.vmap(jax.vmap(reg_CY_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+    else:
+        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+
+
+@jax.jit
+def reg_Cll_single(alpha, beta):
+    """Single regression calculation for Cl coefficient"""
     sa = jnp.sin(alpha)
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
@@ -169,73 +243,52 @@ def reg_CY_batch(alpha, beta):
     cb2 = cb ** 2
     signb = beta * jnp.abs(beta)
 
-    comp_N = jnp.stack([signb * sb2, sb * cb * ca, sb * cb * sa], axis=-1)
+    comp_B = jnp.stack([cb2, alpha * cb2])
+    comp_N = jnp.stack([signb * sb2, sb * cb * ca, sb * cb * sa])
 
-    w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
-    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B1 = w_B1[..., None] * comp_B1
+    w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
+    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
+    reg_B1 = w_B1 * comp_B1
 
-    w_N11 = logistic_func_batch(alpha, deg2rad_batch(-170), 1, deg2rad_batch(-90), 1)
-    reg_N11 = w_N11[..., None] * comp_N
+    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-90), 5)
+    reg_N11 = w_N11 * comp_N
 
-    w_N12 = logistic_func_batch(alpha, deg2rad_batch(-90), 1, deg2rad_batch(-11), 1)
-    reg_N12 = w_N12[..., None] * comp_N
+    w_N12 = logistic_func_single(alpha, deg2rad_single(-90), 5, deg2rad_single(-20), 0.5)
+    reg_N12 = w_N12 * comp_N
 
-    w_N2 = logistic_func_batch(alpha, deg2rad_batch(20), 1, deg2rad_batch(170), 1)
-    reg_N2 = w_N2[..., None] * comp_N
+    w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
+    reg_B2 = w_B2 * comp_B
 
-    w_B3 = logistic_func_batch(alpha, deg2rad_batch(170), 1, deg2rad_batch(190), 1)
-    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B3 = w_B3[..., None] * comp_B3
+    w_N22 = logistic_func_single(alpha, deg2rad_single(18), 10, deg2rad_single(90), 5)
+    reg_N22 = w_N22 * comp_N
 
-    reg = jnp.concatenate([reg_B1, reg_N11, reg_N12, reg_N2, reg_B3], axis=-1)
+    w_N2 = logistic_func_single(alpha, deg2rad_single(90), 5, deg2rad_single(170), 1)
+    reg_N2 = w_N2 * comp_N
+
+    w_B3 = logistic_func_single(alpha, deg2rad_single(170), 1, deg2rad_single(190), 1)
+    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_single(180)) * cb2])
+    reg_B3 = w_B3 * comp_B3
+
+    reg = jnp.concatenate([reg_B1, reg_N11, reg_N12, reg_B2, reg_N2, reg_N22, reg_B3])
     return reg
 
-
-@jax.jit
+# Create flexible batch function that handles 1D and 2D inputs
 def reg_Cll_batch(alpha, beta):
-    """Batched regression calculation for Cl coefficient with JIT compilation"""
-    sa = jnp.sin(alpha)
-    ca = jnp.cos(alpha)
-    sb = jnp.sin(beta)
-    cb = jnp.cos(beta)
-    sb2 = sb ** 2
-    cb2 = cb ** 2
-    signb = beta * jnp.abs(beta)
-
-    comp_B = jnp.stack([cb2, alpha * cb2], axis=-1)
-    comp_N = jnp.stack([signb * sb2, sb * cb * ca, sb * cb * sa], axis=-1)
-
-    w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
-    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B1 = w_B1[..., None] * comp_B1
-
-    w_N11 = logistic_func_batch(alpha, deg2rad_batch(-170), 1, deg2rad_batch(-90), 5)
-    reg_N11 = w_N11[..., None] * comp_N
-
-    w_N12 = logistic_func_batch(alpha, deg2rad_batch(-90), 5, deg2rad_batch(-20), 0.5)
-    reg_N12 = w_N12[..., None] * comp_N
-
-    w_B2 = logistic_func_batch(alpha, deg2rad_batch(-11), 20, deg2rad_batch(18), 10)
-    reg_B2 = w_B2[..., None] * comp_B
-
-    w_N22 = logistic_func_batch(alpha, deg2rad_batch(18), 10, deg2rad_batch(90), 5)
-    reg_N22 = w_N22[..., None] * comp_N
-
-    w_N2 = logistic_func_batch(alpha, deg2rad_batch(90), 5, deg2rad_batch(170), 1)
-    reg_N2 = w_N2[..., None] * comp_N
-
-    w_B3 = logistic_func_batch(alpha, deg2rad_batch(170), 1, deg2rad_batch(190), 1)
-    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B3 = w_B3[..., None] * comp_B3
-
-    reg = jnp.concatenate([reg_B1, reg_N11, reg_N12, reg_B2, reg_N2, reg_N22, reg_B3], axis=-1)
-    return reg
+    """Flexible batch function that works with both 1D and 2D inputs"""
+    # Handle different input shapes
+    if alpha.ndim == 0:  # Single values
+        return reg_Cll_single(alpha, beta)
+    elif alpha.ndim == 1:  # 1D arrays
+        return jax.vmap(reg_Cll_single, in_axes=(0, 0))(alpha, beta)
+    elif alpha.ndim == 2:  # 2D meshgrids
+        return jax.vmap(jax.vmap(reg_Cll_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+    else:
+        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
 
 @jax.jit
-def reg_Cm_batch(alpha, beta):
-    """Batched regression calculation for Cm coefficient with JIT compilation"""
+def reg_Cm_single(alpha, beta):
+    """Single regression calculation for Cm coefficient"""
     sa = jnp.sin(alpha)
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
@@ -245,33 +298,46 @@ def reg_Cm_batch(alpha, beta):
     sb2 = sb ** 2
     cb2 = cb ** 2
 
-    comp_B = jnp.stack([cb2, alpha * cb2], axis=-1)
-    comp_N = jnp.stack([cb2 * ca2, sb2, cb2 * sa2, jnp.abs(sb) * cb * ca, sa * ca * cb2, jnp.abs(sb) * cb * sa], axis=-1)
+    comp_B = jnp.stack([cb2, alpha * cb2])
+    comp_N = jnp.stack([cb2 * ca2, sb2, cb2 * sa2, jnp.abs(sb) * cb * ca, sa * ca * cb2, jnp.abs(sb) * cb * sa])
 
-    w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
-    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B1 = w_B1[..., None] * comp_B1
+    w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
+    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
+    reg_B1 = w_B1 * comp_B1
 
-    w_N11 = logistic_func_batch(alpha, deg2rad_batch(-170), 1, deg2rad_batch(-20), 0.5)
-    reg_N11 = w_N11[..., None] * comp_N
+    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5)
+    reg_N11 = w_N11 * comp_N
 
-    w_B2 = logistic_func_batch(alpha, deg2rad_batch(-11), 20, deg2rad_batch(18), 10)
-    reg_B2 = w_B2[..., None] * comp_B
+    w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
+    reg_B2 = w_B2 * comp_B
 
-    w_N2 = logistic_func_batch(alpha, deg2rad_batch(18), 10, deg2rad_batch(170), 1)
-    reg_N2 = w_N2[..., None] * comp_N
+    w_N2 = logistic_func_single(alpha, deg2rad_single(18), 10, deg2rad_single(170), 1)
+    reg_N2 = w_N2 * comp_N
 
-    w_B3 = logistic_func_batch(alpha, deg2rad_batch(170), 1, deg2rad_batch(190), 1)
-    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B3 = w_B3[..., None] * comp_B3
+    w_B3 = logistic_func_single(alpha, deg2rad_single(170), 1, deg2rad_single(190), 1)
+    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_single(180)) * cb2])
+    reg_B3 = w_B3 * comp_B3
 
-    reg = jnp.concatenate([reg_B1, reg_N11, reg_B2, reg_N2, reg_B3], axis=-1)
+    reg = jnp.concatenate([reg_B1, reg_N11, reg_B2, reg_N2, reg_B3])
     return reg
+
+# Create flexible batch function that handles 1D and 2D inputs
+def reg_Cm_batch(alpha, beta):
+    """Flexible batch function that works with both 1D and 2D inputs"""
+    # Handle different input shapes
+    if alpha.ndim == 0:  # Single values
+        return reg_Cm_single(alpha, beta)
+    elif alpha.ndim == 1:  # 1D arrays
+        return jax.vmap(reg_Cm_single, in_axes=(0, 0))(alpha, beta)
+    elif alpha.ndim == 2:  # 2D meshgrids
+        return jax.vmap(jax.vmap(reg_Cm_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+    else:
+        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
 
 @jax.jit
-def reg_Cn_batch(alpha, beta):
-    """Batched regression calculation for Cn coefficient with JIT compilation"""
+def reg_Cn_single(alpha, beta):
+    """Single regression calculation for Cn coefficient"""
     sa = jnp.sin(alpha)
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
@@ -280,28 +346,41 @@ def reg_Cn_batch(alpha, beta):
     cb2 = cb ** 2
     signb = beta * jnp.abs(beta)
 
-    comp_B = jnp.stack([cb2, alpha * cb2], axis=-1)
-    comp_N = jnp.stack([signb * sb2, sb * cb * ca, sb * cb * sa], axis=-1)
+    comp_B = jnp.stack([cb2, alpha * cb2])
+    comp_N = jnp.stack([signb * sb2, sb * cb * ca, sb * cb * sa])
 
-    w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
-    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B1 = w_B1[..., None] * comp_B1
+    w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
+    comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
+    reg_B1 = w_B1 * comp_B1
 
-    w_N1 = logistic_func_batch(alpha, deg2rad_batch(-170), 1, deg2rad_batch(-10), 10)
-    reg_N1 = w_N1[..., None] * comp_N
+    w_N1 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-10), 10)
+    reg_N1 = w_N1 * comp_N
 
-    w_B2 = logistic_func_batch(alpha, deg2rad_batch(-10), 10, deg2rad_batch(18), 10)
-    reg_B2 = w_B2[..., None] * comp_B
+    w_B2 = logistic_func_single(alpha, deg2rad_single(-10), 10, deg2rad_single(18), 10)
+    reg_B2 = w_B2 * comp_B
 
-    w_N2 = logistic_func_batch(alpha, deg2rad_batch(0), 0.5, deg2rad_batch(170), 1)
-    reg_N2 = w_N2[..., None] * comp_N
+    w_N2 = logistic_func_single(alpha, deg2rad_single(0), 0.5, deg2rad_single(170), 1)
+    reg_N2 = w_N2 * comp_N
 
-    w_B3 = logistic_func_batch(alpha, deg2rad_batch(170), 1, deg2rad_batch(190), 1)
-    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_batch(180)) * cb2], axis=-1)
-    reg_B3 = w_B3[..., None] * comp_B3
+    w_B3 = logistic_func_single(alpha, deg2rad_single(170), 1, deg2rad_single(190), 1)
+    comp_B3 = jnp.stack([cb2, (alpha - deg2rad_single(180)) * cb2])
+    reg_B3 = w_B3 * comp_B3
 
-    reg = jnp.concatenate([reg_B1, reg_N1, reg_B2, reg_N2, reg_B3], axis=-1)
+    reg = jnp.concatenate([reg_B1, reg_N1, reg_B2, reg_N2, reg_B3])
     return reg
+
+# Create flexible batch function that handles 1D and 2D inputs
+def reg_Cn_batch(alpha, beta):
+    """Flexible batch function that works with both 1D and 2D inputs"""
+    # Handle different input shapes
+    if alpha.ndim == 0:  # Single values
+        return reg_Cn_single(alpha, beta)
+    elif alpha.ndim == 1:  # 1D arrays
+        return jax.vmap(reg_Cn_single, in_axes=(0, 0))(alpha, beta)
+    elif alpha.ndim == 2:  # 2D meshgrids
+        return jax.vmap(jax.vmap(reg_Cn_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+    else:
+        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
 
 @jax.jit
@@ -310,7 +389,7 @@ def compute_aerodynamic_coeffs_jax(ALPHA, BETA):
     Compute all aerodynamic coefficients using JAX with JIT compilation - for timing purposes.
     Returns all coefficients without plotting.
     """
-    # Calculate coefficients in batches
+    # Calculate coefficients using vmap-based batch functions
     reg_cl = reg_CL_batch(ALPHA, BETA)
     reg_cd = reg_CD_batch(ALPHA, BETA)
     reg_cy = reg_CY_batch(ALPHA, BETA)
@@ -318,21 +397,85 @@ def compute_aerodynamic_coeffs_jax(ALPHA, BETA):
     reg_cm = reg_Cm_batch(ALPHA, BETA)
     reg_cn = reg_Cn_batch(ALPHA, BETA)
 
-    # Batched coefficient calculation using multiplication
-    CL = jnp.sum(reg_cl * kCL[None, None, :], axis=-1)
-    CD = jnp.sum(reg_cd * kCD[None, None, :], axis=-1)
-    CY = jnp.sum(reg_cy * kCY[None, None, :], axis=-1)
-    CLL = jnp.sum(reg_cll * kCLL[None, None, :], axis=-1)
-    CM = jnp.sum(reg_cm * kCm[None, None, :], axis=-1)
-    CN = jnp.sum(reg_cn * kCn[None, None, :], axis=-1)
+    # Coefficient calculation using vmap - no manual broadcasting needed
+    CL = jnp.sum(reg_cl * kCL, axis=-1)
+    CD = jnp.sum(reg_cd * kCD, axis=-1)
+    CY = jnp.sum(reg_cy * kCY, axis=-1)
+    CLL = jnp.sum(reg_cll * kCLL, axis=-1)
+    CM = jnp.sum(reg_cm * kCm, axis=-1)
+    CN = jnp.sum(reg_cn * kCn, axis=-1)
 
     return CL, CD, CY, CLL, CM, CN
 
 
-def plot_aerodynamic_mesh_jax():
+def compute_angles_single(V_b):
+    # V_b is expected to be shape (3,) -> [u, v, w]
+    vbx = V_b[0]
+    vby = V_b[1]
+    vbz = V_b[2]
+    
+    # Calculation
+    v_norm = jnp.sqrt(vbx**2 + vby**2 + vbz**2) + 1e-8
+    v_squared = v_norm ** 2
+    alpha = jnp.arctan2(vbz, vbx)
+    beta = jnp.arcsin(vby / v_norm)
+    
+    return alpha, beta, v_norm, v_squared
+
+
+def compute_angles_batch(V_b):
+    if V_b.ndim == 1:  # Single vector
+        return compute_angles_single(V_b)
+    elif V_b.ndim == 2:  # Batch of vectors
+        return jax.vmap(compute_angles_single, in_axes=(0,))(V_b)
+    else:
+        raise ValueError(f"Unsupported V_b dimension: {V_b.ndim}")
+
+
+def aerodynamics_vb(V_bs):
+    """
+    Docstring for aerodynamics_vb
+    
+    :param V_bs: Array of shape (..., 3) representing body-frame velocities
+    :return: FORCES and MOMENTS arrays of shape (..., 3)
+    """ 
+    ALPHA, BETA, V_NORM, V_SQUARED = compute_angles_batch(V_bs)
+    CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
+    FORCES = jnp.stack([
+        0.5 * V_SQUARED * CL,
+        0.5 * V_SQUARED * CY,
+        0.5 * V_SQUARED * CD
+    ], axis=-1)
+    MOMENTS = jnp.stack([
+        0.5 * V_SQUARED * CLL,
+        0.5 * V_SQUARED * CM,
+        0.5 * V_SQUARED * CN
+    ], axis=-1)
+    return FORCES, MOMENTS, ALPHA, BETA
+
+def test_aerodynamics_vb():
+    # Test with a batch of velocities
+    V_bs = jnp.array([
+        [10.0, 0.0, 0.0],
+        [10.0, 0.0, 10.0],
+        [20.0, -2.0, 1.0]
+    ])
+    FORCES, MOMENTS, ALPHA, BETA = aerodynamics_vb(V_bs)
+    print(f"FORCES: {FORCES}")
+    print(f"MOMENTS: {MOMENTS}")
+    print(f"ALPHA (rad): {ALPHA}")
+    print(f"ALPHA (deg): {ALPHA * (180.0 / jnp.pi)}")
+    print(f"BETA (rad): {BETA}")
+    print(f"BETA (deg): {BETA * (180.0 / jnp.pi)}")
+
+
+def plot_aerodynamic_mesh_jax(azimuth=125.5):
     """
     Generate 3D mesh plots of aerodynamic coefficients using batched JAX calculations.
     Much faster than the original numpy version.
+
+    Args:
+        azimuth (float): Azimuth angle for 3D view in degrees (default: -127.5)
     """
     print("Setting up mesh grid...")
 
@@ -344,8 +487,8 @@ def plot_aerodynamic_mesh_jax():
         print(f"Platform: {device.platform}")
 
     # Generate ranges for alpha and beta
-    alpha_deg = jnp.linspace(-180, 180, 361)  # 1-degree increments
-    beta_deg = jnp.linspace(-180, 180, 361)   # 1-degree increments
+    alpha_deg = jnp.linspace(-180, 180, 3601)  #1-degree increments
+    beta_deg = jnp.linspace(-90, 90, 1801)   # 1-degree increments
 
     alpha_rad = deg2rad_batch(alpha_deg)
     beta_rad = deg2rad_batch(beta_deg)
@@ -364,14 +507,14 @@ def plot_aerodynamic_mesh_jax():
     reg_cm = reg_Cm_batch(ALPHA, BETA)
     reg_cn = reg_Cn_batch(ALPHA, BETA)
 
-    # Batched coefficient calculation using multiplication
-    CL = jnp.sum(reg_cl * kCL[None, None, :], axis=-1)
-    CD = jnp.sum(reg_cd * kCD[None, None, :], axis=-1)
-    CY = jnp.sum(reg_cy * kCY[None, None, :], axis=-1)
-    CLL = jnp.sum(reg_cll * kCLL[None, None, :], axis=-1)
-    CM = jnp.sum(reg_cm * kCm[None, None, :], axis=-1)
-    CN = jnp.sum(reg_cn * kCn[None, None, :], axis=-1)
-
+    # Coefficient calculation using vmap - no manual broadcasting needed
+    CL = jnp.sum(reg_cl * kCL, axis=-1)
+    CD = jnp.sum(reg_cd * kCD, axis=-1)
+    CY = jnp.sum(reg_cy * kCY, axis=-1)
+    CLL = jnp.sum(reg_cll * kCLL, axis=-1)
+    CM = jnp.sum(reg_cm * kCm, axis=-1)
+    CN = jnp.sum(reg_cn * kCn, axis=-1)
+    
     # Convert to numpy for plotting
     print("Converting results to numpy for plotting...")
     ALPHA_DEG_np = np.array(ALPHA_DEG)
@@ -390,6 +533,7 @@ def plot_aerodynamic_mesh_jax():
 
     # CL subplot
     ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1.view_init(elev=10, azim=azimuth)
     surf1 = ax1.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap='viridis', alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
@@ -399,6 +543,7 @@ def plot_aerodynamic_mesh_jax():
 
     # CY subplot
     ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2.view_init(elev=10, azim=azimuth)
     surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap='viridis', alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
@@ -408,6 +553,7 @@ def plot_aerodynamic_mesh_jax():
 
     # CD subplot
     ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3.view_init(elev=10, azim=azimuth)
     surf3 = ax3.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap='viridis', alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
@@ -417,6 +563,7 @@ def plot_aerodynamic_mesh_jax():
 
     # CLL subplot
     ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4.view_init(elev=10, azim=azimuth)
     surf4 = ax4.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap='viridis', alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
@@ -426,6 +573,7 @@ def plot_aerodynamic_mesh_jax():
 
     # CM subplot
     ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5.view_init(elev=10, azim=azimuth)
     surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap='viridis', alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
@@ -435,6 +583,7 @@ def plot_aerodynamic_mesh_jax():
 
     # CN subplot
     ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6.view_init(elev=10, azim=azimuth)
     surf6 = ax6.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap='viridis', alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
@@ -518,4 +667,5 @@ def benchmark_jax_timing(mesh_size=361, num_runs=10):
 
 if __name__ == "__main__":
     # Run the JAX batched plotting function when script is executed directly
-    benchmark_jax_timing()
+    # benchmark_jax_timing()
+    test_aerodynamics_vb()

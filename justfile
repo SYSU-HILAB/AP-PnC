@@ -13,23 +13,23 @@ plot-all-aero:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model import plot_all_aerodynamic_coeffs; plot_all_aerodynamic_coeffs()"
 
-# Plot 3D mesh surface of aerodynamic coefficients across AoA and beta
-plot-mesh-aero:
+# Plot 3D mesh surface of aerodynamic coefficients across AoA and beta (usage: just plot-mesh-aero [azimuth])
+plot-mesh-aero azimuth="-127.5":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model import plot_aerodynamic_mesh; plot_aerodynamic_mesh()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model import plot_aerodynamic_mesh; plot_aerodynamic_mesh({{azimuth}})"
 
-# Plot 3D mesh surface of aerodynamic coefficients using PyTorch for faster computation
-plot-mesh-aero-torch:
+# Plot 3D mesh surface of aerodynamic coefficients using PyTorch for faster computation (usage: just plot-mesh-aero-torch [azimuth])
+plot-mesh-aero-torch azimuth="-127.5":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_torch import plot_aerodynamic_mesh_torch; plot_aerodynamic_mesh_torch()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_torch import plot_aerodynamic_mesh_torch; plot_aerodynamic_mesh_torch({{azimuth}})"
 
-# Plot 3D mesh surface of aerodynamic coefficients using JAX for faster computation
-plot-mesh-aero-jax:
+# Plot 3D mesh surface of aerodynamic coefficients using JAX for faster computation (usage: just plot-mesh-aero-jax [azimuth])
+plot-mesh-aero-jax azimuth="-127.5":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax({{azimuth}})"
 
 # Compare performance between JAX and PyTorch implementations
 compare-timing:
@@ -55,11 +55,32 @@ benchmark-torch:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
 
+# Test vmap implementation for correctness and performance
+test-vmap:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/test_vmap_equivalence.py
+
+# Test JAX trim functionality
+test-jax-trim:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/jax_trim.py
+
+# Plot aerodynamic coefficients using torch_gd.py (usage: just plot-torch-gd [azimuth])
+plot-torch-gd azimuth="-127.5":
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/torch_gd.py --azimuth {{azimuth}}
+
 alias p := plot-aero
 alias pa := plot-all-aero
 alias pm := plot-mesh-aero
 alias pt := plot-mesh-aero-torch
 alias pj := plot-mesh-aero-jax
+alias pg := plot-torch-gd
 alias ct := compare-timing
 alias bj := benchmark-jax
 alias bt := benchmark-torch
+alias tv := test-vmap
+alias jt := test-jax-trim

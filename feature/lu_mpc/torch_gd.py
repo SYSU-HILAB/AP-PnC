@@ -311,7 +311,7 @@ def reg_Cn(alpha_in, beta_in):
 
 # --- 4. 批量计算与主流程 ---
 
-def main():
+def main(azimuth=-127.5):
     # Grid definition
     alpha_deg = torch.arange(-90, 91, 1.0, device=device)
     beta_deg = torch.arange(-90, 91, 1.0, device=device)
@@ -372,7 +372,7 @@ def main():
     
     for idx, data, zlabel, title_text in plots:
         ax = fig.add_subplot(3, 2, idx, projection='3d')
-        ax.view_init(elev=30, azim=-127.5)
+        ax.view_init(elev=30, azim=azimuth)
         # 使用 plot_surface 替代 mesh 以获得更好的渲染效果
         surf = ax.plot_surface(X, Y, data, cmap=cm.viridis, linewidth=0, antialiased=False)
         ax.set_xlabel(r'$\alpha$ [deg]')
@@ -384,4 +384,8 @@ def main():
     plt.show()
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='Plot aerodynamic coefficients with customizable azimuth angle.')
+    parser.add_argument('--azimuth', type=float, default=-127.5, help='Azimuth angle for 3D view in degrees')
+    args = parser.parse_args()
+    main(args.azimuth)

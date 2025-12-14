@@ -327,10 +327,13 @@ def compute_aerodynamic_coeffs_torch(ALPHA: torch.Tensor, BETA: torch.Tensor,
     return CL, CD, CY, CLL, CM, CN
 
 
-def plot_aerodynamic_mesh_torch():
+def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     """
     Generate 3D mesh plots of aerodynamic coefficients using batched PyTorch calculations.
     Much faster than the original numpy version.
+
+    Args:
+        azimuth (float): Azimuth angle for 3D view in degrees (default: -127.5)
     """
     print("Setting up mesh grid...")
 
@@ -398,6 +401,7 @@ def plot_aerodynamic_mesh_torch():
 
     # CL subplot
     ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1.view_init(elev=30, azim=azimuth)
     surf1 = ax1.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap='viridis', alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
@@ -407,6 +411,7 @@ def plot_aerodynamic_mesh_torch():
 
     # CY subplot
     ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2.view_init(elev=30, azim=azimuth)
     surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap='viridis', alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
@@ -416,6 +421,7 @@ def plot_aerodynamic_mesh_torch():
 
     # CD subplot
     ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3.view_init(elev=30, azim=azimuth)
     surf3 = ax3.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap='viridis', alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
@@ -425,6 +431,7 @@ def plot_aerodynamic_mesh_torch():
 
     # CLL subplot
     ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4.view_init(elev=30, azim=azimuth)
     surf4 = ax4.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap='viridis', alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
@@ -434,6 +441,7 @@ def plot_aerodynamic_mesh_torch():
 
     # CM subplot
     ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5.view_init(elev=30, azim=azimuth)
     surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap='viridis', alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
@@ -443,6 +451,7 @@ def plot_aerodynamic_mesh_torch():
 
     # CN subplot
     ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6.view_init(elev=30, azim=azimuth)
     surf6 = ax6.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap='viridis', alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")

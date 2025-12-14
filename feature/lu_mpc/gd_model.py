@@ -717,9 +717,12 @@ def plot_all_aerodynamic_coeffs():
     }
 
 
-def plot_aerodynamic_mesh():
+def plot_aerodynamic_mesh(azimuth=-127.5):
     """
     Generate 3D mesh plots of aerodynamic coefficients across angle of attack and sideslip angle.
+
+    Args:
+        azimuth (float): Azimuth angle for 3D view in degrees (default: -127.5)
     """
     # Generate ranges for alpha and beta
     alpha_deg = np.linspace(-180, 180, 361)  # 1-degree increments
@@ -772,6 +775,7 @@ def plot_aerodynamic_mesh():
 
     # CL subplot
     ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1.view_init(elev=30, azim=azimuth)
     surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap='viridis', alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
@@ -781,6 +785,7 @@ def plot_aerodynamic_mesh():
 
     # CY subplot
     ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2.view_init(elev=30, azim=azimuth)
     surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap='viridis', alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
@@ -790,6 +795,7 @@ def plot_aerodynamic_mesh():
 
     # CD subplot
     ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3.view_init(elev=30, azim=azimuth)
     surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap='viridis', alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
@@ -799,6 +805,7 @@ def plot_aerodynamic_mesh():
 
     # CLL subplot
     ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4.view_init(elev=30, azim=azimuth)
     surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap='viridis', alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
@@ -808,6 +815,7 @@ def plot_aerodynamic_mesh():
 
     # CM subplot
     ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5.view_init(elev=30, azim=azimuth)
     surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap='viridis', alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
@@ -817,6 +825,7 @@ def plot_aerodynamic_mesh():
 
     # CN subplot
     ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6.view_init(elev=30, azim=azimuth)
     surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap='viridis', alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
