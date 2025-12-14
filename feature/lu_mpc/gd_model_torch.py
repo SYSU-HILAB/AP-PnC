@@ -6,8 +6,10 @@
 # PyTorch batched implementation for efficient aerodynamic coefficient calculations
 #
 import math
+import time
 import numpy as np
 import torch
+import torch.jit
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -37,11 +39,12 @@ kCn = torch.tensor([
 ], dtype=torch.float32)
 
 
-def logistic_func_batch(alpha, alpha1, k1, alpha2, k2):
-    """Batched logistic function"""
+@torch.jit.script
+def logistic_func_batch(alpha: torch.Tensor, alpha1: float, k1: float, alpha2: float, k2: float) -> torch.Tensor:
+    """Batched logistic function with JIT compilation"""
     if k1 < 0 or k2 < 0 or alpha1 >= alpha2:
-        print("Invalid logistic function")
-        return None
+        # Return zeros for invalid parameters instead of None to satisfy JIT
+        return torch.zeros_like(alpha)
 
     P1 = 1.0 / (1 + torch.exp(k1 * (alpha - alpha1)))
     P2 = 1.0 / (1 + torch.exp(-k2 * (alpha - alpha2)))
@@ -51,7 +54,12 @@ def logistic_func_batch(alpha, alpha1, k1, alpha2, k2):
 
 def deg2rad_batch(deg):
     """Batched degree to radian conversion"""
-    return deg * math.pi / 180
+    if isinstance(deg, (int, float)):
+        # Handle scalar input
+        return torch.tensor(deg * (math.pi / 180.0))
+    else:
+        # Handle tensor input
+        return deg * (math.pi / 180.0)
 
 
 def reg_CL_batch(alpha, beta):
@@ -292,6 +300,33 @@ def reg_Cn_batch(alpha, beta):
     return reg
 
 
+def compute_aerodynamic_coeffs_torch(ALPHA: torch.Tensor, BETA: torch.Tensor,
+                                   kCL: torch.Tensor, kCD: torch.Tensor, kCY: torch.Tensor,
+                                   kCLL: torch.Tensor, kCm: torch.Tensor, kCn: torch.Tensor):
+    """
+    Compute all aerodynamic coefficients using PyTorch - for timing purposes.
+    Returns all coefficients without plotting.
+    Note: JIT disabled due to compatibility issues with mixed tensor/scalar operations.
+    """
+    # Calculate coefficients in batches
+    reg_cl = reg_CL_batch(ALPHA, BETA)
+    reg_cd = reg_CD_batch(ALPHA, BETA)
+    reg_cy = reg_CY_batch(ALPHA, BETA)
+    reg_cll = reg_Cll_batch(ALPHA, BETA)
+    reg_cm = reg_Cm_batch(ALPHA, BETA)
+    reg_cn = reg_Cn_batch(ALPHA, BETA)
+
+    # Batched coefficient calculation using matrix multiplication
+    CL = torch.sum(reg_cl * kCL.view(1, 1, -1), dim=-1)
+    CD = torch.sum(reg_cd * kCD.view(1, 1, -1), dim=-1)
+    CY = torch.sum(reg_cy * kCY.view(1, 1, -1), dim=-1)
+    CLL = torch.sum(reg_cll * kCLL.view(1, 1, -1), dim=-1)
+    CM = torch.sum(reg_cm * kCm.view(1, 1, -1), dim=-1)
+    CN = torch.sum(reg_cn * kCn.view(1, 1, -1), dim=-1)
+
+    return CL, CD, CY, CLL, CM, CN
+
+
 def plot_aerodynamic_mesh_torch():
     """
     Generate 3D mesh plots of aerodynamic coefficients using batched PyTorch calculations.
@@ -424,6 +459,87 @@ def plot_aerodynamic_mesh_torch():
         'ALPHA_DEG': ALPHA_DEG_np, 'BETA_DEG': BETA_DEG_np,
         'CL': CL_np, 'CD': CD_np, 'CY': CY_np,
         'CLL': CLL_np, 'CM': CM_np, 'CN': CN_np
+    }
+
+
+def benchmark_torch_timing(mesh_size=361, num_runs=10):
+    """
+    Benchmark PyTorch computation time for aerodynamic coefficient calculations.
+    """
+    print(f"\n=== PyTorch Performance Benchmark ===")
+    print(f"Mesh size: {mesh_size}x{mesh_size} points")
+    print(f"Number of runs: {num_runs}")
+
+    # Force GPU usage
+    if not torch.cuda.is_available():
+        print("Warning: CUDA not available. Using CPU.")
+        device = torch.device('cpu')
+    else:
+        device = torch.device('cuda')
+        print(f"Using device: {device}")
+        print(f"CUDA device: {torch.cuda.get_device_name()}")
+        print(f"CUDA version: {torch.version.cuda}")
+
+    # Generate ranges for alpha and beta on device
+    alpha_deg = torch.linspace(-180, 180, mesh_size, device=device)
+    beta_deg = torch.linspace(-180, 180, mesh_size, device=device)
+
+    alpha_rad = deg2rad_batch(alpha_deg)
+    beta_rad = deg2rad_batch(beta_deg)
+
+    # Create meshgrid on device
+    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing='ij')
+
+    # Move coefficient tensors to device
+    kCL_device = kCL.to(device)
+    kCD_device = kCD.to(device)
+    kCY_device = kCY.to(device)
+    kCLL_device = kCLL.to(device)
+    kCm_device = kCm.to(device)
+    kCn_device = kCn.to(device)
+
+    # Warmup run
+    print("Performing warmup run...")
+    if device.type == 'cuda':
+        torch.cuda.synchronize()
+    _ = compute_aerodynamic_coeffs_torch(ALPHA, BETA, kCL_device, kCD_device,
+                                       kCY_device, kCLL_device, kCm_device, kCn_device)
+
+    # Benchmark runs
+    print("Starting benchmark...")
+    times = []
+    for i in range(num_runs):
+        if device.type == 'cuda':
+            torch.cuda.synchronize()
+        start_time = time.time()
+        _ = compute_aerodynamic_coeffs_torch(ALPHA, BETA, kCL_device, kCD_device,
+                                           kCY_device, kCLL_device, kCm_device, kCn_device)
+        if device.type == 'cuda':
+            torch.cuda.synchronize()
+        end_time = time.time()
+        elapsed = (end_time - start_time) * 1000  # Convert to milliseconds
+        times.append(elapsed)
+        print(f"Run {i+1}: {elapsed:.2f} ms")
+
+    # Calculate statistics
+    avg_time = sum(times) / len(times)
+    min_time = min(times)
+    max_time = max(times)
+    std_time = (sum((t - avg_time) ** 2 for t in times) / len(times)) ** 0.5
+
+    print(f"\nPyTorch Timing Results:")
+    print(f"Average: {avg_time:.2f} ms")
+    print(f"Min: {min_time:.2f} ms")
+    print(f"Max: {max_time:.2f} ms")
+    print(f"Std Dev: {std_time:.2f} ms")
+    print(f"Throughput: {mesh_size*mesh_size/avg_time:.0f} points/ms")
+
+    return {
+        'avg_time': avg_time,
+        'min_time': min_time,
+        'max_time': max_time,
+        'std_time': std_time,
+        'throughput': mesh_size*mesh_size/avg_time
     }
 
 

@@ -13,3 +13,7 @@ Always add justfile entry for user usage, remember to use
 $AP_PNC_DIR/.acados_venv/bin/python when adding these entries.
 
 When adding justfile entry, you have fully tested the functionality in case of any errors or issues.
+
+
+## Scope
+We only focus on the $AP_PNC_DIR/feature/lu_mpc/ folder, everything else is not considered.
