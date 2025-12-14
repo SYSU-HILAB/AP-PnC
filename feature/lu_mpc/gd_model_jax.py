@@ -431,8 +431,37 @@ def compute_angles_batch(V_b):
     else:
         raise ValueError(f"Unsupported V_b dimension: {V_b.ndim}")
 
+def trans_stab_to_body_single(alpha, vec):
+    """
+    Docstring for trans_stab_to_body
+    
+    :param vec: Array of shape (..., 3) representing vectors in stability frame 
+    :param alpha: Angle of attack in radians
+    :return: Transformed vectors in body frame of shape (..., 3)
+    """
+    # Stability to body frame transformation matrix
+    T_sb = jnp.array([
+        [jnp.cos(alpha), 0.0, -jnp.sin(alpha)],
+        [0.0, 1.0, 0.0],
+        [jnp.sin(alpha), 0.0, jnp.cos(alpha)]
+    ], dtype=jnp.float32)
+    return jnp.einsum('ij,...j->...i', T_sb, vec)
 
-def aerodynamics_vb(V_bs):
+def trans_stab_to_body_batch(ALPHA, VEC):
+    """
+    Batch version
+    :param ALPHA: Array of shape (...) representing angles of attack in radians
+    :param VEC: Array of shape (..., 3) representing vectors in stability frame
+    :return: Transformed vectors in body frame of shape (..., 3)
+    """
+    if ALPHA.ndim == 0:  # Single alpha
+        return trans_stab_to_body_single(ALPHA, VEC)
+    elif ALPHA.ndim == 1:  # 1D arrays
+        return jax.vmap(trans_stab_to_body_single, in_axes=(0, 0))(ALPHA, VEC)
+    else:  # 2D arrays
+        raise ValueError(f"Unsupported ALPHA dimension: {ALPHA.ndim}")
+
+def aerodynamics_B_vb(V_bs):
     """
     Docstring for aerodynamics_vb
     
@@ -441,15 +470,53 @@ def aerodynamics_vb(V_bs):
     """ 
     ALPHA, BETA, V_NORM, V_SQUARED = compute_angles_batch(V_bs)
     CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
+    rho = 1.185  # kg/m^3
+    FORCES_DYL = jnp.stack([
+        -0.5 * rho * V_SQUARED * CD,
+        0.5 * rho * V_SQUARED * CY,
+        -0.5 * rho * V_SQUARED * CL,
+    ], axis=-1)
+
+    FORCES_B = trans_stab_to_body_batch(ALPHA, FORCES_DYL)
+
+    MOMENTS_B = jnp.stack([
+        0.5 * rho * V_SQUARED * CLL,
+        0.5 * rho * V_SQUARED * CM,
+        0.5 * rho * V_SQUARED * CN
+    ], axis=-1)
+    return FORCES_B, MOMENTS_B, ALPHA, BETA
+
+def test_trans_stab_to_body():
+    # Test with a batch of angles and vectors
+    ALPHA = jnp.array([0.0, jnp.pi / 6, jnp.pi / 4])  # 0, 30, 45 degrees
+    VEC = jnp.array([
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0]
+    ])
+    transformed_vecs = trans_stab_to_body_batch(ALPHA, VEC)
+    print(f"Transformed Vectors:\n{transformed_vecs}")
+
+def aerodynamics_DYL_vb(V_bs):
+    """
+    Docstring for aerodynamics_vb
+    
+    :param V_bs: Array of shape (..., 3) representing body-frame velocities
+    :return: FORCES and MOMENTS arrays of shape (..., 3)
+    """ 
+    ALPHA, BETA, V_NORM, V_SQUARED = compute_angles_batch(V_bs)
+    CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
+    rho = 1.185  # kg/m^3
     FORCES = jnp.stack([
-        0.5 * V_SQUARED * CL,
-        0.5 * V_SQUARED * CY,
-        0.5 * V_SQUARED * CD
+        -0.5 * rho * V_SQUARED * CD,
+        0.5 * rho * V_SQUARED * CY,
+        -0.5 * rho * V_SQUARED * CL,
+
     ], axis=-1)
     MOMENTS = jnp.stack([
-        0.5 * V_SQUARED * CLL,
-        0.5 * V_SQUARED * CM,
-        0.5 * V_SQUARED * CN
+        0.5 * rho * V_SQUARED * CLL,
+        0.5 * rho * V_SQUARED * CM,
+        0.5 * rho * V_SQUARED * CN
     ], axis=-1)
     return FORCES, MOMENTS, ALPHA, BETA
 
@@ -458,7 +525,7 @@ def test_aerodynamics_vb():
     V_bs = jnp.array([
         [10.0, 0.0, 0.0],
         [10.0, 0.0, 10.0],
-        [20.0, -2.0, 1.0]
+        [10. * .707, 10.0, 10. * .707]
     ])
     FORCES, MOMENTS, ALPHA, BETA = aerodynamics_vb(V_bs)
     print(f"FORCES: {FORCES}")
@@ -665,7 +732,80 @@ def benchmark_jax_timing(mesh_size=361, num_runs=10):
     }
 
 
+def plot_cl_cd_cm_vs_alpha_coordinated():
+    """
+    Plot CL, CD, CM coefficients versus alpha under coordinated flight assumption (beta = 0).
+    Creates one row with three subplots for each coefficient.
+    """
+    import matplotlib.pyplot as plt
+
+    print("Computing aerodynamic coefficients under coordinated flight (beta = 0)...")
+
+    # Generate alpha range (angle of attack)
+    alpha_deg = jnp.linspace(-30, 120, 1501)  # -30 to 120 degrees, 0.1 degree increments
+    alpha_rad = deg2rad_batch(alpha_deg)
+
+    # Coordinated flight assumption: beta = 0 (sideslip angle)
+    beta = jnp.zeros_like(alpha_rad)  # Beta = 0 for all alpha values
+
+    # Compute aerodynamic coefficients
+    CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(alpha_rad, beta)
+
+    # Convert to numpy for plotting
+    alpha_deg_np = np.array(alpha_deg)
+    CL_np = np.array(CL)
+    CD_np = np.array(CD)
+    CM_np = np.array(CM)
+
+    # Create the plot with one row and three subplots
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+    fig.suptitle('Aerodynamic Coefficients vs Angle of Attack (Coordinated Flight: β = 0°)', fontsize=16)
+
+    # CL subplot
+    ax1.plot(alpha_deg_np, CL_np, 'b-', linewidth=2)
+    ax1.set_xlabel('Angle of Attack α [degrees]', fontsize=12)
+    ax1.set_ylabel('CL (Lift Coefficient)', fontsize=12)
+    ax1.set_title('Lift Coefficient CL', fontsize=14)
+    ax1.grid(True, alpha=0.3)
+    ax1.axhline(y=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax1.axvline(x=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax1.set_xlim([-30, 120])
+
+    # CD subplot
+    ax2.plot(alpha_deg_np, CD_np, 'r-', linewidth=2)
+    ax2.set_xlabel('Angle of Attack α [degrees]', fontsize=12)
+    ax2.set_ylabel('CD (Drag Coefficient)', fontsize=12)
+    ax2.set_title('Drag Coefficient CD', fontsize=14)
+    ax2.grid(True, alpha=0.3)
+    ax2.axhline(y=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax2.axvline(x=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax2.set_xlim([-30, 120])
+
+    # CM subplot
+    ax3.plot(alpha_deg_np, CM_np, 'g-', linewidth=2)
+    ax3.set_xlabel('Angle of Attack α [degrees]', fontsize=12)
+    ax3.set_ylabel('CM (Pitching Moment Coefficient)', fontsize=12)
+    ax3.set_title('Pitching Moment Coefficient CM', fontsize=14)
+    ax3.grid(True, alpha=0.3)
+    ax3.axhline(y=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax3.axvline(x=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax3.set_xlim([-30, 120])
+
+    plt.tight_layout()
+    plt.show()
+
+    print("Plot completed!")
+
+    return {
+        'alpha_deg': alpha_deg_np,
+        'CL': CL_np,
+        'CD': CD_np,
+        'CM': CM_np
+    }
+
+
 if __name__ == "__main__":
     # Run the JAX batched plotting function when script is executed directly
     # benchmark_jax_timing()
+    # test_trans_stab_to_body()
     test_aerodynamics_vb()

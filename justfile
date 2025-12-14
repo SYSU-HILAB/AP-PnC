@@ -1,11 +1,11 @@
 # PNC Tailsitter Justfile
 # build top algorithms image
 
-# Plot CL and CD coefficients across AoA
+# Plot CL, CD, CM coefficients vs alpha under coordinated flight assumption (beta = 0)
 plot-aero:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/gd_model.py
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import plot_cl_cd_cm_vs_alpha_coordinated; plot_cl_cd_cm_vs_alpha_coordinated()"
 
 # Plot all aerodynamic coefficients (CL, CD, CY, Cl, Cm, Cn) across AoA
 plot-all-aero:
@@ -67,11 +67,24 @@ test-jax-trim:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/jax_trim.py
 
+# Run JAX trim analysis for aircraft equilibrium
+jax-trim:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    export JAX_PLATFORM_NAME=cpu
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/jax_trim.py
+
 # Plot aerodynamic coefficients using torch_gd.py (usage: just plot-torch-gd [azimuth])
 plot-torch-gd azimuth="-127.5":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/torch_gd.py --azimuth {{azimuth}}
+
+# Plot CL, CD, CM coefficients vs alpha under coordinated flight assumption (beta = 0)
+plot-coordinated-aero:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import plot_cl_cd_cm_vs_alpha_coordinated; plot_cl_cd_cm_vs_alpha_coordinated()"
 
 alias p := plot-aero
 alias pa := plot-all-aero
@@ -79,8 +92,10 @@ alias pm := plot-mesh-aero
 alias pt := plot-mesh-aero-torch
 alias pj := plot-mesh-aero-jax
 alias pg := plot-torch-gd
+alias pca := plot-coordinated-aero
 alias ct := compare-timing
 alias bj := benchmark-jax
 alias bt := benchmark-torch
 alias tv := test-vmap
 alias jt := test-jax-trim
+alias jtrim := jax-trim
