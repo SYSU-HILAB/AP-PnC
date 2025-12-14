@@ -325,7 +325,7 @@ void AerodynamicsPluginPrivate::Update(EntityComponentManager &_ecm)
   if (this->ifOmitMoment)
     torqueB = math::Vector3d::Zero;
   else
-    torqueB = Q_frd2flu.RotateVector(torqueB);
+    torqueB = Q_frd2flu.RotateVector(torqueB) * this->area / 0.24; // no change
 
   // Correct for nan or inf
   forceB.Correct();
