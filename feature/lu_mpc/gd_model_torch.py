@@ -42,10 +42,6 @@ kCn = torch.tensor([
 @torch.jit.script
 def logistic_func_batch(alpha: torch.Tensor, alpha1: float, k1: float, alpha2: float, k2: float) -> torch.Tensor:
     """Batched logistic function with JIT compilation"""
-    if k1 < 0 or k2 < 0 or alpha1 >= alpha2:
-        # Return zeros for invalid parameters instead of None to satisfy JIT
-        return torch.zeros_like(alpha)
-
     P1 = 1.0 / (1 + torch.exp(k1 * (alpha - alpha1)))
     P2 = 1.0 / (1 + torch.exp(-k2 * (alpha - alpha2)))
     yval = 1 - P1 - P2
@@ -348,7 +344,7 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
 
     # Generate ranges for alpha and beta on GPU directly
     alpha_deg = torch.linspace(-180, 180, 361, device=device)  # 1-degree increments on GPU
-    beta_deg = torch.linspace(-180, 180, 361, device=device)   # 1-degree increments on GPU
+    beta_deg = torch.linspace(-90, 90, 361, device=device)   # 1-degree increments on GPU
 
     alpha_rad = deg2rad_batch(alpha_deg)
     beta_rad = deg2rad_batch(beta_deg)
@@ -395,42 +391,44 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     CN_np = CN.cpu().numpy()
 
     print("Creating plots...")
-    # Create figure with 3x2 subplots
-    fig = plt.figure(figsize=(15, 12))
+    # Create figure with 2x3 subplots
+    fig = plt.figure(figsize=(18, 8))
     fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16)
 
-    # CL subplot
-    ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    # Row 1: C_L, C_m, C_D
+    # C_L subplot (position 1)
+    ax1 = fig.add_subplot(2, 3, 1, projection='3d')
     ax1.view_init(elev=30, azim=azimuth)
     surf1 = ax1.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap='viridis', alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
-    ax1.set_title("Lift Coefficient CL")
+    ax1.set_title("Lift Coefficient C_L")
     plt.colorbar(surf1, ax=ax1, shrink=0.5)
 
-    # CY subplot
-    ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    # C_m subplot (position 2)
+    ax2 = fig.add_subplot(2, 3, 2, projection='3d')
     ax2.view_init(elev=30, azim=azimuth)
-    surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap='viridis', alpha=0.8)
+    surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap='viridis', alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
-    ax2.set_zlabel("C_Y")
-    ax2.set_title("Side Force Coefficient CY")
+    ax2.set_zlabel("C_m")
+    ax2.set_title("Pitching Moment Coefficient C_m")
     plt.colorbar(surf2, ax=ax2, shrink=0.5)
 
-    # CD subplot
-    ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    # C_D subplot (position 3)
+    ax3 = fig.add_subplot(2, 3, 3, projection='3d')
     ax3.view_init(elev=30, azim=azimuth)
     surf3 = ax3.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap='viridis', alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
-    ax3.set_title("Drag Coefficient CD")
+    ax3.set_title("Drag Coefficient C_D")
     plt.colorbar(surf3, ax=ax3, shrink=0.5)
 
-    # CLL subplot
-    ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    # Row 2: C_ll, C_Y, C_n
+    # C_ll subplot (position 4)
+    ax4 = fig.add_subplot(2, 3, 4, projection='3d')
     ax4.view_init(elev=30, azim=azimuth)
     surf4 = ax4.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap='viridis', alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
@@ -439,18 +437,18 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     ax4.set_title("Rolling Moment Coefficient C_l")
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
-    # CM subplot
-    ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    # C_Y subplot (position 5)
+    ax5 = fig.add_subplot(2, 3, 5, projection='3d')
     ax5.view_init(elev=30, azim=azimuth)
-    surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap='viridis', alpha=0.8)
+    surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap='viridis', alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
-    ax5.set_zlabel("C_m")
-    ax5.set_title("Pitching Moment Coefficient C_m")
+    ax5.set_zlabel("C_Y")
+    ax5.set_title("Side Force Coefficient C_Y")
     plt.colorbar(surf5, ax=ax5, shrink=0.5)
 
-    # CN subplot
-    ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    # C_n subplot (position 6)
+    ax6 = fig.add_subplot(2, 3, 6, projection='3d')
     ax6.view_init(elev=30, azim=azimuth)
     surf6 = ax6.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap='viridis', alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
