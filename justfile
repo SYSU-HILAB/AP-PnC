@@ -9,6 +9,12 @@ generate-coordinated-data:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
 
+# Generate CL, CD, CM coefficients data using CasADi symbolic under coordinated flight assumption (beta = 0)
+generate-coordinated-data-casadi:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_casadi import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
+
 # Generate all aerodynamic coefficients data
 generate-all-aero-data:
     #!/usr/bin/env bash
@@ -26,6 +32,12 @@ generate-mesh-data-jax mesh_size="361":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import generate_mesh_data_jax; generate_mesh_data_jax(mesh_size={{mesh_size}})"
+
+# Generate 3D mesh data using CasADi symbolic
+generate-mesh-data-casadi:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_casadi import generate_mesh_data; generate_mesh_data()"
 
 # Generate 3D mesh data using PyTorch (usage: just generate-mesh-data-torch [mesh_size])
 generate-mesh-data-torch mesh_size="361":
@@ -75,7 +87,13 @@ plot-mesh-aero-torch azimuth="-127.5" data_file="mesh_aero_data_torch.npy":
 plot-mesh-aero-jax azimuth="125.5" data_file="mesh_aero_data_jax.npy":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax('{{data_file}}', azimuth='{{azimuth}}')"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax('{{data_file}}', azimuth='{{azimuth}}', show_plot=False)"
+
+# Plot 3D mesh surface of aerodynamic coefficients using CasADi symbolic
+plot-mesh-aero-casadi:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_casadi; plot_aerodynamic_mesh_casadi(data_file='$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data_casadi.npy', show_plot=False)"
 
 # Plot torch_gd aerodynamic coefficients (usage: just plot-torch-gd [azimuth] [data_file])
 plot-torch-gd azimuth="-127.5" data_file="torch_gd_data.npy":
@@ -112,6 +130,13 @@ plot-mesh-aero-jax-full azimuth="125.5":
     export AP_PNC_DIR="/home/rec/AP-PnC"
     just generate-mesh-data-jax
     just plot-mesh-aero-jax {{azimuth}}
+
+# Generate data and plot 3D mesh surface (CasADi)
+plot-mesh-aero-casadi-full:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    just generate-mesh-data-casadi
+    just plot-mesh-aero-casadi
 
 # Generate data and plot 3D mesh surface (PyTorch)
 plot-mesh-aero-torch-full azimuth="-127.5":
@@ -169,6 +194,12 @@ test-sim-model:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/tests/test_configurable_model.py
 
+# Test symbolic CasADi aerodynamic model
+test-symbolic-casadi:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/gd_model_casadi.py
+
 # Run all tests for lu_mpc feature (usage: just test-all)
 test-all:
     #!/usr/bin/env bash
@@ -210,6 +241,7 @@ alias pa := plot-all-aero
 alias pm := plot-mesh-aero
 alias pt := plot-mesh-aero-torch
 alias pj := plot-mesh-aero-jax
+alias pc := plot-mesh-aero-casadi
 alias pg := plot-torch-gd
 alias pca := plot-coordinated-aero
 alias ct := compare-timing
@@ -219,4 +251,5 @@ alias tv := test-vmap
 alias jt := test-jax-trim
 alias jtrim := jax-trim
 alias tsm := test-sim-model
+alias tsc := test-symbolic-casadi
 alias ta := test-all
