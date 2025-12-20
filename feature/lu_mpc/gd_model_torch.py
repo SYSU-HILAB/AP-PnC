@@ -550,6 +550,90 @@ def benchmark_torch_timing(mesh_size=361, num_runs=10):
     }
 
 
+def generate_mesh_data_torch(filename="mesh_aero_data_torch", cache_dir=None, mesh_size=361):
+    """
+    Generate 3D mesh data for aerodynamic coefficients using PyTorch.
+    Saves data to .npy file for later plotting.
+
+    Args:
+        filename (str): Name for the data file (without extension)
+        cache_dir (str, optional): Custom cache directory
+        mesh_size (int): Size of the mesh grid (mesh_size x mesh_size points)
+
+    Returns:
+        str: Path to the saved data file
+    """
+    print("Generating PyTorch 3D mesh data...")
+
+    # Import data utilities
+    from .plotting.data_utils import save_mesh_data
+
+    # Determine device
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+        print(f"Using CUDA device: {torch.cuda.get_device_name()}")
+    else:
+        device = torch.device('cpu')
+        print("CUDA not available, using CPU")
+
+    # Generate ranges for alpha and beta on device
+    alpha_deg = torch.linspace(-180, 180, mesh_size, device=device)
+    beta_deg = torch.linspace(-90, 90, mesh_size, device=device)
+
+    alpha_rad = deg2rad_batch(alpha_deg)
+    beta_rad = deg2rad_batch(beta_deg)
+
+    # Create meshgrid on device
+    ALPHA_DEG, BETA_DEG = torch.meshgrid(alpha_deg, beta_deg, indexing='ij')
+    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing='ij')
+
+    # Move coefficient tensors to device
+    kCL_device = kCL.to(device)
+    kCD_device = kCD.to(device)
+    kCY_device = kCY.to(device)
+    kCLL_device = kCLL.to(device)
+    kCm_device = kCm.to(device)
+    kCn_device = kCn.to(device)
+
+    print("Computing aerodynamic coefficients in batches...")
+
+    # Calculate coefficients in batches
+    CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_torch(
+        ALPHA, BETA, kCL_device, kCD_device, kCY_device, kCLL_device, kCm_device, kCn_device
+    )
+
+    # Move back to CPU and convert to numpy for saving
+    ALPHA_DEG_np = ALPHA_DEG.cpu().numpy()
+    BETA_DEG_np = BETA_DEG.cpu().numpy()
+    CL_np = CL.cpu().numpy()
+    CD_np = CD.cpu().numpy()
+    CY_np = CY.cpu().numpy()
+    CLL_np = CLL.cpu().numpy()
+    CM_np = CM.cpu().numpy()
+    CN_np = CN.cpu().numpy()
+
+    # Save data using data utilities
+    data_path = save_mesh_data(
+        ALPHA_DEG_np, BETA_DEG_np, CL_np, CD_np, CY_np, CLL_np, CM_np, CN_np,
+        filename, cache_dir, backend="pytorch"
+    )
+
+    print(f"PyTorch mesh data generation completed!")
+    print(f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}")
+
+    # Return the data dictionary for immediate use
+    return {
+        'ALPHA_DEG': ALPHA_DEG_np,
+        'BETA_DEG': BETA_DEG_np,
+        'CL': CL_np,
+        'CD': CD_np,
+        'CY': CY_np,
+        'CLL': CLL_np,
+        'CM': CM_np,
+        'CN': CN_np
+    }
+
+
 if __name__ == "__main__":
     # Run the PyTorch batched plotting function when script is executed directly
     plot_aerodynamic_mesh_torch()

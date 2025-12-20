@@ -843,6 +843,213 @@ def plot_aerodynamic_mesh(azimuth=-127.5):
     }
 
 
+def generate_cl_cd_data(filename="cl_cd_aero_data", cache_dir=None):
+    """
+    Generate CL and CD coefficients data across AoA from -180° to 180° at 12 m/s velocity norm.
+    Saves data to .npy file for later plotting.
+
+    Args:
+        filename (str): Name for the data file (without extension)
+        cache_dir (str, optional): Custom cache directory
+
+    Returns:
+        str: Path to the saved data file
+    """
+    print("Generating CL and CD coefficients data...")
+
+    # Import data utilities
+    from .plotting.data_utils import save_aero_data
+
+    # Set velocity parameters
+    v_norm = 12.0  # m/s
+    beta = 0.0  # sideslip angle in radians
+
+    # Generate AoA range from -180 to 180 degrees
+    aoa_deg = np.linspace(-180, 180, 361)  # 1-degree increments
+    aoa_rad = np.deg2rad(aoa_deg)
+
+    # Calculate CL and CD for each AoA
+    cl_values = []
+    cd_values = []
+
+    for alpha in aoa_rad:
+        # Calculate regression terms
+        reg_cl = reg_CL(alpha, beta)
+        reg_cd = reg_CD(alpha, beta)
+
+        # Calculate coefficients using dot product with k coefficients
+        cl_val = float(np.dot(kCL, reg_cl).item())
+        cd_val = float(np.dot(kCD, reg_cd).item())
+
+        cl_values.append(cl_val)
+        cd_values.append(cd_val)
+
+    cl_values = np.array(cl_values)
+    cd_values = np.array(cd_values)
+
+    # Save data using data utilities
+    data = {
+        'aoa_deg': aoa_deg,
+        'alpha_deg': aoa_deg,  # Alternative naming for compatibility
+        'CL': cl_values,
+        'CD': cd_values,
+        'data_type': 'cl_cd_basic',
+        'description': 'CL and CD coefficients across AoA at 12 m/s, beta = 0°'
+    }
+
+    data_path = save_aero_data(data, filename, cache_dir)
+
+    print(f"CL/CD data generation completed!")
+    print(f"Data shape: aoa={aoa_deg.shape}, CL={cl_values.shape}, CD={cd_values.shape}")
+
+    return data_path
+
+
+def generate_all_coeffs_data(filename="all_aero_coeffs_data", cache_dir=None):
+    """
+    Generate all aerodynamic coefficients (CL, CD, CY, Cl, Cm, Cn) across AoA from -180° to 180°.
+    Saves data to .npy file for later plotting.
+
+    Args:
+        filename (str): Name for the data file (without extension)
+        cache_dir (str, optional): Custom cache directory
+
+    Returns:
+        str: Path to the saved data file
+    """
+    print("Generating all aerodynamic coefficients data...")
+
+    # Import data utilities
+    from .plotting.data_utils import save_all_coeffs_data
+
+    # Set velocity parameters
+    v_norm = 12.0  # m/s
+    beta = 0.0  # sideslip angle in radians
+
+    # Generate AoA range from -180 to 180 degrees
+    aoa_deg = np.linspace(-180, 180, 361)  # 1-degree increments
+    aoa_rad = np.deg2rad(aoa_deg)
+
+    # Calculate all coefficients for each AoA
+    cl_values, cd_values, cy_values = [], [], []
+    cll_values, cm_values, cn_values = [], [], []
+
+    for alpha in aoa_rad:
+        # Calculate regression terms for forces
+        reg_cl = reg_CL(alpha, beta)
+        reg_cd = reg_CD(alpha, beta)
+        reg_cy = reg_CY(alpha, beta)
+
+        # Calculate regression terms for moments
+        reg_cll = reg_Cll(alpha, beta)
+        reg_cm = reg_Cm(alpha, beta)
+        reg_cn = reg_Cn(alpha, beta)
+
+        # Calculate force coefficients
+        cl_values.append(float(np.dot(kCL, reg_cl).item()))
+        cd_values.append(float(np.dot(kCD, reg_cd).item()))
+        cy_values.append(float(np.dot(kCY, reg_cy).item()))
+
+        # Calculate moment coefficients
+        cll_values.append(float(np.dot(kCLL, reg_cll).item()))
+        cm_values.append(float(np.dot(kCm, reg_cm).item()))
+        cn_values.append(float(np.dot(kCn, reg_cn).item()))
+
+    # Convert to numpy arrays
+    cl_values = np.array(cl_values)
+    cd_values = np.array(cd_values)
+    cy_values = np.array(cy_values)
+    cll_values = np.array(cll_values)
+    cm_values = np.array(cm_values)
+    cn_values = np.array(cn_values)
+
+    # Save data using data utilities
+    data_path = save_all_coeffs_data(
+        aoa_deg, cl_values, cd_values, cy_values, cll_values, cm_values, cn_values,
+        filename, cache_dir
+    )
+
+    print(f"All coefficients data generation completed!")
+    print(f"Data shape: aoa={aoa_deg.shape}, all coeffs arrays shape: {cl_values.shape}")
+
+    return data_path
+
+
+def generate_mesh_data(filename="mesh_aero_data", cache_dir=None, mesh_size=361):
+    """
+    Generate 3D mesh data for aerodynamic coefficients using CasADi.
+    Saves data to .npy file for later plotting.
+
+    Args:
+        filename (str): Name for the data file (without extension)
+        cache_dir (str, optional): Custom cache directory
+        mesh_size (int): Size of the mesh grid (mesh_size x mesh_size points)
+
+    Returns:
+        str: Path to the saved data file
+    """
+    print("Generating CasADi 3D mesh data...")
+
+    # Import data utilities
+    from .plotting.data_utils import save_mesh_data
+
+    # Generate ranges for alpha and beta
+    alpha_deg = np.linspace(-180, 180, mesh_size)
+    beta_deg = np.linspace(-180, 180, mesh_size)
+
+    alpha_rad = np.deg2rad(alpha_deg)
+    beta_rad = np.deg2rad(beta_deg)
+
+    # Create meshgrid
+    ALPHA, BETA = np.meshgrid(alpha_rad, beta_rad)
+    ALPHA_DEG, BETA_DEG = np.meshgrid(alpha_deg, beta_deg)
+
+    # Initialize coefficient matrices
+    CL = np.zeros_like(ALPHA)
+    CD = np.zeros_like(ALPHA)
+    CY = np.zeros_like(ALPHA)
+    CLL = np.zeros_like(ALPHA)
+    CM = np.zeros_like(ALPHA)
+    CN = np.zeros_like(ALPHA)
+
+    # Calculate coefficients for each (alpha, beta) pair
+    for i in range(len(beta_rad)):
+        for j in range(len(alpha_rad)):
+            alpha = ALPHA[i, j]
+            beta = BETA[i, j]
+
+            # Calculate force coefficients
+            reg_cl = reg_CL(alpha, beta)
+            reg_cd = reg_CD(alpha, beta)
+            reg_cy = reg_CY(alpha, beta)
+
+            # Calculate moment coefficients
+            reg_cll = reg_Cll(alpha, beta)
+            reg_cm = reg_Cm(alpha, beta)
+            reg_cn = reg_Cn(alpha, beta)
+
+            # Calculate force coefficients
+            CL[i, j] = float(np.dot(kCL, reg_cl).item())
+            CD[i, j] = float(np.dot(kCD, reg_cd).item())
+            CY[i, j] = float(np.dot(kCY, reg_cy).item())
+
+            # Calculate moment coefficients
+            CLL[i, j] = float(np.dot(kCLL, reg_cll).item())
+            CM[i, j] = float(np.dot(kCm, reg_cm).item())
+            CN[i, j] = float(np.dot(kCn, reg_cn).item())
+
+    # Save data using data utilities
+    data_path = save_mesh_data(
+        ALPHA_DEG, BETA_DEG, CL, CD, CY, CLL, CM, CN,
+        filename, cache_dir, backend="casadi"
+    )
+
+    print(f"CasADi mesh data generation completed!")
+    print(f"Data shape: ALPHA={ALPHA_DEG.shape}, BETA={BETA_DEG.shape}, CL={CL.shape}")
+
+    return data_path
+
+
 if __name__ == "__main__":
     # Run the comprehensive plotting function when script is executed directly
     plot_all_aerodynamic_coeffs()

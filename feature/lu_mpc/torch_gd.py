@@ -383,6 +383,76 @@ def main(azimuth=-127.5):
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
+def generate_torch_gd_data(filename="torch_gd_data", cache_dir=None):
+    """
+    Generate aerodynamic coefficients data using torch_gd.py approach.
+    Saves data to .npy file for later plotting.
+
+    Args:
+        filename (str): Name for the data file (without extension)
+        cache_dir (str, optional): Custom cache directory
+
+    Returns:
+        str: Path to the saved data file
+    """
+    print("Generating torch_gd aerodynamic data...")
+
+    # Import data utilities
+    from .plotting.data_utils import save_mesh_data
+
+    # Grid definition
+    alpha_deg = torch.arange(-90, 91, 1.0, device=device)
+    beta_deg = torch.arange(-90, 91, 1.0, device=device)
+
+    # Meshgrid
+    ALPHA_grid, BETA_grid = torch.meshgrid(deg2rad(alpha_deg), deg2rad(beta_deg), indexing='ij')
+
+    # Flatten for batch processing
+    alpha_flat = ALPHA_grid.flatten()
+    beta_flat = BETA_grid.flatten()
+
+    # Batch Compute coefficients
+    CL_flat  = reg_CL(alpha_flat, beta_flat) @ kCL
+    CD_flat  = reg_CD(alpha_flat, beta_flat) @ kCD
+    CY_flat  = reg_CY(alpha_flat, beta_flat) @ kCY
+    CLL_flat = reg_Cll(alpha_flat, beta_flat) @ kCLL
+    Cm_flat  = reg_Cm(alpha_flat, beta_flat) @ kCm
+    Cn_flat  = reg_Cn(alpha_flat, beta_flat) @ kCn
+
+    # Reshape back to grid
+    shape = ALPHA_grid.shape
+    CL = CL_flat.reshape(shape).cpu().numpy()
+    CD = CD_flat.reshape(shape).cpu().numpy()
+    CY = CY_flat.reshape(shape).cpu().numpy()
+    CLL = CLL_flat.reshape(shape).cpu().numpy()
+    Cm = Cm_flat.reshape(shape).cpu().numpy()
+    Cn = Cn_flat.reshape(shape).cpu().numpy()
+
+    ALPHA_DEG = ALPHA_grid.cpu().numpy() * 180 / np.pi
+    BETA_DEG = BETA_grid.cpu().numpy() * 180 / np.pi
+
+    # Save data using data utilities
+    data_path = save_mesh_data(
+        ALPHA_DEG, BETA_DEG, CL, CD, CY, CLL, Cm, Cn,
+        filename, cache_dir, backend="torch_gd"
+    )
+
+    print(f"torch_gd data generation completed!")
+    print(f"Data shape: ALPHA={ALPHA_DEG.shape}, BETA={BETA_DEG.shape}, CL={CL.shape}")
+
+    # Return the data dictionary for immediate use
+    return {
+        'ALPHA_DEG': ALPHA_DEG,
+        'BETA_DEG': BETA_DEG,
+        'CL': CL,
+        'CD': CD,
+        'CY': CY,
+        'CLL': CLL,
+        'CM': Cm,  # Note: using Cm consistently
+        'CN': Cn    # Note: using Cn consistently
+    }
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Plot aerodynamic coefficients with customizable azimuth angle.')

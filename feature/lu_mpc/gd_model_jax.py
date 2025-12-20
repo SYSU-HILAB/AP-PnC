@@ -804,6 +804,133 @@ def plot_cl_cd_cm_vs_alpha_coordinated():
     }
 
 
+def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_jax", cache_dir=None):
+    """
+    Generate CL, CD, CM coefficients data under coordinated flight assumption (beta = 0).
+    Saves data to .npy file for later plotting.
+
+    Args:
+        filename (str): Name for the data file (without extension)
+        cache_dir (str, optional): Custom cache directory
+
+    Returns:
+        str: Path to the saved data file
+    """
+    print("Generating aerodynamic coefficients under coordinated flight (beta = 0)...")
+
+    # Import data utilities
+    from .plotting.data_utils import save_coordinated_data
+
+    # Generate alpha range (angle of attack)
+    alpha_deg = jnp.linspace(-30, 120, 1501)  # -30 to 120 degrees, 0.1 degree increments
+    alpha_rad = deg2rad_batch(alpha_deg)
+
+    # Coordinated flight assumption: beta = 0 (sideslip angle)
+    beta = jnp.zeros_like(alpha_rad)  # Beta = 0 for all alpha values
+
+    # Compute aerodynamic coefficients
+    CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(alpha_rad, beta)
+
+    # Convert to numpy for saving
+    alpha_deg_np = np.array(alpha_deg)
+    CL_np = np.array(CL)
+    CD_np = np.array(CD)
+    CM_np = np.array(CM)
+
+    # Save data using data utilities
+    data_path = save_coordinated_data(
+        alpha_deg_np, CL_np, CD_np, CM_np,
+        filename=filename,
+        cache_dir=cache_dir
+    )
+
+    print(f"Coordinated flight data generation completed!")
+    print(f"Data shape: alpha={alpha_deg_np.shape}, CL={CL_np.shape}, CD={CD_np.shape}, CM={CM_np.shape}")
+
+    # Return the data dictionary for immediate use
+    return {
+        'alpha_deg': alpha_deg_np,
+        'CL': CL_np,
+        'CD': CD_np,
+        'CM': CM_np
+    }
+
+
+def generate_mesh_data_jax(filename="mesh_aero_data_jax", cache_dir=None, mesh_size=361):
+    """
+    Generate 3D mesh data for aerodynamic coefficients using JAX.
+    Saves data to .npy file for later plotting.
+
+    Args:
+        filename (str): Name for the data file (without extension)
+        cache_dir (str, optional): Custom cache directory
+        mesh_size (int): Size of the mesh grid (mesh_size x mesh_size points)
+
+    Returns:
+        str: Path to the saved data file
+    """
+    print("Generating JAX 3D mesh data...")
+
+    # Import data utilities
+    from .plotting.data_utils import save_mesh_data
+
+    # Check if GPU is available in JAX
+    devices = jax.devices()
+    device = devices[0] if devices else jax.devices('cpu')[0]
+    print(f"Using device: {device}")
+    if hasattr(device, 'platform'):
+        print(f"Platform: {device.platform}")
+
+    # Generate ranges for alpha and beta
+    alpha_deg = jnp.linspace(-180, 180, mesh_size)
+    beta_deg = jnp.linspace(-90, 90, mesh_size)
+
+    alpha_rad = deg2rad_batch(alpha_deg)
+    beta_rad = deg2rad_batch(beta_deg)
+
+    # Create meshgrid
+    ALPHA_DEG, BETA_DEG = jnp.meshgrid(alpha_deg, beta_deg, indexing='ij')
+    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing='ij')
+
+    print("Computing aerodynamic coefficients in batches...")
+
+    # Calculate coefficients in batches
+    CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
+
+    # Convert to numpy for saving
+    ALPHA_DEG_np = np.array(ALPHA_DEG)
+    BETA_DEG_np = np.array(BETA_DEG)
+    CL_np = np.array(CL)
+    CD_np = np.array(CD)
+    CY_np = np.array(CY)
+    CLL_np = np.array(CLL)
+    CM_np = np.array(CM)
+    CN_np = np.array(CN)
+
+    # Save data using data utilities
+    data_path = save_mesh_data(
+        ALPHA_DEG_np, BETA_DEG_np, CL_np, CD_np, CY_np, CLL_np, CM_np, CN_np,
+        filename=filename,
+        cache_dir=cache_dir,
+        backend="jax"
+    )
+
+    print(f"JAX mesh data generation completed!")
+    print(f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}")
+
+    # Return the data dictionary for immediate use
+    return {
+        'ALPHA_DEG': ALPHA_DEG_np,
+        'BETA_DEG': BETA_DEG_np,
+        'CL': CL_np,
+        'CD': CD_np,
+        'CY': CY_np,
+        'CLL': CLL_np,
+        'CM': CM_np,
+        'CN': CN_np
+    }
+
+
 if __name__ == "__main__":
     # Run the JAX batched plotting function when script is executed directly
     # benchmark_jax_timing()

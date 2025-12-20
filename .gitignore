@@ -64,3 +64,4 @@ output_csv/*
 
 # python
 *egg-info/
+*.npy
