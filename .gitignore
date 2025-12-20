@@ -60,3 +60,7 @@ output_csv/*
 
 # virtual envs
 .*venv/
+
+
+# python
+*egg-info/

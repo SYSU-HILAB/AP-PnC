@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "feature"
+version = "0.1.0"
+description = "A simple tool for testing editable mode"
+dependencies = [
+    "numpy",    # 在这里列出你的 Dependency
+]
+
+[tool.setuptools.packages.find]
+where = ["."]  # Look for packages in the current directory
