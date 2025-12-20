@@ -59,13 +59,36 @@ benchmark-torch:
 test-vmap:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/test_vmap_equivalence.py
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/tests/test_vmap_equivalence.py
 
 # Test JAX trim functionality
 test-jax-trim:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/jax_trim.py
+
+# Test configurable drone model with structured configuration (usage: just test-sim-model)
+test-sim-model:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/tests/test_configurable_model.py
+
+# Run all tests for lu_mpc feature (usage: just test-all)
+test-all:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    echo "🚀 Running all lu_mpc tests..."
+    echo ""
+    echo "Testing structured configuration..."
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/tests/test_configurable_model.py
+    echo ""
+    echo "Testing vmap equivalence..."
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/tests/test_vmap_equivalence.py
+    echo ""
+    echo "Testing ACADOS ENMPC..."
+    cd feature/lu_mpc && $AP_PNC_DIR/.acados_venv/bin/python tests/test_acados_enmpc.py
+    echo ""
+    echo "🎉 All tests completed!"
 
 # Run JAX trim analysis for aircraft equilibrium
 jax-trim:
@@ -99,3 +122,5 @@ alias bt := benchmark-torch
 alias tv := test-vmap
 alias jt := test-jax-trim
 alias jtrim := jax-trim
+alias tsm := test-sim-model
+alias ta := test-all
