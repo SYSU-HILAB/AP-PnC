@@ -7,43 +7,33 @@
 generate-coordinated-data:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_jax import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
 
 # Generate CL, CD, CM coefficients data using CasADi symbolic under coordinated flight assumption (beta = 0)
 generate-coordinated-data-casadi:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_casadi import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_casadi import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
 
-# Generate all aerodynamic coefficients data
-generate-all-aero-data:
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model import generate_all_coeffs_data; generate_all_coeffs_data()"
 
-# Generate 3D mesh data using CasADi (usage: just generate-mesh-data [mesh_size])
-generate-mesh-data mesh_size="361":
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model import generate_mesh_data; generate_mesh_data(mesh_size={{mesh_size}})"
 
 # Generate 3D mesh data using JAX (usage: just generate-mesh-data-jax [mesh_size])
 generate-mesh-data-jax mesh_size="361":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import generate_mesh_data_jax; generate_mesh_data_jax(mesh_size={{mesh_size}})"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_jax import generate_mesh_data_jax; generate_mesh_data_jax(mesh_size={{mesh_size}})"
 
 # Generate 3D mesh data using CasADi symbolic
 generate-mesh-data-casadi:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_casadi import generate_mesh_data; generate_mesh_data()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_casadi import generate_mesh_data; generate_mesh_data()"
 
 # Generate 3D mesh data using PyTorch (usage: just generate-mesh-data-torch [mesh_size])
 generate-mesh-data-torch mesh_size="361":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_torch import generate_mesh_data_torch; generate_mesh_data_torch(mesh_size={{mesh_size}})"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_torch import generate_mesh_data_torch; generate_mesh_data_torch(mesh_size={{mesh_size}})"
 
 
 # === PLOTTING COMMANDS ===
@@ -76,51 +66,31 @@ plot-aero force_flag="" data_file="":
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.aero_plots import plot_cl_cd_cm_coordinated; plot_cl_cd_cm_coordinated('$data_file', show_plot=False)"
 
 # Plot all aerodynamic coefficients (CL, CD, CY, Cl, Cm, Cn) across AoA
-# Usage: just plot-all-aero [--force|-f] [data_file]
-plot-all-aero force_flag="" data_file="all_aero_coeffs_data.npy":
+# Usage: just plot-all-aero [data_file]
+# Note: Data generation is no longer available - please provide existing data file
+plot-all-aero data_file="all_aero_coeffs_data.npy":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
 
-    # Check for force flag
-    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
-        echo "🔄 Regenerating all aerodynamic data..."
-        just generate-all-aero-data
-        if [ "{{data_file}}" = "all_aero_coeffs_data.npy" ]; then
-            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/all_aero_coeffs_data.npy"
-        else
-            data_file="{{data_file}}"
-        fi
+    if [ "{{data_file}}" = "all_aero_coeffs_data.npy" ]; then
+        data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/all_aero_coeffs_data.npy"
     else
-        if [ "{{data_file}}" = "all_aero_coeffs_data.npy" ]; then
-            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/all_aero_coeffs_data.npy"
-        else
-            data_file="{{data_file}}"
-        fi
+        data_file="{{data_file}}"
     fi
 
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.aero_plots import plot_all_aerodynamic_coeffs; plot_all_aerodynamic_coeffs('$data_file')"
 
 # Plot 3D mesh surface of aerodynamic coefficients across AoA and beta
-# Usage: just plot-mesh-aero [--force|-f] [azimuth] [data_file]
-plot-mesh-aero force_flag="" azimuth="-127.5" data_file="mesh_aero_data.npy":
+# Usage: just plot-mesh-aero [azimuth] [data_file]
+# Note: Data generation is no longer available - please provide existing data file
+plot-mesh-aero azimuth="-127.5" data_file="mesh_aero_data.npy":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
 
-    # Check for force flag
-    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
-        echo "🔄 Regenerating mesh data..."
-        just generate-mesh-data
-        if [ "{{data_file}}" = "mesh_aero_data.npy" ]; then
-            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data.npy"
-        else
-            data_file="{{data_file}}"
-        fi
+    if [ "{{data_file}}" = "mesh_aero_data.npy" ]; then
+        data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data.npy"
     else
-        if [ "{{data_file}}" = "mesh_aero_data.npy" ]; then
-            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data.npy"
-        else
-            data_file="{{data_file}}"
-        fi
+        data_file="{{data_file}}"
     fi
 
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh; plot_aerodynamic_mesh('$data_file', azimuth='{{azimuth}}')"
@@ -152,7 +122,7 @@ plot-mesh-aero-torch force_flag="" azimuth="-127.5" data_file="mesh_aero_data_to
 
 # Plot 3D mesh surface of aerodynamic coefficients using JAX for faster computation
 # Usage: just plot-mesh-aero-jax [--force|-f] [azimuth] [data_file]
-plot-mesh-aero-jax force_flag="" azimuth="125.5" data_file="mesh_aero_data_jax.npy":
+plot-mesh-aero-jax force_flag="" azimuth="-127.5" data_file="mesh_aero_data_jax.npy":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
 
@@ -199,18 +169,18 @@ plot-aero-full:
     just generate-coordinated-data
     just plot-aero
 
-# Generate data and plot all aerodynamic coefficients
+# Plot all aerodynamic coefficients (data generation no longer available)
 plot-all-aero-full:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    just generate-all-aero-data
+    echo "⚠️  Data generation commands are no longer available. Please ensure data file exists."
     just plot-all-aero
 
-# Generate data and plot 3D mesh surface (CasADi)
+# Plot 3D mesh surface (data generation no longer available)
 plot-mesh-aero-full azimuth="-127.5":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    just generate-mesh-data
+    echo "⚠️  Data generation commands are no longer available. Please ensure data file exists."
     just plot-mesh-aero {{azimuth}}
 
 # Generate data and plot 3D mesh surface (JAX)
@@ -251,13 +221,13 @@ compare-timing-custom mesh_size num_runs:
 benchmark-jax:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()"
 
 # Benchmark PyTorch performance only
 benchmark-torch:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
 
 # Test vmap implementation for correctness and performance
 test-vmap:
@@ -281,13 +251,13 @@ test-sim-model:
 test-symbolic-casadi:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/gd_model_casadi.py
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/model/sim/gd_model_casadi.py
 
 # Test body-to-stability frame coefficient conversion correctness
 test-frame-conversion:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
 
 # Run all tests for lu_mpc feature (usage: just test-all)
 test-all:
