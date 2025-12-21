@@ -22,7 +22,6 @@
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <interface/msg/ref_trajectory.hpp>
-#include <interface/msg/trajectory_control.hpp>
 #include <iostream>
 #include <memory>
 #include <ostream>
