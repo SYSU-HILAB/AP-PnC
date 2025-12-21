@@ -239,13 +239,13 @@ plot-mesh-aero-torch-full azimuth="-127.5":
 compare-timing:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/timing_comparison.py
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/tests/test_timing_comparison.py
 
 # Compare performance with custom parameters (usage: just compare-timing-custom mesh_size num_runs)
 compare-timing-custom mesh_size num_runs:
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/timing_comparison.py {{mesh_size}} {{num_runs}}
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/tests/test_timing_comparison.py {{mesh_size}} {{num_runs}}
 
 # Benchmark JAX performance only
 benchmark-jax:
