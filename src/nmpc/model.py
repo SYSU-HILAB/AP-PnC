@@ -36,6 +36,9 @@ def skew_symmetric(v):
         cs.horzcat(v[1], -v[2], 0, v[0]),
         cs.horzcat(v[2], v[1], -v[0], 0))
 
+
+# REC: todo optimize these functions using quaternion algebra directly.
+# REC: modify the names to be consistent.
 def q_oproduct_vec(v, q):
     rotation_matrix = Quat2RotMat(q)
     return cs.mtimes(rotation_matrix, v)
@@ -55,6 +58,9 @@ def Quat2RotMat(q):
 
 def tailsitter_flu():
     model_name = "tailsitter_flu"
+
+    # DESPRS: parameters are tuned for performance, not accurate
+    # it is quite robust actually, since main motion pattern is constrained by planner.
     mass = cs.DM(1.0)
     c_tau = cs.DM(0.013)
     J_data = np.array([0.01715066, 0.01818037, 0.01987597])
@@ -62,6 +68,8 @@ def tailsitter_flu():
     J = cs.diag(J_data)
     dx = cs.DM(0.08838834764831845)
     dy = cs.DM(0.08838834764831845)
+    ####################################################################
+
     # set up states & controls
     p = SX.sym('p', 3)
     v = SX.sym('v', 3)
