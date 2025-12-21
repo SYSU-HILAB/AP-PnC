@@ -52,54 +52,172 @@ generate-torch-gd-data:
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.torch_gd import generate_torch_gd_data; generate_torch_gd_data()"
 
 # === PLOTTING COMMANDS ===
+# All plotting commands now skip data regeneration by default for faster execution.
+# Use the --force or -f flag to regenerate data before plotting when needed.
+# Example: just plot-aero --force or just plot-mesh-aero -f 45.0 custom_data.npy
 
 # Plot CL, CD, CM coefficients vs alpha under coordinated flight assumption (beta = 0)
-plot-aero:
+# Usage: just plot-aero [--force|-f] [data_file]
+plot-aero force_flag="" data_file="":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    if [ $# -eq 0 ]; then
-        # No arguments - use default data file
-        $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.aero_plots import plot_cl_cd_cm_coordinated; plot_cl_cd_cm_coordinated('$AP_PNC_DIR/feature/lu_mpc/.cache/coordinated_aero_data_jax.npy', show_plot=False)"
+
+    # Check for force flag
+    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
+        echo "🔄 Regenerating coordinated data..."
+        just generate-coordinated-data
+        if [ $# -eq 0 ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/coordinated_aero_data_jax.npy"
+        fi
     else
-        # Use provided data file
-        $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.aero_plots import plot_cl_cd_cm_coordinated; plot_cl_cd_cm_coordinated('$1', show_plot=False)"
+        if [ -z "{{data_file}}" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/coordinated_aero_data_jax.npy"
+        else
+            data_file="{{data_file}}"
+        fi
     fi
 
+    # Plot using the data file
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.aero_plots import plot_cl_cd_cm_coordinated; plot_cl_cd_cm_coordinated('$data_file', show_plot=False)"
+
 # Plot all aerodynamic coefficients (CL, CD, CY, Cl, Cm, Cn) across AoA
-plot-all-aero data_file="all_aero_coeffs_data.npy":
+# Usage: just plot-all-aero [--force|-f] [data_file]
+plot-all-aero force_flag="" data_file="all_aero_coeffs_data.npy":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.aero_plots import plot_all_aerodynamic_coeffs; plot_all_aerodynamic_coeffs('{{data_file}}')"
 
-# Plot 3D mesh surface of aerodynamic coefficients across AoA and beta (usage: just plot-mesh-aero [azimuth] [data_file])
-plot-mesh-aero azimuth="-127.5" data_file="mesh_aero_data.npy":
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh; plot_aerodynamic_mesh('{{data_file}}', azimuth='{{azimuth}}')"
+    # Check for force flag
+    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
+        echo "🔄 Regenerating all aerodynamic data..."
+        just generate-all-aero-data
+        if [ "{{data_file}}" = "all_aero_coeffs_data.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/all_aero_coeffs_data.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    else
+        if [ "{{data_file}}" = "all_aero_coeffs_data.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/all_aero_coeffs_data.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    fi
 
-# Plot 3D mesh surface of aerodynamic coefficients using PyTorch for faster computation (usage: just plot-mesh-aero-torch [azimuth] [data_file])
-plot-mesh-aero-torch azimuth="-127.5" data_file="mesh_aero_data_torch.npy":
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_torch; plot_aerodynamic_mesh_torch('{{data_file}}', azimuth='{{azimuth}}')"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.aero_plots import plot_all_aerodynamic_coeffs; plot_all_aerodynamic_coeffs('$data_file')"
 
-# Plot 3D mesh surface of aerodynamic coefficients using JAX for faster computation (usage: just plot-mesh-aero-jax [azimuth] [data_file])
-plot-mesh-aero-jax azimuth="125.5" data_file="mesh_aero_data_jax.npy":
+# Plot 3D mesh surface of aerodynamic coefficients across AoA and beta
+# Usage: just plot-mesh-aero [--force|-f] [azimuth] [data_file]
+plot-mesh-aero force_flag="" azimuth="-127.5" data_file="mesh_aero_data.npy":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax('{{data_file}}', azimuth='{{azimuth}}', show_plot=False)"
+
+    # Check for force flag
+    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
+        echo "🔄 Regenerating mesh data..."
+        just generate-mesh-data
+        if [ "{{data_file}}" = "mesh_aero_data.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    else
+        if [ "{{data_file}}" = "mesh_aero_data.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    fi
+
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh; plot_aerodynamic_mesh('$data_file', azimuth='{{azimuth}}')"
+
+# Plot 3D mesh surface of aerodynamic coefficients using PyTorch for faster computation
+# Usage: just plot-mesh-aero-torch [--force|-f] [azimuth] [data_file]
+plot-mesh-aero-torch force_flag="" azimuth="-127.5" data_file="mesh_aero_data_torch.npy":
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+
+    # Check for force flag
+    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
+        echo "🔄 Regenerating PyTorch mesh data..."
+        just generate-mesh-data-torch
+        if [ "{{data_file}}" = "mesh_aero_data_torch.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data_torch.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    else
+        if [ "{{data_file}}" = "mesh_aero_data_torch.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data_torch.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    fi
+
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_torch; plot_aerodynamic_mesh_torch('$data_file', azimuth='{{azimuth}}')"
+
+# Plot 3D mesh surface of aerodynamic coefficients using JAX for faster computation
+# Usage: just plot-mesh-aero-jax [--force|-f] [azimuth] [data_file]
+plot-mesh-aero-jax force_flag="" azimuth="125.5" data_file="mesh_aero_data_jax.npy":
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+
+    # Check for force flag
+    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
+        echo "🔄 Regenerating JAX mesh data..."
+        just generate-mesh-data-jax
+        if [ "{{data_file}}" = "mesh_aero_data_jax.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data_jax.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    else
+        if [ "{{data_file}}" = "mesh_aero_data_jax.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data_jax.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    fi
+
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax('$data_file', azimuth='{{azimuth}}', show_plot=False)"
 
 # Plot 3D mesh surface of aerodynamic coefficients using CasADi symbolic
-plot-mesh-aero-casadi:
+# Usage: just plot-mesh-aero-casadi [--force|-f]
+plot-mesh-aero-casadi force_flag="":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
+
+    # Check for force flag
+    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
+        echo "🔄 Regenerating CasADi mesh data..."
+        just generate-mesh-data-casadi
+    fi
+
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_casadi; plot_aerodynamic_mesh_casadi(data_file='$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data_casadi.npy', show_plot=False)"
 
-# Plot torch_gd aerodynamic coefficients (usage: just plot-torch-gd [azimuth] [data_file])
-plot-torch-gd azimuth="-127.5" data_file="torch_gd_data.npy":
+# Plot torch_gd aerodynamic coefficients
+# Usage: just plot-torch-gd [--force|-f] [azimuth] [data_file]
+plot-torch-gd force_flag="" azimuth="-127.5" data_file="torch_gd_data.npy":
     #!/usr/bin/env bash
     export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.torch_plots import plot_torch_gd; plot_torch_gd('{{data_file}}', azimuth='{{azimuth}}')"
+
+    # Check for force flag
+    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
+        echo "🔄 Regenerating torch_gd data..."
+        just generate-torch-gd-data
+        if [ "{{data_file}}" = "torch_gd_data.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/torch_gd_data.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    else
+        if [ "{{data_file}}" = "torch_gd_data.npy" ]; then
+            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/torch_gd_data.npy"
+        else
+            data_file="{{data_file}}"
+        fi
+    fi
+
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.torch_plots import plot_torch_gd; plot_torch_gd('$data_file', azimuth='{{azimuth}}')"
 
 # === COMBINED COMMANDS (FOR BACKWARD COMPATIBILITY) ===
 
@@ -200,6 +318,12 @@ test-symbolic-casadi:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/gd_model_casadi.py
 
+# Test body-to-stability frame coefficient conversion correctness
+test-frame-conversion:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
+
 # Run all tests for lu_mpc feature (usage: just test-all)
 test-all:
     #!/usr/bin/env bash
@@ -252,4 +376,5 @@ alias jt := test-jax-trim
 alias jtrim := jax-trim
 alias tsm := test-sim-model
 alias tsc := test-symbolic-casadi
+alias tfc := test-frame-conversion
 alias ta := test-all

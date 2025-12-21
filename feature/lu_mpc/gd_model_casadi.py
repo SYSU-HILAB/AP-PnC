@@ -351,23 +351,29 @@ class SymbolicGdModel:
     def _trans_stab_to_body(self, alpha, vec):
         """Transform from stability frame to body frame."""
         # Stability to body frame transformation matrix using SX symbolic expressions
-        T_sb_00 = cs.cos(alpha)
-        T_sb_01 = 0.0
-        T_sb_02 = -cs.sin(alpha)
-        T_sb_10 = 0.0
-        T_sb_11 = 1.0
-        T_sb_12 = 0.0
-        T_sb_20 = cs.sin(alpha)
-        T_sb_21 = 0.0
-        T_sb_22 = cs.cos(alpha)
 
-        # Matrix multiplication manually
-        x = T_sb_00 * vec[0] + T_sb_01 * vec[1] + T_sb_02 * vec[2]
-        y = T_sb_10 * vec[0] + T_sb_11 * vec[1] + T_sb_12 * vec[2]
-        z = T_sb_20 * vec[0] + T_sb_21 * vec[1] + T_sb_22 * vec[2]
+        T_sb = cs.vertcat(
+            cs.horzcat(cs.cos(alpha), 0 , -cs.sin(alpha)),
+            cs.horzcat(0, 1, 0),
+            cs.horzcat(cs.sin(alpha), 0 , cs.cos(alpha))
+        )
 
-        return cs.vertcat(x, y, z)
 
+        return T_sb @ vec
+
+    def _trans_body_to_stab(self, alpha, vec):
+        """Transform from stability frame to body frame."""
+        # Stability to body frame transformation matrix using SX symbolic expressions
+
+        T_bs = cs.vertcat(
+            cs.horzcat(cs.cos(alpha), 0 , cs.sin(alpha)),
+            cs.horzcat(0, 1, 0),
+            cs.horzcat(-cs.sin(alpha), 0 , cs.cos(alpha))
+        )
+
+
+        return T_bs @ vec
+    
     def _build_symbolic_model(self):
         """Build the symbolic CasADi model."""
         # Define symbolic inputs
@@ -392,9 +398,10 @@ class SymbolicGdModel:
 
         # Compute moments (already in body frame)
         moments_body = cs.vertcat(
-            0.5 * rho * v_squared * CLL,
+            # 0.5 * rho * v_squared * CLL,
+            cs.SX.zeros(CLL.shape),
             0.5 * rho * v_squared * CM,
-            0.5 * rho * v_squared * CN
+            cs.SX.zeros(CN.shape),
         )
 
         # Store symbolic expressions
@@ -404,11 +411,16 @@ class SymbolicGdModel:
         self.moments = moments_body
 
         # Create function for evaluation
-        self.func = cs.Function(
-            'aerodynamics',
+        self._func = cs.Function(
+            'aerodynamics_body',
             [self.velb],
             [cs.vertcat(self.forces, self.moments), alpha, beta]
         )
+
+    @property
+    def func(self):
+        """Get the CasADi function for aerodynamic evaluation."""
+        return self._func
 
     def evaluate(self, velb):
         """
@@ -559,10 +571,13 @@ def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_si
             v_squared = v_mag ** 2
             dynamic_pressure = 0.5 * rho * v_squared
 
-            # Convert forces to coefficients (stability frame)
-            CL[i, j] = -forces[2] / dynamic_pressure  # Lift coefficient
-            CD[i, j] = -forces[0] / dynamic_pressure  # Drag coefficient
-            CY[i, j] = forces[1] / dynamic_pressure   # Side force coefficient
+            # Convert body frame forces to stability frame before extracting coefficients
+            forces_stability = model._trans_body_to_stab(alpha_val, forces)
+
+            # Extract coefficients from stability frame forces
+            CL[i, j] = -forces_stability[2] / dynamic_pressure  # Lift coefficient (negative Z direction)
+            CD[i, j] = -forces_stability[0] / dynamic_pressure  # Drag coefficient (negative X direction)
+            CY[i, j] = forces_stability[1] / dynamic_pressure   # Side force coefficient (positive Y direction)
 
             # Moments are already coefficients (assuming unit reference)
             CLL[i, j] = moments[0] / dynamic_pressure
@@ -651,10 +666,13 @@ def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_casadi", 
         v_squared = v_mag ** 2
         dynamic_pressure = 0.5 * rho * v_squared
 
-        # Convert forces to coefficients (stability frame)
-        CL[i] = -forces[2] / dynamic_pressure  # Lift coefficient
-        CD[i] = -forces[0] / dynamic_pressure  # Drag coefficient
-        CM[i] = moments[1] / dynamic_pressure  # Pitching moment coefficient
+        # Convert body frame forces to stability frame before extracting coefficients
+        forces_stability = model._trans_body_to_stab(alpha_val, forces)
+
+        # Extract coefficients from stability frame forces
+        CL[i] = -forces_stability[2] / dynamic_pressure  # Lift coefficient (negative Z direction)
+        CD[i] = -forces_stability[0] / dynamic_pressure  # Drag coefficient (negative X direction)
+        CM[i] = moments[1] / dynamic_pressure           # Pitching moment coefficient (body frame)
 
     # Save data using data utilities
     data_path = save_coordinated_data(
@@ -675,5 +693,107 @@ def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_casadi", 
     }
 
 
+def test_frame_conversion():
+    """Test that body-to-stability frame coefficient conversion is working correctly."""
+    print("Testing body-to-stability frame coefficient conversion...")
+
+    # Create model
+    model = create_symbolic_gd_model()
+
+    # Test case: alpha = 10 degrees, beta = 0 degrees (coordinated flight)
+    alpha_deg = 10.0
+    alpha_rad = np.deg2rad(alpha_deg)
+    v_mag = 20.0  # m/s
+
+    # Create velocity vector for coordinated flight
+    vbx = v_mag * np.cos(alpha_rad)
+    vby = 0.0
+    vbz = v_mag * np.sin(alpha_rad)
+    velb = np.array([vbx, vby, vbz])
+
+    # Evaluate model
+    forces, moments, alpha, beta = model.evaluate(velb)
+
+    print(f"Test conditions:")
+    print(f"  Alpha: {alpha_deg:.1f}° ({alpha:.3f} rad)")
+    print(f"  Beta: {np.rad2deg(beta):.1f}° ({beta:.3f} rad)")
+    print(f"  Velocity: {v_mag:.1f} m/s")
+    print(f"  Velocity vector: [{vbx:.2f}, {vby:.2f}, {vbz:.2f}]")
+    print()
+
+    # Convert to stability frame
+    forces_stability = model._trans_body_to_stab(alpha, forces)
+
+    # Calculate dynamic pressure
+    rho = model.config.rho
+    dynamic_pressure = 0.5 * rho * v_mag**2
+
+    print(f"Dynamic pressure: {dynamic_pressure:.2f} Pa")
+    print()
+
+    # Extract coefficients from body frame (INCORRECT way)
+    CL_body = -forces[2] / dynamic_pressure
+    CD_body = -forces[0] / dynamic_pressure
+    CY_body = forces[1] / dynamic_pressure
+
+    # Extract coefficients from stability frame (CORRECT way)
+    CL_stability = float(-forces_stability[2] / dynamic_pressure)
+    CD_stability = float(-forces_stability[0] / dynamic_pressure)
+    CY_stability = float(forces_stability[1] / dynamic_pressure)
+
+    print("Force coefficients comparison:")
+    print(f"  Body frame extraction (INCORRECT):")
+    print(f"    CL_body = {CL_body:.4f}")
+    print(f"    CD_body = {CD_body:.4f}")
+    print(f"    CY_body = {CY_body:.4f}")
+    print()
+    print(f"  Stability frame extraction (CORRECT):")
+    print(f"    CL_stability = {CL_stability:.4f}")
+    print(f"    CD_stability = {CD_stability:.4f}")
+    print(f"    CY_stability = {CY_stability:.4f}")
+    print()
+
+    # For coordinated flight (beta = 0), CY should be approximately 0
+    # The difference shows the importance of proper frame conversion
+    print("Validation:")
+    print(f"  CY_stability (should be ~0 for beta=0): {CY_stability:.6f}")
+    print(f"  CL_body vs CL_stability difference: {abs(CL_body - CL_stability):.6f}")
+    print(f"  CD_body vs CD_stability difference: {abs(CD_body - CD_stability):.6f}")
+    print()
+
+    # Test with non-zero beta to show more dramatic difference
+    print("Testing with non-zero beta (15 degrees):")
+    beta_deg = 15.0
+    beta_rad = np.deg2rad(beta_deg)
+
+    # Create velocity vector with sideslip
+    vbx = v_mag * np.cos(alpha_rad) * np.cos(beta_rad)
+    vby = v_mag * np.sin(beta_rad)
+    vbz = v_mag * np.sin(alpha_rad) * np.cos(beta_rad)
+    velb_beta = np.array([vbx, vby, vbz])
+
+    forces_beta, _, alpha_beta, beta_beta = model.evaluate(velb_beta)
+    forces_stability_beta = model._trans_body_to_stab(alpha_beta, forces_beta)
+
+    # Extract coefficients both ways
+    CL_body_beta = -forces_beta[2] / dynamic_pressure
+    CD_body_beta = -forces_beta[0] / dynamic_pressure
+    CY_body_beta = forces_beta[1] / dynamic_pressure
+
+    CL_stability_beta = float(-forces_stability_beta[2] / dynamic_pressure)
+    CD_stability_beta = float(-forces_stability_beta[0] / dynamic_pressure)
+    CY_stability_beta = float(forces_stability_beta[1] / dynamic_pressure)
+
+    print(f"  Beta: {beta_deg:.1f}°")
+    print(f"    CL difference: {abs(float(CL_body_beta - CL_stability_beta)):.6f}")
+    print(f"    CD difference: {abs(float(CD_body_beta - CD_stability_beta)):.6f}")
+    print(f"    CY difference: {abs(float(CY_body_beta - CY_stability_beta)):.6f}")
+    print()
+
+    print("✅ Frame conversion test completed!")
+
+
 if __name__ == "__main__":
     test_symbolic_model()
+    print()
+    test_frame_conversion()
