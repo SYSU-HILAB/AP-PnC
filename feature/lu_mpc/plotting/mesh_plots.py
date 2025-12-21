@@ -20,7 +20,7 @@ def load_mesh_data(data_file, auto_generate=False, mesh_size=361, backend="jax")
         data_file (str): Path to .npy file containing mesh data
         auto_generate (bool): If True, automatically generate data if file doesn't exist
         mesh_size (int): Size of mesh grid for auto-generation
-        backend (str): Backend to use for auto-generation ("jax", "pytorch", "casadi", "torch_gd")
+        backend (str): Backend to use for auto-generation ("jax", "pytorch", "casadi", "casadi_symbolic")
 
     Returns:
         dict: Dictionary containing the mesh data
@@ -54,11 +54,6 @@ def load_mesh_data(data_file, auto_generate=False, mesh_size=361, backend="jax")
                 return generate_mesh_data(
                     filename=os.path.splitext(os.path.basename(data_file))[0],
                     mesh_size=mesh_size
-                )
-            elif backend == "torch_gd":
-                from ..torch_gd import generate_torch_gd_data
-                return generate_torch_gd_data(
-                    filename=os.path.splitext(os.path.basename(data_file))[0]
                 )
             else:
                 raise ValueError(f"Unknown backend: {backend}")

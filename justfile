@@ -45,11 +45,6 @@ generate-mesh-data-torch mesh_size="361":
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.gd_model_torch import generate_mesh_data_torch; generate_mesh_data_torch(mesh_size={{mesh_size}})"
 
-# Generate torch_gd data
-generate-torch-gd-data:
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.torch_gd import generate_torch_gd_data; generate_torch_gd_data()"
 
 # === PLOTTING COMMANDS ===
 # All plotting commands now skip data regeneration by default for faster execution.
@@ -194,30 +189,6 @@ plot-mesh-aero-casadi force_flag="":
 
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_casadi; plot_aerodynamic_mesh_casadi(data_file='$AP_PNC_DIR/feature/lu_mpc/.cache/mesh_aero_data_casadi.npy', show_plot=False)"
 
-# Plot torch_gd aerodynamic coefficients
-# Usage: just plot-torch-gd [--force|-f] [azimuth] [data_file]
-plot-torch-gd force_flag="" azimuth="-127.5" data_file="torch_gd_data.npy":
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-
-    # Check for force flag
-    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
-        echo "🔄 Regenerating torch_gd data..."
-        just generate-torch-gd-data
-        if [ "{{data_file}}" = "torch_gd_data.npy" ]; then
-            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/torch_gd_data.npy"
-        else
-            data_file="{{data_file}}"
-        fi
-    else
-        if [ "{{data_file}}" = "torch_gd_data.npy" ]; then
-            data_file="$AP_PNC_DIR/feature/lu_mpc/.cache/torch_gd_data.npy"
-        else
-            data_file="{{data_file}}"
-        fi
-    fi
-
-    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.plotting.torch_plots import plot_torch_gd; plot_torch_gd('$data_file', azimuth='{{azimuth}}')"
 
 # === COMBINED COMMANDS (FOR BACKWARD COMPATIBILITY) ===
 
@@ -263,12 +234,6 @@ plot-mesh-aero-torch-full azimuth="-127.5":
     just generate-mesh-data-torch
     just plot-mesh-aero-torch {{azimuth}}
 
-# Generate data and plot torch_gd
-plot-torch-gd-full azimuth="-127.5":
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-    just generate-torch-gd-data
-    just plot-torch-gd {{azimuth}}
 
 # Compare performance between JAX and PyTorch implementations
 compare-timing:
@@ -348,11 +313,6 @@ jax-trim:
     export JAX_PLATFORM_NAME=cpu
     $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/jax_trim.py
 
-# Legacy torch_gd direct plotting (usage: just plot-torch-gd-legacy [azimuth])
-plot-torch-gd-legacy azimuth="-127.5":
-    #!/usr/bin/env bash
-    export AP_PNC_DIR="/home/rec/AP-PnC"
-    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/torch_gd.py --azimuth {{azimuth}}
 
 # Legacy command - now redirects to new pipeline
 plot-coordinated-aero:
@@ -366,7 +326,6 @@ alias pm := plot-mesh-aero
 alias pt := plot-mesh-aero-torch
 alias pj := plot-mesh-aero-jax
 alias pc := plot-mesh-aero-casadi
-alias pg := plot-torch-gd
 alias pca := plot-coordinated-aero
 alias ct := compare-timing
 alias bj := benchmark-jax
