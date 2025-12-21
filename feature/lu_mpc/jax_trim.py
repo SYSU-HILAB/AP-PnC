@@ -4,7 +4,7 @@ from jaxopt import LevenbergMarquardt
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np # Used for saving CSV
-from gd_model_jax import aerodynamics_B_vb
+from feature.lu_mpc.model.sim.gd_model_jax import aerodynamics_B_vb
 # -------------------------------------------------------------------------------
 # MOCK IMPORT: Replace this block with your actual import
 # from gd_model_jax import aerodynamics_B_vb 
