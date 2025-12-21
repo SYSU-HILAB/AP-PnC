@@ -109,7 +109,7 @@ def tailsitter_flu():
 
 
 
-    q_tf = np.array([0, 0.707, 0, 0.707])
+    q_tf = np.array([0, 0.707, 0, 0.707]) # REC: This seems complex to be right.
     R_tf = Quat2RotMat(q_tf)
     F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)
     tau_b = cs.veccat(
