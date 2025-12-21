@@ -259,6 +259,12 @@ test-frame-conversion:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
 
+# Test GD model simulation with ACADOS integrator
+test-sim-gd-model:
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.sim_gd_model import test_gd_simulation; test_gd_simulation()"
+
 # Run all tests for lu_mpc feature (usage: just test-all)
 test-all:
     #!/usr/bin/env bash
@@ -304,6 +310,7 @@ alias tv := test-vmap
 alias jt := test-jax-trim
 alias jtrim := jax-trim
 alias tsm := test-sim-model
+alias tsg := test-sim-gd-model
 alias tsc := test-symbolic-casadi
 alias tfc := test-frame-conversion
 alias ta := test-all
