@@ -265,6 +265,13 @@ test-sim-gd-model:
     export AP_PNC_DIR="/home/rec/AP-PnC"
     $AP_PNC_DIR/.acados_venv/bin/python -c "from feature.lu_mpc.model.sim.sim_gd_model import test_gd_simulation; test_gd_simulation()"
 
+# Simulate and visualize GD model with aerodynamic data collection
+# Usage: just sim-viz-gd [sim_time] [collect_aero]
+sim-viz-gd sim_time="2.0" collect_aero="true":
+    #!/usr/bin/env bash
+    export AP_PNC_DIR="/home/rec/AP-PnC"
+    $AP_PNC_DIR/.acados_venv/bin/python feature/lu_mpc/run_sim_viz.py {{sim_time}} {{collect_aero}}
+
 # Run all tests for lu_mpc feature (usage: just test-all)
 test-all:
     #!/usr/bin/env bash
@@ -311,6 +318,7 @@ alias jt := test-jax-trim
 alias jtrim := jax-trim
 alias tsm := test-sim-model
 alias tsg := test-sim-gd-model
+alias svg := sim-viz-gd
 alias tsc := test-symbolic-casadi
 alias tfc := test-frame-conversion
 alias ta := test-all

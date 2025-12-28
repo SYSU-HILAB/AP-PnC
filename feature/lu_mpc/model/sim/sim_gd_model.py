@@ -14,6 +14,7 @@ import dataclasses
 from typing import Tuple, Optional, List
 from acados_template import AcadosModel, AcadosSim, AcadosSimSolver
 from .gd_model_casadi import SymbolicGdModel, GdModelConfig, DEFAULT_CONFIG
+from .utils.math_utils import quat_multiply, quat_to_rotmat, skew_symmetric
 
 
 @dataclasses.dataclass
@@ -24,35 +25,35 @@ class GdSimConfig:
     sim_time: float = 5.0  # Total simulation time in seconds
 
     # ACADOS solver options
-    integrator_type: str = 'IRK'  # 'IRK', 'ERK', 'GNSF'
-    num_stages: int = 3  # Number of stages for implicit integrator
+    integrator_type: str = 'ERK'  # 'IRK', 'ERK', 'GNSF'
+    num_stages: int = 4  # Number of stages for implicit integrator
     num_steps: int = 1  # Number of steps per integration interval
-    newton_iter: int = 3  # Newton iterations for implicit solver
+    # newton_iter: int = 3  # Newton iterations for implicit solver
+    #   <turningDirection>cw</turningDirection>
+    #   <timeConstantUp>0.0125</timeConstantUp>
+    #   <timeConstantDown>0.025</timeConstantDown>
+    #   <maxRotVelocity>2000.0</maxRotVelocity>
+    #   <motorConstant>8.54858e-06</motorConstant>
+    #   <momentConstant>0.032</momentConstant>
+    # <joint name='rotor_2_joint' type='revolute'>
+    #   <pose relative_to="base_link">-0.015 0.32 -0.32 0 1.5708 0</pose>
+
 
     # Aircraft physical parameters (from tailsitter_flu)
-    mass: float = 1.0  # kg
-    J: np.ndarray = None  # Inertia matrix
-    c_tau: float = 0.013  # Torque coefficient
+    mass: float = 2.0  # kg
+    J: np.ndarray = np.array([0.04361, 0.04513, 0.08322])  # Inertia matrix
+    c_tau: float = 0.032  # Torque coefficient
     dx: float = 0.08838834764831845  # Arm length x
     dy: float = 0.08838834764831845  # Arm length y
 
-    # Frame transformation quaternions
-    q_flu_to_frd: np.ndarray = None  # FLU to FRD transformation
-    q_ned_to_world: np.ndarray = None  # NED to world transformation
+    # # Frame transformation quaternions
+    # q_flu_to_frd: np.ndarray = np.array([0.0, 1.0, 0.0, 0.0])
+    
+    # FLU to FRD transformation
+    trans_wing_frd_quad_flu: np.ndarray = np.array([0.7071, 0.0, 0.7071, 0.0])  # NED to world transformation
 
     # Aerodynamic model configuration
     aero_config: GdModelConfig = DEFAULT_CONFIG
-
-    def __post_init__(self):
-        """Initialize default values."""
-        if self.J is None:
-            self.J = np.array([0.01715066, 0.01818037, 0.01987597])
-        if self.q_flu_to_frd is None:
-            # FLU to FRD transformation (0, 1, 0, 0)
-            self.q_flu_to_frd = np.array([0.0, 1.0, 0.0, 0.0])
-        if self.q_ned_to_world is None:
-            # NED to local-world transformation (0, 0.707, 0, 0.707)
-            self.q_ned_to_world = np.array([0.0, 0.707, 0.0, 0.707])
 
 
 # Default configuration instance
@@ -60,7 +61,18 @@ DEFAULT_SIM_CONFIG = GdSimConfig()
 
 
 class GdModelSimulator:
-    """High-fidelity tailsitter simulator using GD aerodynamics model."""
+    """High-fidelity tailsitter simulator using GD aerodynamics model. 
+       We will assume the data will be generated in quadrotor local world frame,
+       where its (0,0,0) is start point in the world;
+            the gravity vector is [0,0,-9.81] in the frame.
+    ️   However, the gd aerodynamics is defined in wing body frame (FRD),
+       this frame to typical quadrotor local FLU frame transformation is defined in config.
+       i.e., q_wing_frd_to_quad_flu.
+       It means, to get the wing body frame velocity, we need to:
+        1) transform the velocity from world frame to quad local FLU frame (using current quaternion);
+        2) transform the velocity from quad local FLU frame to wing body FRD
+        3) transform the wing body FRD aerodynamics to quad local FLU frame for force summation.
+    """
 
     def __init__(self, config: GdSimConfig = DEFAULT_SIM_CONFIG):
         """
@@ -73,45 +85,6 @@ class GdModelSimulator:
         self.aero_model = SymbolicGdModel(config.aero_config)
         self._build_acados_model()
         self._setup_acados_sim()
-
-    def _quat_multiply(self, q1, q2):
-        """Quaternion multiplication: q1 * q2."""
-        w1, x1, y1, z1 = q1[0], q1[1], q1[2], q1[3]
-        w2, x2, y2, z2 = q2[0], q2[1], q2[2], q2[3]
-
-        return cs.vertcat(
-            w1*w2 - x1*x2 - y1*y2 - z1*z2,
-            w1*x2 + x1*w2 + y1*z2 - z1*y2,
-            w1*y2 - x1*z2 + y1*w2 + z1*x2,
-            w1*z2 + x1*y2 - y1*x2 + z1*w2
-        )
-
-    def _quat_to_rotmat(self, q):
-        """Convert quaternion to rotation matrix."""
-        qw, qx, qy, qz = q[0], q[1], q[2], q[3]
-        return cs.vertcat(
-            cs.horzcat(1-2*(qy**2+qz**2), 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)),
-            cs.horzcat(2*(qx*qy+qw*qz), 1-2*(qx**2+qz**2), 2*(qy*qz-qw*qx)),
-            cs.horzcat(2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), 1-2*(qx**2+qy**2))
-        )
-
-    def _quat_to_rotmat_numpy(self, q):
-        """Convert quaternion to rotation matrix (numpy version)."""
-        qw, qx, qy, qz = q[0], q[1], q[2], q[3]
-        R = np.array([
-            [1-2*(qy**2+qz**2), 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)],
-            [2*(qx*qy+qw*qz), 1-2*(qx**2+qz**2), 2*(qy*qz-qw*qx)],
-            [2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), 1-2*(qx**2+qy**2)]
-        ])
-        return R
-
-    def _skew_symmetric(self, v):
-        """Create skew-symmetric matrix from 3D vector."""
-        return cs.vertcat(
-            cs.horzcat(0, -v[2], v[1]),
-            cs.horzcat(v[2], 0, -v[0]),
-            cs.horzcat(-v[1], v[0], 0)
-        )
 
     def _build_acados_model(self):
         """Build the ACADOS model with GD aerodynamics."""
@@ -136,7 +109,7 @@ class GdModelSimulator:
         u_dot = cs.SX.sym('u_dot', 4)
 
         # Combine states and controls
-        x = cs.vertcat(p, v, r, q, u)
+        x = cs.vertcat(p, v, r, q, u) # quad frames
         xdot = cs.vertcat(p_dot, v_dot, r_dot, q_dot, u_dot)
 
         # Constants
@@ -146,9 +119,10 @@ class GdModelSimulator:
         dx, dy = self.config.dx, self.config.dy
         g = cs.vertcat(0.0, 0.0, -9.81)  # Gravity in NED frame
 
-        # Transform quaternion from NED to world frame
-        q_ned_to_world_sym = cs.SX(self.config.q_ned_to_world)
-        q_world = self._quat_multiply(q_ned_to_world_sym, q)
+        q_quad_flu = q
+        
+        trans_wing_frd_quad_flu = cs.SX(self.config.trans_wing_frd_quad_flu)
+        q_wing_frd = quat_multiply(q_quad_flu, trans_wing_frd_quad_flu)
 
         # Motor forces in body frame
         U = u[0] + u[1] + u[2] + u[3]
@@ -162,40 +136,34 @@ class GdModelSimulator:
         )
 
         # Get velocity in body frame for aerodynamics
-        R_world_to_body = self._quat_to_rotmat(q_world).T
-        vel_body = cs.mtimes(R_world_to_body, v)
-
-        # Transform to FRD frame for GD model evaluation
-        q_flu_to_frd_sym = cs.SX(self.config.q_flu_to_frd)
-        R_flu_to_frd = self._quat_to_rotmat(q_flu_to_frd_sym)
-        vel_frd = cs.mtimes(R_flu_to_frd, vel_body)
+        vel_b_wing_frd = cs.mtimes(q_wing_frd, v)
 
         # Get aerodynamic forces and moments from GD model
         # The GD model expects body-frame velocity in FRD
-        aero_result = self.aero_model.func(vel_frd)
+        aero_result = self.aero_model.func(vel_b_wing_frd)
         aero_forces_moments = aero_result[0]  # First element is forces_moments vector
-        aero_forces_frd = aero_forces_moments[:3]  # First 3 elements are forces
-        aero_moments_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
+        aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
+        aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
 
         # Transform aerodynamic forces back to FLU frame, then to body frame
-        aero_forces_flu = cs.mtimes(R_flu_to_frd.T, aero_forces_frd)
-
+        # rec: TODO, use standard quat transformations
+        aero_forces_quad_flu = cs.mtimes(quat_to_rotmat(trans_wing_frd_quad_flu), aero_forces_wing_frd)
+        aero_moments_quad_flu = cs.mtimes(quat_to_rotmat(trans_wing_frd_quad_flu), aero_moments_wing_frd)
         # Use GD model forces directly
-        aero_forces_body = aero_forces_flu
+        aero_forces_body = aero_forces_quad_flu
 
         # Total forces and moments in body frame
         total_forces_body = thrust_body + aero_forces_body
-        total_moments_body = tau_body + aero_moments_frd  # Moments are frame-independent
-
+        total_moments_body = tau_body + aero_moments_quad_flu  # Moments are frame-independent
         # Transform forces to world frame for dynamics
-        R_body_to_world = self._quat_to_rotmat(q_world)
+        R_body_to_world = quat_to_rotmat(q_quad_flu)
         forces_world = cs.mtimes(R_body_to_world, total_forces_body)
 
         # Dynamics equations
         p_dot_expr = v
         v_dot_expr = forces_world / mass + g
         r_dot_expr = cs.inv(J) @ (total_moments_body - cs.cross(r, J @ r))
-        q_dot_expr = 0.5 * self._quat_multiply(cs.vertcat(0, r), q)
+        q_dot_expr = 0.5 * quat_multiply(cs.vertcat(0, r), q_quad_flu)
         u_dot_expr = du
 
         # Combine all dynamics
@@ -216,10 +184,9 @@ class GdModelSimulator:
         self._symbolic_vars = {
             'x': x,
             'v': v,
-            'q': q,
+            'q': q_quad_flu,
             'u': u,
-            'vel_body': vel_body,
-            'vel_frd': vel_frd,
+            'vel_wing_frd': vel_b_wing_frd,
             'aero_forces_body': aero_forces_body,
             'total_forces_body': total_forces_body,
             'forces_world': forces_world
@@ -249,13 +216,15 @@ class GdModelSimulator:
 
     def simulate(self,
                  initial_state: np.ndarray,
-                 control_trajectory: Optional[np.ndarray] = None) -> dict:
+                 control_trajectory: Optional[np.ndarray] = None,
+                 collect_aero_data: bool = False) -> dict:
         """
         Run simulation with given initial state and control trajectory.
 
         Args:
             initial_state: Initial state vector [p, v, r, q, u]
             control_trajectory: Control input trajectory (N, 4)
+            collect_aero_data: Whether to collect aerodynamic data at each step
 
         Returns:
             Dictionary containing simulation results
@@ -270,6 +239,7 @@ class GdModelSimulator:
         states = np.zeros((N + 1, nx))
         controls = np.zeros((N, nu))
         times = np.linspace(0, self.config.sim_time, N + 1)
+        aero_data_list = [] if collect_aero_data else None
 
         # Set initial condition
         states[0, :] = initial_state
@@ -303,6 +273,11 @@ class GdModelSimulator:
             states[i + 1, :] = self.acados_solver.get("x")
             controls[i, :] = control_trajectory[i, :]
 
+            # Collect aerodynamic data if requested
+            if collect_aero_data:
+                aero_data = self.get_aerodynamic_forces(states[i + 1, :])
+                aero_data_list.append(aero_data)
+
         # Extract meaningful variables for post-processing
         results = {
             'states': states,
@@ -314,6 +289,9 @@ class GdModelSimulator:
             'quaternion': states[:, 9:13],
             'motor_thrusts': states[:, 13:17]
         }
+
+        if collect_aero_data:
+            results['aero_data'] = aero_data_list
 
         return results
 
@@ -333,10 +311,10 @@ class GdModelSimulator:
         q = state[9:13]
 
         # Transformations
-        q_world = self._quat_multiply_numpy(self.config.q_ned_to_world, q)
-        R_world_to_body = self._quat_to_rotmat_numpy(q_world).T
+        q_world = quat_multiply(self.config.q_ned_to_world, q)
+        R_world_to_body = quat_to_rotmat(q_world).T
         vel_body = R_world_to_body @ v
-        R_flu_to_frd = self._quat_to_rotmat_numpy(self.config.q_flu_to_frd)
+        R_flu_to_frd = quat_to_rotmat(self.config.q_flu_to_frd)
         vel_frd = R_flu_to_frd @ vel_body
 
         # Get aerodynamic forces from GD model
@@ -353,18 +331,6 @@ class GdModelSimulator:
             'vel_body': vel_body,
             'vel_frd': vel_frd
         }
-
-    def _quat_multiply_numpy(self, q1, q2):
-        """Quaternion multiplication (numpy version)."""
-        w1, x1, y1, z1 = q1[0], q1[1], q1[2], q1[3]
-        w2, x2, y2, z2 = q2[0], q2[1], q2[2], q2[3]
-
-        return np.array([
-            w1*w2 - x1*x2 - y1*y2 - z1*z2,
-            w1*x2 + x1*w2 + y1*z2 - z1*y2,
-            w1*y2 - x1*z2 + y1*w2 + z1*x2,
-            w1*z2 + x1*y2 - y1*x2 + z1*w2
-        ])
 
 
 def create_gd_simulator(config: GdSimConfig = DEFAULT_SIM_CONFIG) -> GdModelSimulator:
