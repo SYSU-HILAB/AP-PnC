@@ -17,6 +17,43 @@ import subprocess
 from pathlib import Path
 
 
+# === ROS2 Setup ===
+def setup_ros2_environment(env: dict) -> None:
+    """
+    Source ROS2 setup.bash and update environment variables.
+
+    Args:
+        env: Dictionary of environment variables to update in-place
+    """
+    # Common ROS2 installation paths
+    ros_paths = [
+        "/opt/ros/humble",
+        "/opt/ros/iron",
+        "/opt/ros/jazzy",
+    ]
+
+    for ros_path in ros_paths:
+        setup_file = Path(ros_path) / "setup.bash"
+        if setup_file.exists():
+            try:
+                # Source the setup.bash script and capture environment variables
+                result = subprocess.run(
+                    ["bash", "-c", f"source {setup_file} && env"],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+                if result.returncode == 0:
+                    # Parse the output and update the environment
+                    for line in result.stdout.splitlines():
+                        if "=" in line:
+                            key, value = line.split("=", 1)
+                            env[key] = value
+                    return  # Successfully sourced ROS2
+            except (subprocess.SubprocessError, FileNotFoundError):
+                pass
+
+
 # === ANSI Color Codes ===
 class Colors:
     GREEN = "\033[92m"      # Success green
@@ -131,10 +168,14 @@ def main() -> int:
     # If no args, run interactive shell
     args = sys.argv[1:] if len(sys.argv) > 1 else []
 
+    # Setup environment including ROS2 if available
+    env = os.environ.copy()
+    setup_ros2_environment(env)
+
     try:
         result = subprocess.run(
             [str(python_bin)] + args,
-            env=os.environ.copy(),
+            env=env,
             check=False
         )
         return result.returncode

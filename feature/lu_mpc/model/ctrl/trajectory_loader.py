@@ -84,6 +84,8 @@ class TrajectoryReference:
         self._yb_interp = [interp1d(self.time, self.yb[:, i],
                                      kind='linear', fill_value='extrapolate')
                            for i in range(3)]
+        self._alpha_interp = interp1d(self.time, self.alpha,
+                                      kind='linear', fill_value='extrapolate')
 
     def get_reference_at_time(self, t: float) -> Dict[str, np.ndarray]:
         """
@@ -97,11 +99,13 @@ class TrajectoryReference:
             - position: (3,) array
             - velocity: (3,) array
             - yb: (3,) array
+            - alpha: scalar
         """
         return {
             'position': np.array([f(t) for f in self._pos_interp]),
             'velocity': np.array([f(t) for f in self._vel_interp]),
             'yb': np.array([f(t) for f in self._yb_interp]),
+            'alpha': float(self._alpha_interp(t)),
         }
 
     def get_reference_window(self, t: float, horizon: float, dt: float) -> Dict[str, np.ndarray]:

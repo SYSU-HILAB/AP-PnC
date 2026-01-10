@@ -253,6 +253,25 @@ test-proposed-nmpc-simple:
     export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
     ./pyp feature/lu_mpc/model/ctrl/test_proposed_nmpc_simple.py
 
+test-proposed-nmpc-viz:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
+    export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
+    export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
+    echo "Starting nMPC ROS2 visualization..."
+    echo "Make sure ROS2 is sourced: source /opt/ros/humble/setup.bash"
+    ./pyp -m feature.lu_mpc.model.ctrl.test_proposed_nmpc_viz
+
+test-ref-traj-viz:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
+    export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
+    echo "Starting Reference Trajectory ROS2 visualization..."
+    echo "Publishes reference trajectory states in real-time (no controller)"
+    ./pyp -m feature.lu_mpc.model.ctrl.test_ref_trajectory_viz
+
 sim-viz-gd sim_time="2.0" collect_aero="true":
     ./pyp feature/lu_mpc/run_sim_viz.py {{sim_time}} {{collect_aero}}
 
@@ -298,6 +317,7 @@ alias tsm := test-sim-model
 alias tsg := test-sim-gd-model
 alias tpn := test-proposed-nmpc
 alias tpns := test-proposed-nmpc-simple
+alias tpnv := test-proposed-nmpc-viz
 alias svg := sim-viz-gd
 alias tsc := test-symbolic-casadi
 alias tfc := test-frame-conversion
