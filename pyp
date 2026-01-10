@@ -17,6 +17,22 @@ import subprocess
 from pathlib import Path
 
 
+# === ANSI Color Codes ===
+class Colors:
+    GREEN = "\033[92m"      # Success green
+    YELLOW = "\033[93m"     # Warning yellow
+    BLUE = "\033[94m"       # Info blue
+    RED = "\033[91m"        # Error red
+    BOLD = "\033[1m"        # Bold text
+    RESET = "\033[0m"       # Reset formatting
+    CHECKMARK = "\u2713"    # ✓ symbol
+
+
+def color_print(text: str, color: str = Colors.RESET) -> None:
+    """Print text with ANSI color formatting."""
+    print(f"{color}{text}{Colors.RESET}")
+
+
 def find_git_root() -> Path:
     """
     Find the git repository root, handling both normal repos and worktrees.
@@ -89,18 +105,27 @@ def main() -> int:
     python_bin = find_python_interpreter(git_root)
 
     if python_bin is None:
-        print(f"Error: Python interpreter not found!", file=sys.stderr)
-        print(f"", file=sys.stderr)
-        print(f"Git Root detected: {git_root}", file=sys.stderr)
-        print(f"Searched for venv at: {git_root}/{{.acados_venv,.venv,venv,env}}/bin/python", file=sys.stderr)
-        print(f"", file=sys.stderr)
-        print(f"To fix this, run one of the following:", file=sys.stderr)
-        print(f"  just install-venv    # Create virtual environment", file=sys.stderr)
-        print(f"  just install-all     # Full installation with acados", file=sys.stderr)
-        print(f"", file=sys.stderr)
-        print(f"Or set AP_PNC_DIR override:", file=sys.stderr)
-        print(f"  AP_PNC_DIR=/custom/path ./pyp", file=sys.stderr)
+        color_print(f"Error: Python interpreter not found!", Colors.RED + Colors.BOLD)
+        print()
+        color_print(f"Git Root detected: {git_root}", Colors.YELLOW)
+        color_print(f"Searched for venv at: {git_root}/{{.acados_venv,.venv,venv,env}}/bin/python", Colors.YELLOW)
+        print()
+        color_print(f"To fix this, run one of the following:", Colors.BOLD)
+        color_print(f"  just install-venv    # Create virtual environment", Colors.GREEN)
+        color_print(f"  just install-all     # Full installation with acados", Colors.GREEN)
+        print()
+        color_print(f"Or set AP_PNC_DIR override:", Colors.BOLD)
+        color_print(f"  AP_PNC_DIR=/custom/path ./pyp", Colors.GREEN)
         return 1
+
+    # Display colored status messages
+    git_root_str = str(git_root)
+    venv_name = python_bin.parent.parent.name  # Extracts ".acados_venv" from path
+
+    color_print(f"AP-PnC Environment Loader", Colors.BOLD + Colors.BLUE)
+    color_print(f"  Git Root: {git_root_str}", Colors.BLUE)
+    color_print(f"  Using: {venv_name} {Colors.CHECKMARK}", Colors.GREEN)
+    print()  # Blank line for separation
 
     # Execute python with all arguments passed to this script
     # If no args, run interactive shell
