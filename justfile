@@ -241,6 +241,18 @@ test-frame-conversion:
 test-sim-gd-model:
     ./pyp -c "from feature.lu_mpc.model.sim.sim_gd_model import test_gd_simulation; test_gd_simulation()"
 
+test-proposed-nmpc:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
+    ./pyp -m feature.lu_mpc.model.ctrl.test_proposed_nmpc
+
+test-proposed-nmpc-simple:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
+    ./pyp feature/lu_mpc/model/ctrl/test_proposed_nmpc_simple.py
+
 sim-viz-gd sim_time="2.0" collect_aero="true":
     ./pyp feature/lu_mpc/run_sim_viz.py {{sim_time}} {{collect_aero}}
 
@@ -284,6 +296,8 @@ alias jt := test-jax-trim
 alias jtrim := jax-trim
 alias tsm := test-sim-model
 alias tsg := test-sim-gd-model
+alias tpn := test-proposed-nmpc
+alias tpns := test-proposed-nmpc-simple
 alias svg := sim-viz-gd
 alias tsc := test-symbolic-casadi
 alias tfc := test-frame-conversion
