@@ -254,3 +254,14 @@ def plot_cl_cd_aero(data_file=None, data=None, show_plot=True):
 
     print("CL/CD plot completed!")
     return data
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Plot aerodynamic coefficients")
+    parser.add_argument("data_file", nargs="?", help="Path to .npy data file")
+    parser.add_argument("--no-show", action="store_true", help="Don't display the plot")
+    args = parser.parse_args()
+
+    plot_cl_cd_cm_coordinated(args.data_file, show_plot=not args.no_show)

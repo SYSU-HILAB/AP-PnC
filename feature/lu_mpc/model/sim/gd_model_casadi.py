@@ -669,7 +669,7 @@ def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_si
     print("Generating CasADi 3D mesh data...")
 
     # Import data utilities
-    from .plotting.data_utils import save_mesh_data
+    from feature.lu_mpc.plotting.data_utils import save_mesh_data
 
     # Create model
     model = create_symbolic_gd_model()
@@ -794,7 +794,7 @@ def generate_cl_cd_cm_coordinated_data(
     )
 
     # Import data utilities
-    from .plotting.data_utils import save_coordinated_data
+    from feature.lu_mpc.plotting.data_utils import save_coordinated_data
 
     # Create model
     model = create_symbolic_gd_model()

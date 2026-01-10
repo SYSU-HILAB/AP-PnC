@@ -235,8 +235,8 @@ plot-aero force_flag="" data_file="": _check_python
         fi
     fi
 
-    # Plot using the data file
-    $(just _python) -c "from feature.lu_mpc.plotting.aero_plots import plot_cl_cd_cm_coordinated; plot_cl_cd_cm_coordinated('$data_file', show_plot=False)"
+    # Plot using the data file (module-based execution)
+    $(just _python) -m feature.lu_mpc.plotting.aero_plots "$data_file" --no-show
 
 # Plot all aerodynamic coefficients (CL, CD, CY, Cl, Cm, Cn) across AoA
 # Usage: just plot-all-aero [data_file]
@@ -294,7 +294,8 @@ plot-mesh-aero-torch force_flag="" azimuth="-127.5" data_file="mesh_aero_data_to
         fi
     fi
 
-    $(just _python) -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_torch; plot_aerodynamic_mesh_torch('$data_file', azimuth='{{azimuth}}')"
+    # Plot using the data file (module-based execution)
+    $(just _python) -m feature.lu_mpc.plotting.mesh_plots "$data_file" --azimuth "{{azimuth}}" --backend torch --no-show
 
 # Plot 3D mesh surface of aerodynamic coefficients using JAX for faster computation
 # Usage: just plot-mesh-aero-jax [--force|-f] [azimuth] [data_file]
@@ -320,7 +321,8 @@ plot-mesh-aero-jax force_flag="" azimuth="-127.5" data_file="mesh_aero_data_jax.
         fi
     fi
 
-    $(just _python) -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax('$data_file', azimuth='{{azimuth}}', show_plot=False)"
+    # Plot using the data file (module-based execution)
+    $(just _python) -m feature.lu_mpc.plotting.mesh_plots "$data_file" --azimuth "{{azimuth}}" --backend jax --no-show
 
 # Plot 3D mesh surface of aerodynamic coefficients using CasADi symbolic
 # Usage: just plot-mesh-aero-casadi [--force|-f]
@@ -335,7 +337,8 @@ plot-mesh-aero-casadi force_flag="": _check_python
         just generate-mesh-data-casadi
     fi
 
-    $(just _python) -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_casadi; plot_aerodynamic_mesh_casadi(data_file='$git_root/feature/lu_mpc/.cache/mesh_aero_data_casadi.npy', show_plot=False)"
+    # Plot using the data file (module-based execution)
+    $(just _python) -m feature.lu_mpc.plotting.mesh_plots "$git_root/feature/lu_mpc/.cache/mesh_aero_data_casadi.npy" --backend casadi --no-show
 
 
 # === COMBINED COMMANDS (FOR BACKWARD COMPATIBILITY) ===

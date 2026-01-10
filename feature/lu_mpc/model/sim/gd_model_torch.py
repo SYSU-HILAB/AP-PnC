@@ -751,7 +751,7 @@ def generate_mesh_data_torch(
     print("Generating PyTorch 3D mesh data...")
 
     # Import data utilities
-    from .plotting.data_utils import save_mesh_data
+    from feature.lu_mpc.plotting.data_utils import save_mesh_data
 
     # Determine device
     if torch.cuda.is_available():

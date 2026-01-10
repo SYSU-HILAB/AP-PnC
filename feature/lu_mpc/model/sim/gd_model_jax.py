@@ -1016,7 +1016,7 @@ def generate_cl_cd_cm_coordinated_data(
     print("Generating aerodynamic coefficients under coordinated flight (beta = 0)...")
 
     # Import data utilities
-    from .plotting.data_utils import save_coordinated_data
+    from feature.lu_mpc.plotting.data_utils import save_coordinated_data
 
     # Generate alpha range (angle of attack)
     alpha_deg = jnp.linspace(
@@ -1068,7 +1068,7 @@ def generate_mesh_data_jax(
     print("Generating JAX 3D mesh data...")
 
     # Import data utilities
-    from .plotting.data_utils import save_mesh_data
+    from feature.lu_mpc.plotting.data_utils import save_mesh_data
 
     # Check if GPU is available in JAX
     devices = jax.devices()

@@ -631,3 +631,21 @@ def plot_aerodynamic_mesh_casadi(
 
     print("CasADi symbolic mesh plotting completed successfully!")
     return data
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Plot 3D mesh aerodynamic data")
+    parser.add_argument("data_file", nargs="?", help="Path to .npy data file")
+    parser.add_argument("--azimuth", "-a", default="-127.5", help="Camera azimuth angle")
+    parser.add_argument("--backend", "-b", choices=["torch", "jax", "casadi"], default="torch", help="Computation backend")
+    parser.add_argument("--no-show", action="store_true", help="Don't display the plot")
+    args = parser.parse_args()
+
+    if args.backend == "torch":
+        plot_aerodynamic_mesh_torch(args.data_file, azimuth=args.azimuth, show_plot=not args.no_show)
+    elif args.backend == "jax":
+        plot_aerodynamic_mesh_jax(args.data_file, azimuth=args.azimuth, show_plot=not args.no_show)
+    elif args.backend == "casadi":
+        plot_aerodynamic_mesh_casadi(data_file=args.data_file, azimuth=args.azimuth, show_plot=not args.no_show)
