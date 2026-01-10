@@ -6,12 +6,16 @@ All plotting functions are separated from data generation to enable clean pipeli
 """
 
 from .aero_plots import plot_cl_cd_cm_coordinated, plot_all_aerodynamic_coeffs
-from .mesh_plots import plot_aerodynamic_mesh, plot_aerodynamic_mesh_jax, plot_aerodynamic_mesh_torch
+from .mesh_plots import (
+    plot_aerodynamic_mesh,
+    plot_aerodynamic_mesh_jax,
+    plot_aerodynamic_mesh_torch,
+)
 
 __all__ = [
-    'plot_cl_cd_cm_coordinated',
-    'plot_all_aerodynamic_coeffs',
-    'plot_aerodynamic_mesh',
-    'plot_aerodynamic_mesh_jax',
-    'plot_aerodynamic_mesh_torch',
-  ]
+    "plot_cl_cd_cm_coordinated",
+    "plot_all_aerodynamic_coeffs",
+    "plot_aerodynamic_mesh",
+    "plot_aerodynamic_mesh_jax",
+    "plot_aerodynamic_mesh_torch",
+]

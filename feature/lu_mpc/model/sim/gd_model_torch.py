@@ -7,40 +7,161 @@
 #
 import math
 import time
-import numpy as np
 import torch
 import torch.jit
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 # Coefficient arrays - same as original numpy version
-kCL = torch.tensor([
-    -2.8465, 23.1516, -0.7335, 0.1407, 0.0930, 3.8276, -0.0006, 3.1951, -0.0289, 0.6425, 0.0164, 0.0031, 0.6174, -0.1286, 0.0342, -0.5109, 0.0982, -0.0006, 0.1985, -0.0070, 0.0410, 0.0037, -4.3496, 14.1041
-], dtype=torch.float32)
+kCL = torch.tensor(
+    [
+        -2.8465,
+        23.1516,
+        -0.7335,
+        0.1407,
+        0.0930,
+        3.8276,
+        -0.0006,
+        3.1951,
+        -0.0289,
+        0.6425,
+        0.0164,
+        0.0031,
+        0.6174,
+        -0.1286,
+        0.0342,
+        -0.5109,
+        0.0982,
+        -0.0006,
+        0.1985,
+        -0.0070,
+        0.0410,
+        0.0037,
+        -4.3496,
+        14.1041,
+    ],
+    dtype=torch.float32,
+)
 
-kCD = torch.tensor([
-    -0.5908, -1.8161, -0.2045, -0.0036, -0.2861, -0.8862, -0.0590, -0.9215, 0.0130, -0.0035, 0.4958, -0.0032, 0.0762, 0.1533, -0.0009, 0.1891, 0.0159, 0.0172, 0.2510, 0.0032, -0.1227, 0.1740, 0.7917, -4.4927
-], dtype=torch.float32)
+kCD = torch.tensor(
+    [
+        -0.5908,
+        -1.8161,
+        -0.2045,
+        -0.0036,
+        -0.2861,
+        -0.8862,
+        -0.0590,
+        -0.9215,
+        0.0130,
+        -0.0035,
+        0.4958,
+        -0.0032,
+        0.0762,
+        0.1533,
+        -0.0009,
+        0.1891,
+        0.0159,
+        0.0172,
+        0.2510,
+        0.0032,
+        -0.1227,
+        0.1740,
+        0.7917,
+        -4.4927,
+    ],
+    dtype=torch.float32,
+)
 
-kCY = torch.tensor([
-    -0.0678, 0.1151, -0.1024, 0.6002, 0.5367, -0.0922, -0.8523, -0.5220, -0.1006, 0.2266, -0.0345, -0.0768, 0.0748
-], dtype=torch.float32)
+kCY = torch.tensor(
+    [
+        -0.0678,
+        0.1151,
+        -0.1024,
+        0.6002,
+        0.5367,
+        -0.0922,
+        -0.8523,
+        -0.5220,
+        -0.1006,
+        0.2266,
+        -0.0345,
+        -0.0768,
+        0.0748,
+    ],
+    dtype=torch.float32,
+)
 
-kCLL = torch.tensor([
-    -0.0240, 0.0172, -0.0219, -0.0085, -0.2163, -0.0143, -0.0152, -0.1874, -0.0021, -0.0065, -0.0110, 0.0029, -0.0184, -0.0028, 0.0203, -0.0158, -0.0245, -0.0068
-], dtype=torch.float32)
+kCLL = torch.tensor(
+    [
+        -0.0240,
+        0.0172,
+        -0.0219,
+        -0.0085,
+        -0.2163,
+        -0.0143,
+        -0.0152,
+        -0.1874,
+        -0.0021,
+        -0.0065,
+        -0.0110,
+        0.0029,
+        -0.0184,
+        -0.0028,
+        0.0203,
+        -0.0158,
+        -0.0245,
+        -0.0068,
+    ],
+    dtype=torch.float32,
+)
 
-kCm = torch.tensor([
-    -1.9963, -2.5059, 0.5987, 0.0120, 0.7977, 0.0543, 0.6310, -0.1122, -0.0798, -0.2177, -0.1059, 0.0029, -0.1388, 0.0132, -0.2605, 0.0015, -0.5789, 0.7902
-], dtype=torch.float32)
+kCm = torch.tensor(
+    [
+        -1.9963,
+        -2.5059,
+        0.5987,
+        0.0120,
+        0.7977,
+        0.0543,
+        0.6310,
+        -0.1122,
+        -0.0798,
+        -0.2177,
+        -0.1059,
+        0.0029,
+        -0.1388,
+        0.0132,
+        -0.2605,
+        0.0015,
+        -0.5789,
+        0.7902,
+    ],
+    dtype=torch.float32,
+)
 
-kCn = torch.tensor([
-    0.0681, -0.0338, 0.0054, 0.0028, -0.0052, 0.0034, -0.0048, 0.0217, 0.0111, 0.0121, 0.0685, 0.0240
-], dtype=torch.float32)
+kCn = torch.tensor(
+    [
+        0.0681,
+        -0.0338,
+        0.0054,
+        0.0028,
+        -0.0052,
+        0.0034,
+        -0.0048,
+        0.0217,
+        0.0111,
+        0.0121,
+        0.0685,
+        0.0240,
+    ],
+    dtype=torch.float32,
+)
 
 
 @torch.jit.script
-def logistic_func_batch(alpha: torch.Tensor, alpha1: float, k1: float, alpha2: float, k2: float) -> torch.Tensor:
+def logistic_func_batch(
+    alpha: torch.Tensor, alpha1: float, k1: float, alpha2: float, k2: float
+) -> torch.Tensor:
     """Batched logistic function with JIT compilation"""
     P1 = 1.0 / (1 + torch.exp(k1 * (alpha - alpha1)))
     P2 = 1.0 / (1 + torch.exp(-k2 * (alpha - alpha2)))
@@ -64,26 +185,29 @@ def reg_CL_batch(alpha, beta):
     ca = torch.cos(alpha)
     sb = torch.sin(beta)
     cb = torch.cos(beta)
-    sa2 = sa ** 2
-    ca2 = ca ** 2
-    sb2 = sb ** 2
-    cb2 = cb ** 2
-    sa3 = sa ** 3
-    ca3 = ca ** 3
+    sa2 = sa**2
+    ca2 = ca**2
+    sb2 = sb**2
+    cb2 = cb**2
+    sa3 = sa**3
+    ca3 = ca**3
 
     comp_B = torch.stack([cb2, alpha * cb2], dim=-1)
 
-    comp_N = torch.stack([
-        cb2 * ca3,
-        ca * sb2,
-        ca * cb2 * sa2,
-        sa * ca2 * cb2,
-        sa * sb2,
-        sa3 * cb2,
-        torch.abs(sb) * cb * ca2,
-        sa * ca * cb * torch.abs(sb),
-        torch.abs(sb) * cb * sa2,
-    ], dim=-1)
+    comp_N = torch.stack(
+        [
+            cb2 * ca3,
+            ca * sb2,
+            ca * cb2 * sa2,
+            sa * ca2 * cb2,
+            sa * sb2,
+            sa3 * cb2,
+            torch.abs(sb) * cb * ca2,
+            sa * ca * cb * torch.abs(sb),
+            torch.abs(sb) * cb * sa2,
+        ],
+        dim=-1,
+    )
 
     w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
     comp_B1 = torch.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], dim=-1)
@@ -112,26 +236,29 @@ def reg_CD_batch(alpha, beta):
     ca = torch.cos(alpha)
     sb = torch.sin(beta)
     cb = torch.cos(beta)
-    sa2 = sa ** 2
-    ca2 = ca ** 2
-    sb2 = sb ** 2
-    cb2 = cb ** 2
-    sa3 = sa ** 3
-    ca3 = ca ** 3
+    sa2 = sa**2
+    ca2 = ca**2
+    sb2 = sb**2
+    cb2 = cb**2
+    sa3 = sa**3
+    ca3 = ca**3
 
     comp_B = torch.stack([cb2, alpha * cb2], dim=-1)
 
-    comp_N = torch.stack([
-        cb2 * ca3,
-        ca * sb2,
-        ca * cb2 * sa2,
-        sa * ca2 * cb2,
-        sa * sb2,
-        sa3 * cb2,
-        torch.abs(sb) * cb * ca2,
-        sa * ca * cb * torch.abs(sb),
-        torch.abs(sb) * cb * sa2,
-    ], dim=-1)
+    comp_N = torch.stack(
+        [
+            cb2 * ca3,
+            ca * sb2,
+            ca * cb2 * sa2,
+            sa * ca2 * cb2,
+            sa * sb2,
+            sa3 * cb2,
+            torch.abs(sb) * cb * ca2,
+            sa * ca * cb * torch.abs(sb),
+            torch.abs(sb) * cb * sa2,
+        ],
+        dim=-1,
+    )
 
     w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
     comp_B1 = torch.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], dim=-1)
@@ -160,8 +287,8 @@ def reg_CY_batch(alpha, beta):
     ca = torch.cos(alpha)
     sb = torch.sin(beta)
     cb = torch.cos(beta)
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sb2 = sb**2
+    cb2 = cb**2
     signb = beta * torch.abs(beta)
 
     comp_N = torch.stack([signb * sb2, sb * cb * ca, sb * cb * sa], dim=-1)
@@ -193,8 +320,8 @@ def reg_Cll_batch(alpha, beta):
     ca = torch.cos(alpha)
     sb = torch.sin(beta)
     cb = torch.cos(beta)
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sb2 = sb**2
+    cb2 = cb**2
     signb = beta * torch.abs(beta)
 
     comp_B = torch.stack([cb2, alpha * cb2], dim=-1)
@@ -233,13 +360,23 @@ def reg_Cm_batch(alpha, beta):
     ca = torch.cos(alpha)
     sb = torch.sin(beta)
     cb = torch.cos(beta)
-    sa2 = sa ** 2
-    ca2 = ca ** 2
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sa2 = sa**2
+    ca2 = ca**2
+    sb2 = sb**2
+    cb2 = cb**2
 
     comp_B = torch.stack([cb2, alpha * cb2], dim=-1)
-    comp_N = torch.stack([cb2 * ca2, sb2, cb2 * sa2, torch.abs(sb) * cb * ca, sa * ca * cb2, torch.abs(sb) * cb * sa], dim=-1)
+    comp_N = torch.stack(
+        [
+            cb2 * ca2,
+            sb2,
+            cb2 * sa2,
+            torch.abs(sb) * cb * ca,
+            sa * ca * cb2,
+            torch.abs(sb) * cb * sa,
+        ],
+        dim=-1,
+    )
 
     w_B1 = logistic_func_batch(alpha, deg2rad_batch(-190), 1, deg2rad_batch(-170), 1)
     comp_B1 = torch.stack([cb2, (alpha + deg2rad_batch(180)) * cb2], dim=-1)
@@ -268,8 +405,8 @@ def reg_Cn_batch(alpha, beta):
     ca = torch.cos(alpha)
     sb = torch.sin(beta)
     cb = torch.cos(beta)
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sb2 = sb**2
+    cb2 = cb**2
     signb = beta * torch.abs(beta)
 
     comp_B = torch.stack([cb2, alpha * cb2], dim=-1)
@@ -296,9 +433,16 @@ def reg_Cn_batch(alpha, beta):
     return reg
 
 
-def compute_aerodynamic_coeffs_torch(ALPHA: torch.Tensor, BETA: torch.Tensor,
-                                   kCL: torch.Tensor, kCD: torch.Tensor, kCY: torch.Tensor,
-                                   kCLL: torch.Tensor, kCm: torch.Tensor, kCn: torch.Tensor):
+def compute_aerodynamic_coeffs_torch(
+    ALPHA: torch.Tensor,
+    BETA: torch.Tensor,
+    kCL: torch.Tensor,
+    kCD: torch.Tensor,
+    kCY: torch.Tensor,
+    kCLL: torch.Tensor,
+    kCm: torch.Tensor,
+    kCn: torch.Tensor,
+):
     """
     Compute all aerodynamic coefficients using PyTorch - for timing purposes.
     Returns all coefficients without plotting.
@@ -335,23 +479,27 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
 
     # Force GPU usage
     if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is not available. Please install PyTorch with CUDA support.")
+        raise RuntimeError(
+            "CUDA is not available. Please install PyTorch with CUDA support."
+        )
 
-    device = torch.device('cuda')
+    device = torch.device("cuda")
     print(f"Using device: {device}")
     print(f"CUDA device: {torch.cuda.get_device_name()}")
     print(f"CUDA version: {torch.version.cuda}")
 
     # Generate ranges for alpha and beta on GPU directly
-    alpha_deg = torch.linspace(-180, 180, 361, device=device)  # 1-degree increments on GPU
-    beta_deg = torch.linspace(-90, 90, 361, device=device)   # 1-degree increments on GPU
+    alpha_deg = torch.linspace(
+        -180, 180, 361, device=device
+    )  # 1-degree increments on GPU
+    beta_deg = torch.linspace(-90, 90, 361, device=device)  # 1-degree increments on GPU
 
     alpha_rad = deg2rad_batch(alpha_deg)
     beta_rad = deg2rad_batch(beta_deg)
 
     # Create meshgrid on GPU
-    ALPHA_DEG, BETA_DEG = torch.meshgrid(alpha_deg, beta_deg, indexing='ij')
-    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing='ij')
+    ALPHA_DEG, BETA_DEG = torch.meshgrid(alpha_deg, beta_deg, indexing="ij")
+    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing="ij")
 
     # Move coefficient tensors to GPU
     kCL_device = kCL.to(device)
@@ -393,13 +541,17 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     print("Creating plots...")
     # Create figure with 2x3 subplots
     fig = plt.figure(figsize=(18, 8))
-    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16)
+    fig.suptitle(
+        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16
+    )
 
     # Row 1: C_L, C_m, C_D
     # C_L subplot (position 1)
-    ax1 = fig.add_subplot(2, 3, 1, projection='3d')
+    ax1 = fig.add_subplot(2, 3, 1, projection="3d")
     ax1.view_init(elev=30, azim=azimuth)
-    surf1 = ax1.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap='viridis', alpha=0.8)
+    surf1 = ax1.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap="viridis", alpha=0.8
+    )
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -407,9 +559,11 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     plt.colorbar(surf1, ax=ax1, shrink=0.5)
 
     # C_m subplot (position 2)
-    ax2 = fig.add_subplot(2, 3, 2, projection='3d')
+    ax2 = fig.add_subplot(2, 3, 2, projection="3d")
     ax2.view_init(elev=30, azim=azimuth)
-    surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap='viridis', alpha=0.8)
+    surf2 = ax2.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap="viridis", alpha=0.8
+    )
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_m")
@@ -417,9 +571,11 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     plt.colorbar(surf2, ax=ax2, shrink=0.5)
 
     # C_D subplot (position 3)
-    ax3 = fig.add_subplot(2, 3, 3, projection='3d')
+    ax3 = fig.add_subplot(2, 3, 3, projection="3d")
     ax3.view_init(elev=30, azim=azimuth)
-    surf3 = ax3.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap='viridis', alpha=0.8)
+    surf3 = ax3.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap="viridis", alpha=0.8
+    )
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -428,9 +584,11 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
 
     # Row 2: C_ll, C_Y, C_n
     # C_ll subplot (position 4)
-    ax4 = fig.add_subplot(2, 3, 4, projection='3d')
+    ax4 = fig.add_subplot(2, 3, 4, projection="3d")
     ax4.view_init(elev=30, azim=azimuth)
-    surf4 = ax4.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap='viridis', alpha=0.8)
+    surf4 = ax4.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap="viridis", alpha=0.8
+    )
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
@@ -438,9 +596,11 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # C_Y subplot (position 5)
-    ax5 = fig.add_subplot(2, 3, 5, projection='3d')
+    ax5 = fig.add_subplot(2, 3, 5, projection="3d")
     ax5.view_init(elev=30, azim=azimuth)
-    surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap='viridis', alpha=0.8)
+    surf5 = ax5.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap="viridis", alpha=0.8
+    )
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_Y")
@@ -448,9 +608,11 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     plt.colorbar(surf5, ax=ax5, shrink=0.5)
 
     # C_n subplot (position 6)
-    ax6 = fig.add_subplot(2, 3, 6, projection='3d')
+    ax6 = fig.add_subplot(2, 3, 6, projection="3d")
     ax6.view_init(elev=30, azim=azimuth)
-    surf6 = ax6.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap='viridis', alpha=0.8)
+    surf6 = ax6.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap="viridis", alpha=0.8
+    )
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
@@ -463,9 +625,14 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     print("PyTorch batched mesh plotting completed successfully!")
 
     return {
-        'ALPHA_DEG': ALPHA_DEG_np, 'BETA_DEG': BETA_DEG_np,
-        'CL': CL_np, 'CD': CD_np, 'CY': CY_np,
-        'CLL': CLL_np, 'CM': CM_np, 'CN': CN_np
+        "ALPHA_DEG": ALPHA_DEG_np,
+        "BETA_DEG": BETA_DEG_np,
+        "CL": CL_np,
+        "CD": CD_np,
+        "CY": CY_np,
+        "CLL": CLL_np,
+        "CM": CM_np,
+        "CN": CN_np,
     }
 
 
@@ -473,16 +640,16 @@ def benchmark_torch_timing(mesh_size=361, num_runs=10):
     """
     Benchmark PyTorch computation time for aerodynamic coefficient calculations.
     """
-    print(f"\n=== PyTorch Performance Benchmark ===")
+    print("\n=== PyTorch Performance Benchmark ===")
     print(f"Mesh size: {mesh_size}x{mesh_size} points")
     print(f"Number of runs: {num_runs}")
 
     # Force GPU usage
     if not torch.cuda.is_available():
         print("Warning: CUDA not available. Using CPU.")
-        device = torch.device('cpu')
+        device = torch.device("cpu")
     else:
-        device = torch.device('cuda')
+        device = torch.device("cuda")
         print(f"Using device: {device}")
         print(f"CUDA device: {torch.cuda.get_device_name()}")
         print(f"CUDA version: {torch.version.cuda}")
@@ -495,7 +662,7 @@ def benchmark_torch_timing(mesh_size=361, num_runs=10):
     beta_rad = deg2rad_batch(beta_deg)
 
     # Create meshgrid on device
-    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing='ij')
+    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing="ij")
 
     # Move coefficient tensors to device
     kCL_device = kCL.to(device)
@@ -507,26 +674,42 @@ def benchmark_torch_timing(mesh_size=361, num_runs=10):
 
     # Warmup run
     print("Performing warmup run...")
-    if device.type == 'cuda':
+    if device.type == "cuda":
         torch.cuda.synchronize()
-    _ = compute_aerodynamic_coeffs_torch(ALPHA, BETA, kCL_device, kCD_device,
-                                       kCY_device, kCLL_device, kCm_device, kCn_device)
+    _ = compute_aerodynamic_coeffs_torch(
+        ALPHA,
+        BETA,
+        kCL_device,
+        kCD_device,
+        kCY_device,
+        kCLL_device,
+        kCm_device,
+        kCn_device,
+    )
 
     # Benchmark runs
     print("Starting benchmark...")
     times = []
     for i in range(num_runs):
-        if device.type == 'cuda':
+        if device.type == "cuda":
             torch.cuda.synchronize()
         start_time = time.time()
-        _ = compute_aerodynamic_coeffs_torch(ALPHA, BETA, kCL_device, kCD_device,
-                                           kCY_device, kCLL_device, kCm_device, kCn_device)
-        if device.type == 'cuda':
+        _ = compute_aerodynamic_coeffs_torch(
+            ALPHA,
+            BETA,
+            kCL_device,
+            kCD_device,
+            kCY_device,
+            kCLL_device,
+            kCm_device,
+            kCn_device,
+        )
+        if device.type == "cuda":
             torch.cuda.synchronize()
         end_time = time.time()
         elapsed = (end_time - start_time) * 1000  # Convert to milliseconds
         times.append(elapsed)
-        print(f"Run {i+1}: {elapsed:.2f} ms")
+        print(f"Run {i + 1}: {elapsed:.2f} ms")
 
     # Calculate statistics
     avg_time = sum(times) / len(times)
@@ -534,23 +717,25 @@ def benchmark_torch_timing(mesh_size=361, num_runs=10):
     max_time = max(times)
     std_time = (sum((t - avg_time) ** 2 for t in times) / len(times)) ** 0.5
 
-    print(f"\nPyTorch Timing Results:")
+    print("\nPyTorch Timing Results:")
     print(f"Average: {avg_time:.2f} ms")
     print(f"Min: {min_time:.2f} ms")
     print(f"Max: {max_time:.2f} ms")
     print(f"Std Dev: {std_time:.2f} ms")
-    print(f"Throughput: {mesh_size*mesh_size/avg_time:.0f} points/ms")
+    print(f"Throughput: {mesh_size * mesh_size / avg_time:.0f} points/ms")
 
     return {
-        'avg_time': avg_time,
-        'min_time': min_time,
-        'max_time': max_time,
-        'std_time': std_time,
-        'throughput': mesh_size*mesh_size/avg_time
+        "avg_time": avg_time,
+        "min_time": min_time,
+        "max_time": max_time,
+        "std_time": std_time,
+        "throughput": mesh_size * mesh_size / avg_time,
     }
 
 
-def generate_mesh_data_torch(filename="mesh_aero_data_torch", cache_dir=None, mesh_size=361):
+def generate_mesh_data_torch(
+    filename="mesh_aero_data_torch", cache_dir=None, mesh_size=361
+):
     """
     Generate 3D mesh data for aerodynamic coefficients using PyTorch.
     Saves data to .npy file for later plotting.
@@ -570,10 +755,10 @@ def generate_mesh_data_torch(filename="mesh_aero_data_torch", cache_dir=None, me
 
     # Determine device
     if torch.cuda.is_available():
-        device = torch.device('cuda')
+        device = torch.device("cuda")
         print(f"Using CUDA device: {torch.cuda.get_device_name()}")
     else:
-        device = torch.device('cpu')
+        device = torch.device("cpu")
         print("CUDA not available, using CPU")
 
     # Generate ranges for alpha and beta on device
@@ -584,8 +769,8 @@ def generate_mesh_data_torch(filename="mesh_aero_data_torch", cache_dir=None, me
     beta_rad = deg2rad_batch(beta_deg)
 
     # Create meshgrid on device
-    ALPHA_DEG, BETA_DEG = torch.meshgrid(alpha_deg, beta_deg, indexing='ij')
-    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing='ij')
+    ALPHA_DEG, BETA_DEG = torch.meshgrid(alpha_deg, beta_deg, indexing="ij")
+    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing="ij")
 
     # Move coefficient tensors to device
     kCL_device = kCL.to(device)
@@ -599,7 +784,14 @@ def generate_mesh_data_torch(filename="mesh_aero_data_torch", cache_dir=None, me
 
     # Calculate coefficients in batches
     CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_torch(
-        ALPHA, BETA, kCL_device, kCD_device, kCY_device, kCLL_device, kCm_device, kCn_device
+        ALPHA,
+        BETA,
+        kCL_device,
+        kCD_device,
+        kCY_device,
+        kCLL_device,
+        kCm_device,
+        kCn_device,
     )
 
     # Move back to CPU and convert to numpy for saving
@@ -614,23 +806,34 @@ def generate_mesh_data_torch(filename="mesh_aero_data_torch", cache_dir=None, me
 
     # Save data using data utilities
     data_path = save_mesh_data(
-        ALPHA_DEG_np, BETA_DEG_np, CL_np, CD_np, CY_np, CLL_np, CM_np, CN_np,
-        filename, cache_dir, backend="pytorch"
+        ALPHA_DEG_np,
+        BETA_DEG_np,
+        CL_np,
+        CD_np,
+        CY_np,
+        CLL_np,
+        CM_np,
+        CN_np,
+        filename,
+        cache_dir,
+        backend="pytorch",
     )
 
-    print(f"PyTorch mesh data generation completed!")
-    print(f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}")
+    print("PyTorch mesh data generation completed!")
+    print(
+        f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}"
+    )
 
     # Return the data dictionary for immediate use
     return {
-        'ALPHA_DEG': ALPHA_DEG_np,
-        'BETA_DEG': BETA_DEG_np,
-        'CL': CL_np,
-        'CD': CD_np,
-        'CY': CY_np,
-        'CLL': CLL_np,
-        'CM': CM_np,
-        'CN': CN_np
+        "ALPHA_DEG": ALPHA_DEG_np,
+        "BETA_DEG": BETA_DEG_np,
+        "CL": CL_np,
+        "CD": CD_np,
+        "CY": CY_np,
+        "CLL": CLL_np,
+        "CM": CM_np,
+        "CN": CN_np,
     }
 
 

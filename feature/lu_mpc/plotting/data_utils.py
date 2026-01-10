@@ -36,7 +36,9 @@ def get_data_path(filename: str, cache_dir: Optional[str] = None) -> str:
     return str(cache_path / filename)
 
 
-def save_aero_data(data: Dict[str, Any], filename: str, cache_dir: Optional[str] = None) -> str:
+def save_aero_data(
+    data: Dict[str, Any], filename: str, cache_dir: Optional[str] = None
+) -> str:
     """
     Save aerodynamic data to .npy file.
 
@@ -48,15 +50,15 @@ def save_aero_data(data: Dict[str, Any], filename: str, cache_dir: Optional[str]
     Returns:
         str: Full path to the saved data file
     """
-    if not filename.endswith('.npy'):
-        filename += '.npy'
+    if not filename.endswith(".npy"):
+        filename += ".npy"
 
     file_path = get_data_path(filename, cache_dir)
 
     # Ensure data contains only numpy-serializable objects
     clean_data = {}
     for key, value in data.items():
-        if hasattr(value, 'numpy'):  # Handle JAX arrays
+        if hasattr(value, "numpy"):  # Handle JAX arrays
             clean_data[key] = np.array(value)
         elif isinstance(value, np.ndarray):
             clean_data[key] = value
@@ -86,8 +88,8 @@ def load_aero_data(filename: str, cache_dir: Optional[str] = None) -> Dict[str, 
     Returns:
         dict: Dictionary containing the aerodynamic data
     """
-    if not filename.endswith('.npy'):
-        filename += '.npy'
+    if not filename.endswith(".npy"):
+        filename += ".npy"
 
     file_path = get_data_path(filename, cache_dir)
 
@@ -99,7 +101,9 @@ def load_aero_data(filename: str, cache_dir: Optional[str] = None) -> Dict[str, 
     return data
 
 
-def save_metadata(metadata: Dict[str, Any], filename: str, cache_dir: Optional[str] = None) -> str:
+def save_metadata(
+    metadata: Dict[str, Any], filename: str, cache_dir: Optional[str] = None
+) -> str:
     """
     Save metadata to JSON file.
 
@@ -111,12 +115,12 @@ def save_metadata(metadata: Dict[str, Any], filename: str, cache_dir: Optional[s
     Returns:
         str: Full path to the saved metadata file
     """
-    if not filename.endswith('.json'):
-        filename += '.json'
+    if not filename.endswith(".json"):
+        filename += ".json"
 
     file_path = get_data_path(filename, cache_dir)
 
-    with open(file_path, 'w') as f:
+    with open(file_path, "w") as f:
         json.dump(metadata, f, indent=2)
 
     print(f"Metadata saved to: {file_path}")
@@ -134,15 +138,15 @@ def load_metadata(filename: str, cache_dir: Optional[str] = None) -> Dict[str, A
     Returns:
         dict: Dictionary containing the metadata
     """
-    if not filename.endswith('.json'):
-        filename += '.json'
+    if not filename.endswith(".json"):
+        filename += ".json"
 
     file_path = get_data_path(filename, cache_dir)
 
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Metadata file not found: {file_path}")
 
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         metadata = json.load(f)
 
     print(f"Metadata loaded from: {file_path}")
@@ -193,49 +197,64 @@ def list_cache_files(cache_dir: Optional[str] = None) -> list:
 
 
 # Convenience functions for common data types
-def save_coordinated_data(alpha_deg, CL, CD, CM, filename="coordinated_aero_data", cache_dir=None):
+def save_coordinated_data(
+    alpha_deg, CL, CD, CM, filename="coordinated_aero_data", cache_dir=None
+):
     """Save coordinated flight data (beta=0)"""
     data = {
-        'alpha_deg': alpha_deg,
-        'CL': CL,
-        'CD': CD,
-        'CM': CM,
-        'data_type': 'coordinated_flight',
-        'description': 'Aerodynamic coefficients under coordinated flight (beta = 0)'
+        "alpha_deg": alpha_deg,
+        "CL": CL,
+        "CD": CD,
+        "CM": CM,
+        "data_type": "coordinated_flight",
+        "description": "Aerodynamic coefficients under coordinated flight (beta = 0)",
     }
     return save_aero_data(data, filename, cache_dir)
 
 
-def save_all_coeffs_data(alpha_deg, CL, CD, CY, Cl, Cm, Cn, filename="all_aero_coeffs_data", cache_dir=None):
+def save_all_coeffs_data(
+    alpha_deg, CL, CD, CY, Cl, Cm, Cn, filename="all_aero_coeffs_data", cache_dir=None
+):
     """Save all aerodynamic coefficients data"""
     data = {
-        'alpha_deg': alpha_deg,
-        'CL': CL,
-        'CD': CD,
-        'CY': CY,
-        'Cl': Cl,
-        'Cm': Cm,
-        'Cn': Cn,
-        'data_type': 'all_coefficients',
-        'description': 'All aerodynamic coefficients vs angle of attack'
+        "alpha_deg": alpha_deg,
+        "CL": CL,
+        "CD": CD,
+        "CY": CY,
+        "Cl": Cl,
+        "Cm": Cm,
+        "Cn": Cn,
+        "data_type": "all_coefficients",
+        "description": "All aerodynamic coefficients vs angle of attack",
     }
     return save_aero_data(data, filename, cache_dir)
 
 
-def save_mesh_data(ALPHA_DEG, BETA_DEG, CL, CD, CY, CLL, CM, CN,
-                   filename="mesh_aero_data", cache_dir=None, backend="numpy"):
+def save_mesh_data(
+    ALPHA_DEG,
+    BETA_DEG,
+    CL,
+    CD,
+    CY,
+    CLL,
+    CM,
+    CN,
+    filename="mesh_aero_data",
+    cache_dir=None,
+    backend="numpy",
+):
     """Save 3D mesh data"""
     data = {
-        'ALPHA_DEG': ALPHA_DEG,
-        'BETA_DEG': BETA_DEG,
-        'CL': CL,
-        'CD': CD,
-        'CY': CY,
-        'CLL': CLL,
-        'CM': CM,
-        'CN': CN,
-        'data_type': '3d_mesh',
-        'backend': backend,
-        'description': f'3D aerodynamic coefficient mesh ({backend} backend)'
+        "ALPHA_DEG": ALPHA_DEG,
+        "BETA_DEG": BETA_DEG,
+        "CL": CL,
+        "CD": CD,
+        "CY": CY,
+        "CLL": CLL,
+        "CM": CM,
+        "CN": CN,
+        "data_type": "3d_mesh",
+        "backend": backend,
+        "description": f"3D aerodynamic coefficient mesh ({backend} backend)",
     }
     return save_aero_data(data, filename, cache_dir)

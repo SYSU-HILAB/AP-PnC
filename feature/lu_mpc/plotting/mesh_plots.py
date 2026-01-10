@@ -7,8 +7,6 @@ The data generation is separated from the plotting to enable clean pipeline work
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
 import os
 
 
@@ -32,28 +30,25 @@ def load_mesh_data(data_file, auto_generate=False, mesh_size=361, backend="jax")
 
             # Import the appropriate generation function
             if backend == "jax":
-                from ..gd_model_jax import generate_mesh_data_jax
+                from ..model.sim.gd_model_jax import generate_mesh_data_jax
+
                 return generate_mesh_data_jax(
                     filename=os.path.splitext(os.path.basename(data_file))[0],
-                    mesh_size=mesh_size
+                    mesh_size=mesh_size,
                 )
             elif backend == "pytorch":
-                from ..gd_model_torch import generate_mesh_data_torch
+                from ..model.sim.gd_model_torch import generate_mesh_data_torch
+
                 return generate_mesh_data_torch(
                     filename=os.path.splitext(os.path.basename(data_file))[0],
-                    mesh_size=mesh_size
-                )
-            elif backend == "casadi":
-                from ..gd_model import generate_mesh_data
-                return generate_mesh_data(
-                    filename=os.path.splitext(os.path.basename(data_file))[0],
-                    mesh_size=mesh_size
+                    mesh_size=mesh_size,
                 )
             elif backend == "casadi_symbolic":
-                from ..gd_model_casadi import generate_mesh_data
+                from ..model.sim.gd_model_casadi import generate_mesh_data
+
                 return generate_mesh_data(
                     filename=os.path.splitext(os.path.basename(data_file))[0],
-                    mesh_size=mesh_size
+                    mesh_size=mesh_size,
                 )
             else:
                 raise ValueError(f"Unknown backend: {backend}")
@@ -63,7 +58,15 @@ def load_mesh_data(data_file, auto_generate=False, mesh_size=361, backend="jax")
     return np.load(data_file, allow_pickle=True).item()
 
 
-def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=True, auto_generate=True, mesh_size=361, save_path=None):
+def plot_aerodynamic_mesh(
+    data_file=None,
+    data=None,
+    azimuth=-127.5,
+    show_plot=True,
+    auto_generate=True,
+    mesh_size=361,
+    save_path=None,
+):
     """
     Create 3D mesh surface plots of aerodynamic coefficients using NumPy data.
 
@@ -84,29 +87,36 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
     if data is None:
         if data_file is None:
             raise ValueError("Either data_file or data must be provided")
-        data = load_mesh_data(data_file, auto_generate=auto_generate, mesh_size=mesh_size, backend="casadi")
+        data = load_mesh_data(
+            data_file,
+            auto_generate=auto_generate,
+            mesh_size=mesh_size,
+            backend="casadi",
+        )
 
     # Extract data arrays
-    ALPHA_DEG = data['ALPHA_DEG']
-    BETA_DEG = data['BETA_DEG']
-    CL = data['CL']
-    CD = data['CD']
-    CY = data['CY']
-    CLL = data.get('CLL', data.get('Cl', np.zeros_like(CL)))
-    CM = data['CM']
-    CN = data['CN']
+    ALPHA_DEG = data["ALPHA_DEG"]
+    BETA_DEG = data["BETA_DEG"]
+    CL = data["CL"]
+    CD = data["CD"]
+    CY = data["CY"]
+    CLL = data.get("CLL", data.get("Cl", np.zeros_like(CL)))
+    CM = data["CM"]
+    CN = data["CN"]
 
     print("Creating 3D mesh plots...")
     # Convert azimuth to float for matplotlib
     azimuth_float = float(azimuth)
     # Create figure with 3x2 subplots
     fig = plt.figure(figsize=(15, 12))
-    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16)
+    fig.suptitle(
+        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16
+    )
 
     # CL subplot
-    ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1 = fig.add_subplot(3, 2, 1, projection="3d")
     ax1.view_init(elev=10, azim=azimuth_float)
-    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap='viridis', alpha=0.8)
+    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap="viridis", alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -114,9 +124,9 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
     plt.colorbar(surf1, ax=ax1, shrink=0.5)
 
     # CY subplot
-    ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2 = fig.add_subplot(3, 2, 3, projection="3d")
     ax2.view_init(elev=10, azim=azimuth_float)
-    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap='viridis', alpha=0.8)
+    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap="viridis", alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_Y")
@@ -124,9 +134,9 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
     plt.colorbar(surf2, ax=ax2, shrink=0.5)
 
     # CD subplot
-    ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3 = fig.add_subplot(3, 2, 5, projection="3d")
     ax3.view_init(elev=10, azim=azimuth_float)
-    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap='viridis', alpha=0.8)
+    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap="viridis", alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -134,9 +144,9 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
     plt.colorbar(surf3, ax=ax3, shrink=0.5)
 
     # CLL subplot
-    ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4 = fig.add_subplot(3, 2, 2, projection="3d")
     ax4.view_init(elev=10, azim=azimuth_float)
-    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap='viridis', alpha=0.8)
+    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap="viridis", alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
@@ -144,9 +154,9 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # CM subplot
-    ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5 = fig.add_subplot(3, 2, 4, projection="3d")
     ax5.view_init(elev=10, azim=azimuth_float)
-    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap='viridis', alpha=0.8)
+    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap="viridis", alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_m")
@@ -154,9 +164,9 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
     plt.colorbar(surf5, ax=ax5, shrink=0.5)
 
     # CN subplot
-    ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6 = fig.add_subplot(3, 2, 6, projection="3d")
     ax6.view_init(elev=10, azim=azimuth_float)
-    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap='viridis', alpha=0.8)
+    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap="viridis", alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
@@ -177,7 +187,7 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
         save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
 
     # Always save the plot
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
     print(f"Plot saved to: {save_path}")
 
     # Show plot only if requested and in GUI environment
@@ -192,7 +202,15 @@ def plot_aerodynamic_mesh(data_file=None, data=None, azimuth=-127.5, show_plot=T
     return data
 
 
-def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plot=True, auto_generate=True, mesh_size=361, save_path=None):
+def plot_aerodynamic_mesh_jax(
+    data_file=None,
+    data=None,
+    azimuth=125.5,
+    show_plot=True,
+    auto_generate=True,
+    mesh_size=361,
+    save_path=None,
+):
     """
     Create 3D mesh surface plots of aerodynamic coefficients using JAX data.
 
@@ -213,29 +231,33 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
     if data is None:
         if data_file is None:
             raise ValueError("Either data_file or data must be provided")
-        data = load_mesh_data(data_file, auto_generate=auto_generate, mesh_size=mesh_size, backend="jax")
+        data = load_mesh_data(
+            data_file, auto_generate=auto_generate, mesh_size=mesh_size, backend="jax"
+        )
 
     # Extract data arrays
-    ALPHA_DEG = data['ALPHA_DEG']
-    BETA_DEG = data['BETA_DEG']
-    CL = data['CL']
-    CD = data['CD']
-    CY = data['CY']
-    CLL = data.get('CLL', data.get('Cl', np.zeros_like(CL)))
-    CM = data['CM']
-    CN = data['CN']
+    ALPHA_DEG = data["ALPHA_DEG"]
+    BETA_DEG = data["BETA_DEG"]
+    CL = data["CL"]
+    CD = data["CD"]
+    CY = data["CY"]
+    CLL = data.get("CLL", data.get("Cl", np.zeros_like(CL)))
+    CM = data["CM"]
+    CN = data["CN"]
 
     print("Creating JAX 3D mesh plots...")
     # Convert azimuth to float for matplotlib
     azimuth_float = float(azimuth)
     # Create figure with 3x2 subplots
     fig = plt.figure(figsize=(15, 12))
-    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves (JAX)", fontsize=16)
+    fig.suptitle(
+        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves (JAX)", fontsize=16
+    )
 
     # CL subplot
-    ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1 = fig.add_subplot(3, 2, 1, projection="3d")
     ax1.view_init(elev=10, azim=azimuth_float)
-    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap='viridis', alpha=0.8)
+    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap="viridis", alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -243,9 +265,9 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
     plt.colorbar(surf1, ax=ax1, shrink=0.5)
 
     # CY subplot
-    ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2 = fig.add_subplot(3, 2, 3, projection="3d")
     ax2.view_init(elev=10, azim=azimuth_float)
-    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap='viridis', alpha=0.8)
+    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap="viridis", alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_Y")
@@ -253,9 +275,9 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
     plt.colorbar(surf2, ax=ax2, shrink=0.5)
 
     # CD subplot
-    ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3 = fig.add_subplot(3, 2, 5, projection="3d")
     ax3.view_init(elev=10, azim=azimuth_float)
-    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap='viridis', alpha=0.8)
+    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap="viridis", alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -263,9 +285,9 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
     plt.colorbar(surf3, ax=ax3, shrink=0.5)
 
     # CLL subplot
-    ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4 = fig.add_subplot(3, 2, 2, projection="3d")
     ax4.view_init(elev=10, azim=azimuth_float)
-    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap='viridis', alpha=0.8)
+    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap="viridis", alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
@@ -273,9 +295,9 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # CM subplot
-    ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5 = fig.add_subplot(3, 2, 4, projection="3d")
     ax5.view_init(elev=10, azim=azimuth_float)
-    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap='viridis', alpha=0.8)
+    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap="viridis", alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_m")
@@ -283,9 +305,9 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
     plt.colorbar(surf5, ax=ax5, shrink=0.5)
 
     # CN subplot
-    ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6 = fig.add_subplot(3, 2, 6, projection="3d")
     ax6.view_init(elev=10, azim=azimuth_float)
-    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap='viridis', alpha=0.8)
+    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap="viridis", alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
@@ -306,7 +328,7 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
         save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
 
     # Always save the plot
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
     print(f"Plot saved to: {save_path}")
 
     # Show plot only if requested and in GUI environment
@@ -321,7 +343,15 @@ def plot_aerodynamic_mesh_jax(data_file=None, data=None, azimuth=125.5, show_plo
     return data
 
 
-def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_plot=True, auto_generate=True, mesh_size=361, save_path=None):
+def plot_aerodynamic_mesh_torch(
+    data_file=None,
+    data=None,
+    azimuth=-127.5,
+    show_plot=True,
+    auto_generate=True,
+    mesh_size=361,
+    save_path=None,
+):
     """
     Create 3D mesh surface plots of aerodynamic coefficients using PyTorch data.
 
@@ -342,29 +372,37 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
     if data is None:
         if data_file is None:
             raise ValueError("Either data_file or data must be provided")
-        data = load_mesh_data(data_file, auto_generate=auto_generate, mesh_size=mesh_size, backend="pytorch")
+        data = load_mesh_data(
+            data_file,
+            auto_generate=auto_generate,
+            mesh_size=mesh_size,
+            backend="pytorch",
+        )
 
     # Extract data arrays
-    ALPHA_DEG = data['ALPHA_DEG']
-    BETA_DEG = data['BETA_DEG']
-    CL = data['CL']
-    CD = data['CD']
-    CY = data['CY']
-    CLL = data.get('CLL', data.get('Cl', np.zeros_like(CL)))
-    CM = data['CM']
-    CN = data['CN']
+    ALPHA_DEG = data["ALPHA_DEG"]
+    BETA_DEG = data["BETA_DEG"]
+    CL = data["CL"]
+    CD = data["CD"]
+    CY = data["CY"]
+    CLL = data.get("CLL", data.get("Cl", np.zeros_like(CL)))
+    CM = data["CM"]
+    CN = data["CN"]
 
     print("Creating PyTorch 3D mesh plots...")
     # Convert azimuth to float for matplotlib
     azimuth_float = float(azimuth)
     # Create figure with 3x2 subplots
     fig = plt.figure(figsize=(15, 12))
-    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves (PyTorch)", fontsize=16)
+    fig.suptitle(
+        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves (PyTorch)",
+        fontsize=16,
+    )
 
     # CL subplot
-    ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1 = fig.add_subplot(3, 2, 1, projection="3d")
     ax1.view_init(elev=10, azim=azimuth_float)
-    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap='viridis', alpha=0.8)
+    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap="viridis", alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -372,9 +410,9 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
     plt.colorbar(surf1, ax=ax1, shrink=0.5)
 
     # CY subplot
-    ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2 = fig.add_subplot(3, 2, 3, projection="3d")
     ax2.view_init(elev=10, azim=azimuth_float)
-    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap='viridis', alpha=0.8)
+    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap="viridis", alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_Y")
@@ -382,9 +420,9 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
     plt.colorbar(surf2, ax=ax2, shrink=0.5)
 
     # CD subplot
-    ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3 = fig.add_subplot(3, 2, 5, projection="3d")
     ax3.view_init(elev=10, azim=azimuth_float)
-    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap='viridis', alpha=0.8)
+    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap="viridis", alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -392,9 +430,9 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
     plt.colorbar(surf3, ax=ax3, shrink=0.5)
 
     # CLL subplot
-    ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4 = fig.add_subplot(3, 2, 2, projection="3d")
     ax4.view_init(elev=10, azim=azimuth_float)
-    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap='viridis', alpha=0.8)
+    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap="viridis", alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
@@ -402,9 +440,9 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # CM subplot
-    ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5 = fig.add_subplot(3, 2, 4, projection="3d")
     ax5.view_init(elev=10, azim=azimuth_float)
-    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap='viridis', alpha=0.8)
+    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap="viridis", alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_m")
@@ -412,9 +450,9 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
     plt.colorbar(surf5, ax=ax5, shrink=0.5)
 
     # CN subplot
-    ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6 = fig.add_subplot(3, 2, 6, projection="3d")
     ax6.view_init(elev=10, azim=azimuth_float)
-    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap='viridis', alpha=0.8)
+    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap="viridis", alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
@@ -435,7 +473,7 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
         save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
 
     # Always save the plot
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
     print(f"Plot saved to: {save_path}")
 
     # Show plot only if requested and in GUI environment
@@ -450,7 +488,15 @@ def plot_aerodynamic_mesh_torch(data_file=None, data=None, azimuth=-127.5, show_
     return data
 
 
-def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show_plot=True, auto_generate=True, mesh_size=361, save_path=None):
+def plot_aerodynamic_mesh_casadi(
+    data_file=None,
+    data=None,
+    azimuth=-127.5,
+    show_plot=True,
+    auto_generate=True,
+    mesh_size=361,
+    save_path=None,
+):
     """
     Create 3D mesh surface plots of aerodynamic coefficients using CasADi symbolic data.
 
@@ -471,29 +517,37 @@ def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show
     if data is None:
         if data_file is None:
             raise ValueError("Either data_file or data must be provided")
-        data = load_mesh_data(data_file, auto_generate=auto_generate, mesh_size=mesh_size, backend="casadi_symbolic")
+        data = load_mesh_data(
+            data_file,
+            auto_generate=auto_generate,
+            mesh_size=mesh_size,
+            backend="casadi_symbolic",
+        )
 
     # Extract data arrays
-    ALPHA_DEG = data['ALPHA_DEG']
-    BETA_DEG = data['BETA_DEG']
-    CL = data['CL']
-    CD = data['CD']
-    CY = data['CY']
-    CLL = data.get('CLL', data.get('Cl', np.zeros_like(CL)))
-    CM = data['CM']
-    CN = data['CN']
+    ALPHA_DEG = data["ALPHA_DEG"]
+    BETA_DEG = data["BETA_DEG"]
+    CL = data["CL"]
+    CD = data["CD"]
+    CY = data["CY"]
+    CLL = data.get("CLL", data.get("Cl", np.zeros_like(CL)))
+    CM = data["CM"]
+    CN = data["CN"]
 
     print("Creating CasADi symbolic 3D mesh plots...")
     # Convert azimuth to float for matplotlib
     azimuth_float = float(azimuth)
     # Create figure with 3x2 subplots
     fig = plt.figure(figsize=(15, 12))
-    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves (CasADi Symbolic)", fontsize=16)
+    fig.suptitle(
+        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves (CasADi Symbolic)",
+        fontsize=16,
+    )
 
     # CL subplot
-    ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1 = fig.add_subplot(3, 2, 1, projection="3d")
     ax1.view_init(elev=10, azim=azimuth_float)
-    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap='viridis', alpha=0.8)
+    surf1 = ax1.plot_surface(ALPHA_DEG, BETA_DEG, CL, cmap="viridis", alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -501,9 +555,9 @@ def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show
     plt.colorbar(surf1, ax=ax1, shrink=0.5)
 
     # CY subplot
-    ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2 = fig.add_subplot(3, 2, 3, projection="3d")
     ax2.view_init(elev=10, azim=azimuth_float)
-    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap='viridis', alpha=0.8)
+    surf2 = ax2.plot_surface(ALPHA_DEG, BETA_DEG, CY, cmap="viridis", alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_Y")
@@ -511,9 +565,9 @@ def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show
     plt.colorbar(surf2, ax=ax2, shrink=0.5)
 
     # CD subplot
-    ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3 = fig.add_subplot(3, 2, 5, projection="3d")
     ax3.view_init(elev=10, azim=azimuth_float)
-    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap='viridis', alpha=0.8)
+    surf3 = ax3.plot_surface(ALPHA_DEG, BETA_DEG, CD, cmap="viridis", alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -521,9 +575,9 @@ def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show
     plt.colorbar(surf3, ax=ax3, shrink=0.5)
 
     # CLL subplot
-    ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4 = fig.add_subplot(3, 2, 2, projection="3d")
     ax4.view_init(elev=10, azim=azimuth_float)
-    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap='viridis', alpha=0.8)
+    surf4 = ax4.plot_surface(ALPHA_DEG, BETA_DEG, CLL, cmap="viridis", alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
@@ -531,9 +585,9 @@ def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # CM subplot
-    ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5 = fig.add_subplot(3, 2, 4, projection="3d")
     ax5.view_init(elev=10, azim=azimuth_float)
-    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap='viridis', alpha=0.8)
+    surf5 = ax5.plot_surface(ALPHA_DEG, BETA_DEG, CM, cmap="viridis", alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_m")
@@ -541,9 +595,9 @@ def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show
     plt.colorbar(surf5, ax=ax5, shrink=0.5)
 
     # CN subplot
-    ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6 = fig.add_subplot(3, 2, 6, projection="3d")
     ax6.view_init(elev=10, azim=azimuth_float)
-    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap='viridis', alpha=0.8)
+    surf6 = ax6.plot_surface(ALPHA_DEG, BETA_DEG, CN, cmap="viridis", alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
@@ -564,7 +618,7 @@ def plot_aerodynamic_mesh_casadi(data_file=None, data=None, azimuth=-127.5, show
         save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
 
     # Always save the plot
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
     print(f"Plot saved to: {save_path}")
 
     # Show plot only if requested and in GUI environment

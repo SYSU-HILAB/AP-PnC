@@ -5,39 +5,158 @@
 #
 # JAX batched implementation for efficient aerodynamic coefficient calculations
 #
-import math
 import time
 import numpy as np
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 # setting jax printf options for better readability
 
 # Coefficient arrays - same as original numpy version
-kCL = jnp.array([
-    -2.8465, 23.1516, -0.7335, 0.1407, 0.0930, 3.8276, -0.0006, 3.1951, -0.0289, 0.6425, 0.0164, 0.0031, 0.6174, -0.1286, 0.0342, -0.5109, 0.0982, -0.0006, 0.1985, -0.0070, 0.0410, 0.0037, -4.3496, 14.1041
-], dtype=jnp.float32)
+kCL = jnp.array(
+    [
+        -2.8465,
+        23.1516,
+        -0.7335,
+        0.1407,
+        0.0930,
+        3.8276,
+        -0.0006,
+        3.1951,
+        -0.0289,
+        0.6425,
+        0.0164,
+        0.0031,
+        0.6174,
+        -0.1286,
+        0.0342,
+        -0.5109,
+        0.0982,
+        -0.0006,
+        0.1985,
+        -0.0070,
+        0.0410,
+        0.0037,
+        -4.3496,
+        14.1041,
+    ],
+    dtype=jnp.float32,
+)
 
-kCD = jnp.array([
-    -0.5908, -1.8161, -0.2045, -0.0036, -0.2861, -0.8862, -0.0590, -0.9215, 0.0130, -0.0035, 0.4958, -0.0032, 0.0762, 0.1533, -0.0009, 0.1891, 0.0159, 0.0172, 0.2510, 0.0032, -0.1227, 0.1740, 0.7917, -4.4927
-], dtype=jnp.float32)
+kCD = jnp.array(
+    [
+        -0.5908,
+        -1.8161,
+        -0.2045,
+        -0.0036,
+        -0.2861,
+        -0.8862,
+        -0.0590,
+        -0.9215,
+        0.0130,
+        -0.0035,
+        0.4958,
+        -0.0032,
+        0.0762,
+        0.1533,
+        -0.0009,
+        0.1891,
+        0.0159,
+        0.0172,
+        0.2510,
+        0.0032,
+        -0.1227,
+        0.1740,
+        0.7917,
+        -4.4927,
+    ],
+    dtype=jnp.float32,
+)
 
-kCY = jnp.array([
-    -0.0678, 0.1151, -0.1024, 0.6002, 0.5367, -0.0922, -0.8523, -0.5220, -0.1006, 0.2266, -0.0345, -0.0768, 0.0748
-], dtype=jnp.float32)
+kCY = jnp.array(
+    [
+        -0.0678,
+        0.1151,
+        -0.1024,
+        0.6002,
+        0.5367,
+        -0.0922,
+        -0.8523,
+        -0.5220,
+        -0.1006,
+        0.2266,
+        -0.0345,
+        -0.0768,
+        0.0748,
+    ],
+    dtype=jnp.float32,
+)
 
-kCLL = jnp.array([
-    -0.0240, 0.0172, -0.0219, -0.0085, -0.2163, -0.0143, -0.0152, -0.1874, -0.0021, -0.0065, -0.0110, 0.0029, -0.0184, -0.0028, 0.0203, -0.0158, -0.0245, -0.0068
-], dtype=jnp.float32)
+kCLL = jnp.array(
+    [
+        -0.0240,
+        0.0172,
+        -0.0219,
+        -0.0085,
+        -0.2163,
+        -0.0143,
+        -0.0152,
+        -0.1874,
+        -0.0021,
+        -0.0065,
+        -0.0110,
+        0.0029,
+        -0.0184,
+        -0.0028,
+        0.0203,
+        -0.0158,
+        -0.0245,
+        -0.0068,
+    ],
+    dtype=jnp.float32,
+)
 
-kCm = jnp.array([
-    -1.9963, -2.5059, 0.5987, 0.0120, 0.7977, 0.0543, 0.6310, -0.1122, -0.0798, -0.2177, -0.1059, 0.0029, -0.1388, 0.0132, -0.2605, 0.0015, -0.5789, 0.7902
-], dtype=jnp.float32)
+kCm = jnp.array(
+    [
+        -1.9963,
+        -2.5059,
+        0.5987,
+        0.0120,
+        0.7977,
+        0.0543,
+        0.6310,
+        -0.1122,
+        -0.0798,
+        -0.2177,
+        -0.1059,
+        0.0029,
+        -0.1388,
+        0.0132,
+        -0.2605,
+        0.0015,
+        -0.5789,
+        0.7902,
+    ],
+    dtype=jnp.float32,
+)
 
-kCn = jnp.array([
-    0.0681, -0.0338, 0.0054, 0.0028, -0.0052, 0.0034, -0.0048, 0.0217, 0.0111, 0.0121, 0.0685, 0.0240
-], dtype=jnp.float32)
+kCn = jnp.array(
+    [
+        0.0681,
+        -0.0338,
+        0.0054,
+        0.0028,
+        -0.0052,
+        0.0034,
+        -0.0048,
+        0.0217,
+        0.0111,
+        0.0121,
+        0.0685,
+        0.0240,
+    ],
+    dtype=jnp.float32,
+)
 
 
 @jax.jit
@@ -48,14 +167,18 @@ def logistic_func_single(alpha, alpha1, k1, alpha2, k2):
     yval = 1 - P1 - P2
     return yval
 
+
 # Vectorized version using vmap
-logistic_func_batch = jax.vmap(logistic_func_single, in_axes=(0, None, None, None, None))
+logistic_func_batch = jax.vmap(
+    logistic_func_single, in_axes=(0, None, None, None, None)
+)
 
 
 @jax.jit
 def deg2rad_single(deg):
     """Single degree to radian conversion for use with vmap"""
     return deg * (jnp.pi / 180.0)
+
 
 # Vectorized version using vmap
 deg2rad_batch = jax.vmap(deg2rad_single)
@@ -68,32 +191,36 @@ def reg_CL_single(alpha, beta):
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
     cb = jnp.cos(beta)
-    sa2 = sa ** 2
-    ca2 = ca ** 2
-    sb2 = sb ** 2
-    cb2 = cb ** 2
-    sa3 = sa ** 3
-    ca3 = ca ** 3
+    sa2 = sa**2
+    ca2 = ca**2
+    sb2 = sb**2
+    cb2 = cb**2
+    sa3 = sa**3
+    ca3 = ca**3
 
     comp_B = jnp.stack([cb2, alpha * cb2])
 
-    comp_N = jnp.stack([
-        cb2 * ca3,
-        ca * sb2,
-        ca * cb2 * sa2,
-        sa * ca2 * cb2,
-        sa * sb2,
-        sa3 * cb2,
-        jnp.abs(sb) * cb * ca2,
-        sa * ca * cb * jnp.abs(sb),
-        jnp.abs(sb) * cb * sa2,
-    ])
+    comp_N = jnp.stack(
+        [
+            cb2 * ca3,
+            ca * sb2,
+            ca * cb2 * sa2,
+            sa * ca2 * cb2,
+            sa * sb2,
+            sa3 * cb2,
+            jnp.abs(sb) * cb * ca2,
+            sa * ca * cb * jnp.abs(sb),
+            jnp.abs(sb) * cb * sa2,
+        ]
+    )
 
     w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
     comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
     reg_B1 = w_B1 * comp_B1
 
-    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5)
+    w_N11 = logistic_func_single(
+        alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5
+    )
     reg_N11 = w_N11 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -109,6 +236,7 @@ def reg_CL_single(alpha, beta):
     reg = jnp.concatenate([reg_B1, reg_N11, reg_B2, reg_N2, reg_B3])
     return reg
 
+
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_CL_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
@@ -118,7 +246,9 @@ def reg_CL_batch(alpha, beta):
     elif alpha.ndim == 1:  # 1D arrays
         return jax.vmap(reg_CL_single, in_axes=(0, 0))(alpha, beta)
     elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_CL_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+        return jax.vmap(jax.vmap(reg_CL_single, in_axes=(0, 0)), in_axes=(0, 0))(
+            alpha, beta
+        )
     else:
         raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
@@ -130,32 +260,36 @@ def reg_CD_single(alpha, beta):
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
     cb = jnp.cos(beta)
-    sa2 = sa ** 2
-    ca2 = ca ** 2
-    sb2 = sb ** 2
-    cb2 = cb ** 2
-    sa3 = sa ** 3
-    ca3 = ca ** 3
+    sa2 = sa**2
+    ca2 = ca**2
+    sb2 = sb**2
+    cb2 = cb**2
+    sa3 = sa**3
+    ca3 = ca**3
 
     comp_B = jnp.stack([cb2, alpha * cb2])
 
-    comp_N = jnp.stack([
-        cb2 * ca3,
-        ca * sb2,
-        ca * cb2 * sa2,
-        sa * ca2 * cb2,
-        sa * sb2,
-        sa3 * cb2,
-        jnp.abs(sb) * cb * ca2,
-        sa * ca * cb * jnp.abs(sb),
-        jnp.abs(sb) * cb * sa2,
-    ])
+    comp_N = jnp.stack(
+        [
+            cb2 * ca3,
+            ca * sb2,
+            ca * cb2 * sa2,
+            sa * ca2 * cb2,
+            sa * sb2,
+            sa3 * cb2,
+            jnp.abs(sb) * cb * ca2,
+            sa * ca * cb * jnp.abs(sb),
+            jnp.abs(sb) * cb * sa2,
+        ]
+    )
 
     w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
     comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
     reg_B1 = w_B1 * comp_B1
 
-    w_N1 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-10), 0.5)
+    w_N1 = logistic_func_single(
+        alpha, deg2rad_single(-170), 1, deg2rad_single(-10), 0.5
+    )
     reg_N1 = w_N1 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -171,6 +305,7 @@ def reg_CD_single(alpha, beta):
     reg = jnp.concatenate([reg_B1, reg_N1, reg_B2, reg_N2, reg_B3])
     return reg
 
+
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_CD_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
@@ -180,7 +315,9 @@ def reg_CD_batch(alpha, beta):
     elif alpha.ndim == 1:  # 1D arrays
         return jax.vmap(reg_CD_single, in_axes=(0, 0))(alpha, beta)
     elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_CD_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+        return jax.vmap(jax.vmap(reg_CD_single, in_axes=(0, 0)), in_axes=(0, 0))(
+            alpha, beta
+        )
     else:
         raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
@@ -192,8 +329,8 @@ def reg_CY_single(alpha, beta):
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
     cb = jnp.cos(beta)
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sb2 = sb**2
+    cb2 = cb**2
     signb = beta * jnp.abs(beta)
 
     comp_N = jnp.stack([signb * sb2, sb * cb * ca, sb * cb * sa])
@@ -218,6 +355,7 @@ def reg_CY_single(alpha, beta):
     reg = jnp.concatenate([reg_B1, reg_N11, reg_N12, reg_N2, reg_B3])
     return reg
 
+
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_CY_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
@@ -227,7 +365,9 @@ def reg_CY_batch(alpha, beta):
     elif alpha.ndim == 1:  # 1D arrays
         return jax.vmap(reg_CY_single, in_axes=(0, 0))(alpha, beta)
     elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_CY_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+        return jax.vmap(jax.vmap(reg_CY_single, in_axes=(0, 0)), in_axes=(0, 0))(
+            alpha, beta
+        )
     else:
         raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
@@ -239,8 +379,8 @@ def reg_Cll_single(alpha, beta):
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
     cb = jnp.cos(beta)
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sb2 = sb**2
+    cb2 = cb**2
     signb = beta * jnp.abs(beta)
 
     comp_B = jnp.stack([cb2, alpha * cb2])
@@ -253,7 +393,9 @@ def reg_Cll_single(alpha, beta):
     w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-90), 5)
     reg_N11 = w_N11 * comp_N
 
-    w_N12 = logistic_func_single(alpha, deg2rad_single(-90), 5, deg2rad_single(-20), 0.5)
+    w_N12 = logistic_func_single(
+        alpha, deg2rad_single(-90), 5, deg2rad_single(-20), 0.5
+    )
     reg_N12 = w_N12 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -272,6 +414,7 @@ def reg_Cll_single(alpha, beta):
     reg = jnp.concatenate([reg_B1, reg_N11, reg_N12, reg_B2, reg_N2, reg_N22, reg_B3])
     return reg
 
+
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_Cll_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
@@ -281,7 +424,9 @@ def reg_Cll_batch(alpha, beta):
     elif alpha.ndim == 1:  # 1D arrays
         return jax.vmap(reg_Cll_single, in_axes=(0, 0))(alpha, beta)
     elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_Cll_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+        return jax.vmap(jax.vmap(reg_Cll_single, in_axes=(0, 0)), in_axes=(0, 0))(
+            alpha, beta
+        )
     else:
         raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
@@ -293,19 +438,30 @@ def reg_Cm_single(alpha, beta):
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
     cb = jnp.cos(beta)
-    sa2 = sa ** 2
-    ca2 = ca ** 2
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sa2 = sa**2
+    ca2 = ca**2
+    sb2 = sb**2
+    cb2 = cb**2
 
     comp_B = jnp.stack([cb2, alpha * cb2])
-    comp_N = jnp.stack([cb2 * ca2, sb2, cb2 * sa2, jnp.abs(sb) * cb * ca, sa * ca * cb2, jnp.abs(sb) * cb * sa])
+    comp_N = jnp.stack(
+        [
+            cb2 * ca2,
+            sb2,
+            cb2 * sa2,
+            jnp.abs(sb) * cb * ca,
+            sa * ca * cb2,
+            jnp.abs(sb) * cb * sa,
+        ]
+    )
 
     w_B1 = logistic_func_single(alpha, deg2rad_single(-190), 1, deg2rad_single(-170), 1)
     comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
     reg_B1 = w_B1 * comp_B1
 
-    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5)
+    w_N11 = logistic_func_single(
+        alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5
+    )
     reg_N11 = w_N11 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -321,6 +477,7 @@ def reg_Cm_single(alpha, beta):
     reg = jnp.concatenate([reg_B1, reg_N11, reg_B2, reg_N2, reg_B3])
     return reg
 
+
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_Cm_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
@@ -330,7 +487,9 @@ def reg_Cm_batch(alpha, beta):
     elif alpha.ndim == 1:  # 1D arrays
         return jax.vmap(reg_Cm_single, in_axes=(0, 0))(alpha, beta)
     elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_Cm_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+        return jax.vmap(jax.vmap(reg_Cm_single, in_axes=(0, 0)), in_axes=(0, 0))(
+            alpha, beta
+        )
     else:
         raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
@@ -342,8 +501,8 @@ def reg_Cn_single(alpha, beta):
     ca = jnp.cos(alpha)
     sb = jnp.sin(beta)
     cb = jnp.cos(beta)
-    sb2 = sb ** 2
-    cb2 = cb ** 2
+    sb2 = sb**2
+    cb2 = cb**2
     signb = beta * jnp.abs(beta)
 
     comp_B = jnp.stack([cb2, alpha * cb2])
@@ -369,6 +528,7 @@ def reg_Cn_single(alpha, beta):
     reg = jnp.concatenate([reg_B1, reg_N1, reg_B2, reg_N2, reg_B3])
     return reg
 
+
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_Cn_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
@@ -378,7 +538,9 @@ def reg_Cn_batch(alpha, beta):
     elif alpha.ndim == 1:  # 1D arrays
         return jax.vmap(reg_Cn_single, in_axes=(0, 0))(alpha, beta)
     elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_Cn_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
+        return jax.vmap(jax.vmap(reg_Cn_single, in_axes=(0, 0)), in_axes=(0, 0))(
+            alpha, beta
+        )
     else:
         raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
 
@@ -413,13 +575,13 @@ def compute_angles_single(V_b):
     vbx = V_b[0]
     vby = V_b[1]
     vbz = V_b[2]
-    
+
     # Calculation
     v_norm = jnp.sqrt(vbx**2 + vby**2 + vbz**2) + 1e-8
-    v_squared = v_norm ** 2
+    v_squared = v_norm**2
     alpha = jnp.arctan2(vbz, vbx)
     beta = jnp.arcsin(vby / v_norm)
-    
+
     return alpha, beta, v_norm, v_squared
 
 
@@ -431,21 +593,26 @@ def compute_angles_batch(V_b):
     else:
         raise ValueError(f"Unsupported V_b dimension: {V_b.ndim}")
 
+
 def trans_stab_to_body_single(alpha, vec):
     """
     Docstring for trans_stab_to_body
-    
-    :param vec: Array of shape (..., 3) representing vectors in stability frame 
+
+    :param vec: Array of shape (..., 3) representing vectors in stability frame
     :param alpha: Angle of attack in radians
     :return: Transformed vectors in body frame of shape (..., 3)
     """
     # Stability to body frame transformation matrix
-    T_sb = jnp.array([
-        [jnp.cos(alpha), 0.0, -jnp.sin(alpha)],
-        [0.0, 1.0, 0.0],
-        [jnp.sin(alpha), 0.0, jnp.cos(alpha)]
-    ], dtype=jnp.float32)
-    return jnp.einsum('ij,...j->...i', T_sb, vec)
+    T_sb = jnp.array(
+        [
+            [jnp.cos(alpha), 0.0, -jnp.sin(alpha)],
+            [0.0, 1.0, 0.0],
+            [jnp.sin(alpha), 0.0, jnp.cos(alpha)],
+        ],
+        dtype=jnp.float32,
+    )
+    return jnp.einsum("ij,...j->...i", T_sb, vec)
+
 
 def trans_stab_to_body_batch(ALPHA, VEC):
     """
@@ -461,72 +628,81 @@ def trans_stab_to_body_batch(ALPHA, VEC):
     else:  # 2D arrays
         raise ValueError(f"Unsupported ALPHA dimension: {ALPHA.ndim}")
 
+
 def aerodynamics_B_vb(V_bs):
     """
     Docstring for aerodynamics_vb
-    
+
     :param V_bs: Array of shape (..., 3) representing body-frame velocities
     :return: FORCES and MOMENTS arrays of shape (..., 3)
-    """ 
+    """
     ALPHA, BETA, V_NORM, V_SQUARED = compute_angles_batch(V_bs)
     CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
     rho = 1.185  # kg/m^3
-    FORCES_DYL = jnp.stack([
-        -0.5 * rho * V_SQUARED * CD,
-        0.5 * rho * V_SQUARED * CY,
-        -0.5 * rho * V_SQUARED * CL,
-    ], axis=-1)
+    FORCES_DYL = jnp.stack(
+        [
+            -0.5 * rho * V_SQUARED * CD,
+            0.5 * rho * V_SQUARED * CY,
+            -0.5 * rho * V_SQUARED * CL,
+        ],
+        axis=-1,
+    )
 
     FORCES_B = trans_stab_to_body_batch(ALPHA, FORCES_DYL)
 
-    MOMENTS_B = jnp.stack([
-        0.5 * rho * V_SQUARED * CLL,
-        0.5 * rho * V_SQUARED * CM,
-        0.5 * rho * V_SQUARED * CN
-    ], axis=-1)
+    MOMENTS_B = jnp.stack(
+        [
+            0.5 * rho * V_SQUARED * CLL,
+            0.5 * rho * V_SQUARED * CM,
+            0.5 * rho * V_SQUARED * CN,
+        ],
+        axis=-1,
+    )
     return FORCES_B, MOMENTS_B, ALPHA, BETA
+
 
 def test_trans_stab_to_body():
     # Test with a batch of angles and vectors
     ALPHA = jnp.array([0.0, jnp.pi / 6, jnp.pi / 4])  # 0, 30, 45 degrees
-    VEC = jnp.array([
-        [1.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0]
-    ])
+    VEC = jnp.array([[1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
     transformed_vecs = trans_stab_to_body_batch(ALPHA, VEC)
     print(f"Transformed Vectors:\n{transformed_vecs}")
+
 
 def aerodynamics_DYL_vb(V_bs):
     """
     Docstring for aerodynamics_vb
-    
+
     :param V_bs: Array of shape (..., 3) representing body-frame velocities
     :return: FORCES and MOMENTS arrays of shape (..., 3)
-    """ 
+    """
     ALPHA, BETA, V_NORM, V_SQUARED = compute_angles_batch(V_bs)
     CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
     rho = 1.185  # kg/m^3
-    FORCES = jnp.stack([
-        -0.5 * rho * V_SQUARED * CD,
-        0.5 * rho * V_SQUARED * CY,
-        -0.5 * rho * V_SQUARED * CL,
-
-    ], axis=-1)
-    MOMENTS = jnp.stack([
-        0.5 * rho * V_SQUARED * CLL,
-        0.5 * rho * V_SQUARED * CM,
-        0.5 * rho * V_SQUARED * CN
-    ], axis=-1)
+    FORCES = jnp.stack(
+        [
+            -0.5 * rho * V_SQUARED * CD,
+            0.5 * rho * V_SQUARED * CY,
+            -0.5 * rho * V_SQUARED * CL,
+        ],
+        axis=-1,
+    )
+    MOMENTS = jnp.stack(
+        [
+            0.5 * rho * V_SQUARED * CLL,
+            0.5 * rho * V_SQUARED * CM,
+            0.5 * rho * V_SQUARED * CN,
+        ],
+        axis=-1,
+    )
     return FORCES, MOMENTS, ALPHA, BETA
+
 
 def test_aerodynamics_vb():
     # Test with a batch of velocities
-    V_bs = jnp.array([
-        [10.0, 0.0, 0.0],
-        [10.0, 0.0, 10.0],
-        [10. * .707, 10.0, 10. * .707]
-    ])
+    V_bs = jnp.array(
+        [[10.0, 0.0, 0.0], [10.0, 0.0, 10.0], [10.0 * 0.707, 10.0, 10.0 * 0.707]]
+    )
     FORCES, MOMENTS, ALPHA, BETA = aerodynamics_vb(V_bs)
     print(f"FORCES: {FORCES}")
     print(f"MOMENTS: {MOMENTS}")
@@ -548,21 +724,21 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
 
     # Check if GPU is available in JAX
     devices = jax.devices()
-    device = devices[0] if devices else jax.devices('cpu')[0]
+    device = devices[0] if devices else jax.devices("cpu")[0]
     print(f"Using device: {device}")
-    if hasattr(device, 'platform'):
+    if hasattr(device, "platform"):
         print(f"Platform: {device.platform}")
 
     # Generate ranges for alpha and beta
-    alpha_deg = jnp.linspace(-180, 180, 3601)  #1-degree increments
-    beta_deg = jnp.linspace(-90, 90, 1801)   # 1-degree increments
+    alpha_deg = jnp.linspace(-180, 180, 3601)  # 1-degree increments
+    beta_deg = jnp.linspace(-90, 90, 1801)  # 1-degree increments
 
     alpha_rad = deg2rad_batch(alpha_deg)
     beta_rad = deg2rad_batch(beta_deg)
 
     # Create meshgrid
-    ALPHA_DEG, BETA_DEG = jnp.meshgrid(alpha_deg, beta_deg, indexing='ij')
-    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing='ij')
+    ALPHA_DEG, BETA_DEG = jnp.meshgrid(alpha_deg, beta_deg, indexing="ij")
+    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing="ij")
 
     print("Computing aerodynamic coefficients in batches...")
 
@@ -581,7 +757,7 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     CLL = jnp.sum(reg_cll * kCLL, axis=-1)
     CM = jnp.sum(reg_cm * kCm, axis=-1)
     CN = jnp.sum(reg_cn * kCn, axis=-1)
-    
+
     # Convert to numpy for plotting
     print("Converting results to numpy for plotting...")
     ALPHA_DEG_np = np.array(ALPHA_DEG)
@@ -596,12 +772,16 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     print("Creating plots...")
     # Create figure with 3x2 subplots
     fig = plt.figure(figsize=(15, 12))
-    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16)
+    fig.suptitle(
+        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16
+    )
 
     # CL subplot
-    ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+    ax1 = fig.add_subplot(3, 2, 1, projection="3d")
     ax1.view_init(elev=10, azim=azimuth)
-    surf1 = ax1.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap='viridis', alpha=0.8)
+    surf1 = ax1.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap="viridis", alpha=0.8
+    )
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -609,9 +789,11 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     plt.colorbar(surf1, ax=ax1, shrink=0.5)
 
     # CY subplot
-    ax2 = fig.add_subplot(3, 2, 3, projection='3d')
+    ax2 = fig.add_subplot(3, 2, 3, projection="3d")
     ax2.view_init(elev=10, azim=azimuth)
-    surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap='viridis', alpha=0.8)
+    surf2 = ax2.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap="viridis", alpha=0.8
+    )
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_Y")
@@ -619,9 +801,11 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     plt.colorbar(surf2, ax=ax2, shrink=0.5)
 
     # CD subplot
-    ax3 = fig.add_subplot(3, 2, 5, projection='3d')
+    ax3 = fig.add_subplot(3, 2, 5, projection="3d")
     ax3.view_init(elev=10, azim=azimuth)
-    surf3 = ax3.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap='viridis', alpha=0.8)
+    surf3 = ax3.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap="viridis", alpha=0.8
+    )
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -629,9 +813,11 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     plt.colorbar(surf3, ax=ax3, shrink=0.5)
 
     # CLL subplot
-    ax4 = fig.add_subplot(3, 2, 2, projection='3d')
+    ax4 = fig.add_subplot(3, 2, 2, projection="3d")
     ax4.view_init(elev=10, azim=azimuth)
-    surf4 = ax4.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap='viridis', alpha=0.8)
+    surf4 = ax4.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap="viridis", alpha=0.8
+    )
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
@@ -639,9 +825,11 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # CM subplot
-    ax5 = fig.add_subplot(3, 2, 4, projection='3d')
+    ax5 = fig.add_subplot(3, 2, 4, projection="3d")
     ax5.view_init(elev=10, azim=azimuth)
-    surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap='viridis', alpha=0.8)
+    surf5 = ax5.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap="viridis", alpha=0.8
+    )
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_m")
@@ -649,9 +837,11 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     plt.colorbar(surf5, ax=ax5, shrink=0.5)
 
     # CN subplot
-    ax6 = fig.add_subplot(3, 2, 6, projection='3d')
+    ax6 = fig.add_subplot(3, 2, 6, projection="3d")
     ax6.view_init(elev=10, azim=azimuth)
-    surf6 = ax6.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap='viridis', alpha=0.8)
+    surf6 = ax6.plot_surface(
+        ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap="viridis", alpha=0.8
+    )
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
@@ -664,9 +854,14 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     print("JAX batched mesh plotting completed successfully!")
 
     return {
-        'ALPHA_DEG': ALPHA_DEG_np, 'BETA_DEG': BETA_DEG_np,
-        'CL': CL_np, 'CD': CD_np, 'CY': CY_np,
-        'CLL': CLL_np, 'CM': CM_np, 'CN': CN_np
+        "ALPHA_DEG": ALPHA_DEG_np,
+        "BETA_DEG": BETA_DEG_np,
+        "CL": CL_np,
+        "CD": CD_np,
+        "CY": CY_np,
+        "CLL": CLL_np,
+        "CM": CM_np,
+        "CN": CN_np,
     }
 
 
@@ -674,15 +869,15 @@ def benchmark_jax_timing(mesh_size=361, num_runs=10):
     """
     Benchmark JAX computation time for aerodynamic coefficient calculations.
     """
-    print(f"\n=== JAX Performance Benchmark ===")
+    print("\n=== JAX Performance Benchmark ===")
     print(f"Mesh size: {mesh_size}x{mesh_size} points")
     print(f"Number of runs: {num_runs}")
 
     # Check device
     devices = jax.devices()
-    device = devices[0] if devices else jax.devices('cpu')[0]
+    device = devices[0] if devices else jax.devices("cpu")[0]
     print(f"Using device: {device}")
-    if hasattr(device, 'platform'):
+    if hasattr(device, "platform"):
         print(f"Platform: {device.platform}")
 
     # Generate ranges for alpha and beta
@@ -693,7 +888,7 @@ def benchmark_jax_timing(mesh_size=361, num_runs=10):
     beta_rad = deg2rad_batch(beta_deg)
 
     # Create meshgrid
-    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing='ij')
+    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing="ij")
 
     # Warmup run
     print("Performing warmup run...")
@@ -708,7 +903,7 @@ def benchmark_jax_timing(mesh_size=361, num_runs=10):
         end_time = time.time()
         elapsed = (end_time - start_time) * 1000  # Convert to milliseconds
         times.append(elapsed)
-        print(f"Run {i+1}: {elapsed:.2f} ms")
+        print(f"Run {i + 1}: {elapsed:.2f} ms")
 
     # Calculate statistics
     avg_time = sum(times) / len(times)
@@ -716,19 +911,19 @@ def benchmark_jax_timing(mesh_size=361, num_runs=10):
     max_time = max(times)
     std_time = (sum((t - avg_time) ** 2 for t in times) / len(times)) ** 0.5
 
-    print(f"\nJAX Timing Results:")
+    print("\nJAX Timing Results:")
     print(f"Average: {avg_time:.2f} ms")
     print(f"Min: {min_time:.2f} ms")
     print(f"Max: {max_time:.2f} ms")
     print(f"Std Dev: {std_time:.2f} ms")
-    print(f"Throughput: {mesh_size*mesh_size/avg_time:.0f} points/ms")
+    print(f"Throughput: {mesh_size * mesh_size / avg_time:.0f} points/ms")
 
     return {
-        'avg_time': avg_time,
-        'min_time': min_time,
-        'max_time': max_time,
-        'std_time': std_time,
-        'throughput': mesh_size*mesh_size/avg_time
+        "avg_time": avg_time,
+        "min_time": min_time,
+        "max_time": max_time,
+        "std_time": std_time,
+        "throughput": mesh_size * mesh_size / avg_time,
     }
 
 
@@ -742,7 +937,9 @@ def plot_cl_cd_cm_vs_alpha_coordinated():
     print("Computing aerodynamic coefficients under coordinated flight (beta = 0)...")
 
     # Generate alpha range (angle of attack)
-    alpha_deg = jnp.linspace(-30, 120, 1501)  # -30 to 120 degrees, 0.1 degree increments
+    alpha_deg = jnp.linspace(
+        -30, 120, 1501
+    )  # -30 to 120 degrees, 0.1 degree increments
     alpha_rad = deg2rad_batch(alpha_deg)
 
     # Coordinated flight assumption: beta = 0 (sideslip angle)
@@ -759,36 +956,39 @@ def plot_cl_cd_cm_vs_alpha_coordinated():
 
     # Create the plot with one row and three subplots
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
-    fig.suptitle('Aerodynamic Coefficients vs Angle of Attack (Coordinated Flight: β = 0°)', fontsize=16)
+    fig.suptitle(
+        "Aerodynamic Coefficients vs Angle of Attack (Coordinated Flight: β = 0°)",
+        fontsize=16,
+    )
 
     # CL subplot
-    ax1.plot(alpha_deg_np, CL_np, 'b-', linewidth=2)
-    ax1.set_xlabel('Angle of Attack α [degrees]', fontsize=12)
-    ax1.set_ylabel('CL (Lift Coefficient)', fontsize=12)
-    ax1.set_title('Lift Coefficient CL', fontsize=14)
+    ax1.plot(alpha_deg_np, CL_np, "b-", linewidth=2)
+    ax1.set_xlabel("Angle of Attack α [degrees]", fontsize=12)
+    ax1.set_ylabel("CL (Lift Coefficient)", fontsize=12)
+    ax1.set_title("Lift Coefficient CL", fontsize=14)
     ax1.grid(True, alpha=0.3)
-    ax1.axhline(y=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
-    ax1.axvline(x=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax1.axhline(y=0, color="k", linestyle="--", alpha=0.3, linewidth=1)
+    ax1.axvline(x=0, color="k", linestyle="--", alpha=0.3, linewidth=1)
     ax1.set_xlim([-30, 120])
 
     # CD subplot
-    ax2.plot(alpha_deg_np, CD_np, 'r-', linewidth=2)
-    ax2.set_xlabel('Angle of Attack α [degrees]', fontsize=12)
-    ax2.set_ylabel('CD (Drag Coefficient)', fontsize=12)
-    ax2.set_title('Drag Coefficient CD', fontsize=14)
+    ax2.plot(alpha_deg_np, CD_np, "r-", linewidth=2)
+    ax2.set_xlabel("Angle of Attack α [degrees]", fontsize=12)
+    ax2.set_ylabel("CD (Drag Coefficient)", fontsize=12)
+    ax2.set_title("Drag Coefficient CD", fontsize=14)
     ax2.grid(True, alpha=0.3)
-    ax2.axhline(y=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
-    ax2.axvline(x=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax2.axhline(y=0, color="k", linestyle="--", alpha=0.3, linewidth=1)
+    ax2.axvline(x=0, color="k", linestyle="--", alpha=0.3, linewidth=1)
     ax2.set_xlim([-30, 120])
 
     # CM subplot
-    ax3.plot(alpha_deg_np, CM_np, 'g-', linewidth=2)
-    ax3.set_xlabel('Angle of Attack α [degrees]', fontsize=12)
-    ax3.set_ylabel('CM (Pitching Moment Coefficient)', fontsize=12)
-    ax3.set_title('Pitching Moment Coefficient CM', fontsize=14)
+    ax3.plot(alpha_deg_np, CM_np, "g-", linewidth=2)
+    ax3.set_xlabel("Angle of Attack α [degrees]", fontsize=12)
+    ax3.set_ylabel("CM (Pitching Moment Coefficient)", fontsize=12)
+    ax3.set_title("Pitching Moment Coefficient CM", fontsize=14)
     ax3.grid(True, alpha=0.3)
-    ax3.axhline(y=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
-    ax3.axvline(x=0, color='k', linestyle='--', alpha=0.3, linewidth=1)
+    ax3.axhline(y=0, color="k", linestyle="--", alpha=0.3, linewidth=1)
+    ax3.axvline(x=0, color="k", linestyle="--", alpha=0.3, linewidth=1)
     ax3.set_xlim([-30, 120])
 
     plt.tight_layout()
@@ -796,15 +996,12 @@ def plot_cl_cd_cm_vs_alpha_coordinated():
 
     print("Plot completed!")
 
-    return {
-        'alpha_deg': alpha_deg_np,
-        'CL': CL_np,
-        'CD': CD_np,
-        'CM': CM_np
-    }
+    return {"alpha_deg": alpha_deg_np, "CL": CL_np, "CD": CD_np, "CM": CM_np}
 
 
-def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_jax", cache_dir=None):
+def generate_cl_cd_cm_coordinated_data(
+    filename="coordinated_aero_data_jax", cache_dir=None
+):
     """
     Generate CL, CD, CM coefficients data under coordinated flight assumption (beta = 0).
     Saves data to .npy file for later plotting.
@@ -822,7 +1019,9 @@ def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_jax", cac
     from .plotting.data_utils import save_coordinated_data
 
     # Generate alpha range (angle of attack)
-    alpha_deg = jnp.linspace(-30, 120, 1501)  # -30 to 120 degrees, 0.1 degree increments
+    alpha_deg = jnp.linspace(
+        -30, 120, 1501
+    )  # -30 to 120 degrees, 0.1 degree increments
     alpha_rad = deg2rad_batch(alpha_deg)
 
     # Coordinated flight assumption: beta = 0 (sideslip angle)
@@ -839,24 +1038,21 @@ def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_jax", cac
 
     # Save data using data utilities
     data_path = save_coordinated_data(
-        alpha_deg_np, CL_np, CD_np, CM_np,
-        filename=filename,
-        cache_dir=cache_dir
+        alpha_deg_np, CL_np, CD_np, CM_np, filename=filename, cache_dir=cache_dir
     )
 
-    print(f"Coordinated flight data generation completed!")
-    print(f"Data shape: alpha={alpha_deg_np.shape}, CL={CL_np.shape}, CD={CD_np.shape}, CM={CM_np.shape}")
+    print("Coordinated flight data generation completed!")
+    print(
+        f"Data shape: alpha={alpha_deg_np.shape}, CL={CL_np.shape}, CD={CD_np.shape}, CM={CM_np.shape}"
+    )
 
     # Return the data dictionary for immediate use
-    return {
-        'alpha_deg': alpha_deg_np,
-        'CL': CL_np,
-        'CD': CD_np,
-        'CM': CM_np
-    }
+    return {"alpha_deg": alpha_deg_np, "CL": CL_np, "CD": CD_np, "CM": CM_np}
 
 
-def generate_mesh_data_jax(filename="mesh_aero_data_jax", cache_dir=None, mesh_size=361):
+def generate_mesh_data_jax(
+    filename="mesh_aero_data_jax", cache_dir=None, mesh_size=361
+):
     """
     Generate 3D mesh data for aerodynamic coefficients using JAX.
     Saves data to .npy file for later plotting.
@@ -876,9 +1072,9 @@ def generate_mesh_data_jax(filename="mesh_aero_data_jax", cache_dir=None, mesh_s
 
     # Check if GPU is available in JAX
     devices = jax.devices()
-    device = devices[0] if devices else jax.devices('cpu')[0]
+    device = devices[0] if devices else jax.devices("cpu")[0]
     print(f"Using device: {device}")
-    if hasattr(device, 'platform'):
+    if hasattr(device, "platform"):
         print(f"Platform: {device.platform}")
 
     # Generate ranges for alpha and beta
@@ -889,8 +1085,8 @@ def generate_mesh_data_jax(filename="mesh_aero_data_jax", cache_dir=None, mesh_s
     beta_rad = deg2rad_batch(beta_deg)
 
     # Create meshgrid
-    ALPHA_DEG, BETA_DEG = jnp.meshgrid(alpha_deg, beta_deg, indexing='ij')
-    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing='ij')
+    ALPHA_DEG, BETA_DEG = jnp.meshgrid(alpha_deg, beta_deg, indexing="ij")
+    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing="ij")
 
     print("Computing aerodynamic coefficients in batches...")
 
@@ -909,25 +1105,34 @@ def generate_mesh_data_jax(filename="mesh_aero_data_jax", cache_dir=None, mesh_s
 
     # Save data using data utilities
     data_path = save_mesh_data(
-        ALPHA_DEG_np, BETA_DEG_np, CL_np, CD_np, CY_np, CLL_np, CM_np, CN_np,
+        ALPHA_DEG_np,
+        BETA_DEG_np,
+        CL_np,
+        CD_np,
+        CY_np,
+        CLL_np,
+        CM_np,
+        CN_np,
         filename=filename,
         cache_dir=cache_dir,
-        backend="jax"
+        backend="jax",
     )
 
-    print(f"JAX mesh data generation completed!")
-    print(f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}")
+    print("JAX mesh data generation completed!")
+    print(
+        f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}"
+    )
 
     # Return the data dictionary for immediate use
     return {
-        'ALPHA_DEG': ALPHA_DEG_np,
-        'BETA_DEG': BETA_DEG_np,
-        'CL': CL_np,
-        'CD': CD_np,
-        'CY': CY_np,
-        'CLL': CLL_np,
-        'CM': CM_np,
-        'CN': CN_np
+        "ALPHA_DEG": ALPHA_DEG_np,
+        "BETA_DEG": BETA_DEG_np,
+        "CL": CL_np,
+        "CD": CD_np,
+        "CY": CY_np,
+        "CLL": CLL_np,
+        "CM": CM_np,
+        "CN": CN_np,
     }
 
 

@@ -17,9 +17,9 @@ def main():
     """Run simulation and visualize results."""
     # Parse command line arguments
     sim_time = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
-    collect_aero = sys.argv[2].lower() == 'true' if len(sys.argv) > 2 else True
+    collect_aero = sys.argv[2].lower() == "true" if len(sys.argv) > 2 else True
 
-    print(f"Running GD model simulation...")
+    print("Running GD model simulation...")
     print(f"  Simulation time: {sim_time}s")
     print(f"  Collect aero data: {collect_aero}")
 
@@ -29,8 +29,8 @@ def main():
 
     # Initial state: hover at 10m altitude with forward velocity
     p0 = np.array([0.0, 0.0, -10.0])  # Position (NED frame)
-    v0 = np.array([5.0, 0.0, 0.0])    # Forward velocity
-    r0 = np.array([0.0, 0.0, 0.0])    # Angular rates
+    v0 = np.array([5.0, 0.0, 0.0])  # Forward velocity
+    r0 = np.array([0.0, 0.0, 0.0])  # Angular rates
     q0 = np.array([1.0, 0.0, 0.0, 0.0])  # Quaternion (level)
     u0 = np.array([2.4525, 2.4525, 2.4525, 2.4525])  # Motor thrusts (hover)
 
@@ -43,10 +43,12 @@ def main():
 
     # Run simulation
     print(f"Running simulation with {N} steps...")
-    results = sim.simulate(initial_state, control_trajectory, collect_aero_data=collect_aero)
+    results = sim.simulate(
+        initial_state, control_trajectory, collect_aero_data=collect_aero
+    )
 
     # Check for NaN values
-    if np.any(np.isnan(results['states'])):
+    if np.any(np.isnan(results["states"])):
         print("❌ Simulation contains NaN values!")
         return 1
 
@@ -55,7 +57,7 @@ def main():
     print(f"   Final velocity: {results['velocity'][-1]}")
 
     # Get aerodynamic data
-    aero_data = results.get('aero_data', None)
+    aero_data = results.get("aero_data", None)
     if aero_data:
         print(f"   Collected {len(aero_data)} aero data points")
 
@@ -63,14 +65,15 @@ def main():
     print("Generating plots...")
     import os
     import matplotlib
-    matplotlib.use('Agg')  # Non-interactive backend
+
+    matplotlib.use("Agg")  # Non-interactive backend
 
     # Create output directory if it doesn't exist
-    output_dir = os.path.join(os.environ['AP_PNC_DIR'], 'temp_data')
+    output_dir = os.path.join(os.environ["AP_PNC_DIR"], "temp_data")
     os.makedirs(output_dir, exist_ok=True)
 
     # Save plots
-    save_path = os.path.join(output_dir, 'sim_results')
+    save_path = os.path.join(output_dir, "sim_results")
     plot_simulation_results(results, aero_data, show=False, save_path=save_path)
     print(f"✅ Plots saved to {save_path}_fig*.png")
 

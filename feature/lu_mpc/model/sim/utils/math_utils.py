@@ -13,8 +13,9 @@ import numpy as np
 from typing import Union
 
 
-def quat_multiply(q1: Union[cs.SX, np.ndarray],
-                  q2: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+def quat_multiply(
+    q1: Union[cs.SX, np.ndarray], q2: Union[cs.SX, np.ndarray]
+) -> Union[cs.SX, np.ndarray]:
     """
     Quaternion multiplication: q1 * q2.
 
@@ -31,19 +32,21 @@ def quat_multiply(q1: Union[cs.SX, np.ndarray],
     if isinstance(q1, cs.SX) or isinstance(q2, cs.SX):
         # CasADi version
         return cs.vertcat(
-            w1*w2 - x1*x2 - y1*y2 - z1*z2,
-            w1*x2 + x1*w2 + y1*z2 - z1*y2,
-            w1*y2 - x1*z2 + y1*w2 + z1*x2,
-            w1*z2 + x1*y2 - y1*x2 + z1*w2
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
         )
     else:
         # NumPy version
-        return np.array([
-            w1*w2 - x1*x2 - y1*y2 - z1*z2,
-            w1*x2 + x1*w2 + y1*z2 - z1*y2,
-            w1*y2 - x1*z2 + y1*w2 + z1*x2,
-            w1*z2 + x1*y2 - y1*x2 + z1*w2
-        ])
+        return np.array(
+            [
+                w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+                w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+                w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+                w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+            ]
+        )
 
 
 def quat_to_rotmat(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
@@ -61,17 +64,43 @@ def quat_to_rotmat(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
     if isinstance(q, cs.SX):
         # CasADi version
         return cs.vertcat(
-            cs.horzcat(1-2*(qy**2+qz**2), 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)),
-            cs.horzcat(2*(qx*qy+qw*qz), 1-2*(qx**2+qz**2), 2*(qy*qz-qw*qx)),
-            cs.horzcat(2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), 1-2*(qx**2+qy**2))
+            cs.horzcat(
+                1 - 2 * (qy**2 + qz**2),
+                2 * (qx * qy - qw * qz),
+                2 * (qx * qz + qw * qy),
+            ),
+            cs.horzcat(
+                2 * (qx * qy + qw * qz),
+                1 - 2 * (qx**2 + qz**2),
+                2 * (qy * qz - qw * qx),
+            ),
+            cs.horzcat(
+                2 * (qx * qz - qw * qy),
+                2 * (qy * qz + qw * qx),
+                1 - 2 * (qx**2 + qy**2),
+            ),
         )
     else:
         # NumPy version
-        return np.array([
-            [1-2*(qy**2+qz**2), 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)],
-            [2*(qx*qy+qw*qz), 1-2*(qx**2+qz**2), 2*(qy*qz-qw*qx)],
-            [2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), 1-2*(qx**2+qy**2)]
-        ])
+        return np.array(
+            [
+                [
+                    1 - 2 * (qy**2 + qz**2),
+                    2 * (qx * qy - qw * qz),
+                    2 * (qx * qz + qw * qy),
+                ],
+                [
+                    2 * (qx * qy + qw * qz),
+                    1 - 2 * (qx**2 + qz**2),
+                    2 * (qy * qz - qw * qx),
+                ],
+                [
+                    2 * (qx * qz - qw * qy),
+                    2 * (qy * qz + qw * qx),
+                    1 - 2 * (qx**2 + qy**2),
+                ],
+            ]
+        )
 
 
 def skew_symmetric(v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
@@ -91,19 +120,16 @@ def skew_symmetric(v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
         return cs.vertcat(
             cs.horzcat(0, -v[2], v[1]),
             cs.horzcat(v[2], 0, -v[0]),
-            cs.horzcat(-v[1], v[0], 0)
+            cs.horzcat(-v[1], v[0], 0),
         )
     else:
         # NumPy version
-        return np.array([
-            [0, -v[2], v[1]],
-            [v[2], 0, -v[0]],
-            [-v[1], v[0], 0]
-        ])
+        return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
 
 
-def quat_apply(q: Union[cs.SX, np.ndarray],
-               v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+def quat_apply(
+    q: Union[cs.SX, np.ndarray], v: Union[cs.SX, np.ndarray]
+) -> Union[cs.SX, np.ndarray]:
     """
     Apply quaternion rotation to a vector.
 
@@ -124,11 +150,16 @@ def quat_apply(q: Union[cs.SX, np.ndarray],
 
     # v' = v + 2 * cross(q_xyz, cross(q_xyz, v) + q_w * v)
     t = 2.0 * cs.cross(q_xyz, v) if isinstance(q, cs.SX) else 2.0 * np.cross(q_xyz, v)
-    return v + qw * t + cs.cross(q_xyz, t) if isinstance(q, cs.SX) else v + qw * t + np.cross(q_xyz, t)
+    return (
+        v + qw * t + cs.cross(q_xyz, t)
+        if isinstance(q, cs.SX)
+        else v + qw * t + np.cross(q_xyz, t)
+    )
 
 
-def quat_apply_inverse(q: Union[cs.SX, np.ndarray],
-                       v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+def quat_apply_inverse(
+    q: Union[cs.SX, np.ndarray], v: Union[cs.SX, np.ndarray]
+) -> Union[cs.SX, np.ndarray]:
     """
     Apply inverse quaternion rotation to a vector.
 
@@ -151,16 +182,20 @@ def quat_apply_inverse(q: Union[cs.SX, np.ndarray],
     # v' = v + 2 * cross(q_xyz, cross(q_xyz, v) - q_w * v)
     # Equivalent to rotating by conjugate [w, -x, -y, -z]
     t = 2.0 * cs.cross(q_xyz, v) if isinstance(q, cs.SX) else 2.0 * np.cross(q_xyz, v)
-    return v - qw * t + cs.cross(q_xyz, t) if isinstance(q, cs.SX) else v - qw * t + np.cross(q_xyz, t)
+    return (
+        v - qw * t + cs.cross(q_xyz, t)
+        if isinstance(q, cs.SX)
+        else v - qw * t + np.cross(q_xyz, t)
+    )
 
 
 def quat_to_euler(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
     """
     Convert quaternion to Euler angles (roll, pitch, yaw) using Z-X-Y intrinsic sequence.
-    
+
     Derivation:
     R_zxy = R_z(yaw) * R_x(roll) * R_y(pitch)
-    
+
     Equations:
     - sin(roll)  = R[2,1] = 2(wx + yz)
     - tan(yaw)   = -R[0,1] / R[1,1] = 2(wz - xy) / (1 - 2(x^2 + z^2))
@@ -179,13 +214,13 @@ def quat_to_euler(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
         # --- Roll (x-axis rotation) ---
         # Range: [-pi/2, pi/2]
         sin_roll = 2 * (qw * qx + qy * qz)
-        
+
         # Handle gimbal lock (singularity at +/- 90 degrees)
-        roll = cs.if_else(sin_roll >= 1,
-                          cs.pi/2,
-                          cs.if_else(sin_roll <= -1,
-                                     -cs.pi/2,
-                                     cs.asin(sin_roll)))
+        roll = cs.if_else(
+            sin_roll >= 1,
+            cs.pi / 2,
+            cs.if_else(sin_roll <= -1, -cs.pi / 2, cs.asin(sin_roll)),
+        )
 
         # --- Pitch (y-axis rotation) ---
         # atan2(num, den) handles the signs correctly
@@ -221,9 +256,11 @@ def quat_to_euler(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
             # Roll
             sin_roll = 2 * (qw * qx + qy * qz)
             # Handle potential numerical errors outside [-1, 1]
-            roll = np.where(np.abs(sin_roll) >= 1,
-                            np.copysign(np.pi / 2, sin_roll),
-                            np.arcsin(np.clip(sin_roll, -1.0, 1.0)))
+            roll = np.where(
+                np.abs(sin_roll) >= 1,
+                np.copysign(np.pi / 2, sin_roll),
+                np.arcsin(np.clip(sin_roll, -1.0, 1.0)),
+            )
 
             # Pitch
             pitch = np.arctan2(2 * (qw * qy - qx * qz), 1 - 2 * (qx**2 + qy**2))
@@ -232,6 +269,7 @@ def quat_to_euler(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
             yaw = np.arctan2(2 * (qw * qz - qx * qy), 1 - 2 * (qx**2 + qz**2))
 
             return np.stack([roll, pitch, yaw], axis=1)
+
 
 # Convenience aliases for backward compatibility
 def quat_multiply_casadi(q1: cs.SX, q2: cs.SX) -> cs.SX:
