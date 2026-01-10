@@ -65,3 +65,4 @@ output_csv/*
 # python
 *egg-info/
 *.npy
+claude_temp/
