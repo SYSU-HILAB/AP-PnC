@@ -102,6 +102,58 @@ def skew_symmetric(v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
         ])
 
 
+def quat_apply(q: Union[cs.SX, np.ndarray],
+               v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+    """
+    Apply quaternion rotation to a vector.
+
+    Rotates vector v by quaternion q using the formula:
+    v' = v + 2 * cross(q_xyz, cross(q_xyz, v) + q_w * v)
+
+    This is more efficient than converting to rotation matrix first.
+
+    Args:
+        q: Quaternion [w, x, y, z] where w is the scalar part
+        v: 3D vector [vx, vy, vz]
+
+    Returns:
+        Rotated 3D vector
+    """
+    qw, qx, qy, qz = q[0], q[1], q[2], q[3]
+    q_xyz = cs.vertcat(qx, qy, qz) if isinstance(q, cs.SX) else np.array([qx, qy, qz])
+
+    # v' = v + 2 * cross(q_xyz, cross(q_xyz, v) + q_w * v)
+    t = 2.0 * cs.cross(q_xyz, v) if isinstance(q, cs.SX) else 2.0 * np.cross(q_xyz, v)
+    return v + qw * t + cs.cross(q_xyz, t) if isinstance(q, cs.SX) else v + qw * t + np.cross(q_xyz, t)
+
+
+def quat_apply_inverse(q: Union[cs.SX, np.ndarray],
+                       v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+    """
+    Apply inverse quaternion rotation to a vector.
+
+    Rotates vector v by the inverse of quaternion q (equivalent to
+    rotating by the conjugate). Uses the formula:
+    v' = v + 2 * cross(q_xyz, cross(q_xyz, v) - q_w * v)
+
+    This is more efficient than converting to rotation matrix and transposing.
+
+    Args:
+        q: Quaternion [w, x, y, z] where w is the scalar part
+        v: 3D vector [vx, vy, vz]
+
+    Returns:
+        Rotated 3D vector (by inverse of q)
+    """
+    qw, qx, qy, qz = q[0], q[1], q[2], q[3]
+    q_xyz = cs.vertcat(qx, qy, qz) if isinstance(q, cs.SX) else np.array([qx, qy, qz])
+
+    # v' = v + 2 * cross(q_xyz, cross(q_xyz, v) - q_w * v)
+    # Equivalent to rotating by conjugate [w, -x, -y, -z]
+    t = 2.0 * cs.cross(q_xyz, v) if isinstance(q, cs.SX) else 2.0 * np.cross(q_xyz, v)
+    return v - qw * t + cs.cross(q_xyz, t) if isinstance(q, cs.SX) else v - qw * t + np.cross(q_xyz, t)
+
+
 def quat_to_euler(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
     """
     Convert quaternion to Euler angles (roll, pitch, yaw) using Z-X-Y intrinsic sequence.

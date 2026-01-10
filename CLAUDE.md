@@ -28,3 +28,52 @@ When creating configurable functions or classes, follow this pattern:
 
 ## Scope
 We only focus on the $AP_PNC_DIR/feature/lu_mpc/ folder, everything else is not considered.
+
+## Feature Planning (claude_plans/)
+
+### Store Feature Development Plans
+When planning new features or significant changes:
+1. **Create plan files** in `$AP_PNC_DIR/feature/lu_mpc/claude_plans/` directory
+2. **Use descriptive names**: `[feature_name].md` (e.g., `ros2_debug_viz.md`)
+3. **Include in plan**:
+   - Overview and requirements
+   - Architecture design with loose coupling principles
+   - Directory structure for new modules
+   - Implementation steps
+   - Critical files to create/modify
+   - Verification/testing steps
+
+### Plan File Template
+```markdown
+# [Feature Name]
+
+## Overview
+[Brief description of what this feature does]
+
+## Architecture: Loose Coupling Principles
+[Diagram or description of layered architecture]
+
+## Directory Structure
+```
+feature/lu_mpc/
+└── [new modules]
+```
+
+## Implementation Plan
+### Step 1: [Layer/Module Name]
+**File**: `path/to/file.py`
+[Description and code snippets]
+
+## Critical Files to Create/Modify
+1. `path/to/file1.py` - Description
+2. `path/to/file2.py` - Description
+
+## Verification
+[Steps to verify the implementation works]
+```
+
+### Reference Existing Plans
+Before starting implementation, check existing plans in `claude_plans/` for:
+- Similar patterns and approaches
+- Existing infrastructure to reuse
+- Consistent architectural decisions

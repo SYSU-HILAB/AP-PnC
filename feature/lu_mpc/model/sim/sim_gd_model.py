@@ -14,7 +14,7 @@ import dataclasses
 from typing import Tuple, Optional, List
 from acados_template import AcadosModel, AcadosSim, AcadosSimSolver
 from .gd_model_casadi import SymbolicGdModel, GdModelConfig, DEFAULT_CONFIG
-from .utils.math_utils import quat_multiply, quat_to_rotmat, skew_symmetric
+from .utils.math_utils import quat_multiply, quat_to_rotmat, skew_symmetric, quat_apply, quat_apply_inverse
 
 
 @dataclasses.dataclass
@@ -28,7 +28,7 @@ class GdSimConfig:
     integrator_type: str = 'ERK'  # 'IRK', 'ERK', 'GNSF'
     num_stages: int = 4  # Number of stages for implicit integrator
     num_steps: int = 1  # Number of steps per integration interval
-    # newton_iter: int = 3  # Newton iterations for implicit solver
+    newton_iter: int = 3  # Newton iterations for implicit solver
     #   <turningDirection>cw</turningDirection>
     #   <timeConstantUp>0.0125</timeConstantUp>
     #   <timeConstantDown>0.025</timeConstantDown>
@@ -136,7 +136,7 @@ class GdModelSimulator:
         )
 
         # Get velocity in body frame for aerodynamics
-        vel_b_wing_frd = cs.mtimes(q_wing_frd, v)
+        vel_b_wing_frd = quat_apply(q_wing_frd, v)
 
         # Get aerodynamic forces and moments from GD model
         # The GD model expects body-frame velocity in FRD
@@ -146,9 +146,9 @@ class GdModelSimulator:
         aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
 
         # Transform aerodynamic forces back to FLU frame, then to body frame
-        # rec: TODO, use standard quat transformations
-        aero_forces_quad_flu = cs.mtimes(quat_to_rotmat(trans_wing_frd_quad_flu), aero_forces_wing_frd)
-        aero_moments_quad_flu = cs.mtimes(quat_to_rotmat(trans_wing_frd_quad_flu), aero_moments_wing_frd)
+        # Use inverse transformation to go from wing FRD to quad FLU
+        aero_forces_quad_flu = quat_apply_inverse(trans_wing_frd_quad_flu, aero_forces_wing_frd)
+        aero_moments_quad_flu = quat_apply_inverse(trans_wing_frd_quad_flu, aero_moments_wing_frd)
         # Use GD model forces directly
         aero_forces_body = aero_forces_quad_flu
 
@@ -156,8 +156,7 @@ class GdModelSimulator:
         total_forces_body = thrust_body + aero_forces_body
         total_moments_body = tau_body + aero_moments_quad_flu  # Moments are frame-independent
         # Transform forces to world frame for dynamics
-        R_body_to_world = quat_to_rotmat(q_quad_flu)
-        forces_world = cs.mtimes(R_body_to_world, total_forces_body)
+        forces_world = quat_apply(q_quad_flu, total_forces_body)
 
         # Dynamics equations
         p_dot_expr = v
@@ -308,28 +307,42 @@ class GdModelSimulator:
 
         # Extract state variables
         v = state[3:6]
-        q = state[9:13]
+        q_quad_flu = state[9:13]
 
-        # Transformations
-        q_world = quat_multiply(self.config.q_ned_to_world, q)
-        R_world_to_body = quat_to_rotmat(q_world).T
-        vel_body = R_world_to_body @ v
-        R_flu_to_frd = quat_to_rotmat(self.config.q_flu_to_frd)
-        vel_frd = R_flu_to_frd @ vel_body
+        # Transformations: world -> quad FLU -> wing FRD
+        # World to quad FLU (inverse of quad FLU to world)
+        vel_quad_flu = quat_apply_inverse(q_quad_flu, v)
+
+        # Quad FLU to wing FRD
+        trans_wing_frd_quad_flu = self.config.trans_wing_frd_quad_flu
+        vel_wing_frd = quat_apply(trans_wing_frd_quad_flu, vel_quad_flu)
 
         # Get aerodynamic forces from GD model
-        forces, moments, alpha, beta = self.aero_model.evaluate(vel_frd)
+        aero_result = self.aero_model.func(cs.DM(vel_wing_frd))
+        aero_forces_moments = aero_result[0]
+        forces_wing_frd = np.array(aero_forces_moments[:3]).flatten()
+        moments_wing_frd = np.array(aero_forces_moments[3:6]).flatten()
 
-        # Transform forces back to body frame
-        forces_body = R_flu_to_frd.T @ forces
+        # Transform forces back to quad FLU frame
+        forces_quad_flu = quat_apply_inverse(trans_wing_frd_quad_flu, forces_wing_frd)
+
+        # Calculate alpha and beta from velocity
+        vx, vy, vz = vel_wing_frd
+        v_total = np.sqrt(vx**2 + vy**2 + vz**2)
+        if v_total > 1e-6:
+            alpha = np.arctan2(vz, vx)
+            beta = np.arcsin(np.clip(vy / v_total, -1, 1))
+        else:
+            alpha = 0.0
+            beta = 0.0
 
         return {
-            'forces_body': forces_body,
-            'moments_body': moments,
+            'forces_body': forces_quad_flu,
+            'moments_body': moments_wing_frd,
             'alpha': alpha,
             'beta': beta,
-            'vel_body': vel_body,
-            'vel_frd': vel_frd
+            'vel_body': vel_quad_flu,
+            'vel_frd': vel_wing_frd
         }
 
 
