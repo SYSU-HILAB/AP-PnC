@@ -1,22 +1,4 @@
 # Installations
-
-## Preliminary
-```shell
-git clone https://github.com/WarriorHanamy/AP-PnC.git --recursive
-```
-
-In lumpc branch
-
-Please install
-
-pip install jax jaxlib jaxopt
-
-for jax batched operations
-
-See the justfile.
-
----
-
 ## Python Wrapper (`pyp`)
 
 The `pyp` script provides a native Python wrapper that automatically locates and executes the project's Python interpreter from `.acados_venv`. It works both in the main repository and in git worktrees.
@@ -61,12 +43,3 @@ Use `pyp` when you need to run Python commands outside of the `justfile` recipes
 - In CI/CD pipelines
 - From other scripts
 - When running Python interactively from the terminal
-- When you don't have `just` installed
-
-### Installation
-
-The `pyp` script should already be executable in the repository. If not:
-
-```shell
-chmod +x pyp
-```
