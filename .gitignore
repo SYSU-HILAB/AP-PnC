@@ -39,8 +39,6 @@ src/spdlog/
 bags/
 output_csv/
 
-# docs
-docs/
 *.csv
 env/
 

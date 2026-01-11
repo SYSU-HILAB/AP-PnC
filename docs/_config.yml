@@ -1,0 +1,38 @@
+# GitHub Pages Configuration for AP-PnC Documentation
+
+theme: jekyll-theme-minimal
+title: AP-PnC Documentation
+description: Autonomous Parking with Predictive control - Modern software design for robotics
+show_downloads: false
+github:
+  repository_url: https://github.com/WarriorHanamy/AP-PnC
+  project_title: AP-PnC
+
+# Navigation
+header_pages:
+  - index.md
+  - why-wrapped-python.md
+
+# Markdown settings
+markdown: kramdown
+highlighter: rouge
+
+# Plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Exclude from processing
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - .gitignore
+  - .github/
