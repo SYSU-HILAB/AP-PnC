@@ -18,14 +18,12 @@ acados_ocp*.json
 *.pyc
 *.png
 matlab_process/
-**test**
 **.svg
 bags/
 *rosbag*
 *pyc
 *.ulg
 *.pcap
-*test*
 
 colcon*
 *warm_start*
