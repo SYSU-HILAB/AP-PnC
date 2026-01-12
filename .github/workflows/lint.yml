@@ -18,10 +18,10 @@ jobs:
           python-version: '3.10'
 
       - name: Install Ruff
-        run: pip install ruff
+        run: pip install 'ruff==0.5.4'
 
-      - name: Run Ruff Check
-        run: ruff check feature/ --select=E,F,W,I --fix --exit-zero
+      - name: Ruff Lint (tests)
+        run: ruff check tests
 
-      - name: Run Ruff Format Check
-        run: ruff format --check feature/
+      - name: Ruff Format Check (tests)
+        run: ruff format --check tests

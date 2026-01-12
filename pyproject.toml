@@ -12,3 +12,44 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]  # Look for packages in the current directory
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+required-version = "0.5.4"
+src = ["feature", "src", "tests"]
+extend-exclude = [
+    "artifacts",
+    "docs",
+    "mpc_framework",
+    "installations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "B",
+    "UP",
+    "NPY",
+    "RUF100",
+]
+ignore = [
+    # Handled by the formatter and project layout
+    "E203",
+    "E266",
+    "E501",
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["feature", "src"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"

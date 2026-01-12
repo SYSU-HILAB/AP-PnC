@@ -50,3 +50,13 @@ repos:
           - "#"
           - --use-current-year
           - --remove-header
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.4
+    hooks:
+      - id: ruff
+        name: Ruff Lint (tests)
+        files: ^tests/
+      - id: ruff-format
+        name: Ruff Format (tests)
+        files: ^tests/

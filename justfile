@@ -35,7 +35,7 @@ install-all: install-venv
     echo "✓ Installation complete"
 
 install-test-deps:
-    ./pyp -m pip install --upgrade pytest
+    ./pyp -m pip install --upgrade pytest 'ruff==0.5.4'
 
 status:
     #!/usr/bin/env bash
@@ -280,6 +280,12 @@ sim-viz-gd sim_time="2.0" collect_aero="true":
 
 test-all:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc
+
+lint-tests:
+    ./pyp -m ruff check tests
+
+format-tests:
+    ./pyp -m ruff format tests
 
 jax-trim:
     #!/usr/bin/env bash
