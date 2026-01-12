@@ -95,9 +95,8 @@ generate-mesh-data-torch mesh_size="361":
     ./pyp -c "from feature.lu_mpc.model.sim.gd_model_torch import generate_mesh_data_torch; generate_mesh_data_torch(mesh_size={{mesh_size}})"
 
 # === PLOTTING COMMANDS ===
-# All plotting commands now skip data regeneration by default for faster execution.
-# Use the --force or -f flag to regenerate data before plotting when needed.
-# Example: just plot-aero --force or just plot-mesh-aero -f 45.0 custom_data.npy
+# Plotting commands rely on their modules to auto-generate cached data when needed.
+# Use the generate-* recipes manually if you need to refresh cached artifacts.
 
 plot-aero force_flag="" data_file="":
     #!/usr/bin/env bash
@@ -140,15 +139,10 @@ plot-mesh-aero azimuth="-127.5" data_file="mesh_aero_data.npy":
 
     ./pyp -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh; plot_aerodynamic_mesh('$data_file', azimuth='{{azimuth}}')"
 
-plot-mesh-aero-torch force_flag="" azimuth="-127.5" data_file="mesh_aero_data_torch.npy":
+plot-mesh-aero-torch azimuth="-127.5" data_file="mesh_aero_data_torch.npy":
     #!/usr/bin/env bash
     set -euo pipefail
     git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
-
-    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
-        echo "🔄 Regenerating PyTorch mesh data..."
-        just generate-mesh-data-torch
-    fi
 
     if [ "{{data_file}}" = "mesh_aero_data_torch.npy" ]; then
         data_file="$git_root/feature/lu_mpc/.cache/mesh_aero_data_torch.npy"
@@ -156,17 +150,12 @@ plot-mesh-aero-torch force_flag="" azimuth="-127.5" data_file="mesh_aero_data_to
         data_file="{{data_file}}"
     fi
 
-    ./pyp -m feature.lu_mpc.plotting.mesh_plots "$data_file" --azimuth "{{azimuth}}" --backend torch --no-show
+    ./pyp -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_torch; plot_aerodynamic_mesh_torch('$data_file', azimuth='{{azimuth}}', show_plot=False)"
 
-plot-mesh-aero-jax force_flag="" azimuth="-127.5" data_file="mesh_aero_data_jax.npy":
+plot-mesh-aero-jax azimuth="-127.5" data_file="mesh_aero_data_jax.npy":
     #!/usr/bin/env bash
     set -euo pipefail
     git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
-
-    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
-        echo "🔄 Regenerating JAX mesh data..."
-        just generate-mesh-data-jax
-    fi
 
     if [ "{{data_file}}" = "mesh_aero_data_jax.npy" ]; then
         data_file="$git_root/feature/lu_mpc/.cache/mesh_aero_data_jax.npy"
@@ -174,45 +163,20 @@ plot-mesh-aero-jax force_flag="" azimuth="-127.5" data_file="mesh_aero_data_jax.
         data_file="{{data_file}}"
     fi
 
-    ./pyp -m feature.lu_mpc.plotting.mesh_plots "$data_file" --azimuth "{{azimuth}}" --backend jax --no-show
+    ./pyp -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_jax; plot_aerodynamic_mesh_jax('$data_file', azimuth='{{azimuth}}', show_plot=False)"
 
-plot-mesh-aero-casadi force_flag="":
+plot-mesh-aero-casadi azimuth="-127.5" data_file="mesh_aero_data_casadi.npy":
     #!/usr/bin/env bash
     set -euo pipefail
     git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
 
-    if [ "{{force_flag}}" = "--force" ] || [ "{{force_flag}}" = "-f" ]; then
-        echo "🔄 Regenerating CasADi mesh data..."
-        just generate-mesh-data-casadi
+    if [ "{{data_file}}" = "mesh_aero_data_casadi.npy" ]; then
+        data_file="$git_root/feature/lu_mpc/.cache/mesh_aero_data_casadi.npy"
+    else
+        data_file="{{data_file}}"
     fi
 
-    ./pyp -m feature.lu_mpc.plotting.mesh_plots "$git_root/feature/lu_mpc/.cache/mesh_aero_data_casadi.npy" --backend casadi --no-show
-
-# === COMBINED COMMANDS ===
-
-plot-aero-full:
-    just generate-coordinated-data
-    just plot-aero
-
-plot-all-aero-full:
-    echo "⚠️  Data generation commands are no longer available. Please ensure data file exists."
-    just plot-all-aero
-
-plot-mesh-aero-full azimuth="-127.5":
-    echo "⚠️  Data generation commands are no longer available. Please ensure data file exists."
-    just plot-mesh-aero {{azimuth}}
-
-plot-mesh-aero-jax-full azimuth="125.5":
-    just generate-mesh-data-jax
-    just plot-mesh-aero-jax {{azimuth}}
-
-plot-mesh-aero-casadi-full:
-    just generate-mesh-data-casadi
-    just plot-mesh-aero-casadi
-
-plot-mesh-aero-torch-full azimuth="-127.5":
-    just generate-mesh-data-torch
-    just plot-mesh-aero-torch {{azimuth}}
+    ./pyp -c "from feature.lu_mpc.plotting.mesh_plots import plot_aerodynamic_mesh_casadi; plot_aerodynamic_mesh_casadi('$data_file', azimuth='{{azimuth}}', show_plot=False)"
 
 compare-timing:
     ./pyp scripts/compare_timing.py
@@ -292,10 +256,6 @@ jax-trim:
     export JAX_PLATFORM_NAME=cpu
     ./pyp tests/lu_mpc/analysis/user_test_jax_trim.py
 
-# Legacy commands
-plot-coordinated-aero:
-    just plot-aero-full
-
 # Aliases
 alias p := plot-aero
 alias pa := plot-all-aero
@@ -303,7 +263,6 @@ alias pm := plot-mesh-aero
 alias pt := plot-mesh-aero-torch
 alias pj := plot-mesh-aero-jax
 alias pc := plot-mesh-aero-casadi
-alias pca := plot-coordinated-aero
 alias ct := compare-timing
 alias bj := benchmark-jax
 alias bt := benchmark-torch
