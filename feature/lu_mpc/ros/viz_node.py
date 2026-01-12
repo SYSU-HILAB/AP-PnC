@@ -13,11 +13,12 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 import numpy as np
 from pathlib import Path
 from typing import Optional
+import time
 
 # ROS2 messages
 from nav_msgs.msg import Odometry, Path
-from geometry_msgs.msg import Vector3, Quaternion, PoseStamped, Twist
-from std_msgs.msg import Float32MultiArray, Header
+from geometry_msgs.msg import Vector3, Quaternion, PoseStamped, Twist, Point
+from std_msgs.msg import Float32MultiArray
 
 from feature.lu_mpc.model.sim.sim_gd_model import create_gd_simulator, GdSimConfig
 from feature.lu_mpc.controller.trajectory_loader import (
@@ -26,17 +27,76 @@ from feature.lu_mpc.controller.trajectory_loader import (
 )
 from feature.lu_mpc.controller.ctrl_proposed_nmpc import ProposedNmpcController
 
+TOPIC_PREFIX = "/nmpc"
+
+
+def make_topic(name: str) -> str:
+    """
+    Build a fully-qualified ROS2 topic name under the nMPC namespace.
+
+    Args:
+        name: Topic suffix, e.g. "reference_path"
+
+    Returns:
+        Full topic path ("/nmpc/reference_path").
+    """
+    clean_prefix = TOPIC_PREFIX if TOPIC_PREFIX.startswith("/") else f"/{TOPIC_PREFIX}"
+    return f"{clean_prefix}/{name}".replace("//", "/")
+
+
+def compute_reference_sample_times(
+    trajectory: TrajectoryReference,
+    sample_count: int,
+    max_duration: Optional[float] = None,
+) -> np.ndarray:
+    """
+    Generate sampling timestamps that respect the CSV's full time-span.
+
+    Args:
+        trajectory: Loaded trajectory reference
+        sample_count: Number of time instants to sample
+        max_duration: Optional cap (seconds) relative to the CSV start time
+
+    Returns:
+        Monotonically increasing numpy array of timestamps.
+    """
+    if sample_count < 2:
+        raise ValueError("sample_count must be >= 2 for a Path message")
+
+    time_vector = np.asarray(trajectory.time, dtype=float)
+    start_time = float(time_vector[0])
+    end_time = float(time_vector[-1])
+
+    if max_duration is not None:
+        end_time = min(end_time, start_time + max_duration)
+
+    if end_time <= start_time:
+        return np.full(sample_count, start_time, dtype=float)
+
+    return np.linspace(start_time, end_time, sample_count)
+
+
+def sleep_period(duration: float) -> None:
+    """
+    Sleep for the given duration if it is positive.
+
+    Separated into a helper so unit tests can patch time.sleep.
+    """
+    if duration <= 0.0:
+        return
+    time.sleep(duration)
+
 
 class StatePublisherNode(Node):
     """
     ROS2 node that publishes simulation state for visualization.
 
     Topics:
-        /odometry: Odometry message with position, velocity, orientation
-        /aero_data: Custom aerodynamic data message
-        /reference_trajectory: Reference path from CSV
-        /tracking_trajectory: Actual path from simulator
-        /motor_thrusts: Motor thrust commands
+        /nmpc/odometry: Odometry message with position, velocity, orientation
+        /nmpc/aero_forces: Aerodynamic force vector (placeholder for RViz markers)
+        /nmpc/reference_path: Reference path from CSV
+        /nmpc/tracking_path: Actual path from simulator
+        /nmpc/motor_thrusts: Motor thrust commands
     """
 
     def __init__(
@@ -76,11 +136,11 @@ class StatePublisherNode(Node):
             depth=10,
         )
 
-        self.odom_pub = self.create_publisher(Odometry, "/odometry", qos_profile)
-        self.aero_pub = self.create_publisher(Vector3, "/aero_data", 10)  # Simplified for now
-        self.ref_path_pub = self.create_publisher(Path, "/reference_trajectory", qos_profile)
-        self.track_path_pub = self.create_publisher(Path, "/tracking_trajectory", qos_profile)
-        self.motor_pub = self.create_publisher(Float32MultiArray, "/motor_thrusts", 10)
+        self.odom_pub = self.create_publisher(Odometry, make_topic("odometry"), qos_profile)
+        self.aero_pub = self.create_publisher(Vector3, make_topic("aero_forces"), 10)  # Simplified for now
+        self.ref_path_pub = self.create_publisher(Path, make_topic("reference_path"), qos_profile)
+        self.track_path_pub = self.create_publisher(Path, make_topic("tracking_path"), qos_profile)
+        self.motor_pub = self.create_publisher(Float32MultiArray, make_topic("motor_thrusts"), 10)
 
         # Setup simulation and controller
         self._setup_simulation(trajectory_csv)
@@ -127,15 +187,13 @@ class StatePublisherNode(Node):
         ref_path.header.frame_id = "world"
         ref_path.header.stamp = self.get_clock().now().to_msg()
 
-        # Sample reference trajectory
-        sample_times = np.linspace(0, self.sim_time, 200)
+        # Sample reference trajectory across the CSV domain
+        sample_times = compute_reference_sample_times(self.trajectory, sample_count=400)
         for t in sample_times:
             ref = self.trajectory.get_reference_at_time(t)
             pose = PoseStamped()
             pose.header.frame_id = "world"
-            pose.pose.position.x = ref['position'][0]
-            pose.pose.position.y = ref['position'][1]
-            pose.pose.position.z = ref['position'][2]
+            pose.pose.position = self._numpy_to_point(ref['position'])
             ref_path.poses.append(pose)
 
         self.ref_path_pub.publish(ref_path)
@@ -158,6 +216,14 @@ class StatePublisherNode(Node):
         v_ros.z = float(v_np[2])
         return v_ros
 
+    def _numpy_to_point(self, v_np: np.ndarray) -> Point:
+        """Convert numpy array to ROS Point."""
+        point = Point()
+        point.x = float(v_np[0])
+        point.y = float(v_np[1])
+        point.z = float(v_np[2])
+        return point
+
     def publish_odometry(self, state: np.ndarray):
         """Publish odometry message."""
         odom = Odometry()
@@ -167,7 +233,7 @@ class StatePublisherNode(Node):
 
         # Position (NED frame)
         p = state[0:3]
-        odom.pose.pose.position = self._numpy_to_vector3(p)
+        odom.pose.pose.position = self._numpy_to_point(p)
 
         # Orientation
         q = state[9:13]
@@ -199,7 +265,8 @@ class StatePublisherNode(Node):
         """Publish tracking path."""
         pose = PoseStamped()
         pose.header = self.tracking_path.header
-        pose.pose.position = self._numpy_to_vector3(state[0:3])
+        pose.header.stamp = self.get_clock().now().to_msg()
+        pose.pose.position = self._numpy_to_point(state[0:3])
         q = state[9:13]
         pose.pose.orientation = self._numpy_to_quaternion(q)
         self.tracking_path.poses.append(pose)
@@ -283,7 +350,7 @@ class StatePublisherNode(Node):
                 break
 
             # Sleep to maintain real-time rate
-            self.sleep_period(sleep_time)
+            sleep_period(sleep_time)
 
         self.get_logger().info("Simulation finished")
 

@@ -1,9 +1,11 @@
 import jax
 import jax.numpy as jnp
-from jaxopt import LevenbergMarquardt
 import matplotlib.pyplot as plt
 import pandas as pd
+from jaxopt import LevenbergMarquardt
+
 from feature.lu_mpc.model.sim.gd_model_jax import aerodynamics_B_vb
+
 # -------------------------------------------------------------------------------
 # MOCK IMPORT: Replace this block with your actual import
 # from gd_model_jax import aerodynamics_B_vb

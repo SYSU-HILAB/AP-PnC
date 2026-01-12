@@ -239,6 +239,35 @@ test-ref-traj-viz:
     echo "Publishes reference trajectory states in real-time (no controller)"
     ./pyp -m feature.lu_mpc.model.ctrl.test_ref_trajectory_viz
 
+test-ros-viz-node:
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/ros
+
+viz-ref-traj playback_dt="0.05" config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
+    echo "Launching reference trajectory publisher + RViz2"
+    set +u
+    source /opt/ros/humble/setup.bash
+    set -u
+    export ACADOS_SOURCE_DIR="${ACADOS_SOURCE_DIR:-/home/rec/AP-PnC/mpc_framework}"
+    export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
+    ./pyp tests/lu_mpc/ros/user_test_ref_traj_viz.py --playback-dt {{playback_dt}} --rviz-config {{config}}
+
+viz-traj-tracking sim_time="10.0" config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
+    echo "Launching tracking visualization + RViz2"
+    set +u
+    source /opt/ros/humble/setup.bash
+    set -u
+    export ACADOS_SOURCE_DIR="${ACADOS_SOURCE_DIR:-/home/rec/AP-PnC/mpc_framework}"
+    export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
+    ./pyp tests/lu_mpc/ros/user_test_traj_tracking_viz.py --sim-time {{sim_time}} --rviz-config {{config}}
+
 sim-viz-gd sim_time="2.0" collect_aero="true":
     ./pyp tests/lu_mpc/simulation/user_test_run_sim_viz.py {{sim_time}} {{collect_aero}}
 
