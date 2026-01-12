@@ -7,7 +7,6 @@
 # nMPC controller + CasADi simulator for visualization in RViz2.
 #
 
-import sys
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
@@ -20,12 +19,12 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Vector3, Quaternion, PoseStamped, Twist
 from std_msgs.msg import Float32MultiArray, Header
 
-# Add parent directories to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from sim.sim_gd_model import create_gd_simulator, GdSimConfig
-from ctrl.trajectory_loader import load_trajectory_csv, TrajectoryReference
-from ctrl.proposed_nmpc_ctrl import ProposedNmpcController
+from feature.lu_mpc.sim.sim_gd_model import create_gd_simulator, GdSimConfig
+from feature.lu_mpc.model.ctrl.trajectory_loader import (
+    TrajectoryReference,
+    load_trajectory_csv,
+)
+from feature.lu_mpc.model.ctrl.proposed_nmpc_ctrl import ProposedNmpcController
 
 
 class StatePublisherNode(Node):

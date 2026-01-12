@@ -7,19 +7,11 @@
 # from src/nmpc/model.py and src/nmpc/config.py.
 #
 
-import sys
 import numpy as np
 from pathlib import Path
 from typing import Dict, Optional
-import casadi as cs
 
-# Add src/nmpc to path for imports
-nmpc_path = Path(__file__).parent.parent.parent.parent.parent / 'src' / 'nmpc'
-sys.path.insert(0, str(nmpc_path))
-
-from model import tailsitter_flu, Quat2RotMat, q_oproduct_vec, q_inv_oproduct_vec
-from config import MpcConfig, ControlConfig
-from create_ocp_or_sim import ocp_nls
+from feature.lu_mpc.model.core import ControlConfig, MpcConfig, ocp_nls
 from acados_template import AcadosOcpSolver
 
 # Add trajectory loader to path
