@@ -1,14 +1,14 @@
 #!/bin/bash
-if [ $PWD != $AP_PNC_DIR ]
+if [ "$PWD" != "$AP_PNC_DIR" ]
 then
     echo "Please run this script in the tailsitter_planning directory"
     exit 1
 fi
 
-if [ -d "ulgs/output_csv" ]; then
-    # If the directory exists and is not empty
-    if [ "$(ls -A ulgs/output_csv)" ]; then
-        rm ulgs/output_csv/*
+OUTPUT_DIR="$PWD/artifacts/benchmarks/ulgs/output_csv"
+if [ -d "$OUTPUT_DIR" ]; then
+    if [ "$(ls -A "$OUTPUT_DIR")" ]; then
+        rm "$OUTPUT_DIR"/*
     fi
 fi
 csv_trans

@@ -28,7 +28,7 @@ RequiredTopics = [
     'vehicle_angular_velocity'
 ]
 
-ulg_file = os.path.join(root_dir(), 'scripts/paper_plots/ulgs/log_3_UnknownDate.ulg')
+ulg_file = os.path.join(root_dir(), 'artifacts/benchmarks/ulgs/log_3_UnknownDate.ulg')
 
 
 class UlgDataLoader:
@@ -63,7 +63,7 @@ class UlgDataLoader:
             str: Path to the latest ULG file.
         """
         # Assuming the script is run from the project root directory
-        ulg_dir = os.path.join(root_dir(), 'ulgs')
+        ulg_dir = os.path.join(root_dir(), 'artifacts/benchmarks/ulgs')
         ulg_files = []
 
         # Recursively find all .ulg files

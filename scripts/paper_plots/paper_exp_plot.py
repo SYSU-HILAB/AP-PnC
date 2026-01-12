@@ -102,8 +102,8 @@ ExtraConfig = {
     "fix_yaw_angle": -np.pi/2,
     # "fix_yaw_angle": 0.0,
     # "fix_yaw_angle": -np.pi/4,
-    # "ulg_file": os.path.join(root_dir(), 'scripts/paper_plots/ulgs/log_4_UnknownDate.ulg'),
-    "ulg_file": os.path.join(root_dir(), f'ulgs/{TestName}.ulg'),
+    # "ulg_file": os.path.join(root_dir(), 'artifacts/benchmarks/ulgs/log_4_UnknownDate.ulg'),
+    "ulg_file": os.path.join(root_dir(), f'artifacts/benchmarks/ulgs/{TestName}.ulg'),
     # "ulg_file": None,
 }
 
@@ -132,7 +132,7 @@ def normalize_quaternions(quaternions):
 def read_csv_by_topic(directory, topic_name, start_time=None, end_time=None):
     """Read a CSV file by topic name and filter by time range if specified."""
     directory = directory or os.getenv('AP_PNC_DIR') or '.'
-    directory = os.path.join(directory, 'ulgs/output_csv/')
+    directory = os.path.join(directory, 'artifacts/benchmarks/ulgs/output_csv/')
     pattern = re.compile(fr'{topic_name}')
 
     # Find the relevant CSV file

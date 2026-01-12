@@ -13,6 +13,7 @@
 import os
 from cProfile import label
 from turtle import color
+from pathlib import Path
 
 import matplotlib
 import numpy as np
@@ -24,7 +25,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # Load the environment variable and the CSV file
-csv_file_path = os.path.join(os.getenv("AP_PNC_DIR"), "temp_data", "planning.csv")
+repo_root = Path(os.environ.get("AP_PNC_DIR", Path(__file__).resolve().parents[2]))
+csv_file_path = repo_root / "artifacts" / "simulations" / "temp_data" / "planning.csv"
 
 df = pd.read_csv(csv_file_path, on_bad_lines="skip")
 print(df.head())

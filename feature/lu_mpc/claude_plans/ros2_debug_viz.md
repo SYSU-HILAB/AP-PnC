@@ -195,7 +195,7 @@ viz-sim-and-viz sim_time="2.0":
     from feature.lu_mpc.model.sim.sim_gd_model import create_gd_simulator, GdSimConfig, save_simulation_csv
     ...
     "
-    just viz-lu-mpc "$AP_PNC_DIR/temp_data/sim_results.csv"
+    just viz-lu-mpc "$AP_PNC_DIR/artifacts/simulations/temp_data/sim_results.csv"
 ```
 
 ## Critical Files to Create
@@ -220,12 +220,12 @@ viz-sim-and-viz sim_time="2.0":
 
 2. Save to CSV (new method):
    ```python
-   save_simulation_csv(results, "temp_data/sim_results.csv", include_aero_data=True)
+   save_simulation_csv(results, "artifacts/simulations/temp_data/sim_results.csv", include_aero_data=True)
    ```
 
 3. Launch visualization:
    ```bash
-   just viz-lu-mpc "temp_data/sim_results.csv"
+   just viz-lu-mpc "artifacts/simulations/temp_data/sim_results.csv"
    ```
 
 4. Verify in RViz:

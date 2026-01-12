@@ -7,9 +7,13 @@
 # This script runs a GD model simulation and visualizes the results.
 #
 
+import os
 import sys
+from pathlib import Path
+
 import numpy as np
-from feature.lu_mpc.model.sim.sim_gd_model import create_gd_simulator, GdSimConfig
+
+from feature.lu_mpc.model.sim.sim_gd_model import GdSimConfig, create_gd_simulator
 from feature.lu_mpc.model.sim.utils.visualizer import plot_simulation_results
 
 
@@ -63,18 +67,16 @@ def main():
 
     # Plot results
     print("Generating plots...")
-    import os
     import matplotlib
 
     matplotlib.use("Agg")  # Non-interactive backend
 
-    # Create output directory if it doesn't exist
-    output_dir = os.path.join(os.environ["AP_PNC_DIR"], "temp_data")
-    os.makedirs(output_dir, exist_ok=True)
+    repo_root = Path(os.environ.get("AP_PNC_DIR", Path(__file__).resolve().parents[2]))
+    output_dir = repo_root / "artifacts" / "simulations" / "temp_data"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save plots
-    save_path = os.path.join(output_dir, "sim_results")
-    plot_simulation_results(results, aero_data, show=False, save_path=save_path)
+    save_path = output_dir / "sim_results"
+    plot_simulation_results(results, aero_data, show=False, save_path=str(save_path))
     print(f"✅ Plots saved to {save_path}_fig*.png")
 
     return 0

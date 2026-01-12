@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
+#include <cstdlib>
 #include <gcopter/gcopter.hpp>
 #include <gcopter/trajectory.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -42,6 +43,7 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 // Forward declarations
 std::string format_float_1f(double value);
 std::string get_trajectory_type_name(int type);
+std::filesystem::path get_artifacts_temp_dir();
 
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType
@@ -531,12 +533,21 @@ int main(int argc, char **argv)
   return 0;
 }
 
+std::filesystem::path get_artifacts_temp_dir()
+{
+  if (const char *ap_pnc_dir = std::getenv("AP_PNC_DIR"))
+  {
+    return std::filesystem::path(ap_pnc_dir) / "artifacts" / "simulations" / "temp_data";
+  }
+  return std::filesystem::path("artifacts/simulations/temp_data");
+}
+
 std::ofstream &init_planning_csv_file(const Config &config)
 {
   static std::ofstream csv_file;
   try
   {
-    std::filesystem::path dir("temp_data");
+    std::filesystem::path dir = get_artifacts_temp_dir();
     if (!std::filesystem::exists(dir))
     {
       std::filesystem::create_directories(dir);
@@ -601,7 +612,7 @@ std::ofstream &init_routes_csv_file(const Config &config)
   static std::ofstream routes_csv_file;
   try
   {
-    std::filesystem::path dir("temp_data");
+    std::filesystem::path dir = get_artifacts_temp_dir();
     if (!std::filesystem::exists(dir))
     {
       std::filesystem::create_directories(dir);

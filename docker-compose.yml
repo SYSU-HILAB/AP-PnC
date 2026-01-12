@@ -40,7 +40,7 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/qgc/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ${HOME}/.docker_qgc/ulgs:/home/qgc/ulgs
+      - ./artifacts/benchmarks/ulgs:/home/qgc/artifacts/benchmarks/ulgs
     command: qgc
 
   # ap-pnc:
@@ -63,7 +63,7 @@ services:
   #     - ./src/tailsitter_df:/ap-pnc/src/tailsitter_df
   #     - ./src/trajectory_server:/ap-pnc/src/trajectory_server
   #     - ./scripts/tools:/ap-pnc/scripts/tools
-  #     - ./temp_data:/ap-pnc/temp_data
+  #     - ./artifacts/simulations/temp_data:/ap-pnc/artifacts/simulations/temp_data
   #   command: bash
   #   stdin_open: true
   #   tty: true

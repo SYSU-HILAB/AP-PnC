@@ -6,18 +6,19 @@ if [ -z "$AP_PNC_DIR" ]; then
     exit 1
 fi
 
-# Get the latest .ulg file from the 'ulgs' folder
-latest_ulg=$(ls -t ulgs/*.ulg | head -n 1)
+# Get the latest .ulg file from the artifacts benchmark folder
+ULG_DIR="$AP_PNC_DIR/artifacts/benchmarks/ulgs"
+mkdir -p "$ULG_DIR"
+latest_ulg=$(ls -t "$ULG_DIR"/*.ulg 2>/dev/null | head -n 1)
 
 # Check if we found any .ulg files
 if [ -z "$latest_ulg" ]; then
-    echo "No .ulg files found in ulgs/"
+    echo "No .ulg files found in $ULG_DIR/"
     exit 1
 fi
 
 # Set the output directory
-FATHER_HOME="$AP_PNC_DIR/ulgs"
-OUTPUT_DIR="$FATHER_HOME/output_csv"
+OUTPUT_DIR="$ULG_DIR/output_csv"
 
 # Remove output directory if it exists and create fresh
 if [ -d "$OUTPUT_DIR" ]; then

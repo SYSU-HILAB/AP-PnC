@@ -9,13 +9,18 @@ Author: Claude Code
 
 import os
 import sys
-import pandas as pd
+from pathlib import Path
+
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import yaml
-from pathlib import Path
-import argparse
 
+REPO_ROOT = Path(os.environ.get('AP_PNC_DIR', Path(__file__).resolve().parents[2]))
+ARTIFACTS_ROOT = REPO_ROOT / "artifacts"
+TEMP_DATA_DIR = ARTIFACTS_ROOT / "simulations" / "temp_data"
+DEFAULT_FIGS_DIR = ARTIFACTS_ROOT / "visualization" / "figs"
 
 def validate_input_data(csv_path):
     """
@@ -252,16 +257,15 @@ def generate_output_filename(config, file_extension='png'):
 
 def find_planning_file():
     """
-    Auto-detect the first available planning CSV file in temp_data directory.
+    Auto-detect the first available planning CSV file in the artifacts/simulations/temp_data directory.
 
     Returns:
         str: Path to the found planning file, or default if none found
     """
-    import glob
-    planning_files = glob.glob('temp_data/planning_*.csv')
+    planning_files = sorted(TEMP_DATA_DIR.glob('planning_*.csv'))
     if planning_files:
-        return planning_files[0]
-    return 'temp_data/planning.csv'
+        return str(planning_files[0])
+    return str(TEMP_DATA_DIR / 'planning.csv')
 
 
 def main():
@@ -273,7 +277,7 @@ def main():
                        help='Path to routes CSV file (optional)')
     parser.add_argument('--config', default='src/trajectory_server/config/global_planning.yaml',
                        help='Path to planning configuration YAML file')
-    parser.add_argument('--output-dir', default='figs',
+    parser.add_argument('--output-dir', default=str(DEFAULT_FIGS_DIR),
                        help='Output directory for generated figures')
 
     args = parser.parse_args()
@@ -286,9 +290,11 @@ def main():
     # Auto-detect routes file if planning file is specified but routes is not
     if args.routes is None and args.csv is not None:
         # Replace 'planning_' with 'routes_' in the planning file path
-        if 'planning_' in args.csv:
-            args.routes = args.csv.replace('planning_', 'routes_')
-            if os.path.exists(args.routes):
+        planning_path = Path(args.csv)
+        if 'planning_' in planning_path.name:
+            candidate = planning_path.with_name(planning_path.name.replace('planning_', 'routes_', 1))
+            if candidate.exists():
+                args.routes = str(candidate)
                 print(f"Auto-detected routes file: {args.routes}")
             else:
                 args.routes = None
@@ -311,8 +317,8 @@ def main():
         print(f"✓ Loaded configuration: {config}")
 
         # Create output directory if it doesn't exist
-        output_dir = Path(args.output_dir)
-        output_dir.mkdir(exist_ok=True)
+        output_dir = Path(args.output_dir).expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate output filenames
         png_filename = generate_output_filename(config, 'png')
