@@ -39,8 +39,6 @@ src/spdlog/
 bags/
 output_csv/
 
-# docs
-docs/
 *.csv
 env/
 
@@ -60,3 +58,11 @@ output_csv/*
 
 # virtual envs
 .*venv/
+
+
+# python
+*egg-info/
+*.npy
+claude_temp/
+Claude.md
+CLAUDE.md

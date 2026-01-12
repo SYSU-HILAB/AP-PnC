@@ -1,4 +1,14 @@
 #!/bin/bash
+# srunall - UAV system launcher with auto-environment
+
+# Source environment setup
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+source "$SCRIPT_DIR/.env_setup.sh"
+
+# Show environment status
+ap_pnc_show_env
+
+# Sync configuration
 planConfigSync
 # start px4_interface
 
