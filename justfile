@@ -34,6 +34,9 @@ install-all: install-venv
     bash "$git_root/installations/install-acados.sh"
     echo "✓ Installation complete"
 
+install-test-deps:
+    ./pyp -m pip install --upgrade pytest
+
 status:
     #!/usr/bin/env bash
     echo "=== AP-PnC Environment Status ==="
@@ -212,10 +215,10 @@ plot-mesh-aero-torch-full azimuth="-127.5":
     just plot-mesh-aero-torch {{azimuth}}
 
 compare-timing:
-    ./pyp feature/lu_mpc/tests/test_timing_comparison.py
+    ./pyp scripts/compare_timing.py
 
 compare-timing-custom mesh_size num_runs:
-    ./pyp feature/lu_mpc/tests/test_timing_comparison.py {{mesh_size}} {{num_runs}}
+    ./pyp scripts/compare_timing.py {{mesh_size}} {{num_runs}}
 
 benchmark-jax:
     ./pyp -c "from feature.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()"
@@ -224,13 +227,13 @@ benchmark-torch:
     ./pyp -c "from feature.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
 
 test-vmap:
-    ./pyp feature/lu_mpc/tests/test_vmap_equivalence.py
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/model/sim/test_gd_model_jax.py
 
 test-jax-trim:
     ./pyp feature/lu_mpc/jax_trim.py
 
 test-sim-model:
-    ./pyp feature/lu_mpc/tests/test_configurable_model.py
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/model/sim/test_math_utils.py
 
 test-symbolic-casadi:
     ./pyp feature/lu_mpc/model/sim/gd_model_casadi.py
@@ -276,19 +279,7 @@ sim-viz-gd sim_time="2.0" collect_aero="true":
     ./pyp feature/lu_mpc/run_sim_viz.py {{sim_time}} {{collect_aero}}
 
 test-all:
-    #!/usr/bin/env bash
-    echo "🚀 Running all lu_mpc tests..."
-    echo ""
-    echo "Testing structured configuration..."
-    ./pyp feature/lu_mpc/tests/test_configurable_model.py
-    echo ""
-    echo "Testing vmap equivalence..."
-    ./pyp feature/lu_mpc/tests/test_vmap_equivalence.py
-    echo ""
-    echo "Testing ACADOS ENMPC..."
-    cd feature/lu_mpc && ./pyp tests/test_acados_enmpc.py
-    echo ""
-    echo "🎉 All tests completed!"
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc
 
 jax-trim:
     #!/usr/bin/env bash
