@@ -2,9 +2,9 @@ name: Lint
 
 on:
   push:
-    branches: [main, reviewer, shebang]
+    branches: [main]
   pull_request:
-    branches: [main, reviewer, shebang]
+    branches: [main]
 
 jobs:
   ruff:

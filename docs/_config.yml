@@ -1,6 +1,6 @@
 # GitHub Pages Configuration for AP-PnC Documentation
 
-theme: jekyll-theme-minimal
+theme: jekyll-theme-cayman
 title: AP-PnC Documentation
 description: Autonomous Parking with Predictive control - Modern software design for robotics
 show_downloads: false
