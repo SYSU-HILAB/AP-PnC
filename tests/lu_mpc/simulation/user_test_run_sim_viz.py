@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 
 from feature.lu_mpc.model.sim.sim_gd_model import GdSimConfig, create_gd_simulator
-from feature.lu_mpc.model.sim.utils.visualizer import plot_simulation_results
+from feature.lu_mpc.utils.visualizer import plot_simulation_results
 
 
 def main():

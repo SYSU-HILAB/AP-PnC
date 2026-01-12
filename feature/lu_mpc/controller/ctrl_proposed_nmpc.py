@@ -11,7 +11,8 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, Optional
 
-from feature.lu_mpc.model.core import ControlConfig, MpcConfig, ocp_nls
+from feature.lu_mpc.controller.core.config import ControlConfig, MpcConfig
+from feature.lu_mpc.core.ocp_setup import ocp_nls
 from acados_template import AcadosOcpSolver
 
 # Add trajectory loader to path
@@ -266,7 +267,7 @@ if __name__ == "__main__":
     print("Testing proposed nMPC controller...")
 
     # Get trajectory path
-    traj_path = Path(__file__).parent.parent / 'refs' / 'v14-alpha.csv'
+    traj_path = Path(__file__).parent / 'refs' / 'v14-alpha.csv'
 
     # Create controller
     controller = create_proposed_controller(str(traj_path))

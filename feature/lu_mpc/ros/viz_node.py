@@ -19,12 +19,12 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Vector3, Quaternion, PoseStamped, Twist
 from std_msgs.msg import Float32MultiArray, Header
 
-from feature.lu_mpc.sim.sim_gd_model import create_gd_simulator, GdSimConfig
-from feature.lu_mpc.model.ctrl.trajectory_loader import (
+from feature.lu_mpc.model.sim.sim_gd_model import create_gd_simulator, GdSimConfig
+from feature.lu_mpc.controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
-from feature.lu_mpc.model.ctrl.proposed_nmpc_ctrl import ProposedNmpcController
+from feature.lu_mpc.controller.ctrl_proposed_nmpc import ProposedNmpcController
 
 
 class StatePublisherNode(Node):
@@ -294,7 +294,7 @@ def main(args=None):
 
     # Get trajectory path
     ros_dir = Path(__file__).parent
-    traj_csv = ros_dir.parent / 'model' / 'refs' / 'v14-alpha.csv'
+    traj_csv = ros_dir.parent / 'controller' / 'refs' / 'v14-alpha.csv'
 
     if not traj_csv.exists():
         print(f"Error: Trajectory file not found: {traj_csv}")

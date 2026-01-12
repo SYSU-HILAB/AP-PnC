@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from typing import Optional, Dict, List
 import dataclasses
-from .math_utils import quat_to_euler
+from feature.lu_mpc.utils.math_utils import quat_to_euler
 
 
 @dataclasses.dataclass

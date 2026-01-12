@@ -14,7 +14,7 @@ import dataclasses
 from typing import Optional
 from acados_template import AcadosModel, AcadosSim, AcadosSimSolver
 from .gd_model_casadi import SymbolicGdModel, GdModelConfig, DEFAULT_CONFIG
-from .utils.math_utils import quat_multiply, quat_apply, quat_apply_inverse
+from feature.lu_mpc.utils.math_utils import quat_multiply, quat_apply, quat_apply_inverse
 
 
 @dataclasses.dataclass

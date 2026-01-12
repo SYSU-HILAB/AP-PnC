@@ -230,7 +230,7 @@ test-vmap:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/model/sim/test_gd_model_jax.py
 
 test-jax-trim:
-    ./pyp feature/lu_mpc/jax_trim.py
+    ./pyp tests/lu_mpc/analysis/user_test_jax_trim.py
 
 test-sim-model:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/model/sim/test_math_utils.py
@@ -276,7 +276,7 @@ test-ref-traj-viz:
     ./pyp -m feature.lu_mpc.model.ctrl.test_ref_trajectory_viz
 
 sim-viz-gd sim_time="2.0" collect_aero="true":
-    ./pyp feature/lu_mpc/run_sim_viz.py {{sim_time}} {{collect_aero}}
+    ./pyp tests/lu_mpc/simulation/user_test_run_sim_viz.py {{sim_time}} {{collect_aero}}
 
 test-all:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc
@@ -290,7 +290,7 @@ format-tests:
 jax-trim:
     #!/usr/bin/env bash
     export JAX_PLATFORM_NAME=cpu
-    ./pyp feature/lu_mpc/jax_trim.py
+    ./pyp tests/lu_mpc/analysis/user_test_jax_trim.py
 
 # Legacy commands
 plot-coordinated-aero:

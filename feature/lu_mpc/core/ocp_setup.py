@@ -6,8 +6,8 @@ import casadi as cs
 import numpy as np
 from acados_template import AcadosOcp
 
-from .config import MpcConfig
-from .dynamics import tailsitter_flu
+from feature.lu_mpc.controller.core.config import MpcConfig
+from feature.lu_mpc.model.ctrl.proposed_model import tailsitter_flu
 
 
 def ocp_nls() -> AcadosOcp:

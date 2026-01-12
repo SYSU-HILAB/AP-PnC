@@ -144,4 +144,4 @@ def get_trajectory_path() -> str:
     Returns:
         Path to v14-alpha.csv
     """
-    return str(Path(__file__).parent.parent / 'refs' / 'v14-alpha.csv')
+    return str(Path(__file__).parent / 'refs' / 'v14-alpha.csv')
