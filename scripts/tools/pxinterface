@@ -1,2 +1,0 @@
-#!/bin/bash
-ros2 launch px4_interface px4_interface.launch.py
