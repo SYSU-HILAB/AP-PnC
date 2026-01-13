@@ -28,37 +28,22 @@ ap_pnc_find_git_root() {
         return
     fi
 
-    # Find git directory
-    local git_file
-    git_file="$(git rev-parse --git-dir 2>/dev/null || true)"
+    # Use git rev-parse to find the root of the current git directory
+    # For worktrees, this returns the worktree root (not the main repo)
+    # For normal repos, this returns the repository root
+    local git_root
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
-    if [ -z "$git_file" ]; then
-        # Not in git - use script directory (assuming scripts/tools/ structure)
-        # Get absolute path of the script and go up two levels
-        local script_dir
-        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        echo "$(dirname "$(dirname "$script_dir")")"
+    if [ -n "$git_root" ]; then
+        echo "$git_root"
         return
     fi
 
-    # Check if worktree (gitdir contains /worktrees/)
-    if [[ "$git_file" =~ /worktrees/ ]]; then
-        # Read commondir to find original repo
-        local commondir_file="$git_file/commondir"
-        if [ -f "$commondir_file" ]; then
-            local commondir
-            commondir="$(cat "$commondir_file")"
-            local original_git_dir
-            original_git_dir="$(cd "$git_file/$commondir" && pwd)"
-            # Parent of .git is the repo root
-            echo "$(dirname "$original_git_dir")"
-            return
-        fi
-    fi
-
-    # Normal repo - .git is a directory at root
-    # Convert to absolute path
-    (cd "$(dirname "$git_file")" && pwd)
+    # Fallback: not in git - use script directory (assuming scripts/tools/ structure)
+    # Get absolute path of the script and go up two levels
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    echo "$(dirname "$(dirname "$script_dir")")"
 }
 
 # === Environment Setup ===

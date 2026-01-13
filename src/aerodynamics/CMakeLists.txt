@@ -48,6 +48,17 @@ ament_auto_add_library(${PROJECT_NAME}_bspline src/bspline_aerodynamics.cpp)
 # Non aerodynamics
 ament_auto_add_library(${PROJECT_NAME}_non src/non_aerodynamics.cpp)
 
+# CzCalculate: Lift coefficient lookup table
+add_library(${PROJECT_NAME}_cz_calculate src/cz_calculate.cpp)
+target_link_libraries(${PROJECT_NAME}_cz_calculate
+    ${PROJECT_NAME}_aerodynamics_lib
+)
+target_include_directories(${PROJECT_NAME}_cz_calculate
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
 # Testing for aerodynamics
 ament_auto_add_executable(aero_comparison src/aero_comparison.cpp)
 target_link_libraries(aero_comparison
@@ -57,6 +68,21 @@ target_link_libraries(aero_comparison
   ${PROJECT_NAME}_advanced_lift_drag
   ${PROJECT_NAME}_bspline
 )
+
+# Generate aerodynamic lookup table
+ament_auto_add_executable(generate_aero_lookup_table scripts/generate_aero_lookup_table.cpp)
+target_link_libraries(generate_aero_lookup_table
+  ${PROJECT_NAME}_aerodynamics_lib
+)
+
+# GTest for CzCalculate
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_cz_calculate test/test_cz_calculate.cpp)
+  target_link_libraries(test_cz_calculate
+    ${PROJECT_NAME}_cz_calculate
+  )
+endif()
 
 ament_auto_package()
 

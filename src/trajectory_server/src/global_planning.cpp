@@ -40,10 +40,17 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 #include <basic_trajectories/sin.hpp>
 #include <basic_trajectories/vertical_loop.hpp>
 
+#include <aerodynamics/cz_calculate.hpp>
+
 // Forward declarations
 std::string format_float_1f(double value);
 std::string get_trajectory_type_name(int type);
 std::filesystem::path get_artifacts_temp_dir();
+
+// Static CzCalculate instance for real_alpha lookup
+// Note: The lookup table CSV file path should be configured via parameter
+// For now, using a default path - this should be updated with actual path
+static aerodynamics::CzCalculate g_cz_calculate("artifacts/simulations/aero_lookup_table.csv");
 
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType
@@ -432,7 +439,7 @@ class GlobalPlanner : public rclcpp::Node
           const Eigen::Vector3d av = acc - gravity;
 
           // Get aerodynamic data
-          const double alpha         = tailsitter_data.getAlpha();
+          const double df_alpha      = tailsitter_data.getAlpha();  // Alpha from differential flat
           const double alpha_dot     = tailsitter_data.getAlphaDot();
           const double aero_force_z  = tailsitter_data.getBAeroForce()(2);
           const double B_aero_force_z = tailsitter_data.getBAeroForceZ();
@@ -440,10 +447,15 @@ class GlobalPlanner : public rclcpp::Node
           const double S_ap_z        = tailsitter_data.getSApZ();
           const double B_Omega_b_y   = tailsitter_data.getBOmegaY();
 
+          // Get real_alpha from lookup table (alpha in radians -> degrees)
+          constexpr double rad_to_deg = 180.0 / M_PI;
+          const double    alpha_deg   = df_alpha * rad_to_deg;
+          const double    real_alpha  = g_cz_calculate.getCz(alpha_deg);
+
           // Write data to CSV in consistent order
           csv_file << t << "," << pos(0) << "," << pos(1) << "," << pos(2)
                    << "," << vel(0) << "," << vel(1) << "," << vel(2) << ","
-                   << thrust << "," << alpha << "," << aero_force_z << ","
+                   << thrust << "," << df_alpha << "," << real_alpha << "," << aero_force_z << ","
                    // weird yb direction.
                   //  << -yb(0) << "," << -yb(1) << "," << yb(2) << "," << av(0)
                    << -yb(0) << "," << -yb(1) << "," << -yb(2) << "," << av(0)
@@ -570,10 +582,10 @@ std::ofstream &init_planning_csv_file(const Config &config)
     return csv_file;
   }
 
-  // header t, p, v, thrust, alpha, aero_force_z  with header name
+  // header t, p, v, thrust, df_alpha, real_alpha, aero_force_z  with header name
   csv_file << "time,pos_x,pos_y,pos_z,"
            << "vel_x,vel_y,vel_z,"
-           << "thrust,alpha,aero_force_z,"
+           << "thrust,df_alpha,real_alpha,aero_force_z,"
            << "yb_x,yb_y,yb_z,"
            << "ap_x,ap_y,ap_z,"
            << "S_ap_x,S_ap_z,B_Omega_b_y,"

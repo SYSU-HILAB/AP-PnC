@@ -11,11 +11,47 @@ This document explains the correct way to build and launch ROS2 components in AP
 The wrapper scripts source `.env_setup.sh` which:
 1. Sets up the ROS2 environment (`source /opt/ros/humble/setup.bash`)
 2. Sets `AP_PNC_DIR` to the correct git repository root
-3. Handles git worktrees correctly
+3. Sets workspace to the current worktree root for proper build isolation
 4. Configures the `LD_LIBRARY_PATH` for ACADOS libraries
 5. **Unsets Python-related environments** (VIRTUAL_ENV, CONDA_PREFIX, PYTHONPATH, etc.) to ensure `colcon` uses the **system Python**
 
 **Important**: The build wrapper ensures colcon uses the system Python by clearing virtual environment and conda environment variables. This prevents issues where colcon might accidentally use a Python from a different project's virtual environment.
+
+## Workspace Strategy: Python vs C++/ROS2
+
+This project uses different workspace strategies for Python and C++/ROS2 development:
+
+### Python Development (`./pyp`)
+- **Virtual Environment**: Shared across all worktrees
+- **Location**: Main repository root (e.g., `/home/rec/AP-PnC/.acados_venv`)
+- **Why**: Python packages are large (GBs) and branch-independent; sharing prevents duplication
+
+### C++/ROS2 Development (`scripts/tools/`)
+- **Workspace**: Current worktree (where you run the command)
+- **Build Artifacts**: Worktree-specific (`build/`, `install/`, `log/`)
+- **Why**: Colcon builds produce compiled artifacts that must be isolated per worktree
+
+**Example workflow in a worktree:**
+```bash
+# Create and enter a worktree
+git worktree add ../AP-PnC.worktree/proposed proposed
+cd ../AP-PnC.worktree/proposed
+
+# Python: Uses main repo's virtual environment (shared)
+./pyp -m pytest tests/
+
+# C++/ROS2: Uses current worktree as workspace (isolated)
+scripts/tools/build              # Builds in the worktree
+scripts/tools/test --packages-select aerodynamics
+```
+
+### Key Principle
+
+When working with git worktrees:
+- **Python code** runs from the shared main repository virtual environment
+- **ROS2/C++ builds** run in the current worktree with isolated build artifacts
+
+This design ensures efficient resource usage while maintaining proper build isolation.
 
 ## Building
 

@@ -34,6 +34,9 @@ target_link_libraries(
         Eigen3::Eigen  # Eigen support namespace CMake
 )
 
+# Link against aerodynamics library for CzCalculate
+ament_target_dependencies(${PROJECT_NAME}_node aerodynamics_cz_calculate)
+
 install(DIRECTORY
         launch config
         DESTINATION share/${PROJECT_NAME}

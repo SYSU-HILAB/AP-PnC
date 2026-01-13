@@ -71,6 +71,27 @@ scripts/tools/plan               # Launch trajectory_server
 scripts/tools/sim_run_mpc        # Run MPC simulation
 ```
 
+## Workspace Behavior with Git Worktrees
+
+This project uses different workspace strategies for Python vs C++/ROS2 components:
+
+### Python Projects (via `./pyp`)
+- **Virtual Environment**: Shared across all worktrees
+- **Location**: Main repository root (e.g., `/home/rec/AP-PnC/.acados_venv`)
+- **Rationale**: Python packages are large; sharing prevents duplication across worktrees
+
+### C++/ROS2 Projects (via `scripts/tools/`)
+- **Workspace**: Current worktree (where you run the command)
+- **Build Artifacts**: Worktree-specific (`build/`, `install/`, `log/`)
+- **Rationale**: ROS2/colcon builds produce compiled artifacts that must be worktree-isolated
+
+**Example:**
+```bash
+# When in /home/rec/AP-PnC.worktree/proposed:
+./pyp script.py           # Uses /home/rec/AP-PnC/.acados_venv (shared)
+scripts/tools/build        # Builds in /home/rec/AP-PnC.worktree/proposed (worktree-specific)
+```
+
 ## Why Use Wrappers?
 
 The wrapper scripts automatically:
