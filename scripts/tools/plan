@@ -1,2 +1,7 @@
 #!/bin/bash
-ros2 launch trajectory_server planning.launch.py
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+source "$SCRIPT_DIR/.env_setup.sh"
+
+exec ros2 launch trajectory_server planning.launch.py "$@"

@@ -1,28 +1,39 @@
-#! /usr/bin/bash
-PIDS=$(pgrep -f "MicroXRCEAgent")
-if [ -n "$PIDS" ]; then
-  echo $PIDS | xargs kill
-fi
+#!/usr/bin/bash
+set -euo pipefail
 
-if [ -z "$1" ]; then
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+source "$SCRIPT_DIR/.env_setup.sh"
+
+usage() {
   echo "Usage: $0 <device_path> <nokov_rigidbody>"
   echo "Example: $0 /dev/ttyACM0 vtolquad"
   exit 1
-fi
+}
 
-if [ -z "$2" ]; then
-  echo "Usage: $0 <device_path> <nokov_rigidbody>"
-  echo "Example: $0 /dev/ttyACM0 vtolquad"
-  exit 1
-fi
+[ $# -lt 2 ] && usage
+
 DEVICE_PATH=$1
 RIGID_BODY=$2
 
-MicroXRCEAgent serial -b 921600 --dev $DEVICE_PATH &
+pids=$(pgrep -f "MicroXRCEAgent" || true)
+if [ -n "$pids" ]; then
+  echo "$pids" | xargs kill
+fi
 
-if [ "$2" = "none" ]; then
+cleanup() {
+  if [ -n "${MICRO_AGENT_PID:-}" ] && kill -0 "$MICRO_AGENT_PID" 2>/dev/null; then
+    kill "$MICRO_AGENT_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+MicroXRCEAgent serial -b 921600 --dev "$DEVICE_PATH" &
+MICRO_AGENT_PID=$!
+
+if [ "$RIGID_BODY" = "none" ]; then
   echo "No rigid body specified, skipping mocap_px4.launch.yaml"
+  wait "$MICRO_AGENT_PID"
   exit 0
 fi
 
-ros2 launch  frame_transform mocap_px4.launch.yaml rb:=$RIGID_BODY
+ros2 launch frame_transform mocap_px4.launch.yaml "rb:=$RIGID_BODY"

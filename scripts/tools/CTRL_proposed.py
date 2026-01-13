@@ -12,9 +12,9 @@
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
 import fileinput
-import sys
 import os
 import subprocess
+from pathlib import Path
 from dataclasses import dataclass
 
 @dataclass
@@ -33,7 +33,13 @@ class MPCConfig:
         return os.path.join(root_dir(), 'src', 'nmpc', 'model.py')
 
 def root_dir():
-    return os.environ.get('AP_PNC_DIR')
+    env_root = os.environ.get('AP_PNC_DIR')
+    if env_root:
+        return env_root
+
+    repo_root = str(Path(__file__).resolve().parents[2])
+    os.environ['AP_PNC_DIR'] = repo_root
+    return repo_root
 
 def qv_modify():
     config = MPCConfig()

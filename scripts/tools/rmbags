@@ -1,18 +1,21 @@
 #!/bin/bash
+set -euo pipefail
 
-# check environment variable AP_PNC_DIR if exist
-if [ -z "$AP_PNC_DIR" ]; then
-  echo "Please set the environment variable AP_PNC_DIR"
-  exit 1
-fi
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+REPO_ROOT="${AP_PNC_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 
-# Remove all *.ulg files
-for file in $(find . -type f -name "*.ulg"); do
+echo "Cleaning telemetry artifacts under $REPO_ROOT"
+
+# Collect and remove *.ulg logs
+mapfile -t ulg_files < <(find "$REPO_ROOT" -type f -name "*.ulg")
+for file in "${ulg_files[@]}"; do
     rm -f "$file"
 done
 
-for dir in $(find . -type d -name "rosbag*"); do
+# Collect and remove rosbag directories
+mapfile -t rosbag_dirs < <(find "$REPO_ROOT" -type d -name "rosbag*")
+for dir in "${rosbag_dirs[@]}"; do
     rm -rf "$dir"
 done
 
-echo "Cleanup completed: removed *.ulg files and rosbag* directories."
+echo "Removed ${#ulg_files[@]} *.ulg files and ${#rosbag_dirs[@]} rosbag* directories."
