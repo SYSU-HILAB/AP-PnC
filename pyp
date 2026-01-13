@@ -172,6 +172,12 @@ def main() -> int:
     env = os.environ.copy()
     setup_ros2_environment(env)
 
+    # Add ACADOS library path to LD_LIBRARY_PATH
+    acados_lib_path = str(git_root / "mpc_framework" / "lib")
+    ld_library_path = env.get("LD_LIBRARY_PATH", "")
+    if acados_lib_path not in ld_library_path:
+        env["LD_LIBRARY_PATH"] = f"{acados_lib_path}:{ld_library_path}"
+
     try:
         result = subprocess.run(
             [str(python_bin)] + args,

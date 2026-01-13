@@ -307,3 +307,19 @@ alias svg := sim-viz-gd
 alias tsc := test-symbolic-casadi
 alias tfc := test-frame-conversion
 alias ta := test-all
+
+# === DOCKER COMPOSE ===
+
+docker-build:
+    docker compose build
+
+docker-up:
+    docker compose up -d
+
+docker-down:
+    docker compose down
+
+# Aliases
+alias db := docker-build
+alias dup := docker-up
+alias down := docker-down

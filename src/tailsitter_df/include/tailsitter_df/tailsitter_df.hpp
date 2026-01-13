@@ -26,7 +26,7 @@ namespace tailsitter_df
   using real                = autodiff::real1st;
   using realV3              = autodiff::Vector3real;
   using realM3              = autodiff::Matrix3real;
-  const realV3   g          = (realV3() << 0, 0, 9.8).finished();
+  const realV3   g          = (realV3() << 0, 0, -9.8).finished();
   constexpr real vThreshold = 0.5;
 
   class Data
@@ -52,7 +52,8 @@ namespace tailsitter_df
     real                    B_Omega_b_y;
     real                    alpha_prev;
     realV3                  at;
-    realV3                  zb_fixed = (realV3() << 0, 1, 0).finished();
+    // when circled, in ENU, zb_fixed is set to be aligned with North direction.
+    realV3                  zb_fixed = (realV3() << 0, 1, 0).finished(); 
 
    public:
     Eigen::Matrix<double, 4, 9> J;

@@ -1,0 +1,114 @@
+#!/usr/bin/python3
+# BSD 3-Clause License
+#
+# Copyright (c) 2025, Sun Yat-sen University.
+# All rights reserved.
+
+import argparse
+import os
+import re
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+plt.style.use('_mpl-gallery')
+
+# Distinctive colors
+COLORS = {
+    'ap_x': '#8B0000',  # Dark red
+    'ap_z': '#00008B',  # Dark blue
+}
+
+# Get repo root
+repo_root = Path(os.getenv('AP_PNC_DIR') or Path(__file__).resolve().parents[2])
+directory = repo_root / 'artifacts' / 'simulations' / 'temp_data'
+
+
+def find_latest_planning_csv(dir_path: Path) -> str | None:
+    """Find the latest planning*.csv file in the directory."""
+    pattern = re.compile(r'planning.*\.csv')
+    files = [f for f in os.listdir(dir_path) if pattern.match(f)]
+
+    if not files:
+        return None
+
+    files_with_time = [(f, os.path.getmtime(dir_path / f)) for f in files]
+    latest_file = max(files_with_time, key=lambda x: x[1])[0]
+    return latest_file
+
+
+def plot_ap(csv_path: Path, show: bool = True, save: str | None = None):
+    """Read planning CSV and plot ap_x and ap_z over time."""
+    df = pd.read_csv(csv_path, delimiter=',')
+
+    time = df['time'].values
+    ap_x = df['ap_x'].values
+    ap_z = df['ap_z'].values
+
+    print(f"Data from: {csv_path}")
+    print(f"Time range: {time[0]:.2f}s to {time[-1]:.2f}s")
+    print(f"Total samples: {len(time)}")
+    print(f"ap_x: min={ap_x.min():.4f}, max={ap_x.max():.4f}")
+    print(f"ap_z: min={ap_z.min():.4f}, max={ap_z.max():.4f}")
+
+    # Create figure
+    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+
+    # Plot ap_x and ap_z
+    ax.plot(time, ap_x, color=COLORS['ap_x'], linewidth=1.5, label='ap_x')
+    ax.plot(time, ap_z, color=COLORS['ap_z'], linewidth=1.5, label='ap_z')
+    ax.set_xlabel('Time [s]')
+    ax.set_ylabel('Aerodynamic Force')
+    ax.set_title('AP X and Z Over Time')
+    ax.legend()
+    ax.grid(True)
+
+    plt.tight_layout()
+
+    if save:
+        fig.savefig(save, dpi=150, bbox_inches='tight')
+        print(f"Saved plot to: {save}")
+
+    if show:
+        plt.show()
+
+    return fig, ax
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Read and plot ap_x and ap_z from the latest planning*.csv file'
+    )
+    parser.add_argument(
+        '-f', '--file', type=str, default=None,
+        help='Specific CSV file to use (default: latest planning*.csv)'
+    )
+    parser.add_argument(
+        '-s', '--save', type=str, default=None,
+        help='Save plot to file instead of showing'
+    )
+    parser.add_argument(
+        '--no-show', action='store_true',
+        help='Do not show the plot (useful with --save)'
+    )
+
+    args = parser.parse_args()
+
+    # Determine which file to use
+    if args.file:
+        csv_path = Path(args.file)
+    else:
+        csv_file = find_latest_planning_csv(directory)
+        if csv_file is None:
+            print(f"No planning*.csv files found in {directory}")
+            exit(1)
+        csv_path = directory / csv_file
+
+    # Plot
+    plot_ap(csv_path, show=not args.no_show, save=args.save)
+
+
+if __name__ == '__main__':
+    main()

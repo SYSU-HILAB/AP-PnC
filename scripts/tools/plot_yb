@@ -1,0 +1,134 @@
+#!/usr/bin/python3
+# BSD 3-Clause License
+#
+# Copyright (c) 2025, Sun Yat-sen University.
+# All rights reserved.
+#
+# Authors:
+# Hanamy: rongerch@outlook.com
+
+import argparse
+import os
+import re
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+plt.style.use('_mpl-gallery')
+
+# Distinctive colors for yb components (dark RGB)
+COLORS = {
+    'yb_x': '#8B0000',  # Dark red
+    'yb_y': '#006400',  # Dark green
+    'yb_z': '#00008B',  # Dark blue
+    'mag': '#4B0082',   # Indigo
+}
+
+# Get repo root
+repo_root = Path(os.getenv('AP_PNC_DIR') or Path(__file__).resolve().parents[2])
+directory = repo_root / 'artifacts' / 'simulations' / 'temp_data'
+
+
+def find_latest_planning_csv(dir_path: Path) -> str | None:
+    """Find the latest planning*.csv file in the directory."""
+    pattern = re.compile(r'planning.*\.csv')
+    files = [f for f in os.listdir(dir_path) if pattern.match(f)]
+
+    if not files:
+        return None
+
+    # Sort by modification time, get the latest
+    files_with_time = [(f, os.path.getmtime(dir_path / f)) for f in files]
+    latest_file = max(files_with_time, key=lambda x: x[1])[0]
+    return latest_file
+
+
+def plot_yb(csv_path: Path, show: bool = True, save: str | None = None):
+    """Read planning CSV and plot yb_x, yb_y, yb_z over time."""
+    df = pd.read_csv(csv_path, delimiter=',')
+
+    time = df['time'].values
+    yb_x = df['yb_x'].values
+    yb_y = df['yb_y'].values
+    yb_z = df['yb_z'].values
+
+    print(f"Data from: {csv_path}")
+    print(f"Time range: {time[0]:.2f}s to {time[-1]:.2f}s")
+    print(f"Total samples: {len(time)}")
+
+    # Calculate magnitude
+    yb_mag = np.sqrt(yb_x**2 + yb_y**2 + yb_z**2)
+
+    # Create figure with 2 subplots
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+
+    # First subplot: yb_x, yb_y, yb_z components
+    axes[0].plot(time, yb_x, label='yb_x', color=COLORS['yb_x'], linewidth=1.5)
+    axes[0].plot(time, yb_y, label='yb_y', color=COLORS['yb_y'], linewidth=1.5)
+    axes[0].plot(time, yb_z, label='yb_z', color=COLORS['yb_z'], linewidth=1.5)
+    axes[0].set_xlabel('Time [s]')
+    axes[0].set_ylabel('yb components')
+    axes[0].set_title('YB Components Over Time')
+    axes[0].legend()
+    axes[0].grid(True)
+
+    # Second subplot: yb magnitude
+    axes[1].plot(time, yb_mag, label='|yb|', color=COLORS['mag'], linewidth=1.5)
+    axes[1].axhline(y=1.0, color='blue', linestyle='--', label='Unit vector')
+    axes[1].set_xlabel('Time [s]')
+    axes[1].set_ylabel('Magnitude')
+    axes[1].set_title('YB Magnitude Over Time')
+    axes[1].legend()
+    axes[1].grid(True)
+
+    axes[1].set_ylim(0.8, 1.2)
+
+    plt.tight_layout()
+
+    if save:
+        fig.savefig(save, dpi=150, bbox_inches='tight')
+        print(f"Saved plot to: {save}")
+
+    if show:
+        plt.show()
+
+    return fig, axes
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Read and plot yb_x, yb_y, yb_z from the latest planning*.csv file'
+    )
+    parser.add_argument(
+        '-f', '--file', type=str, default=None,
+        help='Specific CSV file to use (default: latest planning*.csv)'
+    )
+    parser.add_argument(
+        '-s', '--save', type=str, default=None,
+        help='Save plot to file instead of showing'
+    )
+    parser.add_argument(
+        '--no-show', action='store_true',
+        help='Do not show the plot (useful with --save)'
+    )
+
+    args = parser.parse_args()
+
+    # Determine which file to use
+    if args.file:
+        csv_path = Path(args.file)
+    else:
+        csv_file = find_latest_planning_csv(directory)
+        if csv_file is None:
+            print(f"No planning*.csv files found in {directory}")
+            exit(1)
+        csv_path = directory / csv_file
+
+    # Plot
+    plot_yb(csv_path, show=not args.no_show, save=args.save)
+
+
+if __name__ == '__main__':
+    main()

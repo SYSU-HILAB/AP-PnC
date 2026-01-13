@@ -19,7 +19,7 @@ def load_trajectory_csv(csv_path: str) -> Dict[str, np.ndarray]:
 
     Expected CSV columns:
     time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,thrust,alpha,aero_force_z,
-    yb_x,yb_y,yb_z,av_x,av_y,av_z,av_x_S,av_z_S,B_Omega_b_y,alpha_dot,B_aeroForce_z
+    yb_x,yb_y,yb_z,ap_x,ap_y,ap_z,S_ap_x,S_ap_z,B_Omega_b_y,alpha_dot,B_aeroForce_z
 
     Args:
         csv_path: Path to the CSV file

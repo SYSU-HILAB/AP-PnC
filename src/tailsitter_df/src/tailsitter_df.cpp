@@ -196,7 +196,7 @@ namespace tailsitter_df
     attitude << xb, yb, zb;
 
     q               = Eigen::Quaternion<real>(attitude);
-    yb              = -yb;
+    
     real S_av_z_dot = z_v.transpose() * j;
     S_av_z_dot      = S_av_z_dot + omega_vy * S_av_x;
 
@@ -283,21 +283,18 @@ namespace tailsitter_df
     xb  = at;
     xb.normalize();
 
-    real   scaling   = exp(-v.norm());
+    real   scaling   = v.norm() / vThreshold;
     realV3 yb_from_v = v.cross(eta);
     yb_from_v.normalize();
-    yb = zb_fixed.cross(xb);
-    yb.normalize();
-    yb = yb_from_v * (1 - scaling) + yb * scaling;
+    realV3 yb_from_fixed_frame = zb_fixed.cross(xb);
+    yb_from_fixed_frame.normalize();
+    yb = (1 - scaling) * yb_from_fixed_frame +  scaling * yb_from_v;
     yb.normalize();
     zb = xb.cross(yb);
     zb.normalize();
 
     realM3 rot = (realM3() << xb, yb, zb).finished();
     q          = Eigen::Quaternion<real>(rot);
-
-    yb       = -yb;
-    zb_fixed = zb;
 
     return Eigen::Vector4<real>::Zero();
   }
@@ -405,11 +402,6 @@ namespace tailsitter_df
     return gradj;
   }
 
-  void delimiter()
-  {
-    std::cout << "-----------------------\n";
-  }
-
   VectorXreal init(const Eigen::Vector3d &vel, const Eigen::Vector3d &acc,
                    const Eigen::Vector3d &jerk)
   {
@@ -418,50 +410,6 @@ namespace tailsitter_df
     z << vel(0), vel(1), vel(2), acc(0), acc(1), acc(2), jerk(0), jerk(1),
         jerk(2);
     return z;
-  }
-
-  void df_test()
-  {
-    VectorXreal z;
-    z.resize(9);
-    z << 4, 6, 5, 1, 2, 3, 7, 8, 9;
-
-    std::cout << df_backward(z);
-    delimiter();
-    // Eigen::Vector3d gradv, grada, gradj;
-    Eigen::Matrix3d gradv, grada, gradj;
-    jacobian_omega(gradv, grada, gradj);
-    delimiter();
-
-    std::cout << gradv << "\n";
-    delimiter();
-
-    std::cout << grada << "\n";
-    delimiter();
-
-    std::cout << gradj << "\n";
-
-    z(8) = 0;
-    delimiter();
-
-    delimiter();
-
-    delimiter();
-
-    delimiter();
-
-    std::cout << df_backward(z);
-
-    delimiter();
-
-    std::cout << getVelJacobOmega() << "\n";
-
-    delimiter();
-
-    std::cout << getAccJacobOmega() << "\n";
-    delimiter();
-
-    std::cout << getJerJacobOmega() << "\n";
   }
 
 }  // namespace tailsitter_df

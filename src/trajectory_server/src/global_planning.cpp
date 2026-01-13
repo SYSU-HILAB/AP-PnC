@@ -414,8 +414,6 @@ class GlobalPlanner : public rclcpp::Node
       for (double t = 0.0; t <= traj.getTotalDuration() + DBL_EPSILON;
            t += config.traj_pub_rsl)
       {
-        // get model attitude and thrust and omg
-        Eigen::Vector4d quat;
         Eigen::Vector3d omg;
         double          thrust;
 
@@ -446,31 +444,26 @@ class GlobalPlanner : public rclcpp::Node
           csv_file << t << "," << pos(0) << "," << pos(1) << "," << pos(2)
                    << "," << vel(0) << "," << vel(1) << "," << vel(2) << ","
                    << thrust << "," << alpha << "," << aero_force_z << ","
-                   << yb(0) << "," << yb(1) << "," << -yb(2) << "," << av(0)
+                   // weird yb direction.
+                  //  << -yb(0) << "," << -yb(1) << "," << yb(2) << "," << av(0)
+                   << -yb(0) << "," << -yb(1) << "," << -yb(2) << "," << av(0)
                    << "," << av(1) << "," << av(2) << "," << av_x_S << ","
                    << av_z_S << "," << B_Omega_b_y << "," << alpha_dot << ","
                    << B_aeroForce_z << "\n";
         }
 
         auto               quat_df = tailsitter_data.getQuaternion();
-        Eigen::Quaterniond q_b1_b2(0, 0.707, 0, 0.707);
-        auto               quat_q = quat_df * q_b1_b2;
-
-        quat(0) = quat_q.w();
-        quat(1) = quat_q.x();
-        quat(2) = quat_q.y();
-        quat(3) = quat_q.z();
-        if (quat(0) < 0 - FLT_EPSILON)
-        {
-          quat = -quat;
-        }
 
         auto p = traj.getPos(t);
         auto v = traj.getVel(t);
 
         auto            yb_df = tailsitter_data.getYb();
+        // Eigen::Vector3d YB =
+        //     (Eigen::Vector3d() << -yb_df(0), -yb_df(1), yb_df(2)).finished();
+        // Eigen::Vector3d YB =
+        //     (Eigen::Vector3d() << -yb_df(0), -yb_df(1), yb_df(2)).finished();
         Eigen::Vector3d YB =
-            (Eigen::Vector3d() << -yb_df(0), -yb_df(1), yb_df(2)).finished();
+            (Eigen::Vector3d() << -yb_df(0), -yb_df(1), -yb_df(2)).finished();
 
         control_traj_msg.timestamp = this->get_clock()->now();
         auto traj_point            = TrajectoryPoint();

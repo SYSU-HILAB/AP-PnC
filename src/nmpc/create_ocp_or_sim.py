@@ -163,3 +163,16 @@ def ocp_nls() -> AcadosOcp:
     ocp.solver_options.sim_method_num_stages = 4
     # ocp.
     return ocp
+
+
+
+def main():
+    ocp = ocp_nls()
+    ocp: AcadosOcp = ocp_nls()
+    acados_ocp_solver:AcadosOcpSolver = AcadosOcpSolver(
+        ocp, json_file="acados_ocp_" + ocp.model.name + ".json"
+    )
+
+
+if __name__ == "__main__":
+    main()

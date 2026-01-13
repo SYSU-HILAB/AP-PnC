@@ -34,7 +34,10 @@ ap_pnc_find_git_root() {
 
     if [ -z "$git_file" ]; then
         # Not in git - use script directory (assuming scripts/tools/ structure)
-        echo "$(dirname "${BASH_SOURCE[0]}")/../.."
+        # Get absolute path of the script and go up two levels
+        local script_dir
+        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        echo "$(dirname "$(dirname "$script_dir")")"
         return
     fi
 
@@ -54,7 +57,8 @@ ap_pnc_find_git_root() {
     fi
 
     # Normal repo - .git is a directory at root
-    echo "$(dirname "$git_file")"
+    # Convert to absolute path
+    (cd "$(dirname "$git_file")" && pwd)
 }
 
 # === Environment Setup ===
@@ -73,6 +77,18 @@ ap_pnc_setup_env() {
         lib_path="$git_root/c_generated_code:$lib_path"
     fi
     export LD_LIBRARY_PATH="${lib_path}:${LD_LIBRARY_PATH:-}"
+
+    # Source system ROS2 environment first (for building)
+    local ros_setup="/opt/ros/humble/setup.bash"
+    if [ -f "$ros_setup" ]; then
+        source "$ros_setup"
+    fi
+
+    # Source ROS2 workspace setup if available (overrides system)
+    local workspace_setup="$git_root/install/setup.bash"
+    if [ -f "$workspace_setup" ]; then
+        source "$workspace_setup"
+    fi
 }
 
 # === Display Functions ===
