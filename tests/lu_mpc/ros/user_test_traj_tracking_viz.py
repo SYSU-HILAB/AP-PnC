@@ -14,7 +14,7 @@ from pathlib import Path
 import rclpy
 
 from feature.lu_mpc.controller.trajectory_loader import get_trajectory_path
-from feature.lu_mpc.ros.viz_node import StatePublisherNode
+from feature.lu_mpc.ros.simulation_visualizer import SimulationVisualizer
 
 
 def _resolve_rviz_config(user_path: str | None) -> Path:
@@ -51,7 +51,7 @@ def _resolve_trajectory_arg(user_path: Path | None) -> Path:
 
 def _run_state_publisher(args: argparse.Namespace) -> None:
     rclpy.init(args=None)
-    node = StatePublisherNode(
+    node = SimulationVisualizer(
         trajectory_csv=str(args.trajectory),
         sim_time=args.sim_time,
         sim_dt=args.sim_dt,

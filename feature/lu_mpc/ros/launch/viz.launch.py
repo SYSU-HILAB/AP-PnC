@@ -2,6 +2,7 @@
 #
 # Launch file for nMPC Visualization
 # Created on 2025-01-10
+# Updated on 2025-01-14: Renamed viz_node → simulation_visualizer
 #
 
 from launch import LaunchDescription
@@ -13,7 +14,10 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     """
-    Launch the nMPC visualization node and RViz2.
+    Launch the nMPC simulation visualizer and RViz2.
+
+    Uses SimulationVisualizer which runs the full nMPC controller
+    and CasADi simulator for closed-loop visualization.
     """
 
     # Get the path to the RViz config
@@ -24,11 +28,11 @@ def generate_launch_description():
         'nmpc_viz.rviz'
     )
 
-    # nMPC Visualization Node
+    # nMPC Simulation Visualizer Node
     nmpc_viz_node = Node(
         package='feature_lu_mpc_ros',
-        executable='viz_node',
-        name='nmpc_viz_node',
+        executable='simulation_visualizer',
+        name='simulation_visualizer',
         output='screen',
         parameters=[
             {'use_sim_time': False}

@@ -15,7 +15,7 @@ import rclpy
 
 from feature.lu_mpc.controller.trajectory_loader import get_trajectory_path
 from feature.lu_mpc.ros.keyboard_listener import SpacebarListener
-from feature.lu_mpc.ros.ref_path_node import ReferencePathNode
+from feature.lu_mpc.ros.reference_visualizer import ReferenceVisualizer
 
 
 def _resolve_rviz_config(user_path: str | None) -> Path:
@@ -52,7 +52,7 @@ def _resolve_trajectory_arg(user_path: Path | None) -> Path:
 
 def _run_reference_publisher(args: argparse.Namespace) -> None:
     rclpy.init(args=None)
-    node = ReferencePathNode(
+    node = ReferenceVisualizer(
         trajectory_csv=str(args.trajectory),
         playback_dt=args.playback_dt,
         real_time_factor=args.real_time_factor,

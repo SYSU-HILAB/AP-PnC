@@ -159,3 +159,67 @@ The wrapper scripts automatically configure `LD_LIBRARY_PATH`. If you still have
 echo $LD_LIBRARY_PATH | grep mpc_framework
 # Should show the ACADOS library path
 ```
+
+## Visualization Nodes
+
+The project provides two visualization nodes for trajectory tracking in RViz2:
+
+### Simulation Visualizer
+
+Runs the full nMPC controller and CasADi simulator for closed-loop visualization:
+
+```bash
+# Using Python directly
+./pyp -m feature.lu_mpc.ros.simulation_visualizer
+
+# Using the helper
+./pyp -m feature.utils.ros_visualizer
+
+# Using the user-facing launcher
+./pyp tests/lu_mpc/ros/user_test_traj_tracking_viz.py
+```
+
+**Topics Published:**
+- `/nmpc/odometry`: Vehicle state from simulator
+- `/nmpc/reference_path`: Reference trajectory from CSV
+- `/nmpc/tracking_path`: Actual tracking path
+- `/nmpc/motor_thrusts`: Motor commands
+- `/nmpc/aero_forces`: Aerodynamic forces
+
+**Use case:** Closed-loop simulation with controller performance evaluation
+
+### Reference Visualizer
+
+Lightweight CSV replay without controller/simulator:
+
+```bash
+# Using Python directly
+./pyp -m feature.lu_mpc.ros.reference_visualizer
+
+# Using the user-facing launcher
+./pyp tests/lu_mpc/ros/user_test_ref_traj_viz.py
+```
+
+**Topics Published:**
+- `/nmpc/reference_path`: Full reference trajectory from CSV (static)
+- `/nmpc/odometry`: Reference state replayed at playback_dt
+- `/nmpc/tracking_path`: Rolling buffer of replayed reference states
+
+**Use case:** Quick visualization of planned trajectories without simulation overhead
+
+### Quaternion Format
+
+Both visualizers use the **WXYZ** quaternion format `[w, x, y, z]` where w is the scalar part. This matches:
+- The CSV trajectory loader format
+- The mathematical convention in `feature/utils/math_utils.py`
+- ROS2 standard Quaternion message ordering
+
+### Architecture Notes
+
+The visualization nodes use shared utilities from `feature/utils/ros_visualizer` to avoid code duplication:
+- ROS message conversion helpers (NumPy → ROS messages)
+- Path creation and management utilities
+- QoS profile factory functions
+- Topic naming utilities
+
+This follows the **DRY principle** and ensures consistent behavior across all visualization components.
