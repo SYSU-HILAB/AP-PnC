@@ -1,6 +1,6 @@
 from acados_template import AcadosModel
 
-from feature.lu_mpc.model.ctrl.enmpc_model import export_error_state_model
+from feature.lu_mpc.model.ctrl.err_state_model import export_error_state_model
 
 
 def test_export_error_state_model_dimensions_and_metadata():

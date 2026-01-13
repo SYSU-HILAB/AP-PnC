@@ -50,8 +50,10 @@ std::filesystem::path get_artifacts_temp_dir();
 // Static CzCalculate instance for real_alpha lookup
 // Note: The lookup table CSV file path should be configured via parameter
 // For now, using a default path - this should be updated with actual path
+// Using AUTO solver method: chooses Newton-Raphson when conditions are favorable
 static aerodynamics::CzCalculate g_cz_calculate(
-    "artifacts/simulations/aero_lookup_table.csv");
+    "artifacts/simulations/aero_lookup_table.csv",
+    aerodynamics::SolverMethod::AUTO);
 
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType

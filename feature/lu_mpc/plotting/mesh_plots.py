@@ -1,13 +1,26 @@
 """
 3D mesh surface plotting functions for aerodynamic coefficients.
 
-These functions load pre-computed mesh data and create 3D visualizations.
-The data generation is separated from the plotting to enable clean pipeline workflows.
+All routines visualize the mesh-style payload produced by
+`feature.lu_mpc.plotting.data_utils.save_mesh_data`, which contains:
+
+* `ALPHA_DEG`, `BETA_DEG` – 2-D grids (meshgrid outputs) in degrees.
+* `CL`, `CD`, `CY`, `CLL` (or legacy `Cl`), `CM`, `CN` – coefficient grids with the
+  same shape as `ALPHA_DEG`.
+* `backend` – string that records which model generated the data (jax, torch, casadi).
+
+If any of these keys are absent the loader will fail early, preventing matplotlib from
+working on malformed inputs.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import os
+from typing import Dict
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+MESH_KEYS = ("ALPHA_DEG", "BETA_DEG", "CL", "CD", "CY", "CM", "CN")
 
 
 def load_mesh_data(data_file, auto_generate=False, mesh_size=361, backend="jax"):

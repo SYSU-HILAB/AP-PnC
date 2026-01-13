@@ -1,15 +1,68 @@
 """
 Data utilities for communication between data generation and plotting functions.
 
-This module provides utilities for saving and loading aerodynamic data in various formats
-to enable clean pipeline workflows between data generation and visualization.
+The plotting stack only understands three payload families and each of them must
+contain the following fields (all arrays are 1-D numpy arrays unless noted).
+
+* `coordinated_flight` (produced by `save_coordinated_data`):
+  - `alpha_deg`, `CL`, `CD`, `CM`
+* `all_coefficients` (produced by `save_all_coeffs_data`):
+  - `alpha_deg`, `CL`, `CD`, `CY`, `Cl`/`CLL`, `Cm`, `Cn`
+* `3d_mesh` (produced by `save_mesh_data`):
+  - `ALPHA_DEG`, `BETA_DEG`, `CL`, `CD`, `CY`, `CLL`/`Cl`, `CM`, `CN`
+
+All payloads also include a `data_type` and free-form `description` so that downstream
+plotting helpers can quickly validate the resource before trying to visualize it.
 """
 
-import numpy as np
+import json
 import os
 from pathlib import Path
-from typing import Dict, Any, Optional
-import json
+from typing import Any, Dict, Optional, TypedDict
+
+import numpy as np
+
+
+class CoordinatedFlightData(TypedDict):
+    """Standardized schema for beta=0 aerodynamic tables."""
+
+    alpha_deg: np.ndarray
+    CL: np.ndarray
+    CD: np.ndarray
+    CM: np.ndarray
+    data_type: str
+    description: str
+
+
+class AllCoefficientsData(TypedDict, total=False):
+    """Expanded schema that includes side-force and moment coefficients."""
+
+    alpha_deg: np.ndarray
+    CL: np.ndarray
+    CD: np.ndarray
+    CY: np.ndarray
+    Cl: np.ndarray
+    CLL: np.ndarray
+    Cm: np.ndarray
+    Cn: np.ndarray
+    data_type: str
+    description: str
+
+
+class MeshData(TypedDict):
+    """Schema for 2-D alpha/beta aerodynamic grids."""
+
+    ALPHA_DEG: np.ndarray
+    BETA_DEG: np.ndarray
+    CL: np.ndarray
+    CD: np.ndarray
+    CY: np.ndarray
+    CLL: np.ndarray
+    CM: np.ndarray
+    CN: np.ndarray
+    backend: str
+    data_type: str
+    description: str
 
 
 # Default cache directory

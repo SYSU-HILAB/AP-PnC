@@ -58,6 +58,18 @@ Use `pyp` when you need to run Python commands outside of the `justfile` recipes
 
 See [docs/build-and-launch.md](docs/build-and-launch.md) for detailed information.
 
+### Building and Running
+
+After modifying `global.toml`:
+
+```bash
+# Build the workspace
+scripts/tools/build
+
+# Launch trajectory server with new solver configuration
+scripts/tools/plan
+```
+
 ## Quick Reference
 
 ```bash
@@ -70,6 +82,10 @@ scripts/tools/pxinterface        # Launch px4_interface node
 scripts/tools/plan               # Launch trajectory_server
 scripts/tools/sim_run_mpc        # Run MPC simulation
 ```
+
+### User-Facing vs. Developer Scripts
+
+Only production-ready entry points belong under `scripts/tools`. Each file in that tree is treated as an operational wrapper that prepares the ROS2/colcon environment, so users expect to call it directly (without `./pyp`) on any workstation. Dropping ad-hoc experiments there—such as `scripts/tools/compare_solver_methods.py`, which is purely a solver comparison harness—avoids the `./pyp` bootstrap, mutates `sys.path` manually, and ships an undocumented interface next to our supported tooling. Keep developer utilities in `tests/` (with pytest) or alongside the package they exercise inside `feature/`, and reserve `scripts/tools` for user-level launch/build wrappers only.
 
 ## Workspace Behavior with Git Worktrees
 

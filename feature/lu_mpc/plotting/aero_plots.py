@@ -1,13 +1,30 @@
 """
 Aerodynamic coefficient plotting functions.
 
-These functions load pre-computed aerodynamic data and create visualizations.
-The data generation is separated from the plotting to enable clean pipeline workflows.
+All helpers in this module expect dictionaries that follow the schemas emitted by
+`feature.lu_mpc.plotting.data_utils`:
+
+* `plot_cl_cd_cm_coordinated` consumes `data_type="coordinated_flight"` produced by
+  `save_coordinated_data`. Required keys: `alpha_deg`, `CL`, `CD`, `CM` (all 1-D arrays).
+* `plot_all_aerodynamic_coeffs` consumes `data_type="all_coefficients"` produced by
+  `save_all_coeffs_data`. Required keys: `alpha_deg`, `CL`, `CD`, `CY`, `Cl` or `CLL`,
+  `Cm`, `Cn`.
+* `plot_cl_cd_aero` only needs `alpha_deg` (or legacy `aoa_deg`), `CL`, and `CD`.
+
+Each plotter will raise soon after loading if any field is missing, helping users detect
+incompatible cache files before matplotlib work begins.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import os
+from typing import Dict
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+COORDINATED_KEYS = ("alpha_deg", "CL", "CD", "CM")
+ALL_COEFF_KEYS = ("alpha_deg", "CL", "CD", "CY", "Cm", "Cn")
+CL_CD_KEYS = ("CL", "CD")
 
 
 def load_aero_data(data_file, auto_generate=False):

@@ -46,8 +46,11 @@ cd "$GIT_ROOT" || exit 1
 colcon build "${COLCON_ARGS[@]}" \
     --cmake-args -DPYTHON_EXECUTABLE=/usr/bin/python3
 
+# Capture exit status immediately
+BUILD_STATUS=$?
+
 # Check build result
-if [ $? -eq 0 ]; then
+if [ $BUILD_STATUS -eq 0 ]; then
     echo
     echo -e "${AP_PNC_COLOR_GREEN}Build completed successfully ${AP_PNC_CHECKMARK}${AP_PNC_COLOR_RESET}"
     echo -e "${AP_PNC_COLOR_YELLOW}Source the workspace with: source install/setup.bash${AP_PNC_COLOR_RESET}"
