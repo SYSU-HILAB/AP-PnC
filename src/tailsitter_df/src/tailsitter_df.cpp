@@ -72,7 +72,7 @@ namespace tailsitter_df
     Eigen::Vector3d &Phi_z();
 
     double aeroForceZ(const Eigen::Vector3d &vb);
-    realV3 getAeroForceB(const realV3 &vb);
+    realV3 getBAeroForce(const realV3 &vb);
     realM3 getPartialDerivativeOfFbOverVb(const realV3 &vb);
     realV3 getAeroForceAccB(const realV3 &vb);
   };
@@ -120,7 +120,7 @@ namespace tailsitter_df
     return temp;
   };
 
-  realV3 Model::getAeroForceB(const realV3 &vb)
+  realV3 Model::getBAeroForce(const realV3 &vb)
   {
     real   V    = vb.norm();
     realV3 temp = V * getPhi() * vb;
@@ -149,79 +149,79 @@ namespace tailsitter_df
     realV3 &yb = data.yb;
     realV3 &zb = data.zb;
 
-    auto   &attitude      = data.attitude;
-    auto   &q             = data.q;
-    auto   &alpha         = data.alpha;
-    auto   &at            = data.at;
-    realV3 &aeroForceB    = data.aeroForceB;
-    real   &B_aeroForce_z = data.B_aeroForce_z;
-    real   &S_av_x        = data.S_av_x;
-    real   &S_av_z        = data.S_av_z;
+    auto   &attitude        = data.attitude;
+    auto   &q               = data.q;
+    auto   &alpha           = data.alpha;
+    auto   &at              = data.at;
+    realV3 &B_aero_force    = data.B_aero_force;
+    real   &B_aero_force_z  = data.B_aero_force_z;
+    real   &S_ap_x        = data.S_ap_x;
+    real   &S_ap_z        = data.S_ap_z;
     real   &B_Omega_b_y   = data.B_Omega_b_y;
     real   &alpha_dot     = data.alpha_dot;
 
-    realV3 x_v    = v / v.norm();
-    realV3 temp   = -(realM3::Identity() - x_v * x_v.transpose()) * (a - g);
-    realV3 z_v    = temp / temp.norm();
-    realV3 y_v    = z_v.cross(x_v);
-    real   temp_x = x_v.transpose() * (a - g);
-    real   temp_z = z_v.transpose() * (a - g);
-    S_av_x        = temp_x;
-    S_av_z        = temp_z;
+    realV3 x_s    = v / v.norm();
+    realV3 temp   = -(realM3::Identity() - x_s * x_s.transpose()) * (a - g);
+    realV3 z_s    = temp / temp.norm();
+    realV3 y_s    = z_s.cross(x_s);
+    real   temp_x = x_s.transpose() * (a - g);
+    real   temp_z = z_s.transpose() * (a - g);
+    S_ap_x        = temp_x;
+    S_ap_z        = temp_z;
 
-    real tan_acc = x_v.transpose() * a;
+    real tan_acc = x_s.transpose() * a;
 
     real V        = v.norm();
-    real omega_vz = (y_v.transpose() * g);
-    omega_vz      = omega_vz / V;
-    real omega_vx = (y_v.transpose() * j);
-    omega_vx      = ((omega_vz * S_av_x) - omega_vx) / S_av_z;
-    // real omega_vy = (z_v.transpose() * g);
-    // omega_vy      = (-S_av_z - omega_vy) / V;
-    real omega_vy = -z_v.transpose() * a;
-    omega_vy      = omega_vy / V;
-    // omega_vy = () / V;
+    real omega_sz = (y_s.transpose() * g);
+    omega_sz      = omega_sz / V;
+    real omega_sx = (y_s.transpose() * j);
+    omega_sx      = ((omega_sz * S_ap_x) - omega_sx) / S_ap_z;
+    // real omega_sy = (z_s.transpose() * g);
+    // omega_sy      = (-S_ap_z - omega_sy) / V;
+    real omega_sy = -z_s.transpose() * a;
+    omega_sy      = omega_sy / V;
+    // omega_sy = () / V;
 
     double phi_zz              = tailsitter_model.getPhi().row(2)(2).val();
-    aeroForceB                 = tailsitter_model.getAeroForceB(v);
-    B_aeroForce_z              = aeroForceB(2);
+    B_aero_force               = tailsitter_model.getBAeroForce(v);
+    B_aero_force_z             = B_aero_force(2);
     real             V_squared = V * V;
     constexpr double phi_33    = -0.09408;
-    alpha                      = atan2(-S_av_z, S_av_x - phi_33 * V_squared);
+    alpha                      = atan2(-S_ap_z, S_ap_x - phi_33 * V_squared);
 
-    yb    = y_v;
-    xb    = cos(alpha) * x_v - sin(alpha) * z_v;
-    zb    = cos(alpha) * z_v + sin(alpha) * x_v;
-    at(0) = S_av_x * cos(alpha) - S_av_z * sin(alpha);
+    yb    = y_s;
+    xb    = cos(alpha) * x_s - sin(alpha) * z_s;
+    zb    = cos(alpha) * z_s + sin(alpha) * x_s;
+    at(0) = S_ap_x * cos(alpha) - S_ap_z * sin(alpha);
     attitude << xb, yb, zb;
 
     q               = Eigen::Quaternion<real>(attitude);
     
-    real S_av_z_dot = z_v.transpose() * j;
-    S_av_z_dot      = S_av_z_dot + omega_vy * S_av_x;
+    real S_ap_z_dot = z_s.transpose() * j;
+    S_ap_z_dot      = S_ap_z_dot + omega_sy * S_ap_x;
 
-    real S_av_x_dot = x_v.transpose() * j;
-    S_av_x_dot      = S_av_x_dot - omega_vy * S_av_z;
+    real S_ap_x_dot = x_s.transpose() * j;
+    S_ap_x_dot      = S_ap_x_dot - omega_sy * S_ap_z;
 
     realV3 vb = attitude.transpose() * v;
 
-    real S_a_x = x_v.transpose() * a;
-    real S_a_z = z_v.transpose() * a;
+    real S_a_x = x_s.transpose() * a;
+    real S_a_z = z_s.transpose() * a;
 
     real phi_dot_xx = phi_33 * 2 * v.transpose() * a;
 
-    real increment = S_av_x - phi_33 * V_squared;
+    real increment = S_ap_x - phi_33 * V_squared;
     //
-    real denominator = (S_av_z * S_av_z + increment * increment);
+    real denominator = (S_ap_z * S_ap_z + increment * increment);
 
-    // real numerator = (S_av_x_dot - phi_dot_xx);
+    // real numerator = (S_ap_x_dot - phi_dot_xx);
 
     real acc_on_vel = v.transpose() * a;
 
     real numerator1 =
-        phi_33 * (V_squared * S_av_z_dot - 2 * S_av_z * acc_on_vel);
+        phi_33 * (V_squared * S_ap_z_dot - 2 * S_ap_z * acc_on_vel);
 
-    real numerator2 = S_av_z * S_av_x_dot - S_av_x * S_av_z_dot;
+    real numerator2 = S_ap_z * S_ap_x_dot - S_ap_x * S_ap_z_dot;
 
     real numerator = numerator1 + numerator2;
 
@@ -231,12 +231,12 @@ namespace tailsitter_df
 
     // procedure1
     // realV3 ab   = attitude.transpose() * a;
-    // real   ab_x = x_v.transpose() * a;
-    // real   ab_z = z_v.transpose() * a;
+    // real   ab_x = x_s.transpose() * a;
+    // real   ab_z = z_s.transpose() * a;
 
     // real infs = ab_z * cos(alpha) - ab_x * sin(alpha);
     // infs      = infs / V;
-    // alpha_dot = (infs - omega_vy) / 2.0;
+    // alpha_dot = (infs - omega_sy) / 2.0;
 
     // real term1 = zb.transpose() * a;
     // term1      = term1 * vb(0);
@@ -250,19 +250,19 @@ namespace tailsitter_df
     // real term2 = S_a_z * sin(alpha);
     // alpha_dot  = term1 - term2;
     // alpha_dot  = alpha_dot / V;
-    // alpha_dot  = alpha_dot - omega_vy;
+    // alpha_dot  = alpha_dot - omega_sy;
     // alpha_dot = S_a_z / V;
-    // alpha_dot = alpha_dot - omega_vy;
+    // alpha_dot = alpha_dot - omega_sy;
     // B_omega_s_y = S_omega_s_y;
-    // alpha_dot = alpha_dot - omega_vy;
+    // alpha_dot = alpha_dot - omega_sy;
     // alpha_dot = alpha_dot / 2.0;
 
-    // real at_dot = (S_av_x_dot - alpha_dot * S_av_z) * cos(alpha) -
-    //               (S_av_z_dot + alpha_dot * S_av_x) * sin(alpha);
+    // real at_dot = (S_ap_x_dot - alpha_dot * S_ap_z) * cos(alpha) -
+    //               (S_ap_z_dot + alpha_dot * S_ap_x) * sin(alpha);
 
-    B_Omega_b_y = omega_vy + alpha_dot;
+    B_Omega_b_y = omega_sy + alpha_dot;
 
-    return (Eigen::Vector4<real>() << tan_acc, omega_vx, B_Omega_b_y, omega_vz)
+    return (Eigen::Vector4<real>() << tan_acc, omega_sx, B_Omega_b_y, omega_sz)
         .finished();
   }
 

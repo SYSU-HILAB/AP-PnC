@@ -37,16 +37,16 @@ namespace tailsitter_df
     Data &operator=(const Data &) = delete;
 
     // Private autodiff members
-    realV3                  aeroForceB = realV3::Zero();
+    realV3                  B_aero_force = realV3::Zero();
     realV3                  eta;
     realV3                  xb, yb, zb;
     realV3                  vel;
     realV3                  temp;
     realM3                  attitude;
     Eigen::Quaternion<real> q;
-    real                    S_av_x;
-    real                    S_av_z;
-    real                    B_aeroForce_z;
+    real                    S_ap_x;
+    real                    S_ap_z;
+    real                    B_aero_force_z;
     real                    alpha;
     real                    alpha_dot;
     real                    B_Omega_b_y;
@@ -115,10 +115,10 @@ namespace tailsitter_df
     }
 
     // Public getters returning Eigen types
-    Eigen::Vector3d getAeroForceB() const
+    Eigen::Vector3d getBAeroForce() const
     {
-      return Eigen::Vector3d(aeroForceB(0).val(), aeroForceB(1).val(),
-                             aeroForceB(2).val());
+      return Eigen::Vector3d(B_aero_force(0).val(), B_aero_force(1).val(),
+                             B_aero_force(2).val());
     }
 
     Eigen::Vector3d getEta() const
@@ -163,8 +163,8 @@ namespace tailsitter_df
     double getAlpha() const { return alpha.val(); }
     double getAlphaDot() const { return alpha_dot.val(); }
     double getBOmegaY() const { return B_Omega_b_y.val(); }
-    double getSAvX() const { return S_av_x.val(); }
-    double getSAvZ() const { return S_av_z.val(); }
-    double getBAeroForceZ() const { return B_aeroForce_z.val(); }
+    double getSApX() const { return S_ap_x.val(); }
+    double getSApZ() const { return S_ap_z.val(); }
+    double getBAeroForceZ() const { return B_aero_force_z.val(); }
   };
 }  // namespace tailsitter_df

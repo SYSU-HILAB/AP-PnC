@@ -434,10 +434,10 @@ class GlobalPlanner : public rclcpp::Node
           // Get aerodynamic data
           const double alpha         = tailsitter_data.getAlpha();
           const double alpha_dot     = tailsitter_data.getAlphaDot();
-          const double aero_force_z  = tailsitter_data.getAeroForceB()(2);
-          const double B_aeroForce_z = tailsitter_data.getBAeroForceZ();
-          const double av_x_S        = tailsitter_data.getSAvX();
-          const double av_z_S        = tailsitter_data.getSAvZ();
+          const double aero_force_z  = tailsitter_data.getBAeroForce()(2);
+          const double B_aero_force_z = tailsitter_data.getBAeroForceZ();
+          const double S_ap_x        = tailsitter_data.getSApX();
+          const double S_ap_z        = tailsitter_data.getSApZ();
           const double B_Omega_b_y   = tailsitter_data.getBOmegaY();
 
           // Write data to CSV in consistent order
@@ -447,9 +447,9 @@ class GlobalPlanner : public rclcpp::Node
                    // weird yb direction.
                   //  << -yb(0) << "," << -yb(1) << "," << yb(2) << "," << av(0)
                    << -yb(0) << "," << -yb(1) << "," << -yb(2) << "," << av(0)
-                   << "," << av(1) << "," << av(2) << "," << av_x_S << ","
-                   << av_z_S << "," << B_Omega_b_y << "," << alpha_dot << ","
-                   << B_aeroForce_z << "\n";
+                   << "," << av(1) << "," << av(2) << "," << S_ap_x << ","
+                   << S_ap_z << "," << B_Omega_b_y << "," << alpha_dot << ","
+                   << B_aero_force_z << "\n";
         }
 
         auto               quat_df = tailsitter_data.getQuaternion();
@@ -577,7 +577,7 @@ std::ofstream &init_planning_csv_file(const Config &config)
            << "yb_x,yb_y,yb_z,"
            << "ap_x,ap_y,ap_z,"
            << "S_ap_x,S_ap_z,B_Omega_b_y,"
-           << "alpha_dot,B_aeroForce_z\n";
+           << "alpha_dot,B_aero_force_z\n";
   return csv_file;
 }
 

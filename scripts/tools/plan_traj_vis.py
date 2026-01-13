@@ -52,7 +52,7 @@ columns_to_convert = [
     "S_ap_z",
     "B_Omega_b_y",
     "alpha_dot",
-    "B_aeroForce_z",
+    "B_aero_force_z",
 ]
 
 # Apply pd.to_numeric to each column in the list
@@ -149,13 +149,13 @@ if "B_Omega_b_y" in df.columns and "alpha_dot" in df.columns:
 else:
     print("Warning: B_Omega_b_y and/or alpha_dot columns not found in CSV file")
 
-# # Fourth plot: Compare aero_force_z and B_aeroForce_z
-# if 'aero_force_z' in df.columns and 'B_aeroForce_z' in df.columns:
+# # Fourth plot: Compare aero_force_z and B_aero_force_z
+# if 'aero_force_z' in df.columns and 'B_aero_force_z' in df.columns:
 #     fig, ax = plt.subplots(figsize=(10, 6))
 
 #     # Plot both forces on the same axis
 #     ax.plot(time, df['aero_force_z'].values, label='aero_force_z', color='b')
-#     ax.plot(time, df['B_aeroForce_z'].values, label='B_aeroForce_z', color='r')
+#     ax.plot(time, df['B_aero_force_z'].values, label='B_aero_force_z', color='r')
 #     ax.set_xlabel('Time')
 #     ax.set_ylabel('Force (N)')
 #     ax.legend()
@@ -166,10 +166,10 @@ else:
 #     plt.tight_layout()
 #     plt.show()
 # else:
-#     print("Warning: aero_force_z and/or B_aeroForce_z columns not found in CSV file")
+#     print("Warning: aero_force_z and/or B_aero_force_z columns not found in CSV file")
 
 
-# Fourth plot: Compare aero_force_z and B_aeroForce_z
+# Fourth plot: Compare aero_force_z and B_aero_force_z
 if "S_ap_x" in df.columns and "S_ap_z" in df.columns:
     fig, ax = plt.subplots(2, 1, figsize=(10, 6))
 
