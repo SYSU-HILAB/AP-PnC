@@ -12,6 +12,7 @@ github:
 header_pages:
   - index.md
   - why-wrapped-python.md
+  - control-stack.md
 
 # Markdown settings
 markdown: kramdown

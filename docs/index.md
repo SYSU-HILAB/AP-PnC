@@ -8,6 +8,7 @@ Welcome to the AP-PnC (Autonomous Parking with Predictive control) project docum
 - [Why We Use Wrapped Python](why-wrapped-python.md) - Deep dive into our `pyp` wrapper and modern software design
 
 ### Developer Resources
+- [Control Stack & Module Reference](control-stack.md) - Calling sequence, modules, and ROS topics
 - [Python Wrapper (`pyp`)](https://github.com/WarriorHanamy/AP-PnC#python-wrapper-pyp) - Quick start guide
 - [Installation Guide](https://github.com/WarriorHanamy/AP-PnC) - Setup instructions
 
@@ -64,6 +65,7 @@ just type-check        # Type checking with mypy
 
 | Document | Description |
 |----------|-------------|
+| [Control Stack & Module Reference](control-stack.md) | Architecture, calling procedures, ROS topics |
 | [Why Wrapped Python](why-wrapped-python.md) | Software design philosophy behind our approach |
 | [Main README](https://github.com/WarriorHanamy/AP-PnC) | Project overview and quick start |
 
