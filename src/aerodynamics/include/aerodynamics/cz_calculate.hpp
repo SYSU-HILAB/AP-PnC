@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -23,11 +24,8 @@ namespace aerodynamics
  * @brief Aerodynamic lift coefficient (cz) lookup table class
  *
  * This class provides a lookup table for the lift coefficient (cz) as a function
- * of angle of attack (alpha). The table is loaded from a CSV file with columns:
- * alpha_deg, cx, cz
- *
- * The class uses binary search for efficient lookup and provides both the cz value
- * and its derivative (slope) at the queried angle of attack.
+ * of angle of attack (alpha), and also supports inverse lookup (cz -> alpha)
+ * using temporal coherence.
  */
 class CzCalculate
 {
@@ -50,42 +48,44 @@ class CzCalculate
    * alpha_deg,cx,cz
    * -180.0,0.0,-0.5
    * ...
-   *
-   * @throws std::runtime_error if the file cannot be opened
    */
   explicit CzCalculate(const std::string& csv_file);
 
   /**
-   * @brief Get cz value and slope for a given angle of attack
-   *
-   * Performs binary search to find the interval containing the query point,
-   * then linearly interpolates to get the cz value and computes the slope.
-   *
-   * @param alpha_deg Angle of attack in degrees
-   * @return CzResult containing cz_value and slope
-   *
-   * @note Returns boundary values if alpha_deg is outside the loaded range
-   */
-  CzResult getCzWithSlope(double alpha_deg) const;
-
-  /**
-   * @brief Get only the cz value for a given angle of attack
-   *
-   * Convenience wrapper around getCzWithSlope() that returns only the value.
+   * @brief Get cz value for a given angle of attack
    *
    * @param alpha_deg Angle of attack in degrees
    * @return Lift coefficient value
    */
   double getCz(double alpha_deg) const;
 
+  /**
+   * @brief Get alpha value from cz using temporal coherence
+   *
+   * Finds all alpha values matching the given cz (within tolerance),
+   * then selects the one closest to the previous alpha value.
+   *
+   * @param cz Lift coefficient value
+   * @return Angle of attack in degrees
+   */
+  double getAlpha(double cz) const;
+
+  /**
+   * @brief Reset the previous alpha value for temporal coherence
+   *
+   * @param initial_alpha Initial alpha value in degrees
+   */
+  void resetAlpha(double initial_alpha);
+
  private:
   /// Vector of (alpha_deg, cz) pairs, sorted by alpha_deg
   std::vector<std::pair<double, double>> data_;
 
+  /// Previous alpha value for temporal coherence
+  mutable double prev_alpha_;
+
   /**
    * @brief Load aerodynamic data from CSV file
-   *
-   * @param csv_file Path to the CSV file
    */
   void loadData(const std::string& csv_file);
 };

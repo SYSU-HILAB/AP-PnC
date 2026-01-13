@@ -285,6 +285,36 @@ jax-trim:
     export JAX_PLATFORM_NAME=cpu
     ./pyp tests/lu_mpc/analysis/user_test_jax_trim.py
 
+# === ROS2/C++ BUILD AND TEST ===
+
+build-aerodynamics:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ./scripts/tools/build --packages-select aerodynamics --allow-overriding aerodynamics
+
+build-trajectory-server:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ./scripts/tools/build --packages-select trajectory_server --allow-overriding trajectory_server
+
+build-cpp: build-aerodynamics build-trajectory-server
+
+test-aerodynamics package="aerodynamics":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ./scripts/tools/test {{package}}
+
+test-cpp: test-aerodynamics
+
+# === C++ DATA GENERATION ===
+
+generate-aero-table:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
+    mkdir -p "$git_root/artifacts/simulations"
+    "$git_root/build/aerodynamics/generate_aero_lookup_table" "$git_root/artifacts/simulations/aero_lookup_table.csv" 10.0 2.0
+
 # Aliases
 alias p := plot-aero
 alias pa := plot-all-aero

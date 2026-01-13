@@ -70,6 +70,18 @@ def _identity_quaternion() -> Quaternion:
     return quat
 
 
+def _numpy_to_quaternion(quat: np.ndarray | None) -> Quaternion:
+    """Convert planner-provided quaternion [w, x, y, z] to ROS message."""
+    if quat is None or len(quat) != 4:
+        return _identity_quaternion()
+    msg = Quaternion()
+    msg.w = float(quat[0])
+    msg.x = float(quat[1])
+    msg.y = float(quat[2])
+    msg.z = float(quat[3])
+    return msg
+
+
 class ReferencePathNode(Node):
     """
     Lightweight ROS2 node that replays the reference CSV on visualization topics.
@@ -137,7 +149,7 @@ class ReferencePathNode(Node):
             pose = PoseStamped()
             pose.header.frame_id = "world"
             pose.pose.position = _numpy_to_point(ref["position"])
-            pose.pose.orientation = _identity_quaternion()
+            pose.pose.orientation = _numpy_to_quaternion(ref.get("quaternion"))
             msg.poses.append(pose)
         self.reference_path_msg = msg
         self.path_pub.publish(msg)
@@ -179,7 +191,7 @@ class ReferencePathNode(Node):
         odom.child_frame_id = "reference"
         odom.header.stamp = stamp
         odom.pose.pose.position = _numpy_to_point(ref["position"])
-        odom.pose.pose.orientation = _identity_quaternion()
+        odom.pose.pose.orientation = _numpy_to_quaternion(ref.get("quaternion"))
         odom.twist.twist.linear = _numpy_to_vector3(ref["velocity"])
         self.odom_pub.publish(odom)
 
@@ -188,7 +200,7 @@ class ReferencePathNode(Node):
         pose.header = self.tracking_path.header
         pose.header.stamp = stamp
         pose.pose.position = _numpy_to_point(ref["position"])
-        pose.pose.orientation = _identity_quaternion()
+        pose.pose.orientation = _numpy_to_quaternion(ref.get("quaternion"))
         self.tracking_path.poses.append(pose)
 
         if len(self.tracking_path.poses) > 400:

@@ -40,6 +40,16 @@ def _shutdown_process(proc: subprocess.Popen[bytes] | None) -> None:
         proc.kill()
 
 
+def _resolve_trajectory_arg(user_path: Path | None) -> Path:
+    """Resolve --trajectory to an absolute CSV path, defaulting to planner outputs."""
+    if user_path:
+        trajectory = user_path.expanduser().resolve()
+    else:
+        trajectory = Path(get_trajectory_path()).resolve()
+    print(f"[viz] Visualizing trajectory CSV: {trajectory}")
+    return trajectory
+
+
 def _run_reference_publisher(args: argparse.Namespace) -> None:
     rclpy.init(args=None)
     node = ReferencePathNode(
@@ -66,8 +76,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--trajectory",
         type=Path,
-        default=Path(get_trajectory_path()),
-        help="Path to trajectory CSV (defaults to the packaged ref).",
+        default=None,
+        help="Path to trajectory CSV (defaults to artifacts/simulations/temp_data planning output).",
     )
     parser.add_argument("--playback-dt", type=float, default=0.05, help="Playback timestep in seconds.")
     parser.add_argument(
@@ -89,6 +99,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    args.trajectory = _resolve_trajectory_arg(args.trajectory)
 
     rviz_proc: subprocess.Popen[bytes] | None = None
     config_path = _resolve_rviz_config(args.rviz_config)

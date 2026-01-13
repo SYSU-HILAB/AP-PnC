@@ -35,7 +35,25 @@ target_link_libraries(
 )
 
 # Link against aerodynamics library for CzCalculate
-ament_target_dependencies(${PROJECT_NAME}_node aerodynamics_cz_calculate)
+# Need to find the aerodynamics build directory
+if (TARGET aerodynamics_cz_calculate)
+    target_link_libraries(${PROJECT_NAME}_node aerodynamics_cz_calculate)
+else()
+    message(WARNING "aerodynamics_cz_calculate target not found, trying to find library...")
+    # Try to find the library manually
+    find_library(AERO_CZ_LIB NAMES aerodynamics_cz_calculate
+                 PATHS ${CMAKE_BINARY_DIR}/../aerodynamics
+                 NO_DEFAULT_PATH)
+    if (AERO_CZ_LIB)
+        target_link_libraries(${PROJECT_NAME}_node ${AERO_CZ_LIB})
+        # Add the include directory
+        target_include_directories(${PROJECT_NAME}_node PRIVATE
+            ${CMAKE_SOURCE_DIR}/../aerodynamics/include)
+    else()
+        message(FATAL_ERROR "aerodynamics_cz_calculate library not found. Please build aerodynamics first.")
+    endif()
+endif()
+ament_target_dependencies(${PROJECT_NAME}_node aerodynamics)
 
 install(DIRECTORY
         launch config

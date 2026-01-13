@@ -50,7 +50,8 @@ std::filesystem::path get_artifacts_temp_dir();
 // Static CzCalculate instance for real_alpha lookup
 // Note: The lookup table CSV file path should be configured via parameter
 // For now, using a default path - this should be updated with actual path
-static aerodynamics::CzCalculate g_cz_calculate("artifacts/simulations/aero_lookup_table.csv");
+static aerodynamics::CzCalculate g_cz_calculate(
+    "artifacts/simulations/aero_lookup_table.csv");
 
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType
@@ -415,6 +416,11 @@ class GlobalPlanner : public rclcpp::Node
 
       auto &tailsitter_data = tailsitter_df::Data::getInstance();
       tailsitter_data.reset(config.trajecotry_cirled);
+
+      // Initialize inverse lookup with initial alpha = 90 degrees at t=0
+      constexpr double INITIAL_ALPHA_DEG = 90.0;
+      g_cz_calculate.resetAlpha(INITIAL_ALPHA_DEG);
+
       control_traj_msg.points.clear();
       auto &csv_file = init_planning_csv_file(config);
       RCLCPP_INFO(this->get_logger(), "CSV file opened");
@@ -447,24 +453,27 @@ class GlobalPlanner : public rclcpp::Node
           const double S_ap_z        = tailsitter_data.getSApZ();
           const double B_Omega_b_y   = tailsitter_data.getBOmegaY();
 
-          // Get real_alpha from lookup table (alpha in radians -> degrees)
+          // Get real_alpha from inverse lookup table (df_alpha -> cz -> real_alpha)
           constexpr double rad_to_deg = 180.0 / M_PI;
           const double    alpha_deg   = df_alpha * rad_to_deg;
-          const double    real_alpha  = g_cz_calculate.getCz(alpha_deg);
+          const double    cz          = g_cz_calculate.getCz(alpha_deg);
+          // Get real alpha from inverse lookup (cz -> alpha) with temporal coherence
+          const double    real_alpha_deg = g_cz_calculate.getAlpha(cz);
+          const double    real_alpha     = real_alpha_deg * M_PI / 180.0;  // Convert to radians
+
+          const auto quat_df = tailsitter_data.getQuaternion();
 
           // Write data to CSV in consistent order
           csv_file << t << "," << pos(0) << "," << pos(1) << "," << pos(2)
                    << "," << vel(0) << "," << vel(1) << "," << vel(2) << ","
                    << thrust << "," << df_alpha << "," << real_alpha << "," << aero_force_z << ","
-                   // weird yb direction.
-                  //  << -yb(0) << "," << -yb(1) << "," << yb(2) << "," << av(0)
-                   << -yb(0) << "," << -yb(1) << "," << -yb(2) << "," << av(0)
+                   << -yb(0) << "," << -yb(1) << "," << -yb(2) << ","
+                   << quat_df.w() << "," << quat_df.x() << "," << quat_df.y() << "," << quat_df.z() << ","
+                   << av(0)
                    << "," << av(1) << "," << av(2) << "," << S_ap_x << ","
                    << S_ap_z << "," << B_Omega_b_y << "," << alpha_dot << ","
                    << B_aero_force_z << "\n";
         }
-
-        auto               quat_df = tailsitter_data.getQuaternion();
 
         auto p = traj.getPos(t);
         auto v = traj.getVel(t);
@@ -587,6 +596,7 @@ std::ofstream &init_planning_csv_file(const Config &config)
            << "vel_x,vel_y,vel_z,"
            << "thrust,df_alpha,real_alpha,aero_force_z,"
            << "yb_x,yb_y,yb_z,"
+           << "quat_w,quat_x,quat_y,quat_z,"
            << "ap_x,ap_y,ap_z,"
            << "S_ap_x,S_ap_z,B_Omega_b_y,"
            << "alpha_dot,B_aero_force_z\n";

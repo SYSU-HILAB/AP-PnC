@@ -21,6 +21,7 @@
     <depend>tailsitter_df</depend>
     <depend>utils</depend>
     <depend>interface</depend>
+    <depend>aerodynamics</depend>
     <exec_depend>ros2launch</exec_depend>
 
     <export>

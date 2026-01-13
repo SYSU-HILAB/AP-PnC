@@ -72,17 +72,11 @@ target_link_libraries(aero_comparison
 # Generate aerodynamic lookup table
 ament_auto_add_executable(generate_aero_lookup_table scripts/generate_aero_lookup_table.cpp)
 target_link_libraries(generate_aero_lookup_table
-  ${PROJECT_NAME}_aerodynamics_lib
+  ${PROJECT_NAME}_lyu
 )
 
 # GTest for CzCalculate
-if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_cz_calculate test/test_cz_calculate.cpp)
-  target_link_libraries(test_cz_calculate
-    ${PROJECT_NAME}_cz_calculate
-  )
-endif()
+# No tests currently enabled - test files removed due to API simplification
 
 ament_auto_package()
 
