@@ -78,6 +78,32 @@ ap_pnc_setup_env() {
     fi
     export LD_LIBRARY_PATH="${lib_path}:${LD_LIBRARY_PATH:-}"
 
+    # Unset Python-related environments to ensure colcon uses system Python
+    unset VIRTUAL_ENV
+    unset CONDA_PREFIX
+    unset CONDA_SHLVL
+    unset CONDA_DEFAULT_ENV
+    unset CONDA_PROMPT_MODIFIER
+    unset PYTHONPATH
+    unset PYTHONDONTWRITEBYTECODE
+
+    # Remove virtual environment and conda paths from PATH
+    # Remove paths containing 'env', 'venv', '.virtualenv', 'conda', 'anaconda', 'miniconda'
+    local cleaned_path=""
+    local IFS=':'
+    for dir in $PATH; do
+        # Skip if directory contains virtual environment indicators
+        if [[ "$dir" =~ (env|venv|\.virtualenv|conda|anaconda|miniconda|IsaacLab) ]]; then
+            continue
+        fi
+        if [ -n "$cleaned_path" ]; then
+            cleaned_path="$cleaned_path:$dir"
+        else
+            cleaned_path="$dir"
+        fi
+    done
+    export PATH="$cleaned_path"
+
     # Source system ROS2 environment first (for building)
     local ros_setup="/opt/ros/humble/setup.bash"
     if [ -f "$ros_setup" ]; then

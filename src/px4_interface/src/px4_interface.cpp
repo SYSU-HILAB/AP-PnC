@@ -192,8 +192,6 @@ class PX4Interface : public rclcpp::Node
   rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr
       vehicle_status_subscriber_;
 
-  // bool
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr trigger_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr est_cmd_subscriber_;
   rclcpp::Subscription<interface::msg::TrackingInfo>::SharedPtr
       tracking_info_subscriber_;
@@ -202,16 +200,9 @@ class PX4Interface : public rclcpp::Node
   void vehicle_odometry_callback(
       const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
 
-  void trigger_cb();
   void publish_offboard_control_mode();
   void publish_state();
 
-  Eigen::Quaterniond AverageQuaternions(
-      const std::vector<Eigen::Quaterniond> &quaternions);
-  static double position_tiny_nls(void *ptr, const Eigen::VectorXd &X,
-                                  Eigen::VectorXd &gradX);
-  static double quaternion_tiny_nls(void *ptr, const Eigen::VectorXd &X,
-                                    Eigen::VectorXd &gradX);
   void tracking_info_cb(const interface::msg::TrackingInfo::SharedPtr msg);
   void init_status_check(const px4_msgs::msg::VehicleStatus::SharedPtr msg);
 };
@@ -302,55 +293,6 @@ void PX4Interface::controls_callback(
   {
     vehicle_thrust_acc_setpoint_publisher_->publish(px4_control);
   }
-}
-
-double PX4Interface::position_tiny_nls(void *ptr, const Eigen::VectorXd &X,
-                                       Eigen::VectorXd &gradX)
-{
-  const PX4Interface *obj  = static_cast<PX4Interface *>(ptr);
-  double              cost = 0;
-  gradX                    = Eigen::Vector3d::Zero();
-  for (auto pos : obj->pos_collecter_)
-  {
-    cost += (pos - X).squaredNorm();
-    gradX += 2 * (X - pos);
-  }
-  return cost;
-}
-
-// TODO: can be removed ?
-Eigen::Quaterniond PX4Interface::AverageQuaternions(
-    const std::vector<Eigen::Quaterniond> &quaternions)
-{
-  // Create a 4x4 accumulator matrix for the covariance
-  if (quaternions.empty())
-  {
-    throw std::runtime_error("No quaternions to average");
-  }
-  Eigen::Matrix4d covariance = Eigen::Matrix4d::Zero();
-
-  // Accumulate the outer product of each quaternion (as a vector) with itself
-  for (const auto &q : quaternions)
-  {
-    Eigen::Vector4d q_vec(q.w(), q.x(), q.y(),
-                          q.z());  // Convert quaternion to a 4D vector
-    covariance += q_vec * q_vec.transpose();  // Outer product and accumulate
-  }
-
-  // Perform eigenvalue decomposition on the covariance matrix
-  Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> solver(covariance);
-  Eigen::Vector4d avg_quaternion_vec = solver.eigenvectors().col(
-      3);  // The eigenvector with the largest eigenvalue
-
-  // Convert the resulting vector back to a quaternion
-  Eigen::Quaterniond avg_quaternion(
-      avg_quaternion_vec(0), avg_quaternion_vec(1), avg_quaternion_vec(2),
-      avg_quaternion_vec(3));
-
-  // Normalize the quaternion to ensure it's a unit quaternion
-  avg_quaternion.normalize();
-
-  return avg_quaternion;
 }
 
 /**

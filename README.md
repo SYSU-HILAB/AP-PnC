@@ -49,3 +49,35 @@ Use `pyp` when you need to run Python commands outside of the `justfile` recipes
 - In CI/CD pipelines
 - From other scripts
 - When running Python interactively from the terminal
+
+---
+
+# Building and Launching ROS2 Components
+
+**IMPORTANT**: Always use the wrapper scripts in `scripts/tools/` for building and launching ROS2 components. **DO NOT** use `colcon build` or `ros2 launch` directly.
+
+See [docs/build-and-launch.md](docs/build-and-launch.md) for detailed information.
+
+## Quick Reference
+
+```bash
+# Build the workspace (instead of colcon build)
+scripts/tools/build              # Regular build
+scripts/tools/build --clean      # Clean build
+
+# Launch ROS2 nodes (instead of ros2 launch)
+scripts/tools/pxinterface        # Launch px4_interface node
+scripts/tools/plan               # Launch trajectory_server
+scripts/tools/sim_run_mpc        # Run MPC simulation
+```
+
+## Why Use Wrappers?
+
+The wrapper scripts automatically:
+- Source the ROS2 environment (`/opt/ros/humble/setup.bash`)
+- Set `AP_PNC_DIR` to the correct git repository root
+- Configure `LD_LIBRARY_PATH` for ACADOS libraries
+- Handle git worktrees correctly
+- **Unset Python-related environments** (VIRTUAL_ENV, CONDA_PREFIX, PYTHONPATH) to ensure `colcon` uses the **system Python**
+
+**Important**: Using the system Python for colcon build prevents issues where colcon might accidentally use a Python from another project's virtual environment.

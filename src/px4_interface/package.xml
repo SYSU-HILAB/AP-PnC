@@ -3,9 +3,9 @@
 <package format="3">
   <name>px4_interface</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>PX4 interface node for AP-PnC - bridges MPC control with PX4 firmware</description>
   <maintainer email="rongerch@outlook.com">root</maintainer>
-  <license>TODO: License declaration</license>
+  <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

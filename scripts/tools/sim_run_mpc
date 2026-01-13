@@ -13,7 +13,8 @@ fi
 
 # find if have an arugment
 if [ -z "$1" ]; then
-  ros2 run px4_interface offboard_mode &
+  # Removed: ros2 run px4_interface offboard_mode &
+  echo "Skipping offboard_mode (removed)"
 fi
 sleep 1
 

@@ -19,14 +19,7 @@
 #include <iostream>
 #include <random>
 #include <vector>
-//     // Set up the solver
 
-// ceres::Solve(options, &problem, &summary);
-
-//     // Set up the solver
-//     ceres::Solver::Options options;
-//     options.linear_solver_type           = ceres::DENSE_QR;
-//     options.minimizer_progress_to_stdout = true;
 // ANSI escape codes for colors
 #define RESET "\033[0m"     // Reset to default
 #define BLACK "\033[30m"    // Black text
