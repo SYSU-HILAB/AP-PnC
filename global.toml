@@ -18,16 +18,10 @@ pos_init_dis_threshold = 0.01
 #cz_rate = 0.1365
 cz_rate = 0.10
 
-[cz_calculate]
-# Solver method: "lookup_table", "newton_raphson", or "auto"
-# - lookup_table: Binary search in pre-computed table (default, robust)
-# - newton_raphson: Iterative solver with temporal coherence (faster for smooth trajectories)
-# - auto: Automatically choose based on conditions
-solver_method = "newton_raphson"
-
-[cz_calculate.newton_raphson]
+[aero_alpha_solver]
+# Newton-Raphson solver for force balance equation
 max_iterations = 50
 tolerance = 1e-8
 damping_factor = 1.0
 derivative_epsilon = 1e-6
-enable_fallback = true
+initial_alpha_deg = 90.0

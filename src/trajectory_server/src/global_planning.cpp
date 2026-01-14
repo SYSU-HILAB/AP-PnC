@@ -40,20 +40,18 @@ using TrajectoryPoint = interface::msg::TrajectoryPoint;
 #include <basic_trajectories/sin.hpp>
 #include <basic_trajectories/vertical_loop.hpp>
 
-#include <aerodynamics/cz_calculate.hpp>
+#include <aerodynamics/aero_alpha_solver.hpp>
+#include <aerodynamics/zhang_lyu_aerodynamics.hpp>
 
 // Forward declarations
 std::string format_float_1f(double value);
 std::string get_trajectory_type_name(int type);
 std::filesystem::path get_artifacts_temp_dir();
 
-// Static CzCalculate instance for real_alpha lookup
-// Note: The lookup table CSV file path should be configured via parameter
-// For now, using a default path - this should be updated with actual path
-// Using AUTO solver method: chooses Newton-Raphson when conditions are favorable
-static aerodynamics::CzCalculate g_cz_calculate(
-    "artifacts/simulations/aero_lookup_table.csv",
-    aerodynamics::SolverMethod::AUTO);
+// Static AeroAlphaSolver instance for real_alpha lookup from force balance equation
+// Solves: S_ap_z*cos(alpha) + S_ap_x*sin(alpha) = F_aero_z/mass
+static auto g_lyu_aerodynamics = std::make_shared<aerodynamics::LyuAerodynamics>();
+static aerodynamics::AeroAlphaSolver g_alpha_solver(g_lyu_aerodynamics);
 
 // create a enum class for the basic trajectory type
 enum class BasicTrajectoryType
@@ -96,11 +94,15 @@ struct Config
 
   double trajecotry_cirled = true;
 
+  double mass = 2.0;  // Vehicle mass in kg (default from tailsitter_df config)
+
   gcopter::CostConfig &cost_config;
 
   Config(rclcpp::Node *node) : cost_config(gcopter::CostConfig::getInstance())
   {
     frame = node->declare_parameter("Frame", "world");
+
+    mass = node->declare_parameter("mass", 2.0);
 
     uavScale = node->declare_parameter("UavScale", 1.0);
 
@@ -173,6 +175,8 @@ struct Config
     node->get_parameter("BoxBackLength", box_back_length);
 
     node->get_parameter("Frame", frame);
+
+    node->get_parameter("mass", mass);
 
     node->get_parameter("BasicTrajectoryRate", basic_trajectory_rate);
     node->get_parameter("BasicTrajectoryRadius", basic_trajectory_radius);
@@ -419,9 +423,9 @@ class GlobalPlanner : public rclcpp::Node
       auto &tailsitter_data = tailsitter_df::Data::getInstance();
       tailsitter_data.reset(config.trajecotry_cirled);
 
-      // Initialize inverse lookup with initial alpha = 90 degrees at t=0
+      // Initialize Newton-Raphson solver with initial alpha = 90 degrees at t=0
       constexpr double INITIAL_ALPHA_DEG = 90.0;
-      g_cz_calculate.resetAlpha(INITIAL_ALPHA_DEG);
+      g_alpha_solver.resetAlpha(INITIAL_ALPHA_DEG);
 
       control_traj_msg.points.clear();
       auto &csv_file = init_planning_csv_file(config);
@@ -455,13 +459,11 @@ class GlobalPlanner : public rclcpp::Node
           const double S_ap_z        = tailsitter_data.getSApZ();
           const double B_Omega_b_y   = tailsitter_data.getBOmegaY();
 
-          // Get real_alpha from inverse lookup table (df_alpha -> cz -> real_alpha)
-          constexpr double rad_to_deg = 180.0 / M_PI;
-          const double    alpha_deg   = df_alpha * rad_to_deg;
-          const double    cz          = g_cz_calculate.getCz(alpha_deg);
-          // Get real alpha from inverse lookup (cz -> alpha) with temporal coherence
-          const double    real_alpha_deg = g_cz_calculate.getAlpha(cz);
-          const double    real_alpha     = real_alpha_deg * M_PI / 180.0;  // Convert to radians
+          // Solve force balance equation for real_alpha:
+          // S_ap_z*cos(alpha) + S_ap_x*sin(alpha) = F_aero_z/mass
+          // This uses Newton-Raphson with temporal coherence
+          const double V = vel.norm();
+          const double real_alpha = g_alpha_solver.solve(V, S_ap_x, S_ap_z, config.mass);
 
           const auto quat_df = tailsitter_data.getQuaternion();
 

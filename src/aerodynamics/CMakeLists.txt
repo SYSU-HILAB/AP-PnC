@@ -48,15 +48,13 @@ ament_auto_add_library(${PROJECT_NAME}_bspline src/bspline_aerodynamics.cpp)
 # Non aerodynamics
 ament_auto_add_library(${PROJECT_NAME}_non src/non_aerodynamics.cpp)
 
-# CzCalculate: Lift coefficient lookup table
-add_library(${PROJECT_NAME}_cz_calculate src/cz_calculate.cpp)
-target_link_libraries(${PROJECT_NAME}_cz_calculate
-    ${PROJECT_NAME}_aerodynamics_lib
+# AeroAlphaSolver: Force balance equation solver using Newton-Raphson
+ament_auto_add_library(${PROJECT_NAME}_alpha_solver
+    src/aero_alpha_solver.cpp
 )
-target_include_directories(${PROJECT_NAME}_cz_calculate
-    PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+target_link_libraries(${PROJECT_NAME}_alpha_solver
+    ${PROJECT_NAME}_lyu
+    ${PROJECT_NAME}_aerodynamics_lib
 )
 
 # Testing for aerodynamics
@@ -75,8 +73,20 @@ target_link_libraries(generate_aero_lookup_table
   ${PROJECT_NAME}_lyu
 )
 
-# GTest for CzCalculate
-# No tests currently enabled - test files removed due to API simplification
+# GTest for AeroAlphaSolver
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(test_aero_alpha_solver
+    test/test_aero_alpha_solver.cpp
+  )
+  target_link_libraries(test_aero_alpha_solver
+    ${PROJECT_NAME}_alpha_solver
+  )
+  ament_target_dependencies(test_aero_alpha_solver
+    rclcpp
+  )
+endif()
 
 ament_auto_package()
 

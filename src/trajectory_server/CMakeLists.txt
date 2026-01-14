@@ -34,23 +34,33 @@ target_link_libraries(
         Eigen3::Eigen  # Eigen support namespace CMake
 )
 
-# Link against aerodynamics library for CzCalculate
+# Link against aerodynamics library for AeroAlphaSolver
 # Need to find the aerodynamics build directory
-if (TARGET aerodynamics_cz_calculate)
-    target_link_libraries(${PROJECT_NAME}_node aerodynamics_cz_calculate)
+if (TARGET aerodynamics_alpha_solver)
+    target_link_libraries(${PROJECT_NAME}_node
+        aerodynamics_alpha_solver
+        aerodynamics_aerodynamics_lib
+        rt_nonfinite_matlab
+    )
 else()
-    message(WARNING "aerodynamics_cz_calculate target not found, trying to find library...")
+    message(WARNING "aerodynamics_alpha_solver target not found, trying to find library...")
     # Try to find the library manually
-    find_library(AERO_CZ_LIB NAMES aerodynamics_cz_calculate
+    find_library(AERO_ALPHA_LIB NAMES aerodynamics_alpha_solver
                  PATHS ${CMAKE_BINARY_DIR}/../aerodynamics
                  NO_DEFAULT_PATH)
-    if (AERO_CZ_LIB)
-        target_link_libraries(${PROJECT_NAME}_node ${AERO_CZ_LIB})
+    find_library(AERO_LIB NAMES aerodynamics_aerodynamics_lib
+                 PATHS ${CMAKE_BINARY_DIR}/../aerodynamics
+                 NO_DEFAULT_PATH)
+    find_library(RT_LIB NAMES rt_nonfinite_matlab
+                 PATHS ${CMAKE_BINARY_DIR}/../aerodynamics
+                 NO_DEFAULT_PATH)
+    if (AERO_ALPHA_LIB AND AERO_LIB AND RT_LIB)
+        target_link_libraries(${PROJECT_NAME}_node ${AERO_ALPHA_LIB} ${AERO_LIB} ${RT_LIB})
         # Add the include directory
         target_include_directories(${PROJECT_NAME}_node PRIVATE
             ${CMAKE_SOURCE_DIR}/../aerodynamics/include)
     else()
-        message(FATAL_ERROR "aerodynamics_cz_calculate library not found. Please build aerodynamics first.")
+        message(FATAL_ERROR "aerodynamics_alpha_solver library not found. Please build aerodynamics first.")
     endif()
 endif()
 ament_target_dependencies(${PROJECT_NAME}_node aerodynamics)
