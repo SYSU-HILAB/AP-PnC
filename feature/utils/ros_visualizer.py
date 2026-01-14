@@ -198,6 +198,52 @@ def truncate_path(path: Path, max_poses: int) -> None:
 
 
 # ==============================================================================
+# Colormap Utilities
+# ==============================================================================
+
+def get_colormap(name: str = "jet"):
+    """
+    Get matplotlib colormap for path visualization.
+
+    Args:
+        name: Colormap name ("jet", "plasma", "viridis", "hot", "cool", etc.)
+              Default is "jet" for traditional visualization.
+
+    Returns:
+        matplotlib colormap object
+
+    Examples:
+        >>> cmap = get_colormap("plasma")
+        >>> rgba = cmap(0.5)  # Get color at midpoint (0.0 to 1.0)
+    """
+    try:
+        import matplotlib.pyplot as plt
+        return plt.get_cmap(name)
+    except ImportError:
+        # Fallback: return a simple color mapping
+        def simple_cmap(value):
+            """Simple grayscale fallback if matplotlib is not available."""
+            value = max(0.0, min(1.0, value))
+            return (value, value, value, 1.0)
+        return simple_cmap
+
+
+def get_colormap_color(name: str, value: float):
+    """
+    Get a single color from a colormap by normalized value.
+
+    Args:
+        name: Colormap name ("jet", "plasma", "viridis", etc.)
+        value: Normalized value in range [0.0, 1.0]
+
+    Returns:
+        RGBA tuple (red, green, blue, alpha) with values in [0, 1]
+    """
+    cmap = get_colormap(name)
+    return cmap(max(0.0, min(1.0, value)))
+
+
+# ==============================================================================
 # Reference Trajectory Sampling
 # ==============================================================================
 

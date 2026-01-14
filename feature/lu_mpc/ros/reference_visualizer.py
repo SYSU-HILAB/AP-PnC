@@ -23,17 +23,22 @@ Parameters:
     - playback_dt: float - Time step for replaying the trajectory (default: 0.05)
     - real_time_factor: float - Speed multiplier (default: 1.0)
     - loop_playback: bool - Whether to loop the trajectory (default: True)
+    - real_offset: np.ndarray - Position offset for real_quat path [x, y, z]
+                            Default: [50.0, 0.0, 0.0]
 
 Key Functionality:
     - Lightweight CSV replay without controller/simulator overhead
     - Supports pause/resume via toggle_pause() method
-    - Continuously publishes reference path for late-joining RViz subscribers
+    - Continuously publishes reference paths for late-joining RViz subscribers
+    - Publishes both df_quat and real_quat reference paths (offset)
+    - Publishes both df_quat and real_quat odometry (for evolution visualization)
     - Differs from simulation_visualizer.py: No controller, no simulator, pure CSV replay
 """
 
 from __future__ import annotations
 
 from typing import Tuple
+import rclpy
 import numpy as np
 from geometry_msgs.msg import Point, Vector3
 from nav_msgs.msg import Odometry, Path
@@ -101,6 +106,7 @@ class ReferenceVisualizer(Node):
         playback_dt: float = 0.05,
         real_time_factor: float = 1.0,
         loop_playback: bool = True,
+        real_offset: np.ndarray | None = None,
     ):
         """
         Initialize the reference visualizer node.
@@ -110,6 +116,8 @@ class ReferenceVisualizer(Node):
             playback_dt: Time step for replaying the trajectory in seconds
             real_time_factor: Speed multiplier (1.0 = real-time)
             loop_playback: Whether to loop the trajectory playback
+            real_offset: Position offset for real_quat visualization [x, y, z]
+                        Default: [50.0, 0.0, 0.0]
         """
         super().__init__("reference_visualizer")
 
@@ -119,6 +127,7 @@ class ReferenceVisualizer(Node):
         self.playback_dt = playback_dt
         self.loop_playback = loop_playback
         self.paused = False
+        self.real_offset = real_offset if real_offset is not None else np.array([50.0, 0.0, 0.0])
 
         # Load trajectory
         trajectory = load_trajectory_csv(trajectory_csv)
@@ -130,18 +139,21 @@ class ReferenceVisualizer(Node):
         # Create publishers
         qos_profile = create_reliable_qos(depth=10)
 
+        # Reference path publishers (static)
         self.path_pub = self.create_publisher(
             Path, make_topic("reference_path"), qos_profile
         )
-        self.track_path_pub = self.create_publisher(
-            Path, make_topic("tracking_path"), qos_profile
+        self.real_path_pub = self.create_publisher(
+            Path, make_topic("real_reference_path"), qos_profile
         )
+
+        # Odometry publishers (evolution)
         self.odom_pub = self.create_publisher(
             Odometry, make_topic("odometry"), qos_profile
         )
-
-        # Initialize tracking path
-        self.tracking_path = create_path_message(frame_id="world")
+        self.real_odom_pub = self.create_publisher(
+            Odometry, make_topic("real_odometry"), qos_profile
+        )
 
         # Publish static reference path
         self._publish_reference_path()
@@ -150,8 +162,9 @@ class ReferenceVisualizer(Node):
         self.timer = self.create_timer(
             self.playback_dt / real_time_factor, self._timer_cb
         )
-
+        
         self.get_logger().info("ReferenceVisualizer ready")
+        self.get_logger().info(f"  Trajectory CSV: {trajectory_csv}")
         self.get_logger().info(f"  Playback dt: {playback_dt}s")
         self.get_logger().info(f"  Real-time factor: {real_time_factor}x")
         self.get_logger().info(f"  Loop playback: {loop_playback}")
@@ -169,32 +182,59 @@ class ReferenceVisualizer(Node):
         return self.paused
 
     def _publish_reference_path(self) -> None:
-        """Publish the full reference trajectory as a static Path message."""
-        msg = create_path_message(frame_id="world")
-        msg.header.stamp = self.get_clock().now().to_msg()
+        """Publish both df_quat and real_quat reference trajectories."""
+        # DF quaternion path (existing)
+        msg_df = create_path_message(frame_id="world")
+        msg_df.header.stamp = self.get_clock().now().to_msg()
+
+        # Real quaternion path (new)
+        msg_real = create_path_message(frame_id="world")
+        msg_real.header.stamp = self.get_clock().now().to_msg()
 
         sample_times = compute_reference_sample_times(
             self.trajectory, sample_count=400
         )
 
+        has_real_quat = False
         for t in sample_times:
             ref = self.trajectory.get_reference_at_time(t)
+
+            # DF quaternion path
             add_pose_to_path(
-                msg,
+                msg_df,
                 ref["position"],
                 ref.get("quaternion"),
                 frame_id="world",
             )
 
-        self.reference_path_msg = msg
-        self.path_pub.publish(msg)
-        self.get_logger().info("Reference trajectory published")
+            # Real quaternion path (with offset)
+            if ref.get("real_quat") is not None:
+                has_real_quat = True
+                real_pos = ref["position"] + self.real_offset
+                add_pose_to_path(
+                    msg_real,
+                    real_pos,
+                    ref["real_quat"],
+                    frame_id="world",
+                )
+
+        self.reference_path_msg = msg_df
+        self.path_pub.publish(msg_df)
+
+        if has_real_quat:
+            self.real_reference_path_msg = msg_real
+            self.real_path_pub.publish(msg_real)
+            self.get_logger().info("Reference trajectories published (df_quat and real_quat)")
+        else:
+            self.get_logger().warn("Reference trajectory published (df_quat only, real_quat not available)")
 
     def _timer_cb(self) -> None:
         """Timer callback for trajectory replay."""
-        # Continuously publish reference path for late subscribers
+        # Continuously publish reference paths for late subscribers
         if hasattr(self, "reference_path_msg"):
             self.path_pub.publish(self.reference_path_msg)
+        if hasattr(self, "real_reference_path_msg"):
+            self.real_path_pub.publish(self.real_reference_path_msg)
 
         if self.paused:
             return
@@ -203,8 +243,9 @@ class ReferenceVisualizer(Node):
         ref = self.trajectory.get_reference_at_time(self.current_time)
         stamp = self.get_clock().now().to_msg()
 
+        # Publish odometry (both df_quat and real_quat)
         self._publish_odometry(ref, stamp)
-        self._publish_tracking_path(ref, stamp)
+        self._publish_real_odometry(ref, stamp)
 
         # Advance playback time
         next_time, wrapped = advance_playback_time(
@@ -217,7 +258,6 @@ class ReferenceVisualizer(Node):
 
         # Handle looping or termination
         if self.loop_playback and wrapped:
-            self.tracking_path.poses.clear()
             self.current_time = next_time
             return
 
@@ -244,19 +284,23 @@ class ReferenceVisualizer(Node):
 
         self.odom_pub.publish(odom)
 
-    def _publish_tracking_path(self, ref: dict, stamp) -> None:
-        """Publish tracking path from reference state."""
-        add_pose_to_path(
-            self.tracking_path,
-            ref["position"],
-            ref.get("quaternion"),
-            frame_id="world",
-            stamp=stamp,
-        )
+    def _publish_real_odometry(self, ref: dict, stamp) -> None:
+        """Publish odometry from real_quat reference state."""
+        if ref.get("real_quat") is None:
+            return
 
-        truncate_path(self.tracking_path, max_poses=400)
+        odom = Odometry()
+        odom.header.frame_id = "world"
+        odom.child_frame_id = "real_reference"
+        odom.header.stamp = stamp
 
-        self.track_path_pub.publish(self.tracking_path)
+        # Apply position offset
+        real_pos = ref["position"] + self.real_offset
+        odom.pose.pose.position = numpy_to_point(real_pos)
+        odom.pose.pose.orientation = numpy_to_quaternion_wxyz(ref["real_quat"])
+        odom.twist.twist.linear = numpy_to_vector3(ref["velocity"])
+
+        self.real_odom_pub.publish(odom)
 
 
 def main(args=None):

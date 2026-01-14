@@ -1,0 +1,21 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+source "$SCRIPT_DIR/.env_setup.sh"
+
+# Get CSV path argument
+CSV_PATH="${1:-}"
+
+if [[ -z "$CSV_PATH" ]]; then
+    # Use latest planning CSV if no argument provided
+    CSV_PATH=$(ls -t artifacts/simulations/temp_data/planning*.csv 2>/dev/null | head -1)
+    if [[ -z "$CSV_PATH" ]]; then
+        echo "Error: No planning CSV found and no path provided"
+        echo "Usage: $0 [<path_to_csv>]"
+        exit 1
+    fi
+    echo "Using latest CSV: $CSV_PATH"
+fi
+
+exec ./pyp feature/lu_mpc/ros/reference_visualizer.py "$CSV_PATH"

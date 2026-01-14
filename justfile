@@ -268,9 +268,6 @@ viz-traj-tracking sim_time="10.0" config="feature/lu_mpc/ros/config/nmpc_viz.rvi
     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
     ./pyp tests/lu_mpc/ros/user_test_traj_tracking_viz.py --sim-time {{sim_time}} --rviz-config {{config}}
 
-sim-viz-gd sim_time="2.0" collect_aero="true":
-    ./pyp tests/lu_mpc/simulation/user_test_run_sim_viz.py {{sim_time}} {{collect_aero}}
-
 test-all:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc
 
@@ -333,7 +330,7 @@ alias tsg := test-sim-gd-model
 alias tpn := test-proposed-nmpc
 alias tpns := test-proposed-nmpc-simple
 alias tpnv := test-proposed-nmpc-viz
-alias svg := sim-viz-gd
+# alias svg := sim-viz-gd  # Removed: target no longer exists
 alias tsc := test-symbolic-casadi
 alias tfc := test-frame-conversion
 alias ta := test-all

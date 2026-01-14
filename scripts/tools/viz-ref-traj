@@ -1,0 +1,63 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+source "$SCRIPT_DIR/.env_setup.sh"
+
+# Get CSV path argument
+CSV_PATH="${1:-}"
+
+if [[ -z "$CSV_PATH" ]]; then
+    # Use latest planning CSV if no argument provided
+    CSV_PATH=$(ls -t artifacts/simulations/temp_data/planning*.csv 2>/dev/null | head -1)
+    if [[ -z "$CSV_PATH" ]]; then
+        echo "Error: No planning CSV found and no path provided"
+        echo "Usage: $0 [<path_to_csv>]"
+        exit 1
+    fi
+    echo "Using latest CSV: $CSV_PATH"
+fi
+
+# Get RViz config path
+RVIZ_CONFIG="${SCRIPT_DIR}/../../feature/lu_mpc/ros/config/nmpc_viz.rviz"
+if [[ ! -f "$RVIZ_CONFIG" ]]; then
+    echo "Warning: RViz config not found at $RVIZ_CONFIG"
+    RVIZ_CONFIG=""
+fi
+
+# Launch reference visualizer in background
+echo "Launching reference visualizer..."
+./pyp feature/lu_mpc/ros/reference_visualizer.py "$CSV_PATH" &
+VIZ_PID=$!
+
+# Launch RViz2 in background
+echo "Launching RViz2..."
+if [[ -n "$RVIZ_CONFIG" ]]; then
+    rviz2 -d "$RVIZ_CONFIG" &
+else
+    rviz2 &
+fi
+RVIZ_PID=$!
+
+# Function to cleanup on exit
+cleanup() {
+    echo "Stopping..."
+    kill $VIZ_PID 2>/dev/null || true
+    kill $RVIZ_PID 2>/dev/null || true
+    wait
+}
+
+# Trap SIGINT and SIGTERM
+trap cleanup SIGINT SIGTERM
+
+echo "Running reference visualizer (PID: $VIZ_PID) and RViz2 (PID: $RVIZ_PID)"
+echo "Press Ctrl+C to stop both"
+
+# Wait for both processes
+wait -n
+exit_code=$?
+
+# If one process died, kill the other
+cleanup
+
+exit $exit_code

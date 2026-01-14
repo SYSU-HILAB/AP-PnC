@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 from scipy.interpolate import interp1d
 
-from ..utils import Colors, color_print
+from feature.utils import Colors, color_print
 
 
 TEMP_DATA_SUBDIR = Path("artifacts") / "simulations" / "temp_data"
@@ -129,6 +129,7 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
         "thrust": "Thrust command",
         "df_alpha": "DF Alpha (differential flatness)",
         "real_alpha": "Real Alpha",
+        "real_quat_w, real_quat_x, real_quat_y, real_quat_z": "Real Quaternion",
         "aero_force_z": "Aerodynamic force Z",
         "ap_x, ap_y, ap_z": "Aerodynamic center",
         "S_ap_x, S_ap_z": "Aerodynamic derivatives",
@@ -172,6 +173,33 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     quat_columns = ["quat_w", "quat_x", "quat_y", "quat_z"]
     trajectory["quaternion"] = _stack_columns(data, quat_columns)
 
+    # Load real_alpha if available
+    real_alpha_col = None
+    if "real_alpha" in names:
+        real_alpha_col = "real_alpha"
+        trajectory["real_alpha"] = np.atleast_1d(data[real_alpha_col])
+    else:
+        trajectory["real_alpha"] = None
+
+    # Load or compute real_quat
+    real_quat_columns = ["real_quat_w", "real_quat_x", "real_quat_y", "real_quat_z"]
+    if all(q in names for q in real_quat_columns):
+        # Load from CSV if available
+        trajectory["real_quat"] = _stack_columns(data, real_quat_columns)
+    elif trajectory["real_alpha"] is not None:
+        # Compute from real_alpha and velocity using alpha_to_quat
+        from feature.utils.math_utils import alpha_to_quat
+
+        real_quats = []
+        for i in range(len(trajectory["time"])):
+            alpha = trajectory["real_alpha"][i]
+            vel = trajectory["velocity"][i]
+            q = alpha_to_quat(alpha, vel)
+            real_quats.append(q)
+        trajectory["real_quat"] = np.stack(real_quats, axis=0)
+    else:
+        trajectory["real_quat"] = None
+
     # ========================================================================
     # Summary
     # ========================================================================
@@ -211,6 +239,7 @@ class TrajectoryReference:
         self.thrust = trajectory_data.get("thrust", np.zeros(len(self.time)))
         self.alpha = trajectory_data.get("alpha", np.zeros(len(self.time)))
         self.quaternion = trajectory_data.get("quaternion")
+        self.real_quat = trajectory_data.get("real_quat")
 
         # Create interpolators
         self._pos_interp = [
@@ -234,6 +263,12 @@ class TrajectoryReference:
                 interp1d(self.time, self.quaternion[:, i], kind="linear", fill_value="extrapolate")
                 for i in range(4)
             ]
+        self._real_quat_interp = None
+        if self.real_quat is not None:
+            self._real_quat_interp = [
+                interp1d(self.time, self.real_quat[:, i], kind="linear", fill_value="extrapolate")
+                for i in range(4)
+            ]
 
     def get_reference_at_time(self, t: float) -> dict[str, np.ndarray]:
         """
@@ -248,6 +283,8 @@ class TrajectoryReference:
             - velocity: (3,) array
             - yb: (3,) array
             - alpha: scalar
+            - quaternion: (4,) array [w, x, y, z] if available
+            - real_quat: (4,) array [w, x, y, z] if available
         """
         ref = {
             "position": np.array([f(t) for f in self._pos_interp]),
@@ -261,6 +298,12 @@ class TrajectoryReference:
             if norm > 1e-6:
                 quat = quat / norm
             ref["quaternion"] = quat
+        if self._real_quat_interp:
+            real_quat = np.array([f(t) for f in self._real_quat_interp])
+            norm = np.linalg.norm(real_quat)
+            if norm > 1e-6:
+                real_quat = real_quat / norm
+            ref["real_quat"] = real_quat
         return ref
 
     def get_reference_window(self, t: float, horizon: float, dt: float) -> dict[str, np.ndarray]:

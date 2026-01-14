@@ -7,5 +7,6 @@ feature prototypes and the production `src/` packages.
 """
 
 from . import math_utils, ros_visualizer, traj_visualizer
+from .color_print import Colors, color_print
 
-__all__ = ["math_utils", "ros_visualizer", "traj_visualizer"]
+__all__ = ["math_utils", "ros_visualizer", "traj_visualizer", "Colors", "color_print"]
