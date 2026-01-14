@@ -10,9 +10,10 @@ Data Sources:
     - No controller or simulator used (lightweight alternative to simulation_visualizer)
 
 Topics Published:
-    - /nmpc/reference_path: Path - Full reference trajectory from CSV (static)
-    - /nmpc/odometry: Odometry - Reference state replayed at playback_dt
-    - /nmpc/tracking_path: Path - Rolling buffer of replayed reference states
+    - /ref_traj_df_phi: Path - Full df_phi_quat reference trajectory from CSV (static)
+    - /ref_traj_df_lyu: Path - Full df_lyu_quat reference trajectory from CSV (static, offset)
+    - /ref_odom_df_phi: Odometry - df_phi_quat reference state replayed at playback_dt
+    - /ref_odom_df_lyu: Odometry - df_lyu_quat reference state replayed at playback_dt (offset)
 
 Dependencies:
     - feature.lu_mpc.controller.trajectory_loader: CSV trajectory loading
@@ -23,15 +24,15 @@ Parameters:
     - playback_dt: float - Time step for replaying the trajectory (default: 0.05)
     - real_time_factor: float - Speed multiplier (default: 1.0)
     - loop_playback: bool - Whether to loop the trajectory (default: True)
-    - real_offset: np.ndarray - Position offset for real_quat path [x, y, z]
-                            Default: [50.0, 0.0, 0.0]
+    - df_lyu_offset: np.ndarray - Position offset for df_lyu_quat path [x, y, z]
+                            Default: [80.0, 0.0, 0.0]
 
 Key Functionality:
     - Lightweight CSV replay without controller/simulator overhead
     - Supports pause/resume via toggle_pause() method
     - Continuously publishes reference paths for late-joining RViz subscribers
-    - Publishes both df_quat and real_quat reference paths (offset)
-    - Publishes both df_quat and real_quat odometry (for evolution visualization)
+    - Publishes both df_phi_quat and df_lyu_quat reference paths (offset)
+    - Publishes both df_phi_quat and df_lyu_quat odometry (for evolution visualization)
     - Differs from simulation_visualizer.py: No controller, no simulator, pure CSV replay
 """
 
@@ -48,8 +49,8 @@ from feature.lu_mpc.controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
+from feature.utils.math_utils import right_quat_multiply
 from feature.utils.ros_visualizer import (
-    make_topic,
     compute_reference_sample_times,
     numpy_to_point,
     numpy_to_vector3,
@@ -59,6 +60,7 @@ from feature.utils.ros_visualizer import (
     truncate_path,
     create_reliable_qos,
 )
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 
 def advance_playback_time(
@@ -106,7 +108,7 @@ class ReferenceVisualizer(Node):
         playback_dt: float = 0.05,
         real_time_factor: float = 1.0,
         loop_playback: bool = True,
-        real_offset: np.ndarray | None = None,
+        df_lyu_offset: np.ndarray | None = None,
     ):
         """
         Initialize the reference visualizer node.
@@ -116,8 +118,8 @@ class ReferenceVisualizer(Node):
             playback_dt: Time step for replaying the trajectory in seconds
             real_time_factor: Speed multiplier (1.0 = real-time)
             loop_playback: Whether to loop the trajectory playback
-            real_offset: Position offset for real_quat visualization [x, y, z]
-                        Default: [50.0, 0.0, 0.0]
+            df_lyu_offset: Position offset for df_lyu_quat visualization [x, y, z]
+                          Default: [80.0, 0.0, 0.0]
         """
         super().__init__("reference_visualizer")
 
@@ -127,32 +129,44 @@ class ReferenceVisualizer(Node):
         self.playback_dt = playback_dt
         self.loop_playback = loop_playback
         self.paused = False
-        self.real_offset = real_offset if real_offset is not None else np.array([50.0, 0.0, 0.0])
+        self.df_lyu_offset = df_lyu_offset if df_lyu_offset is not None else np.array([80.0, 0.0, 0.0])
 
         # Load trajectory
         trajectory = load_trajectory_csv(trajectory_csv)
+        if trajectory.get("df_lyu_quat") is None:
+            raise ValueError(
+                "ReferenceVisualizer requires df_lyu_quat columns "
+                "(df_lyu_quat_w, df_lyu_quat_x, df_lyu_quat_y, df_lyu_quat_z) in the trajectory CSV."
+            )
         self.trajectory = TrajectoryReference(trajectory)
         self.start_time = float(self.trajectory.time[0])
         self.end_time = float(self.trajectory.time[-1])
         self.current_time = self.start_time
 
-        # Create publishers
+        # Create publishers with explicit topic names (no /nmpc/ prefix)
         qos_profile = create_reliable_qos(depth=10)
 
-        # Reference path publishers (static)
-        self.path_pub = self.create_publisher(
-            Path, make_topic("reference_path"), qos_profile
-        )
-        self.real_path_pub = self.create_publisher(
-            Path, make_topic("real_reference_path"), qos_profile
+        # Reference path publishers need TRANSIENT_LOCAL for late subscribers (RViz)
+        qos_transient_local = QoSProfile(
+            depth=10,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE,
         )
 
-        # Odometry publishers (evolution)
-        self.odom_pub = self.create_publisher(
-            Odometry, make_topic("odometry"), qos_profile
+        # Reference path publishers (static) - df_phi_quat vs df_lyu_quat
+        self.df_phi_path_pub = self.create_publisher(
+            Path, "/ref_traj_df_phi", qos_transient_local
         )
-        self.real_odom_pub = self.create_publisher(
-            Odometry, make_topic("real_odometry"), qos_profile
+        self.df_lyu_path_pub = self.create_publisher(
+            Path, "/ref_traj_df_lyu", qos_transient_local
+        )
+
+        # Odometry publishers (evolution) - df_phi_quat vs df_lyu_quat
+        self.df_phi_odom_pub = self.create_publisher(
+            Odometry, "/ref_odom_df_phi", qos_profile
+        )
+        self.df_lyu_odom_pub = self.create_publisher(
+            Odometry, "/ref_odom_df_lyu", qos_profile
         )
 
         # Publish static reference path
@@ -182,59 +196,54 @@ class ReferenceVisualizer(Node):
         return self.paused
 
     def _publish_reference_path(self) -> None:
-        """Publish both df_quat and real_quat reference trajectories."""
-        # DF quaternion path (existing)
-        msg_df = create_path_message(frame_id="world")
-        msg_df.header.stamp = self.get_clock().now().to_msg()
+        """Publish both df_phi_quat and df_lyu_quat reference trajectories."""
+        # df_phi quaternion path
+        msg_df_phi = create_path_message(frame_id="world")
+        msg_df_phi.header.stamp = self.get_clock().now().to_msg()
 
-        # Real quaternion path (new)
-        msg_real = create_path_message(frame_id="world")
-        msg_real.header.stamp = self.get_clock().now().to_msg()
+        # df_lyu quaternion path (offset)
+        msg_df_lyu = create_path_message(frame_id="world")
+        msg_df_lyu.header.stamp = self.get_clock().now().to_msg()
 
         sample_times = compute_reference_sample_times(
             self.trajectory, sample_count=400
         )
 
-        has_real_quat = False
         for t in sample_times:
             ref = self.trajectory.get_reference_at_time(t)
 
-            # DF quaternion path
+            # DF phi quaternion path
+            df_phi_quat = self._compose_reference_quat(ref, "df_phi_quat")
             add_pose_to_path(
-                msg_df,
+                msg_df_phi,
                 ref["position"],
-                ref.get("quaternion"),
+                df_phi_quat,
                 frame_id="world",
             )
 
-            # Real quaternion path (with offset)
-            if ref.get("real_quat") is not None:
-                has_real_quat = True
-                real_pos = ref["position"] + self.real_offset
-                add_pose_to_path(
-                    msg_real,
-                    real_pos,
-                    ref["real_quat"],
-                    frame_id="world",
-                )
+            # DF lyu quaternion path (with offset)
+            df_lyu_pos = ref["position"] + self.df_lyu_offset
+            df_lyu_quat = self._compose_reference_quat(ref, "df_lyu_quat")
+            add_pose_to_path(
+                msg_df_lyu,
+                df_lyu_pos,
+                df_lyu_quat,
+                frame_id="world",
+            )
 
-        self.reference_path_msg = msg_df
-        self.path_pub.publish(msg_df)
-
-        if has_real_quat:
-            self.real_reference_path_msg = msg_real
-            self.real_path_pub.publish(msg_real)
-            self.get_logger().info("Reference trajectories published (df_quat and real_quat)")
-        else:
-            self.get_logger().warn("Reference trajectory published (df_quat only, real_quat not available)")
+        self.df_phi_reference_path_msg = msg_df_phi
+        self.df_phi_path_pub.publish(msg_df_phi)
+        self.df_lyu_reference_path_msg = msg_df_lyu
+        self.df_lyu_path_pub.publish(msg_df_lyu)
+        self.get_logger().info("Reference trajectories published (df_phi_quat and df_lyu_quat)")
 
     def _timer_cb(self) -> None:
         """Timer callback for trajectory replay."""
         # Continuously publish reference paths for late subscribers
-        if hasattr(self, "reference_path_msg"):
-            self.path_pub.publish(self.reference_path_msg)
-        if hasattr(self, "real_reference_path_msg"):
-            self.real_path_pub.publish(self.real_reference_path_msg)
+        if hasattr(self, "df_phi_reference_path_msg"):
+            self.df_phi_path_pub.publish(self.df_phi_reference_path_msg)
+        if hasattr(self, "df_lyu_reference_path_msg"):
+            self.df_lyu_path_pub.publish(self.df_lyu_reference_path_msg)
 
         if self.paused:
             return
@@ -243,9 +252,9 @@ class ReferenceVisualizer(Node):
         ref = self.trajectory.get_reference_at_time(self.current_time)
         stamp = self.get_clock().now().to_msg()
 
-        # Publish odometry (both df_quat and real_quat)
-        self._publish_odometry(ref, stamp)
-        self._publish_real_odometry(ref, stamp)
+        # Publish odometry (both df_phi_quat and df_lyu_quat)
+        self._publish_df_phi_odometry(ref, stamp)
+        self._publish_df_lyu_odometry(ref, stamp)
 
         # Advance playback time
         next_time, wrapped = advance_playback_time(
@@ -269,38 +278,49 @@ class ReferenceVisualizer(Node):
 
         self.current_time = next_time
 
-    def _publish_odometry(self, ref: dict, stamp) -> None:
-        """Publish odometry from reference state."""
+    def _publish_df_phi_odometry(self, ref: dict, stamp) -> None:
+        """Publish odometry from df_phi_quat reference state."""
         odom = Odometry()
         odom.header.frame_id = "world"
-        odom.child_frame_id = "reference"
+        odom.child_frame_id = "df_phi_reference"
         odom.header.stamp = stamp
 
         odom.pose.pose.position = numpy_to_point(ref["position"])
-        odom.pose.pose.orientation = numpy_to_quaternion_wxyz(
-            ref.get("quaternion")
-        )
+        quat = self._compose_reference_quat(ref, "df_phi_quat")
+        odom.pose.pose.orientation = numpy_to_quaternion_wxyz(quat)
         odom.twist.twist.linear = numpy_to_vector3(ref["velocity"])
 
-        self.odom_pub.publish(odom)
+        self.df_phi_odom_pub.publish(odom)
 
-    def _publish_real_odometry(self, ref: dict, stamp) -> None:
-        """Publish odometry from real_quat reference state."""
-        if ref.get("real_quat") is None:
-            return
+    def _publish_df_lyu_odometry(self, ref: dict, stamp) -> None:
+        """Publish odometry from df_lyu_quat reference state."""
+        df_lyu_quat = self._compose_reference_quat(ref, "df_lyu_quat")
+        if df_lyu_quat is None:
+            raise RuntimeError("df_lyu_quat is missing from reference state")
 
         odom = Odometry()
         odom.header.frame_id = "world"
-        odom.child_frame_id = "real_reference"
+        odom.child_frame_id = "df_lyu_reference"
         odom.header.stamp = stamp
 
         # Apply position offset
-        real_pos = ref["position"] + self.real_offset
-        odom.pose.pose.position = numpy_to_point(real_pos)
-        odom.pose.pose.orientation = numpy_to_quaternion_wxyz(ref["real_quat"])
+        df_lyu_pos = ref["position"] + self.df_lyu_offset
+        odom.pose.pose.position = numpy_to_point(df_lyu_pos)
+        odom.pose.pose.orientation = numpy_to_quaternion_wxyz(df_lyu_quat)
         odom.twist.twist.linear = numpy_to_vector3(ref["velocity"])
 
-        self.real_odom_pub.publish(odom)
+        self.df_lyu_odom_pub.publish(odom)
+
+    @staticmethod
+    def _compose_reference_quat(ref: dict, key: str):
+        """
+        Compose CSV quaternion with odometry quaternion for visualization.
+
+        df_phi/df_lyu quats are stored as offsets relative to the odom frame.
+        """
+        quat_csv = ref.get(key)
+        quat_odom = ref.get("quat_odom")
+        return right_quat_multiply(quat_csv, quat_odom)
 
 
 def main(args=None):

@@ -29,6 +29,9 @@ AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_int
     : aero_interface_(std::move(aero_interface)),
       config_(),
       prev_alpha_rad_(config_.initial_alpha_deg * DEG_TO_RAD),
+      alpha_offset_rad_(0.0),
+      unwrapping_initialized_(false),
+      prev_wrapped_alpha_(0.0),
       last_iterations_(0)
 {
   if (!aero_interface_)
@@ -49,6 +52,9 @@ AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_int
     : aero_interface_(std::move(aero_interface)),
       config_(config),
       prev_alpha_rad_(config_.initial_alpha_deg * DEG_TO_RAD),
+      alpha_offset_rad_(0.0),
+      unwrapping_initialized_(false),
+      prev_wrapped_alpha_(0.0),
       last_iterations_(0)
 {
   if (!aero_interface_)
@@ -104,14 +110,41 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
     double delta = config_.damping_factor * f / df;
     alpha -= delta;
 
-    // Wrap alpha to [-pi, pi] for numerical stability
-    while (alpha < -M_PI)
+    // Store current wrapped alpha before modification
+    double wrapped_alpha = alpha;
+    while (wrapped_alpha < -M_PI)
     {
-      alpha += 2 * M_PI;
+      wrapped_alpha += 2 * M_PI;
     }
-    while (alpha > M_PI)
+    while (wrapped_alpha > M_PI)
     {
-      alpha -= 2 * M_PI;
+      wrapped_alpha -= 2 * M_PI;
+    }
+
+    // Detect and compensate for wrap events on first iteration
+    if (i == 0 && unwrapping_initialized_)
+    {
+      double delta_wrapped = wrapped_alpha - prev_wrapped_alpha_;
+
+      // If jump is larger than π, it's a wrap event
+      if (delta_wrapped > M_PI)
+      {
+        alpha_offset_rad_ -= 2 * M_PI;  // Wrapped from positive to negative
+      }
+      else if (delta_wrapped < -M_PI)
+      {
+        alpha_offset_rad_ += 2 * M_PI;  // Wrapped from negative to positive
+      }
+    }
+
+    // Apply unwrapping offset
+    alpha = wrapped_alpha + alpha_offset_rad_;
+
+    // Update tracking variables
+    if (i == 0)
+    {
+      prev_wrapped_alpha_ = wrapped_alpha;
+      unwrapping_initialized_ = true;
     }
   }
 
@@ -125,6 +158,17 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
 
 void AeroAlphaSolver::resetAlpha(double initial_alpha_deg)
 {
+  resetUnwrapping(initial_alpha_deg);
+}
+
+void AeroAlphaSolver::resetUnwrapping(double initial_alpha_deg)
+{
+  // Reset all unwrapping state
+  alpha_offset_rad_ = 0.0;
+  unwrapping_initialized_ = false;
+  prev_wrapped_alpha_ = 0.0;
+
+  // Also reset the temporal coherence state
   prev_alpha_rad_ = initial_alpha_deg * DEG_TO_RAD;
 }
 

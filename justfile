@@ -242,7 +242,7 @@ test-ref-traj-viz:
 test-ros-viz-node:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/ros
 
-viz-ref-traj playback_dt="0.05" config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
+viz-ref-traj playback_dt="0.05" config="feature/lu_mpc/ros/config/ref_trajs.rviz":
     #!/usr/bin/env bash
     set -euo pipefail
     git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"

@@ -64,13 +64,16 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     Load trajectory data from a planner-generated CSV.
 
     Required columns (emitted by global_planning.cpp):
-    time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,yb_x,yb_y,yb_z,quat_w,quat_x,quat_y,quat_z
+    time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,yb_x,yb_y,yb_z,
+    df_phi_alpha,df_lyu_alpha,
+    df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,
+    df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z
 
-    Optional columns: thrust,df_alpha,real_alpha,aero_force_z,ap_x,ap_y,ap_z,
-    S_ap_x,S_ap_z,B_Omega_b_y,alpha_dot,B_aero_force_z
+Optional columns: thrust,aero_force_z,ap_x,ap_y,ap_z,
+S_ap_x,S_ap_z,B_Omega_b_y,alpha_dot,B_aero_force_z
 
-    NOTE: quaternion columns (quat_w,quat_x,quat_y,quat_z) are REQUIRED.
-    Older v14-alpha.csv files without orientation data are NOT supported.
+NOTE: Both df_phi and df_lyu quaternion/alpha columns are REQUIRED.
+Older v14-alpha.csv files without orientation data are NOT supported.
     """
     csv_path_obj = Path(csv_path)
     if not csv_path_obj.exists():
@@ -95,7 +98,10 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
         "pos_x, pos_y, pos_z": "Position (3D)",
         "vel_x, vel_y, vel_z": "Velocity (3D)",
         "yb_x, yb_y, yb_z": "Body Y-axis",
-        "quat_w, quat_x, quat_y, quat_z": "Quaternion (WXYZ)",
+        "df_phi_alpha": "DF phi Alpha (differential flatness)",
+        "df_lyu_alpha": "DF Lyu Alpha (force balance)",
+        "df_phi_quat_w, df_phi_quat_x, df_phi_quat_y, df_phi_quat_z": "DF phi Quaternion (WXYZ)",
+        "df_lyu_quat_w, df_lyu_quat_x, df_lyu_quat_y, df_lyu_quat_z": "DF Lyu Quaternion (WXYZ)",
     }
 
     missing_required = []
@@ -127,15 +133,14 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     # Optional fields
     optional_fields = {
         "thrust": "Thrust command",
-        "df_alpha": "DF Alpha (differential flatness)",
-        "real_alpha": "Real Alpha",
-        "real_quat_w, real_quat_x, real_quat_y, real_quat_z": "Real Quaternion",
         "aero_force_z": "Aerodynamic force Z",
         "ap_x, ap_y, ap_z": "Aerodynamic center",
         "S_ap_x, S_ap_z": "Aerodynamic derivatives",
         "B_Omega_b_y": "Body angular rate Y",
         "alpha_dot": "Alpha rate of change",
         "B_aero_force_z": "Aerodynamic force Z (body)",
+        "quat_w, quat_x, quat_y, quat_z": "Odom quaternion (legacy naming)",
+        "quat_odom_w, quat_odom_x, quat_odom_y, quat_odom_z": "Odom quaternion",
     }
 
     color_print("\nOptional Fields:", Colors.YELLOW)
@@ -156,49 +161,36 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     trajectory["velocity"] = _stack_columns(data, ["vel_x", "vel_y", "vel_z"])
     trajectory["yb"] = _stack_columns(data, ["yb_x", "yb_y", "yb_z"])
 
+    # Optional odometry quaternion recorded by planner (for frame alignment)
+    odom_columns: list[str] | None = None
+    for candidate in [
+        ["quat_odom_w", "quat_odom_x", "quat_odom_y", "quat_odom_z"],
+        ["quat_w", "quat_x", "quat_y", "quat_z"],
+    ]:
+        if all(col in names for col in candidate):
+            odom_columns = candidate
+            break
+    if odom_columns is not None:
+        trajectory["odom_quat"] = _stack_columns(data, odom_columns)
+
     thrust_col = "thrust" if "thrust" in names else None
     trajectory["thrust"] = (
         np.atleast_1d(data[thrust_col]) if thrust_col else np.zeros_like(trajectory["time"])
     )
 
-    alpha_col = None
-    if "df_alpha" in names:
-        alpha_col = "df_alpha"
-    elif "alpha" in names:
-        alpha_col = "alpha"
-    trajectory["alpha"] = (
-        np.atleast_1d(data[alpha_col]) if alpha_col else np.zeros_like(trajectory["time"])
-    )
+    df_phi_alpha = np.atleast_1d(data["df_phi_alpha"])
+    trajectory["df_phi_alpha"] = df_phi_alpha
+    trajectory["alpha"] = df_phi_alpha
 
-    quat_columns = ["quat_w", "quat_x", "quat_y", "quat_z"]
-    trajectory["quaternion"] = _stack_columns(data, quat_columns)
+    df_phi_quat_columns = ["df_phi_quat_w", "df_phi_quat_x", "df_phi_quat_y", "df_phi_quat_z"]
+    trajectory["df_phi_quat"] = _stack_columns(data, df_phi_quat_columns)
 
-    # Load real_alpha if available
-    real_alpha_col = None
-    if "real_alpha" in names:
-        real_alpha_col = "real_alpha"
-        trajectory["real_alpha"] = np.atleast_1d(data[real_alpha_col])
-    else:
-        trajectory["real_alpha"] = None
+    # Load df_lyu_alpha (required)
+    trajectory["df_lyu_alpha"] = np.atleast_1d(data["df_lyu_alpha"])
 
-    # Load or compute real_quat
-    real_quat_columns = ["real_quat_w", "real_quat_x", "real_quat_y", "real_quat_z"]
-    if all(q in names for q in real_quat_columns):
-        # Load from CSV if available
-        trajectory["real_quat"] = _stack_columns(data, real_quat_columns)
-    elif trajectory["real_alpha"] is not None:
-        # Compute from real_alpha and velocity using alpha_to_quat
-        from feature.utils.math_utils import alpha_to_quat
-
-        real_quats = []
-        for i in range(len(trajectory["time"])):
-            alpha = trajectory["real_alpha"][i]
-            vel = trajectory["velocity"][i]
-            q = alpha_to_quat(alpha, vel)
-            real_quats.append(q)
-        trajectory["real_quat"] = np.stack(real_quats, axis=0)
-    else:
-        trajectory["real_quat"] = None
+    # Load df_lyu_quat (required)
+    df_lyu_quat_columns = ["df_lyu_quat_w", "df_lyu_quat_x", "df_lyu_quat_y", "df_lyu_quat_z"]
+    trajectory["df_lyu_quat"] = _stack_columns(data, df_lyu_quat_columns)
 
     # ========================================================================
     # Summary
@@ -238,8 +230,9 @@ class TrajectoryReference:
         self.yb = trajectory_data["yb"]
         self.thrust = trajectory_data.get("thrust", np.zeros(len(self.time)))
         self.alpha = trajectory_data.get("alpha", np.zeros(len(self.time)))
-        self.quaternion = trajectory_data.get("quaternion")
-        self.real_quat = trajectory_data.get("real_quat")
+        self.df_phi_quat = trajectory_data.get("df_phi_quat")
+        self.df_lyu_quat = trajectory_data.get("df_lyu_quat")
+        self.odom_quat = trajectory_data.get("odom_quat")
 
         # Create interpolators
         self._pos_interp = [
@@ -257,16 +250,22 @@ class TrajectoryReference:
         self._alpha_interp = interp1d(
             self.time, self.alpha, kind="linear", fill_value="extrapolate"
         )
-        self._quat_interp = None
-        if self.quaternion is not None:
-            self._quat_interp = [
-                interp1d(self.time, self.quaternion[:, i], kind="linear", fill_value="extrapolate")
+        self._df_phi_quat_interp = None
+        if self.df_phi_quat is not None:
+            self._df_phi_quat_interp = [
+                interp1d(self.time, self.df_phi_quat[:, i], kind="linear", fill_value="extrapolate")
                 for i in range(4)
             ]
-        self._real_quat_interp = None
-        if self.real_quat is not None:
-            self._real_quat_interp = [
-                interp1d(self.time, self.real_quat[:, i], kind="linear", fill_value="extrapolate")
+        self._df_lyu_quat_interp = None
+        if self.df_lyu_quat is not None:
+            self._df_lyu_quat_interp = [
+                interp1d(self.time, self.df_lyu_quat[:, i], kind="linear", fill_value="extrapolate")
+                for i in range(4)
+            ]
+        self._odom_quat_interp = None
+        if self.odom_quat is not None:
+            self._odom_quat_interp = [
+                interp1d(self.time, self.odom_quat[:, i], kind="linear", fill_value="extrapolate")
                 for i in range(4)
             ]
 
@@ -283,8 +282,8 @@ class TrajectoryReference:
             - velocity: (3,) array
             - yb: (3,) array
             - alpha: scalar
-            - quaternion: (4,) array [w, x, y, z] if available
-            - real_quat: (4,) array [w, x, y, z] if available
+            - df_phi_quat: (4,) array [w, x, y, z] if available
+            - df_lyu_quat: (4,) array [w, x, y, z] if available
         """
         ref = {
             "position": np.array([f(t) for f in self._pos_interp]),
@@ -292,18 +291,24 @@ class TrajectoryReference:
             "yb": np.array([f(t) for f in self._yb_interp]),
             "alpha": float(self._alpha_interp(t)),
         }
-        if self._quat_interp:
-            quat = np.array([f(t) for f in self._quat_interp])
-            norm = np.linalg.norm(quat)
+        if self._df_phi_quat_interp:
+            df_phi_quat = np.array([f(t) for f in self._df_phi_quat_interp])
+            norm = np.linalg.norm(df_phi_quat)
             if norm > 1e-6:
-                quat = quat / norm
-            ref["quaternion"] = quat
-        if self._real_quat_interp:
-            real_quat = np.array([f(t) for f in self._real_quat_interp])
-            norm = np.linalg.norm(real_quat)
+                df_phi_quat = df_phi_quat / norm
+            ref["df_phi_quat"] = df_phi_quat
+        if self._df_lyu_quat_interp:
+            df_lyu_quat = np.array([f(t) for f in self._df_lyu_quat_interp])
+            norm = np.linalg.norm(df_lyu_quat)
             if norm > 1e-6:
-                real_quat = real_quat / norm
-            ref["real_quat"] = real_quat
+                df_lyu_quat = df_lyu_quat / norm
+            ref["df_lyu_quat"] = df_lyu_quat
+        if self._odom_quat_interp:
+            quat_odom = np.array([f(t) for f in self._odom_quat_interp])
+            norm = np.linalg.norm(quat_odom)
+            if norm > 1e-6:
+                quat_odom = quat_odom / norm
+            ref["quat_odom"] = quat_odom
         return ref
 
     def get_reference_window(self, t: float, horizon: float, dt: float) -> dict[str, np.ndarray]:
@@ -333,15 +338,15 @@ class TrajectoryReference:
             "velocity": velocity_ref,
             "yb": yb_ref,
         }
-        if self._quat_interp:
+        if self._df_phi_quat_interp:
             quat_ref = []
             for tau in times:
-                quat = np.array([f(tau) for f in self._quat_interp])
+                quat = np.array([f(tau) for f in self._df_phi_quat_interp])
                 norm = np.linalg.norm(quat)
                 if norm > 1e-6:
                     quat = quat / norm
                 quat_ref.append(quat)
-            ref["quaternion"] = np.vstack(quat_ref)
+            ref["df_phi_quat"] = np.vstack(quat_ref)
 
         return ref
 

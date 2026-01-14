@@ -51,6 +51,41 @@ def quat_multiply(
         )
 
 
+def right_quat_multiply(
+    quat: np.ndarray | None, right: np.ndarray | None
+) -> np.ndarray | None:
+    """
+    Multiply quaternion `quat` by `right` on the right-hand side.
+
+    Args:
+        quat: Base quaternion [w, x, y, z] or None.
+        right: Quaternion applied on the right [w, x, y, z] or None.
+
+    Returns:
+        Quaternion product quat * right (normalized) or the original quat if
+        `right` is None. Returns None when `quat` is None.
+    """
+    if quat is None:
+        return None
+
+    quat_np = np.asarray(quat, dtype=float)
+    if quat_np.shape != (4,):
+        raise ValueError(f"Quaternion must have shape (4,), got {quat_np.shape}")
+
+    if right is None:
+        return quat_np.copy()
+
+    right_np = np.asarray(right, dtype=float)
+    if right_np.shape != (4,):
+        raise ValueError(f"Right quaternion must have shape (4,), got {right_np.shape}")
+
+    composed = quat_multiply(quat_np, right_np)
+    norm = np.linalg.norm(composed)
+    if norm > 1e-9:
+        composed = composed / norm
+    return composed
+
+
 def quat_to_rotmat(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
     """
     Convert quaternion to rotation matrix.

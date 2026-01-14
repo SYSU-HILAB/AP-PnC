@@ -6,8 +6,8 @@ Every plotter in this module needs the following columns (all float):
 
 * `time` – seconds since the trajectory start.
 * `vel_x`, `vel_y`, `vel_z` – body velocity components in meters per second.
-* `df_alpha` – differential-flatness command for angle of attack (radians).
-* `real_alpha` – lookup-table corrected angle of attack (radians).
+* `df_phi_alpha` – differential-flatness command for angle of attack (radians).
+* `df_lyu_alpha` – lookup-table corrected angle of attack (radians).
 
 These columns are parsed into a structured numpy array via `np.genfromtxt` so consumers
 can access fields as `data['time']` etc.
@@ -46,7 +46,7 @@ def plot_trajectory_over_time(
     save_path=None
 ):
     """
-    Plot velocity magnitude, df_alpha, and real_alpha over time.
+    Plot velocity magnitude, df_phi_alpha, and df_lyu_alpha over time.
 
     Args:
         csv_path (str, optional): Path to the planning CSV file.
@@ -68,8 +68,8 @@ def plot_trajectory_over_time(
     vel_x = data['vel_x']
     vel_y = data['vel_y']
     vel_z = data['vel_z']
-    df_alpha = data['df_alpha']
-    real_alpha = data['real_alpha']
+    df_phi_alpha = data['df_phi_alpha']
+    df_lyu_alpha = data['df_lyu_alpha']
 
     # Calculate velocity magnitude
     vel = np.sqrt(vel_x**2 + vel_y**2 + vel_z**2)
@@ -87,31 +87,31 @@ def plot_trajectory_over_time(
     ax1.grid(True, alpha=0.3)
     ax1.legend()
 
-    # df_alpha over time
+    # df_phi_alpha over time
     ax2 = axs[0, 1]
-    ax2.plot(t, np.degrees(df_alpha), 'r-', linewidth=2, label='df_alpha')
+    ax2.plot(t, np.degrees(df_phi_alpha), 'r-', linewidth=2, label='df_phi_alpha')
     ax2.set_xlabel('Time [s]', fontsize=12)
     ax2.set_ylabel('Angle of Attack [deg]', fontsize=12)
-    ax2.set_title('df_alpha (Differential Flatness) over Time', fontsize=14)
+    ax2.set_title('df_phi_alpha (Differential Flatness) over Time', fontsize=14)
     ax2.grid(True, alpha=0.3)
     ax2.legend()
 
-    # real_alpha over time
+    # df_lyu_alpha over time
     ax3 = axs[1, 0]
-    ax3.plot(t, np.degrees(real_alpha), 'g-', linewidth=2, label='real_alpha')
+    ax3.plot(t, np.degrees(df_lyu_alpha), 'g-', linewidth=2, label='df_lyu_alpha')
     ax3.set_xlabel('Time [s]', fontsize=12)
     ax3.set_ylabel('Angle of Attack [deg]', fontsize=12)
-    ax3.set_title('real_alpha (Lookup Table Corrected) over Time', fontsize=14)
+    ax3.set_title('df_lyu_alpha (Lookup Table Corrected) over Time', fontsize=14)
     ax3.grid(True, alpha=0.3)
     ax3.legend()
 
-    # df_alpha vs real_alpha comparison
+    # df_phi_alpha vs df_lyu_alpha comparison
     ax4 = axs[1, 1]
-    ax4.plot(t, np.degrees(df_alpha), 'r-', linewidth=2, label='df_alpha', alpha=0.7)
-    ax4.plot(t, np.degrees(real_alpha), 'g-', linewidth=2, label='real_alpha', alpha=0.7)
+    ax4.plot(t, np.degrees(df_phi_alpha), 'r-', linewidth=2, label='df_phi_alpha', alpha=0.7)
+    ax4.plot(t, np.degrees(df_lyu_alpha), 'g-', linewidth=2, label='df_lyu_alpha', alpha=0.7)
     ax4.set_xlabel('Time [s]', fontsize=12)
     ax4.set_ylabel('Angle of Attack [deg]', fontsize=12)
-    ax4.set_title('df_alpha vs real_alpha Comparison', fontsize=14)
+    ax4.set_title('df_phi_alpha vs df_lyu_alpha Comparison', fontsize=14)
     ax4.grid(True, alpha=0.3)
     ax4.legend()
 

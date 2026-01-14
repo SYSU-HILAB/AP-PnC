@@ -48,7 +48,7 @@ std::string format_float_1f(double value);
 std::string get_trajectory_type_name(int type);
 std::filesystem::path get_artifacts_temp_dir();
 
-// Static AeroAlphaSolver instance for real_alpha lookup from force balance equation
+// Static AeroAlphaSolver instance for df_lyu_alpha lookup from force balance equation
 // Solves: S_ap_z*cos(alpha) + S_ap_x*sin(alpha) = F_aero_z/mass
 static auto g_lyu_aerodynamics = std::make_shared<aerodynamics::LyuAerodynamics>();
 static aerodynamics::AeroAlphaSolver g_alpha_solver(g_lyu_aerodynamics);
@@ -208,6 +208,66 @@ struct Config
     node->get_parameter("trajTopic", trajTopic);
   }
 };
+
+/**
+ * Stateless helper to compute df_lyu_quat from velocity, acceleration, and lyu_alpha.
+ * Follows the same algorithm as df_forward_nominal but uses provided alpha value.
+ * Handles velocity singularity (v < vThreshold) similar to df_forward_singularity_vel.
+ */
+Eigen::Quaterniond compute_df_lyu_quat(const Eigen::Vector3d &vel,
+                                       const Eigen::Vector3d &acc,
+                                       double lyu_alpha)
+{
+  const Eigen::Vector3d gravity(0, 0, -9.81);
+  constexpr double vThreshold = 0.5;
+
+  // Singularity handling for low velocity
+  if (vel.norm() < vThreshold)
+  {
+    // df_forward_singularity_vel logic
+    Eigen::Vector3d eta = acc - gravity;
+    Eigen::Vector3d xb = eta.normalized();
+
+    // Interpolate yb based on velocity scaling
+    double scaling = vel.norm() / vThreshold;
+    Eigen::Vector3d yb_from_v = vel.cross(eta).normalized();
+    // For cirled trajectories, zb_fixed is North direction (0, 1, 0) in ENU
+    Eigen::Vector3d zb_fixed(0, 1, 0);
+    Eigen::Vector3d yb_from_fixed_frame = zb_fixed.cross(xb).normalized();
+
+    Eigen::Vector3d yb = ((1.0 - scaling) * yb_from_fixed_frame + scaling * yb_from_v).normalized();
+    Eigen::Vector3d zb = xb.cross(yb).normalized();
+
+    Eigen::Matrix3d rot;
+    rot << xb, yb, zb;
+    return Eigen::Quaterniond(rot);
+  }
+  else
+  {
+    // df_forward_nominal logic with lyu_alpha
+    Eigen::Vector3d x_s = vel / vel.norm();
+
+    // Compute z_s (direction of thrust, perpendicular to velocity)
+    Eigen::Vector3d temp = -(Eigen::Matrix3d::Identity() - x_s * x_s.transpose()) * (acc - gravity);
+    Eigen::Vector3d z_s = temp / temp.norm();
+
+    // Compute y_s (completes the right-handed coordinate system)
+    Eigen::Vector3d y_s = z_s.cross(x_s);
+
+    // Use lyu_alpha instead of df_phi_alpha
+    double alpha = lyu_alpha;
+
+    // Compute body frame axes with alpha rotation
+    Eigen::Vector3d xb = std::cos(alpha) * x_s - std::sin(alpha) * z_s;
+    Eigen::Vector3d yb = y_s;
+    Eigen::Vector3d zb = std::cos(alpha) * z_s + std::sin(alpha) * x_s;
+
+    // Build rotation matrix and convert to quaternion
+    Eigen::Matrix3d rot;
+    rot << xb, yb, zb;
+    return Eigen::Quaterniond(rot);
+  }
+}
 
 std::ofstream &init_routes_csv_file(const Config &config);
 std::ofstream &init_planning_csv_file(const Config &config);
@@ -428,6 +488,9 @@ class GlobalPlanner : public rclcpp::Node
       g_alpha_solver.resetAlpha(INITIAL_ALPHA_DEG);
 
       control_traj_msg.points.clear();
+      // Track df_lyu_quat to avoid quaternion sign flips between samples
+      Eigen::Quaterniond prev_df_lyu_quat = Eigen::Quaterniond::Identity();
+      bool                df_lyu_quat_initialized = false;
       auto &csv_file = init_planning_csv_file(config);
       RCLCPP_INFO(this->get_logger(), "CSV file opened");
       for (double t = 0.0; t <= traj.getTotalDuration() + DBL_EPSILON;
@@ -451,7 +514,7 @@ class GlobalPlanner : public rclcpp::Node
           const Eigen::Vector3d av = acc - gravity;
 
           // Get aerodynamic data
-          const double df_alpha      = tailsitter_data.getAlpha();  // Alpha from differential flat
+          const double df_phi_alpha  = tailsitter_data.getAlpha();  // Alpha from differential flat
           const double alpha_dot     = tailsitter_data.getAlphaDot();
           const double aero_force_z  = tailsitter_data.getBAeroForce()(2);
           const double B_aero_force_z = tailsitter_data.getBAeroForceZ();
@@ -459,20 +522,39 @@ class GlobalPlanner : public rclcpp::Node
           const double S_ap_z        = tailsitter_data.getSApZ();
           const double B_Omega_b_y   = tailsitter_data.getBOmegaY();
 
-          // Solve force balance equation for real_alpha:
+          // Solve force balance equation for df_lyu_alpha:
           // S_ap_z*cos(alpha) + S_ap_x*sin(alpha) = F_aero_z/mass
           // This uses Newton-Raphson with temporal coherence
           const double V = vel.norm();
-          const double real_alpha = g_alpha_solver.solve(V, S_ap_x, S_ap_z, config.mass);
+          const double df_lyu_alpha = g_alpha_solver.solve(V, S_ap_x, S_ap_z, config.mass);
 
           const auto quat_df = tailsitter_data.getQuaternion();
+
+          // Compute df_lyu_quat using the helper function
+          // Note: acc is raw acceleration, the helper function handles gravity subtraction internally
+          Eigen::Quaterniond df_lyu_quat = compute_df_lyu_quat(vel, acc, df_lyu_alpha);
+
+          // Enforce temporal continuity: flip sign if quaternion jumped by 180 degrees
+          if (df_lyu_quat_initialized)
+          {
+            if (df_lyu_quat.coeffs().dot(prev_df_lyu_quat.coeffs()) < 0.0)
+            {
+              df_lyu_quat.coeffs() *= -1.0;
+            }
+          }
+          else
+          {
+            df_lyu_quat_initialized = true;
+          }
+          prev_df_lyu_quat = df_lyu_quat;
 
           // Write data to CSV in consistent order
           csv_file << t << "," << pos(0) << "," << pos(1) << "," << pos(2)
                    << "," << vel(0) << "," << vel(1) << "," << vel(2) << ","
-                   << thrust << "," << df_alpha << "," << real_alpha << "," << aero_force_z << ","
+                   << thrust << "," << df_phi_alpha << "," << df_lyu_alpha << "," << aero_force_z << ","
                    << -yb(0) << "," << -yb(1) << "," << -yb(2) << ","
                    << quat_df.w() << "," << quat_df.x() << "," << quat_df.y() << "," << quat_df.z() << ","
+                   << df_lyu_quat.w() << "," << df_lyu_quat.x() << "," << df_lyu_quat.y() << "," << df_lyu_quat.z() << ","
                    << av(0)
                    << "," << av(1) << "," << av(2) << "," << S_ap_x << ","
                    << S_ap_z << "," << B_Omega_b_y << "," << alpha_dot << ","
@@ -595,12 +677,13 @@ std::ofstream &init_planning_csv_file(const Config &config)
     return csv_file;
   }
 
-  // header t, p, v, thrust, df_alpha, real_alpha, aero_force_z  with header name
+  // header t, p, v, thrust, df_phi_alpha, df_lyu_alpha, aero_force_z  with header name
   csv_file << "time,pos_x,pos_y,pos_z,"
            << "vel_x,vel_y,vel_z,"
-           << "thrust,df_alpha,real_alpha,aero_force_z,"
+           << "thrust,df_phi_alpha,df_lyu_alpha,aero_force_z,"
            << "yb_x,yb_y,yb_z,"
-           << "quat_w,quat_x,quat_y,quat_z,"
+           << "df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,"
+           << "df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,"
            << "ap_x,ap_y,ap_z,"
            << "S_ap_x,S_ap_z,B_Omega_b_y,"
            << "alpha_dot,B_aero_force_z\n";

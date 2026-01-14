@@ -194,7 +194,6 @@ namespace tailsitter_df
     zb    = cos(alpha) * z_s + sin(alpha) * x_s;
     at(0) = S_ap_x * cos(alpha) - S_ap_z * sin(alpha);
     attitude << xb, yb, zb;
-
     q               = Eigen::Quaternion<real>(attitude);
     
     real S_ap_z_dot = z_s.transpose() * j;

@@ -97,6 +97,16 @@ class AeroAlphaSolver
   void resetAlpha(double initial_alpha_deg);
 
   /**
+   * @brief Reset angle unwrapping state
+   *
+   * Resets the cumulative angle offset used for continuity. Call this when starting
+   * a new trajectory to prevent accumulated drift.
+   *
+   * @param initial_alpha_deg Initial alpha value in degrees
+   */
+  void resetUnwrapping(double initial_alpha_deg);
+
+  /**
    * @brief Get current solver configuration
    *
    * @return Current configuration
@@ -126,6 +136,15 @@ class AeroAlphaSolver
 
   /// Previous alpha for temporal coherence (radians)
   mutable double prev_alpha_rad_;
+
+  /// Cumulative angle offset for unwrapping (radians)
+  mutable double alpha_offset_rad_;
+
+  /// Flag to track if unwrapping is initialized
+  mutable bool unwrapping_initialized_;
+
+  /// Previous wrapped alpha for detecting wrap events
+  mutable double prev_wrapped_alpha_;
 
   /// Iterations used in last solve
   mutable int last_iterations_;
