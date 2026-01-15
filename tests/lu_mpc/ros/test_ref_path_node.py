@@ -1,4 +1,3 @@
-# -*- coding: future_fstrings -*-
 import pytest
 
 from feature.lu_mpc.ros.reference_visualizer import advance_playback_time

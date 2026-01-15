@@ -1,4 +1,3 @@
-# -*- coding: future_fstrings -*-
 from feature.lu_mpc.ros.keyboard_listener import is_space_keypress
 
 

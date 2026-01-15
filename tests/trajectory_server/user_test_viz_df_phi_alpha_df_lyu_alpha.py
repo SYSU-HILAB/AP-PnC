@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: future_fstrings -*-
 #
 # Visualization Script for df_phi_alpha vs df_lyu_alpha Comparison
 # Created on 2025-01-14

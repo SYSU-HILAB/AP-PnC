@@ -1,4 +1,3 @@
-# -*- coding: future_fstrings -*-
 """
 User-facing launcher that publishes the reference trajectory and opens RViz2.
 """

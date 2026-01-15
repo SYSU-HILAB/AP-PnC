@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: future_fstrings -*-
 #
 # Visualization Script for df_phi_alpha/df_lyu_alpha Time Series
 # Created on 2025-01-15

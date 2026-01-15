@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: future_fstrings -*-
 #
 # Visualization Script for yb_[x,y,z] (Body Y-axis) Over Time
 # Created on 2025-01-15

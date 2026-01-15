@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: future_fstrings -*-
 #
 # Visualization Script for Quaternion Continuity Test
 # Created on 2025-01-15

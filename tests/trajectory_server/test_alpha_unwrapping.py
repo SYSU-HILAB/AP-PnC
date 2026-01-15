@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: future_fstrings -*-
 #
 # Integration test for angle unwrapping in AeroAlphaSolver.
 # Loads CSV data and verifies df_lyu_alpha continuity.
