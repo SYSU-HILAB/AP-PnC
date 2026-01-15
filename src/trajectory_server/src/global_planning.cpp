@@ -552,7 +552,7 @@ class GlobalPlanner : public rclcpp::Node
           csv_file << t << "," << pos(0) << "," << pos(1) << "," << pos(2)
                    << "," << vel(0) << "," << vel(1) << "," << vel(2) << ","
                    << thrust << "," << df_phi_alpha << "," << df_lyu_alpha << "," << aero_force_z << ","
-                   << -yb(0) << "," << -yb(1) << "," << -yb(2) << ","
+                   << yb(0) << "," << yb(1) << "," << yb(2) << ","
                    << quat_df.w() << "," << quat_df.x() << "," << quat_df.y() << "," << quat_df.z() << ","
                    << df_lyu_quat.w() << "," << df_lyu_quat.x() << "," << df_lyu_quat.y() << "," << df_lyu_quat.z() << ","
                    << av(0)
@@ -565,10 +565,8 @@ class GlobalPlanner : public rclcpp::Node
         auto v = traj.getVel(t);
 
         auto            yb_df = tailsitter_data.getYb();
-        // Eigen::Vector3d YB =
-        //     (Eigen::Vector3d() << -yb_df(0), -yb_df(1), yb_df(2)).finished();
-        // Eigen::Vector3d YB =
-        //     (Eigen::Vector3d() << -yb_df(0), -yb_df(1), yb_df(2)).finished();
+        
+        // reference trajectory uses quad FLU body frame, so negate yb
         Eigen::Vector3d YB =
             (Eigen::Vector3d() << -yb_df(0), -yb_df(1), -yb_df(2)).finished();
 

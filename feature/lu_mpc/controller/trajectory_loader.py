@@ -15,6 +15,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from feature.utils import Colors, color_print
+from feature.utils.math_utils import wing_frd_to_quad_flu, extract_yb_from_quat
 
 
 TEMP_DATA_SUBDIR = Path("artifacts") / "simulations" / "temp_data"
@@ -227,12 +228,35 @@ class TrajectoryReference:
         self.time = trajectory_data["time"]
         self.position = trajectory_data["position"]
         self.velocity = trajectory_data["velocity"]
-        self.yb = trajectory_data["yb"]
         self.thrust = trajectory_data.get("thrust", np.zeros(len(self.time)))
         self.alpha = trajectory_data.get("alpha", np.zeros(len(self.time)))
         self.df_phi_quat = trajectory_data.get("df_phi_quat")
         self.df_lyu_quat = trajectory_data.get("df_lyu_quat")
         self.odom_quat = trajectory_data.get("odom_quat")
+
+        # Compute QUAD_FLU_FRAME quaternions from WING_FRD_FRAME
+        self.quad_df_phi_quat = None
+        self.quad_df_lyu_quat = None
+        if self.df_phi_quat is not None:
+            self.quad_df_phi_quat = np.array([
+                wing_frd_to_quad_flu(self.df_phi_quat[i])
+                for i in range(len(self.time))
+            ])
+        if self.df_lyu_quat is not None:
+            self.quad_df_lyu_quat = np.array([
+                wing_frd_to_quad_flu(self.df_lyu_quat[i])
+                for i in range(len(self.time))
+            ])
+
+        # Extract yb from quad_df_phi_quat (not from CSV)
+        if self.quad_df_phi_quat is not None:
+            self.yb = np.array([
+                extract_yb_from_quat(self.quad_df_phi_quat[i])
+                for i in range(len(self.time))
+            ])
+        else:
+            # Fallback to CSV yb if no orientation data
+            self.yb = trajectory_data.get("yb", np.zeros((len(self.time), 3)))
 
         # Create interpolators
         self._pos_interp = [
@@ -269,6 +293,14 @@ class TrajectoryReference:
                 for i in range(4)
             ]
 
+        # Add interpolator for quad_df_phi_quat (for tracking)
+        self._quad_df_phi_quat_interp = None
+        if self.quad_df_phi_quat is not None:
+            self._quad_df_phi_quat_interp = [
+                interp1d(self.time, self.quad_df_phi_quat[:, i], kind="linear", fill_value="extrapolate")
+                for i in range(4)
+            ]
+
     def get_reference_at_time(self, t: float) -> dict[str, np.ndarray]:
         """
         Get interpolated reference state at time t.
@@ -282,8 +314,9 @@ class TrajectoryReference:
             - velocity: (3,) array
             - yb: (3,) array
             - alpha: scalar
-            - df_phi_quat: (4,) array [w, x, y, z] if available
-            - df_lyu_quat: (4,) array [w, x, y, z] if available
+            - quaternion: (4,) array [w, x, y, z] from QUAD_FLU_BODY_FRAME if available
+            - df_phi_quat: (4,) array [w, x, y, z] from WING_FRD_BODY_FRAME if available
+            - df_lyu_quat: (4,) array [w, x, y, z] from WING_FRD_BODY_FRAME if available
         """
         ref = {
             "position": np.array([f(t) for f in self._pos_interp]),
@@ -291,6 +324,14 @@ class TrajectoryReference:
             "yb": np.array([f(t) for f in self._yb_interp]),
             "alpha": float(self._alpha_interp(t)),
         }
+        # Add quad frame quaternion for tracking (primary reference)
+        if self._quad_df_phi_quat_interp:
+            quad_df_phi_quat = np.array([f(t) for f in self._quad_df_phi_quat_interp])
+            norm = np.linalg.norm(quad_df_phi_quat)
+            if norm > 1e-6:
+                quad_df_phi_quat = quad_df_phi_quat / norm
+            ref["quaternion"] = quad_df_phi_quat
+        # Keep wing frame quaternions for reference
         if self._df_phi_quat_interp:
             df_phi_quat = np.array([f(t) for f in self._df_phi_quat_interp])
             norm = np.linalg.norm(df_phi_quat)
@@ -353,12 +394,21 @@ class TrajectoryReference:
 
 def get_trajectory_path() -> str:
     """
-    Get the default trajectory file path (v14-alpha.csv).
+    Get the default trajectory file path - latest planning output.
+
+    Finds the most recently modified planning_*.csv in artifacts/simulations/temp_data/.
 
     Returns:
-        Path to the latest planner output (fallback to v14-alpha.csv)
+        Path to the latest planning CSV
+
+    Raises:
+        FileNotFoundError: If no planning CSV is found (user must run planner first)
     """
     planning_csv = _find_planning_csv()
     if planning_csv:
         return str(planning_csv)
-    return str(Path(__file__).parent / "refs" / "v14-alpha.csv")
+    temp_dir = _temp_data_dir()
+    raise FileNotFoundError(
+        f"No planning CSV found in {temp_dir}. "
+        f"Please run the global planner first to generate a trajectory."
+    )

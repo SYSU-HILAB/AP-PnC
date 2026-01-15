@@ -98,8 +98,8 @@ def quat_to_rotmat(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
     """
     qw, qx, qy, qz = q[0], q[1], q[2], q[3]
 
-    if isinstance(q, cs.SX):
-        # CasADi version
+    if isinstance(q, (cs.SX, cs.MX, cs.DM)):
+        # CasADi version (supports symbolic SX/MX and constant DM inputs)
         return cs.vertcat(
             cs.horzcat(
                 1 - 2 * (qy**2 + qz**2),
@@ -454,3 +454,53 @@ def quat_to_rotmat_casadi(q: cs.SX) -> cs.SX:
 def quat_to_rotmat_numpy(q: np.ndarray) -> np.ndarray:
     """NumPy-specific quaternion to rotation matrix conversion."""
     return quat_to_rotmat(q)
+
+
+# ============================================================================
+# Frame Transformation Constants and Functions
+# ============================================================================
+
+# Fixed transformation from WING_FRD to QUAD_FLU
+# 180° rotation around [1,0,1] axis (diagonal X-Z)
+WING_TO_QUAD_QUAT = np.array([0.0, 0.707, 0.0, 0.707])  # WXYZ format
+
+
+def wing_frd_to_quad_flu(
+    quat_wing: Union[cs.SX, np.ndarray]
+) -> Union[cs.SX, np.ndarray]:
+    """Transform quaternion from WING_FRD_BODY_FRAME to QUAD_FLU_BODY_FRAME.
+
+    WING_FRD_BODY_FRAME: Forward-Right-Down (wing reference frame)
+    QUAD_FLU_BODY_FRAME: Forward-Left-Up (quadcopter reference frame)
+
+    The transformation is a 180° rotation around the [1,0,1] axis (diagonal X-Z).
+
+    Args:
+        quat_wing: Quaternion in WING_FRD_BODY_FRAME [w, x, y, z]
+
+    Returns:
+        Quaternion in QUAD_FLU_BODY_FRAME [w, x, y, z]
+    """
+    return quat_multiply(WING_TO_QUAD_QUAT, quat_wing)
+
+
+def extract_yb_from_quat(
+    quat: Union[cs.SX, np.ndarray]
+) -> Union[cs.SX, np.ndarray]:
+    """Extract the body Y-axis (left direction) from a quaternion.
+
+    For QUAD_FLU_BODY_FRAME, the Y-axis points LEFT.
+    This rotates the body Y-axis [0, 1, 0] by the quaternion to get world coordinates.
+
+    Args:
+        quat: Quaternion [w, x, y, z] representing orientation
+
+    Returns:
+        Y-axis vector in world coordinates [x, y, z]
+    """
+    y_axis = (
+        np.array([0.0, 1.0, 0.0])
+        if not isinstance(quat, cs.SX)
+        else cs.vertcat(0.0, 1.0, 0.0)
+    )
+    return quat_apply(quat, y_axis)
