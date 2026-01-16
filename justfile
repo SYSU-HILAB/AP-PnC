@@ -257,7 +257,7 @@ viz-ref-traj playback_dt="0.05" config="feature/lu_mpc/ros/config/ref_trajs.rviz
     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
     ./pyp tests/lu_mpc/ros/user_test_ref_traj_viz.py --playback-dt {{playback_dt}} --rviz-config {{config}}
 
-viz-traj-tracking sim_time="10.0" config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
+viz-traj-tracking config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
     #!/usr/bin/env bash
     set -euo pipefail
     git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
@@ -268,7 +268,16 @@ viz-traj-tracking sim_time="10.0" config="feature/lu_mpc/ros/config/nmpc_viz.rvi
     export ACADOS_SOURCE_DIR="${ACADOS_SOURCE_DIR:-/home/rec/AP-PnC/mpc_framework}"
     export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
-    ./pyp tests/lu_mpc/ros/user_test_traj_tracking_viz.py --sim-time {{sim_time}} --rviz-config {{config}}
+    ./pyp tests/lu_mpc/ros/user_test_traj_tracking_viz.py --rviz-config {{config}}
+
+show_odom config="feature/lu_mpc/ros/config/plotjuggler_odometry_xyz.xml":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Launching PlotJuggler (odometry XYZ)..."
+    set +u
+    source /opt/ros/humble/setup.bash
+    set -u
+    ros2 run plotjuggler plotjuggler -l {{config}}
 
 test-all:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc
@@ -340,13 +349,13 @@ alias ta := test-all
 # === DOCKER COMPOSE ===
 
 docker-build:
-    docker compose build
+    docker compose -f docker/docker-compose.yml build
 
 docker-up:
-    docker compose up -d
+    docker compose -f docker/docker-compose.yml up -d
 
 docker-down:
-    docker compose down
+    docker compose -f docker/docker-compose.yml down
 
 # Aliases
 alias db := docker-build

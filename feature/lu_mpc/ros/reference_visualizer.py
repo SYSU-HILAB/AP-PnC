@@ -49,7 +49,7 @@ from feature.lu_mpc.controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
-from feature.utils.math_utils import right_quat_multiply
+from feature.utils.math_utils import right_quat_multiply, wing_frd_to_quad_flu
 from feature.utils.ros_visualizer import (
     compute_reference_sample_times,
     numpy_to_point,
@@ -319,8 +319,10 @@ class ReferenceVisualizer(Node):
         df_phi/df_lyu quats are stored as offsets relative to the odom frame.
         """
         quat_csv = ref.get(key)
-        quat_odom = ref.get("quat_odom")
-        return right_quat_multiply(quat_csv, quat_odom)
+        if quat_csv is None:
+            raise RuntimeError(f"{key} is missing from reference state")
+        
+        return wing_frd_to_quad_flu(quat_csv)
 
 
 def main(args=None):

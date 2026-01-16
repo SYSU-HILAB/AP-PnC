@@ -5,7 +5,7 @@ This node publishes state data from the nMPC controller and CasADi simulator
 for real-time visualization in RViz2.
 
 Data Sources:
-    - nMPC Controller: Computes control inputs at control_dt frequency
+    - nMPC Controller: Computes control inputs at ctrl_dt frequency
     - CasADi Simulator: Integrates vehicle dynamics at sim_dt frequency
     - Trajectory CSV: Provides reference trajectory for comparison
 
@@ -24,11 +24,10 @@ Dependencies:
 
 Parameters:
     - trajectory_csv: str - Path to trajectory CSV file
-    - sim_time: float - Total simulation time in seconds (default: 10.0)
+    - sim_tot_dur: float | None - Total simulation time in seconds (None = run forever)
     - sim_dt: float - Simulation integration timestep in seconds (default: 0.01)
-    - control_dt: float - Controller update period in seconds (default: 0.1)
+    - ctrl_dt: float - Controller update period in seconds (default: 0.1)
     - real_time_factor: float - Speed multiplier (1.0 = real-time, 2.0 = 2x) (default: 1.0)
-    - collect_aero: bool - Whether to publish aerodynamic data (default: True)
 
 Key Functionality:
     - Runs closed-loop simulation with nMPC controller
@@ -48,7 +47,7 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Vector3
 from std_msgs.msg import Float32MultiArray
 
-from feature.lu_mpc.model.sim.sim_gd_model import create_gd_simulator, GdSimConfig
+from feature.lu_mpc.model.sim.sim_gd_model import GdModelSimulator, GdSimConfig
 from feature.lu_mpc.controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
@@ -64,6 +63,7 @@ from feature.utils.ros_visualizer import (
     add_pose_to_path,
     truncate_path,
     create_reliable_qos,
+    create_transient_local_qos,
     sleep_period,
 )
 
@@ -79,34 +79,32 @@ class SimulationVisualizer(Node):
     def __init__(
         self,
         trajectory_csv: str,
-        sim_time: float = 10.0,
-        sim_dt: float = 0.01,
-        control_dt: float = 0.1,
+        sim_tot_dur: float | None = None,
+        sim_dt: float = 0.02,
+        ctrl_dt: float = 0.1,
         real_time_factor: float = 1.0,
-        collect_aero: bool = True,
     ):
         """
         Initialize the simulation visualizer node.
 
         Args:
             trajectory_csv: Path to trajectory CSV file
-            sim_time: Total simulation time in seconds
+            sim_tot_dur: Total simulation time in seconds (None = run forever)
             sim_dt: Simulation integration timestep in seconds
-            control_dt: Controller update period in seconds
+            ctrl_dt: Controller update period in seconds
             real_time_factor: Speed multiplier (1.0 = real-time, 2.0 = 2x)
-            collect_aero: Whether to publish aerodynamic data
         """
         super().__init__("simulation_visualizer")
 
         # Store parameters
-        self.sim_time = sim_time
+        self.sim_tot_dur = sim_tot_dur
         self.sim_dt = sim_dt
-        self.control_dt = control_dt
+        self.ctrl_dt = ctrl_dt
         self.real_time_factor = real_time_factor
-        self.collect_aero = collect_aero
 
         # Create publishers with shared QoS
         qos_profile = create_reliable_qos(depth=10)
+        qos_transient_local = create_transient_local_qos(depth=10)
 
         self.odom_pub = self.create_publisher(
             Odometry, make_topic("odometry"), qos_profile
@@ -115,7 +113,7 @@ class SimulationVisualizer(Node):
             Vector3, make_topic("aero_forces"), 10
         )
         self.ref_path_pub = self.create_publisher(
-            Path, make_topic("reference_path"), qos_profile
+            Path, make_topic("reference_path"), qos_transient_local
         )
         self.track_path_pub = self.create_publisher(
             Path, make_topic("tracking_path"), qos_profile
@@ -134,8 +132,9 @@ class SimulationVisualizer(Node):
         self.tracking_path = create_path_message(frame_id="world")
 
         self.get_logger().info("SimulationVisualizer initialized")
-        self.get_logger().info(f"  Sim time: {sim_time}s, dt: {sim_dt}s")
-        self.get_logger().info(f"  Control dt: {control_dt}s")
+        sim_dur_msg = "infinite" if sim_tot_dur is None else f"{sim_tot_dur}s"
+        self.get_logger().info(f"  Sim duration: {sim_dur_msg}, dt: {sim_dt}s")
+        self.get_logger().info(f"  Control dt: {ctrl_dt}s")
         self.get_logger().info(f"  Real-time factor: {real_time_factor}x")
 
     def _setup_simulation(self, trajectory_csv: str) -> None:
@@ -143,24 +142,25 @@ class SimulationVisualizer(Node):
         trajectory_data = load_trajectory_csv(trajectory_csv)
         self.trajectory = TrajectoryReference(trajectory_data)
 
-        sim_config = GdSimConfig(dt=self.sim_dt, sim_time=self.sim_time)
-        self.sim = create_gd_simulator(sim_config)
+        sim_tot_dur = self.sim_tot_dur if self.sim_tot_dur is not None else self.sim_dt
+        sim_config = GdSimConfig(sim_dt=self.sim_dt, sim_tot_dur=sim_tot_dur)
+        self.sim = GdModelSimulator.create_gd_simulator(sim_config)
 
         self.controller = ProposedNmpcController(
-            self.trajectory, control_dt=self.control_dt
+            self.trajectory, ctrl_dt=self.ctrl_dt
         )
 
         # Initial state from trajectory (WXYZ format)
         p0 = trajectory_data['position'][0]
         v0 = trajectory_data['velocity'][0]
         r0 = np.array([0.0, 0.0, 0.0])
-        q0 = np.array([1.0, 0.0, 0.0, 0.0])  # WXYZ format
-        u0 = np.array([2.45, 2.45, 2.45, 2.45])
+        q0 = np.array([0.707, 0.0, 0.0, 0.707])  # WXYZ format
+        u0 = np.array([2.45, 2.45, 2.45, 2.45]) * 2.0
         self.current_state = np.concatenate([p0, v0, r0, q0, u0])
 
         self.current_time = 0.0
         self.step_count = 0
-        self.N_sim = int(self.sim_time / self.sim_dt)
+        self.N_sim = None if self.sim_tot_dur is None else int(self.sim_tot_dur / self.sim_dt)
         self.prev_control = np.zeros(4)
 
     def _publish_reference_path(self) -> None:
@@ -238,15 +238,13 @@ class SimulationVisualizer(Node):
         Returns:
             True if simulation should continue, False if done
         """
-        if self.step_count >= self.N_sim:
+        if self.N_sim is not None and self.step_count >= self.N_sim:
             self.get_logger().info("Simulation completed")
             return False
 
         # Compute control at control frequency
-        if self.step_count % int(self.control_dt / self.sim_dt) == 0:
-            control = self.controller.compute_control(
-                self.current_state, self.current_time
-            )
+        if self.step_count % int(self.ctrl_dt / self.sim_dt) == 0:
+            control = self.controller.compute_control(self.current_state)
         else:
             control = self.prev_control if self.step_count > 0 else np.zeros(4)
 
@@ -277,11 +275,6 @@ class SimulationVisualizer(Node):
 
         # Publish all data
         self.publish_odometry(self.current_state)
-
-        if self.collect_aero and self.step_count % 10 == 0:
-            aero_data = self.sim.get_aerodynamic_forces(self.current_state)
-            self.publish_aero_data(aero_data)
-
         self.publish_motor_thrusts(self.current_state)
 
         if self.step_count % 10 == 0:
@@ -318,11 +311,10 @@ def main(args=None):
 
     node = SimulationVisualizer(
         trajectory_csv=str(traj_csv),
-        sim_time=10.0,
-        sim_dt=0.01,
-        control_dt=0.1,
+        sim_tot_dur=10.0,
+        sim_dt=0.02,
+        ctrl_dt=0.1,
         real_time_factor=1.0,
-        collect_aero=True,
     )
 
     try:

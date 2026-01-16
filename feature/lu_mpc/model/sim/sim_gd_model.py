@@ -1,4 +1,3 @@
-# -*- coding: future_fstrings -*-
 #
 # Ground-Truth Aerodynamics Model Simulation with ACADOS
 # Created on 2024-12-22
@@ -22,8 +21,8 @@ class GdSimConfig:
     """Configuration for the GD model simulation."""
 
     # Simulation parameters
-    dt: float = 0.01  # Time step in seconds
-    sim_time: float = 5.0  # Total simulation time in seconds
+    sim_dt: float = 0.02  # Time step in seconds
+    sim_tot_dur: float = 5.0  # Total simulation time in seconds
 
     # ACADOS solver options
     integrator_type: str = "ERK"  # 'IRK', 'ERK', 'GNSF'
@@ -43,15 +42,12 @@ class GdSimConfig:
     mass: float = 2.0  # kg
     J: np.ndarray = np.array([0.04361, 0.04513, 0.08322])  # Inertia matrix
     c_tau: float = 0.032  # Torque coefficient
-    dx: float = 0.08838834764831845  # Arm length x
-    dy: float = 0.08838834764831845  # Arm length y
-
-    # # Frame transformation quaternions
-    # q_flu_to_frd: np.ndarray = np.array([0.0, 1.0, 0.0, 0.0])
+    dx: float = 0.32  # Arm length x
+    dy: float = 0.32  # Arm length y
 
     # FLU to FRD transformation
     trans_wing_frd_quad_flu: np.ndarray = np.array(
-        [0.7071, 0.0, 0.7071, 0.0]
+        [0.0, 0.7071, 0.0, 0.7071]
     )  # NED to world transformation
 
     # Aerodynamic model configuration
@@ -70,10 +66,6 @@ class GdModelSimulator:
     ️   However, the gd aerodynamics is defined in wing body frame (FRD),
        this frame to typical quadrotor local FLU frame transformation is defined in config.
        i.e., q_wing_frd_to_quad_flu.
-       It means, to get the wing body frame velocity, we need to:
-        1) transform the velocity from world frame to quad local FLU frame (using current quaternion);
-        2) transform the velocity from quad local FLU frame to wing body FRD
-        3) transform the wing body FRD aerodynamics to quad local FLU frame for force summation.
     """
 
     def __init__(self, config: GdSimConfig = DEFAULT_SIM_CONFIG):
@@ -119,26 +111,26 @@ class GdModelSimulator:
         J = cs.diag(self.config.J)
         c_tau = self.config.c_tau
         dx, dy = self.config.dx, self.config.dy
-        g = cs.vertcat(0.0, 0.0, -9.81)  # Gravity in NED frame
+        g = cs.vertcat(0.0, 0.0, -9.81)  # Gravity in ENU frame
 
-        q_quad_flu = q
+        quat_quad_flu = q
 
         trans_wing_frd_quad_flu = cs.SX(self.config.trans_wing_frd_quad_flu)
-        q_wing_frd = quat_multiply(q_quad_flu, trans_wing_frd_quad_flu)
+        quat_wing_frd = quat_multiply(quat_quad_flu, trans_wing_frd_quad_flu)
 
         # Motor forces in body frame
         U = u[0] + u[1] + u[2] + u[3]
-        thrust_body = cs.vertcat(0.0, 0.0, U)
+        thrust_quad_flu = cs.vertcat(0.0, 0.0, U)
 
         # Motor torques in body frame
-        tau_body = cs.vertcat(
+        tau_quad_flu = cs.vertcat(
             dy * (-u[0] - u[1] + u[2] + u[3]),
             dx * (-u[0] + u[1] + u[2] - u[3]),
             c_tau * (-u[0] + u[1] - u[2] + u[3]),
         )
 
         # Get velocity in body frame for aerodynamics
-        vel_b_wing_frd = quat_apply(q_wing_frd, v)
+        vel_b_wing_frd = quat_apply_inverse(quat_wing_frd, v)
 
         # Get aerodynamic forces and moments from GD model
         # The GD model expects body-frame velocity in FRD
@@ -149,28 +141,32 @@ class GdModelSimulator:
 
         # Transform aerodynamic forces back to FLU frame, then to body frame
         # Use inverse transformation to go from wing FRD to quad FLU
-        aero_forces_quad_flu = quat_apply_inverse(
+        aero_forces_quad_flu = quat_apply(
             trans_wing_frd_quad_flu, aero_forces_wing_frd
         )
-        aero_moments_quad_flu = quat_apply_inverse(
+        aero_moments_quad_flu = quat_apply(
             trans_wing_frd_quad_flu, aero_moments_wing_frd
         )
         # Use GD model forces directly
-        aero_forces_body = aero_forces_quad_flu
+        aero_forces_quad_flu = aero_forces_quad_flu
 
         # Total forces and moments in body frame
-        total_forces_body = thrust_body + aero_forces_body
-        total_moments_body = (
-            tau_body + aero_moments_quad_flu
+        tot_force_quad_flu = thrust_quad_flu + aero_forces_quad_flu
+        total_moments_quad_flu = (
+            tau_quad_flu + aero_moments_quad_flu
         )  # Moments are frame-independent
-        # Transform forces to world frame for dynamics
-        forces_world = quat_apply(q_quad_flu, total_forces_body)
 
+        tot_moment_quad_flu = tau_quad_flu
+        tot_force_quad_flu = thrust_quad_flu
+        # Transform forces to world frame for dynamics
+        forces_world = quat_apply(quat_quad_flu, tot_force_quad_flu)
+
+        
         # Dynamics equations
         p_dot_expr = v
         v_dot_expr = forces_world / mass + g
-        r_dot_expr = cs.inv(J) @ (total_moments_body - cs.cross(r, J @ r))
-        q_dot_expr = 0.5 * quat_multiply(cs.vertcat(0, r), q_quad_flu)
+        r_dot_expr = cs.inv(J) @ (total_moments_quad_flu - cs.cross(r, J @ r))
+        q_dot_expr = 0.5 * quat_multiply(quat_quad_flu, cs.vertcat(0, r))
         u_dot_expr = du
 
         # Combine all dynamics
@@ -184,18 +180,17 @@ class GdModelSimulator:
         self.acados_model.x = x
         self.acados_model.xdot = xdot
         self.acados_model.u = du
-        self.acados_model.p = cs.SX.sym("p", 0)  # No parameters needed
         self.acados_model.name = model_name
 
         # Store symbolic expressions for later use
         self._symbolic_vars = {
             "x": x,
             "v": v,
-            "q": q_quad_flu,
+            "q": quat_quad_flu,
             "u": u,
             "vel_wing_frd": vel_b_wing_frd,
-            "aero_forces_body": aero_forces_body,
-            "total_forces_body": total_forces_body,
+            "aero_forces_quad_flu": aero_forces_quad_flu,
+            "tot_force_quad_flu": tot_force_quad_flu,
             "forces_world": forces_world,
         }
 
@@ -206,7 +201,7 @@ class GdModelSimulator:
         self.acados_sim.model = self.acados_model
 
         # Configure solver options
-        self.acados_sim.solver_options.T = self.config.dt
+        self.acados_sim.solver_options.T = self.config.sim_dt
         self.acados_sim.solver_options.integrator_type = self.config.integrator_type
         self.acados_sim.solver_options.num_stages = self.config.num_stages
         self.acados_sim.solver_options.num_steps = self.config.num_steps
@@ -225,7 +220,6 @@ class GdModelSimulator:
         self,
         initial_state: np.ndarray,
         control_trajectory: Optional[np.ndarray] = None,
-        collect_aero_data: bool = False,
     ) -> dict:
         """
         Run simulation with given initial state and control trajectory.
@@ -233,22 +227,20 @@ class GdModelSimulator:
         Args:
             initial_state: Initial state vector [p, v, r, q, u]
             control_trajectory: Control input trajectory (N, 4)
-            collect_aero_data: Whether to collect aerodynamic data at each step
 
         Returns:
             Dictionary containing simulation results
         """
 
         # Simulation setup
-        N = int(self.config.sim_time / self.config.dt)
+        N = int(self.config.sim_tot_dur / self.config.sim_dt)
         nx = initial_state.shape[0]
         nu = 4  # Control input dimension
 
         # Storage for results
         states = np.zeros((N + 1, nx))
         controls = np.zeros((N, nu))
-        times = np.linspace(0, self.config.sim_time, N + 1)
-        aero_data_list = [] if collect_aero_data else None
+        times = np.linspace(0, self.config.sim_tot_dur, N + 1)
 
         # Set initial condition
         states[0, :] = initial_state
@@ -284,10 +276,6 @@ class GdModelSimulator:
             states[i + 1, :] = self.acados_solver.get("x")
             controls[i, :] = control_trajectory[i, :]
 
-            # Collect aerodynamic data if requested
-            if collect_aero_data:
-                aero_data = self.get_aerodynamic_forces(states[i + 1, :])
-                aero_data_list.append(aero_data)
 
         # Extract meaningful variables for post-processing
         results = {
@@ -301,135 +289,17 @@ class GdModelSimulator:
             "motor_thrusts": states[:, 13:17],
         }
 
-        if collect_aero_data:
-            results["aero_data"] = aero_data_list
-
         return results
 
-    def get_aerodynamic_forces(self, state: np.ndarray) -> dict:
+    @classmethod
+    def create_gd_simulator(cls, config: GdSimConfig = DEFAULT_SIM_CONFIG) -> "GdModelSimulator":
         """
-        Compute aerodynamic forces for a given state.
+        Factory classmethod to create a GD model simulator.
 
         Args:
-            state: State vector [p, v, r, q, u]
+            config: Simulation configuration object
 
         Returns:
-            Dictionary with aerodynamic forces and moments
+            GdModelSimulator instance
         """
-
-        # Extract state variables
-        v = state[3:6]
-        q_quad_flu = state[9:13]
-
-        # Transformations: world -> quad FLU -> wing FRD
-        # World to quad FLU (inverse of quad FLU to world)
-        vel_quad_flu = quat_apply_inverse(q_quad_flu, v)
-
-        # Quad FLU to wing FRD
-        trans_wing_frd_quad_flu = self.config.trans_wing_frd_quad_flu
-        vel_wing_frd = quat_apply(trans_wing_frd_quad_flu, vel_quad_flu)
-
-        # Get aerodynamic forces from GD model
-        aero_result = self.aero_model.func(cs.DM(vel_wing_frd))
-        aero_forces_moments = aero_result[0]
-        forces_wing_frd = np.array(aero_forces_moments[:3]).flatten()
-        moments_wing_frd = np.array(aero_forces_moments[3:6]).flatten()
-
-        # Transform forces back to quad FLU frame
-        forces_quad_flu = quat_apply_inverse(trans_wing_frd_quad_flu, forces_wing_frd)
-
-        # Calculate alpha and beta from velocity
-        vx, vy, vz = vel_wing_frd
-        v_total = np.sqrt(vx**2 + vy**2 + vz**2)
-        if v_total > 1e-6:
-            alpha = np.arctan2(vz, vx)
-            beta = np.arcsin(np.clip(vy / v_total, -1, 1))
-        else:
-            alpha = 0.0
-            beta = 0.0
-
-        return {
-            "forces_body": forces_quad_flu,
-            "moments_body": moments_wing_frd,
-            "alpha": alpha,
-            "beta": beta,
-            "vel_body": vel_quad_flu,
-            "vel_frd": vel_wing_frd,
-        }
-
-
-def create_gd_simulator(config: GdSimConfig = DEFAULT_SIM_CONFIG) -> GdModelSimulator:
-    """
-    Factory function to create a GD model simulator.
-
-    Args:
-        config: Simulation configuration object
-
-    Returns:
-        GdModelSimulator instance
-    """
-    return GdModelSimulator(config)
-
-
-def test_gd_simulation():
-    """Test the GD model simulator with a simple flight scenario."""
-    print("Testing GD Model Simulation...")
-
-    # Create simulator with shorter time for debugging
-    config = GdSimConfig(dt=0.01, sim_time=1.0)  # Shorter simulation
-    sim = create_gd_simulator(config)
-
-    # Initial state: hover at 10m altitude with some forward velocity
-    p0 = np.array([0.0, 0.0, -10.0])  # Position (NED frame)
-    v0 = np.array([5.0, 0.0, 0.0])  # Forward velocity
-    r0 = np.array([0.0, 0.0, 0.0])  # Angular rates
-    q0 = np.array([1.0, 0.0, 0.0, 0.0])  # Quaternion (level)
-    u0 = np.array([2.4525, 2.4525, 2.4525, 2.4525])  # Motor thrusts (hover)
-
-    # Combine initial state (no cz_state needed)
-    initial_state = np.concatenate([p0, v0, r0, q0, u0])
-
-    # Control trajectory: steady hover
-    N = int(sim.config.sim_time / sim.config.dt)
-    control_trajectory = np.tile(u0, (N, 1))
-
-    try:
-        # Run simulation
-        print(f"Running simulation with {N} steps...")
-        results = sim.simulate(initial_state, control_trajectory)
-
-        # Check for NaN values
-        if np.any(np.isnan(results["states"])):
-            print("❌ Simulation contains NaN values!")
-            # Find first NaN occurrence
-            nan_indices = np.where(np.isnan(results["states"]))
-            if len(nan_indices[0]) > 0:
-                first_nan_step = nan_indices[0][0]
-                print(f"   First NaN at step {first_nan_step}")
-                print(
-                    f"   State at step {first_nan_step - 1}: {results['states'][first_nan_step - 1]}"
-                )
-            return None
-
-        print("✅ Simulation completed successfully!")
-        print(f"   Time steps: {len(results['times'])}")
-        print(f"   Final position: {results['position'][-1]}")
-        print(f"   Final velocity: {results['velocity'][-1]}")
-        print(f"   Max altitude: {np.max(-results['position'][:, 2]):.2f} m")
-        print(f"   Min altitude: {np.min(-results['position'][:, 2]):.2f} m")
-
-        # Get aerodynamic forces at final state
-        aero_data = sim.get_aerodynamic_forces(results["states"][-1])
-        print(f"   Final aero forces: {aero_data['forces_body']}")
-        print(f"   Final alpha: {np.rad2deg(aero_data['alpha']):.2f} deg")
-        print(f"   Final beta: {np.rad2deg(aero_data['beta']):.2f} deg")
-
-        return results
-
-    except Exception as e:
-        print(f"❌ Simulation failed: {e}")
-        raise
-
-
-if __name__ == "__main__":
-    test_gd_simulation()
+        return cls(config)

@@ -20,17 +20,19 @@ from feature.utils.math_utils import (
     skew_symmetric_matrix,
 )
 
+VELOCITY_EPSILON = 0.1
+
 
 def tailsitter_flu() -> AcadosModel:
     """Create the Acados model for the FLU tailsitter dynamics."""
     model_name = "tailsitter_flu"
 
-    mass = cs.DM(1.0)
-    c_tau = cs.DM(0.013)
-    J_data = np.array([0.01715066, 0.01818037, 0.01987597])
+    mass = cs.DM(2.0)
+    c_tau = cs.DM(0.032)
+    J_data = np.array([0.04361, 0.04513, 0.08322])
     J = cs.diag(J_data)
-    dx = cs.DM(0.08838834764831845)
-    dy = cs.DM(0.08838834764831845)
+    dx = cs.DM(0.32)
+    dy = cs.DM(0.32)
 
     # states & controls
     p = SX.sym("p", 3)
@@ -42,10 +44,8 @@ def tailsitter_flu() -> AcadosModel:
     x_aug = vertcat(x, u)
     cz_state = SX.sym("cz_state", 1)
     x_aug = vertcat(x_aug, cz_state)
-    cz = SX.sym("cz", 1)
-    cur_alpha = SX.sym("cur_alpha", 1)
     cz_rate = SX.sym("cz_rate", 1)
-    param = cs.vertcat(cz, cur_alpha, cz_rate)
+    param = cs.vertcat(cz_rate)
     du = SX.sym("du", 4)
 
     g = cs.vertcat(0.0, 0.0, -9.81)
@@ -63,7 +63,7 @@ def tailsitter_flu() -> AcadosModel:
     tb = cs.vertcat(0.0, 0.0, U)
 
     vb = inverse_rotate_vector(v, q)
-    alpha = cs.atan2(vb[0], (vb[2] + 0.1))
+    alpha = cs.atan2(vb[0], vb[2] + VELOCITY_EPSILON)
 
     F_aero_b_frd = cs.SX([0, 0, 0])
     F_aero_b_frd[0] = 0.0
@@ -82,12 +82,12 @@ def tailsitter_flu() -> AcadosModel:
     thrust_world = rotate_vector(tb / mass, q)
     aero_world = rotate_vector(F_aero_b_flu_quad_frame / mass, q)
     vv_dot = thrust_world + g + aero_world
-    vb_dot = cs.mtimes(-skew_matrix(r), vb) + inverse_rotate_vector(vv_dot, q)
 
     acc_b = inverse_rotate_vector(thrust_world + g + aero_world, q)
 
     alpha_dot = (
-        (acc_b[2] * cs.cos(alpha) - acc_b[0] * cs.sin(alpha)) / (cs.norm_2(v) + 0.1)
+        (acc_b[2] * cs.cos(alpha) - acc_b[0] * cs.sin(alpha))
+        / (cs.norm_2(v) + VELOCITY_EPSILON)
         + r[1]
     )
 

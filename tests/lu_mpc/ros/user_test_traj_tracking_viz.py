@@ -52,11 +52,7 @@ def _run_state_publisher(args: argparse.Namespace) -> None:
     rclpy.init(args=None)
     node = SimulationVisualizer(
         trajectory_csv=str(args.trajectory),
-        sim_time=args.sim_time,
-        sim_dt=args.sim_dt,
-        control_dt=args.control_dt,
         real_time_factor=args.real_time_factor,
-        collect_aero=not args.disable_aero,
     )
 
     try:
@@ -74,9 +70,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Path to trajectory CSV (defaults to artifacts/simulations/temp_data planning output).",
     )
-    parser.add_argument("--sim-time", type=float, default=10.0, help="Total simulation time in seconds.")
-    parser.add_argument("--sim-dt", type=float, default=0.01, help="Simulation timestep.")
-    parser.add_argument("--control-dt", type=float, default=0.1, help="Controller timestep.")
     parser.add_argument(
         "--real-time-factor",
         type=float,

@@ -11,151 +11,15 @@ import torch
 import torch.jit
 import matplotlib.pyplot as plt
 
-# Coefficient arrays - same as original numpy version
-kCL = torch.tensor(
-    [
-        -2.8465,
-        23.1516,
-        -0.7335,
-        0.1407,
-        0.0930,
-        3.8276,
-        -0.0006,
-        3.1951,
-        -0.0289,
-        0.6425,
-        0.0164,
-        0.0031,
-        0.6174,
-        -0.1286,
-        0.0342,
-        -0.5109,
-        0.0982,
-        -0.0006,
-        0.1985,
-        -0.0070,
-        0.0410,
-        0.0037,
-        -4.3496,
-        14.1041,
-    ],
-    dtype=torch.float32,
-)
+from feature.lu_mpc.model.sim.aero_coefficients import get_torch_coefficients
 
-kCD = torch.tensor(
-    [
-        -0.5908,
-        -1.8161,
-        -0.2045,
-        -0.0036,
-        -0.2861,
-        -0.8862,
-        -0.0590,
-        -0.9215,
-        0.0130,
-        -0.0035,
-        0.4958,
-        -0.0032,
-        0.0762,
-        0.1533,
-        -0.0009,
-        0.1891,
-        0.0159,
-        0.0172,
-        0.2510,
-        0.0032,
-        -0.1227,
-        0.1740,
-        0.7917,
-        -4.4927,
-    ],
-    dtype=torch.float32,
-)
-
-kCY = torch.tensor(
-    [
-        -0.0678,
-        0.1151,
-        -0.1024,
-        0.6002,
-        0.5367,
-        -0.0922,
-        -0.8523,
-        -0.5220,
-        -0.1006,
-        0.2266,
-        -0.0345,
-        -0.0768,
-        0.0748,
-    ],
-    dtype=torch.float32,
-)
-
-kCLL = torch.tensor(
-    [
-        -0.0240,
-        0.0172,
-        -0.0219,
-        -0.0085,
-        -0.2163,
-        -0.0143,
-        -0.0152,
-        -0.1874,
-        -0.0021,
-        -0.0065,
-        -0.0110,
-        0.0029,
-        -0.0184,
-        -0.0028,
-        0.0203,
-        -0.0158,
-        -0.0245,
-        -0.0068,
-    ],
-    dtype=torch.float32,
-)
-
-kCm = torch.tensor(
-    [
-        -1.9963,
-        -2.5059,
-        0.5987,
-        0.0120,
-        0.7977,
-        0.0543,
-        0.6310,
-        -0.1122,
-        -0.0798,
-        -0.2177,
-        -0.1059,
-        0.0029,
-        -0.1388,
-        0.0132,
-        -0.2605,
-        0.0015,
-        -0.5789,
-        0.7902,
-    ],
-    dtype=torch.float32,
-)
-
-kCn = torch.tensor(
-    [
-        0.0681,
-        -0.0338,
-        0.0054,
-        0.0028,
-        -0.0052,
-        0.0034,
-        -0.0048,
-        0.0217,
-        0.0111,
-        0.0121,
-        0.0685,
-        0.0240,
-    ],
-    dtype=torch.float32,
-)
+COEFFICIENTS = get_torch_coefficients()
+kCL = COEFFICIENTS.kCL
+kCD = COEFFICIENTS.kCD
+kCY = COEFFICIENTS.kCY
+kCLL = COEFFICIENTS.kCLL
+kCm = COEFFICIENTS.kCm
+kCn = COEFFICIENTS.kCn
 
 
 @torch.jit.script

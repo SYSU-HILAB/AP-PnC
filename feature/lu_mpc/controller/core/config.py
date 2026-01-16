@@ -7,45 +7,87 @@ self-contained so we mirror the parameters here.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import numpy as np
 
 
+@dataclass
 class ControlConfig:
-    control_time = 0.1
-    control_frequency = 1 / control_time
-    nodes = 10
-    T = control_time * nodes
+    """Basic controller timing configuration."""
+
+    ctrl_dt: float = 0.1
+    nodes: int = 10
+
+    @property
+    def control_frequency(self) -> float:
+        return 1.0 / self.ctrl_dt
+
+    @property
+    def T(self) -> float:
+        return self.ctrl_dt * self.nodes
 
 
+@dataclass
 class MpcConfig:
-    """Simple MPC configuration container."""
+    """Cleaned up MPC configuration."""
 
-    mpc_timeout = 3  # seconds
-    nodes = ControlConfig.nodes
-    T_horizon = ControlConfig.T
+    control: ControlConfig = field(default_factory=ControlConfig)
+    lb_r: np.ndarray = field(
+        default_factory=lambda: np.array([-1.5, -2.5, -1.5], dtype=float)
+    )
+    ub_r: np.ndarray = field(
+        default_factory=lambda: np.array([1.5, 2.5, 1.5], dtype=float)
+    )
 
-    cz = 0.0 * np.zeros((1,))
-    lb_r = np.array([-1.5, -2.5, -1.5])
-    ub_r = np.array([1.5, 2.5, 1.5])
+    lb_u: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=float))
+    ub_u: np.ndarray = field(default_factory=lambda: np.array([5.5, 5.5, 5.5, 5.5]))
 
-    lb_u = np.array([0.05, 0.05, 0.05, 0.05]) * 0
-    ub_u = np.array([10.0, 10.0, 10.0, 10.0]) * 0.55
-    drag_est = 0.00
+    qPos: np.ndarray = field(default_factory=lambda: np.array([15.0, 15.0, 10.0]))
+    qYB: np.ndarray = field(default_factory=lambda: np.array([52.5, 52.5, 126.0]))
+    qVel: np.ndarray = field(default_factory=lambda: np.array([1.0, 1.0, 1.0]))
 
-    qPos = np.array([15, 15, 10])
-    qh = 1.5
-    qv = 1.8 * 2.0
-    qYB = np.array([qh * 1e2, qh * 1e2, qv * 1e2]) * 0.35
+    cz_rate: float = 0.10
 
-    qvelh = 1.0
-    qvelv = 1.0
-    qVel = np.array([qvelh, qvelh, qvelv])
+    qAngV: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 0.0]))
+    rU: np.ndarray = field(default_factory=lambda: np.array([0.03, 0.03, 0.03, 0.03]))
 
-    wx = 0.0
-    wy = 0.0
-    wz = 0.0
-    qAngV = np.array([wx, wy, wz])
-    qDynamicVel = np.zeros((1,))
-    rU = np.array([1e1, 1e1, 1e1, 1e1]) * 1e-3 * 3
+    @property
+    def nodes(self) -> int:
+        return self.control.nodes
 
-    Metrics = False
+    @property
+    def T_horizon(self) -> float:
+        return self.control.T
+
+    @staticmethod
+    def _yb_weights(qh: float, qv: float) -> np.ndarray:
+        return np.array([qh, qh, qv], dtype=float) * 100.0 * 0.35
+
+    @staticmethod
+    def _vel_weights(qvelh: float, qvelv: float) -> np.ndarray:
+        return np.array([qvelh, qvelh, qvelv], dtype=float)
+
+    @classmethod
+    def create_high_performance(cls) -> "MpcConfig":
+        qh = 2.0
+        qv = 5.0
+        return cls(qYB=cls._yb_weights(qh, qv))
+
+    @classmethod
+    def create_with_scalars(
+        cls,
+        qh: float,
+        qv: float,
+        qvelh: float = 1.0,
+        qvelv: float = 1.0,
+        **kwargs: object,
+    ) -> "MpcConfig":
+        return cls(
+            qYB=cls._yb_weights(qh, qv),
+            qVel=cls._vel_weights(qvelh, qvelv),
+            **kwargs,
+        )
+
+
+DEFAULT_CONTROL_CONFIG = ControlConfig()
+DEFAULT_MPC_CONFIG = MpcConfig()

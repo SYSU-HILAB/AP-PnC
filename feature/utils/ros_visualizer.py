@@ -23,7 +23,7 @@ import time
 import numpy as np
 import rclpy
 from rclpy.executors import SingleThreadedExecutor
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from geometry_msgs.msg import Point, Vector3, Quaternion, PoseStamped
 from nav_msgs.msg import Path
 
@@ -308,6 +308,20 @@ def create_reliable_qos(depth: int = 10) -> QoSProfile:
     )
 
 
+def create_transient_local_qos(depth: int = 10) -> QoSProfile:
+    """
+    Create a reliable QoS profile with TRANSIENT_LOCAL durability.
+
+    Useful for static Path messages so late subscribers (RViz) receive data.
+    """
+    return QoSProfile(
+        reliability=ReliabilityPolicy.RELIABLE,
+        durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=depth,
+    )
+
+
 def create_best_effort_qos(depth: int = 10) -> QoSProfile:
     """
     Create a best-effort QoS profile for high-frequency messages.
@@ -349,11 +363,10 @@ def sleep_period(duration: float) -> None:
 
 def run_state_visualizer(
     trajectory_csv: str,
-    sim_time: float = 10.0,
+    sim_tot_dur: float = 10.0,
     sim_dt: float = 0.01,
-    control_dt: float = 0.1,
+    ctrl_dt: float = 0.1,
     real_time_factor: float = 1.0,
-    collect_aero: bool = True,
     executor: Optional[SingleThreadedExecutor] = None,
 ) -> None:
     """
@@ -364,11 +377,10 @@ def run_state_visualizer(
 
     Args:
         trajectory_csv: Path to trajectory CSV file
-        sim_time: Total simulation time in seconds
+        sim_tot_dur: Total simulation time in seconds
         sim_dt: Simulation timestep in seconds
-        control_dt: Controller update period in seconds
+        ctrl_dt: Controller update period in seconds
         real_time_factor: Speed multiplier (1.0 = real-time)
-        collect_aero: Whether to publish aerodynamic data
         executor: Optional existing executor (creates new if None)
     """
     from feature.lu_mpc.ros.simulation_visualizer import SimulationVisualizer
@@ -376,11 +388,10 @@ def run_state_visualizer(
     rclpy.init(args=None)
     node = SimulationVisualizer(
         trajectory_csv=trajectory_csv,
-        sim_time=sim_time,
+        sim_tot_dur=sim_tot_dur,
         sim_dt=sim_dt,
-        control_dt=control_dt,
+        ctrl_dt=ctrl_dt,
         real_time_factor=real_time_factor,
-        collect_aero=collect_aero,
     )
     executor = executor or SingleThreadedExecutor()
     executor.add_node(node)

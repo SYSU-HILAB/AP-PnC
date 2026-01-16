@@ -1,23 +1,10 @@
-# -*- coding: future_fstrings -*-
-#
-# Mathematical Utilities for Aerodynamic Simulation
-# Created on 2024-12-28
-#
-# This module provides common mathematical utility functions for
-# quaternion operations, rotation matrices, and linear algebra
-# operations used in aerodynamic simulation.
-#
-
 from __future__ import annotations
 
 import casadi as cs
 import numpy as np
-from typing import Union
 
 
-def quat_multiply(
-    q1: Union[cs.SX, np.ndarray], q2: Union[cs.SX, np.ndarray]
-) -> Union[cs.SX, np.ndarray]:
+def quat_multiply(q1: cs.SX | np.ndarray, q2: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """
     Quaternion multiplication: q1 * q2.
 
@@ -86,7 +73,7 @@ def right_quat_multiply(
     return composed
 
 
-def quat_to_rotmat(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+def quat_to_rotmat(q: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """
     Convert quaternion to rotation matrix.
 
@@ -140,7 +127,7 @@ def quat_to_rotmat(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
         )
 
 
-def skew_symmetric(v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+def skew_symmetric(v: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """
     Create skew-symmetric matrix from 3D vector.
 
@@ -164,9 +151,7 @@ def skew_symmetric(v: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
         return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
 
 
-def quat_apply(
-    q: Union[cs.SX, np.ndarray], v: Union[cs.SX, np.ndarray]
-) -> Union[cs.SX, np.ndarray]:
+def quat_apply(q: cs.SX | np.ndarray, v: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """
     Apply quaternion rotation to a vector.
 
@@ -194,9 +179,7 @@ def quat_apply(
     )
 
 
-def quat_apply_inverse(
-    q: Union[cs.SX, np.ndarray], v: Union[cs.SX, np.ndarray]
-) -> Union[cs.SX, np.ndarray]:
+def quat_apply_inverse(q: cs.SX | np.ndarray, v: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """
     Apply inverse quaternion rotation to a vector.
 
@@ -226,7 +209,7 @@ def quat_apply_inverse(
     )
 
 
-def quat_to_euler(q: Union[cs.SX, np.ndarray]) -> Union[cs.SX, np.ndarray]:
+def quat_to_euler(q: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """
     Convert quaternion to Euler angles (roll, pitch, yaw) using Z-X-Y intrinsic sequence.
 
@@ -465,9 +448,7 @@ def quat_to_rotmat_numpy(q: np.ndarray) -> np.ndarray:
 WING_TO_QUAD_QUAT = np.array([0.0, 0.707, 0.0, 0.707])  # WXYZ format
 
 
-def wing_frd_to_quad_flu(
-    quat_wing: Union[cs.SX, np.ndarray]
-) -> Union[cs.SX, np.ndarray]:
+def wing_frd_to_quad_flu(quat_wing: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """Transform quaternion from WING_FRD_BODY_FRAME to QUAD_FLU_BODY_FRAME.
 
     WING_FRD_BODY_FRAME: Forward-Right-Down (wing reference frame)
@@ -481,12 +462,10 @@ def wing_frd_to_quad_flu(
     Returns:
         Quaternion in QUAD_FLU_BODY_FRAME [w, x, y, z]
     """
-    return quat_multiply(WING_TO_QUAD_QUAT, quat_wing)
+    return quat_multiply(quat_wing, WING_TO_QUAD_QUAT)
 
 
-def extract_yb_from_quat(
-    quat: Union[cs.SX, np.ndarray]
-) -> Union[cs.SX, np.ndarray]:
+def extract_yb_from_quat(quat: cs.SX | np.ndarray) -> cs.SX | np.ndarray:
     """Extract the body Y-axis (left direction) from a quaternion.
 
     For QUAD_FLU_BODY_FRAME, the Y-axis points LEFT.

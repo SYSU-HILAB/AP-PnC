@@ -1,4 +1,3 @@
-# -*- coding: future_fstrings -*-
 """
 Minimal terminal listener that toggles playback when the spacebar is pressed.
 """

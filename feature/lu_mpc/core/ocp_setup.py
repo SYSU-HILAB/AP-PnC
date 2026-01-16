@@ -10,8 +10,13 @@ from feature.lu_mpc.controller.core.config import MpcConfig
 from feature.lu_mpc.model.ctrl.proposed_model import tailsitter_flu
 
 
-def ocp_nls() -> AcadosOcp:
-    """Create the AcadosOcp instance for the proposed controller."""
+def ocp_nls_cfg(cfg: MpcConfig) -> AcadosOcp:
+    """
+    Create the AcadosOcp instance for the proposed controller.
+
+    Args:
+        config: Optional MPC configuration to override defaults.
+    """
     ocp = AcadosOcp()
     model = tailsitter_flu()
 
@@ -25,7 +30,7 @@ def ocp_nls() -> AcadosOcp:
     ocp.cost.cost_type = "NONLINEAR_LS"
     sym_p = model.x[:3]
     sym_v = model.x[3:6]
-    sym_r = model.x[6:9]
+    # sym_r = model.x[6:9]
     sym_q = model.x[9:13]
 
     sym_u = model.u
@@ -36,7 +41,7 @@ def ocp_nls() -> AcadosOcp:
         1 - 2 * (qx**2 + qz**2),
         2 * (qy * qz + qw * qx),
     )
-    cost_x = cs.vertcat(sym_p, sym_v, sym_r, sym_yb)
+    cost_x = cs.vertcat(sym_p, sym_v, sym_yb)
     cost_x_size = cost_x.shape[0]
 
     model.cost_y_expr_0 = cs.vertcat(cost_x, sym_u)
@@ -50,9 +55,9 @@ def ocp_nls() -> AcadosOcp:
     ocp.cost.yref_e = np.zeros((cost_x_size))
     ocp.parameter_values = np.zeros((nparam))
 
-    Q_list = np.hstack((MpcConfig.qPos, MpcConfig.qVel, MpcConfig.qAngV, MpcConfig.qYB))
+    Q_list = np.hstack((cfg.qPos, cfg.qVel, cfg.qYB))
     W_mat_terminal = np.diag(Q_list)
-    W_mat = np.diag(np.hstack((Q_list, MpcConfig.rU)))
+    W_mat = np.diag(np.hstack((Q_list, cfg.rU)))
 
     ocp.cost.W_0 = np.zeros((ny, ny))
     ocp.cost.W = W_mat
@@ -60,14 +65,14 @@ def ocp_nls() -> AcadosOcp:
 
     ocp.translate_nls_cost_to_conl()
 
-    ocp.dims.N = MpcConfig.nodes
-    ocp.solver_options.tf = MpcConfig.T_horizon
+    ocp.dims.N = cfg.nodes
+    ocp.solver_options.tf = cfg.T_horizon
     ocp.solver_options.exact_hess_cost = False
 
     ocp.constraints.x0 = np.zeros((nx_aug))
     ocp.constraints.idxbx = np.array([6, 7, 8, 13, 14, 15, 16])
-    ocp.constraints.lbx = np.concatenate((MpcConfig.lb_r, MpcConfig.lb_u))
-    ocp.constraints.ubx = np.concatenate((MpcConfig.ub_r, MpcConfig.ub_u))
+    ocp.constraints.lbx = np.concatenate((cfg.lb_r, cfg.lb_u))
+    ocp.constraints.ubx = np.concatenate((cfg.ub_r, cfg.ub_u))
 
     ocp.constraints.Jbu = np.eye(nu)
     ocp.constraints.ubu = np.array([10.0, 10.0, 10.0, 10.0]) * 0.8

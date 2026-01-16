@@ -1,24 +1,41 @@
-# -*- coding: future_fstrings -*-
-#
-# Trajectory Loader Module
-# Created on 2025-01-10
-#
-# This module provides utilities for loading and parsing trajectory CSV files
-# for use with the nMPC controller.
-#
+"""
+Trajectory CSV loading and interpolation utilities for the lu_mpc controller.
+"""
 
 import os
 from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
-from scipy.interpolate import interp1d
 
 from feature.utils import Colors, color_print
 from feature.utils.math_utils import wing_frd_to_quad_flu, extract_yb_from_quat
 
 
 TEMP_DATA_SUBDIR = Path("artifacts") / "simulations" / "temp_data"
+
+REQUIRED_FIELDS: dict[tuple[str, ...], str] = {
+    ("time",): "Time vector",
+    ("pos_x", "pos_y", "pos_z"): "Position (3D)",
+    ("vel_x", "vel_y", "vel_z"): "Velocity (3D)",
+    ("yb_x", "yb_y", "yb_z"): "Body Y-axis",
+    ("df_phi_alpha",): "DF phi Alpha",
+    ("df_lyu_alpha",): "DF Lyu Alpha",
+    ("df_phi_quat_w", "df_phi_quat_x", "df_phi_quat_y", "df_phi_quat_z"): "DF phi Quaternion",
+    ("df_lyu_quat_w", "df_lyu_quat_x", "df_lyu_quat_y", "df_lyu_quat_z"): "DF Lyu Quaternion",
+}
+
+OPTIONAL_FIELDS: dict[tuple[str, ...], str] = {
+    ("thrust",): "Thrust command",
+    ("aero_force_z",): "Aerodynamic force Z",
+    ("ap_x", "ap_y", "ap_z"): "Aerodynamic center",
+    ("S_ap_x", "S_ap_z"): "Aerodynamic derivatives",
+    ("B_Omega_b_y",): "Body angular rate Y",
+    ("alpha_dot",): "Alpha rate of change",
+    ("B_aero_force_z",): "Aero force Z (body)",
+    ("quat_w", "quat_x", "quat_y", "quat_z"): "Odom quaternion (legacy)",
+    ("quat_odom_w", "quat_odom_x", "quat_odom_y", "quat_odom_z"): "Odom quaternion",
+}
 
 
 def _repo_root() -> Path:
@@ -60,21 +77,48 @@ def _stack_columns(data: np.ndarray, columns: Sequence[str]) -> np.ndarray:
     return stacked
 
 
+def _format_field_group(field_names: tuple[str, ...]) -> str:
+    """Return a comma-separated representation of field names."""
+    return ", ".join(field_names)
+
+
+def _log_required_fields(names: Sequence[str]) -> list[str]:
+    """Print status of required fields and return missing column names."""
+    missing: list[str] = []
+    for field_names, desc in REQUIRED_FIELDS.items():
+        label = _format_field_group(field_names)
+        if all(field in names for field in field_names):
+            color_print(
+                f"  {Colors.CHECKMARK} {desc:20} ({label})",
+                Colors.GREEN,
+            )
+        else:
+            missing_fields = [field for field in field_names if field not in names]
+            color_print(
+                f"  {Colors.CROSS} {desc:20} ({label}) "
+                f"[{Colors.BOLD}MISSING: {missing_fields}{Colors.BOLD + Colors.RED}]",
+                Colors.RED,
+            )
+            missing.extend(missing_fields)
+    return missing
+
+
+def _log_optional_fields(names: Sequence[str]) -> None:
+    """Print optional field availability."""
+    for field_names, desc in OPTIONAL_FIELDS.items():
+        label = _format_field_group(field_names)
+        color = Colors.GREEN if all(field in names for field in field_names) else Colors.RESET
+        status = Colors.CHECKMARK if color == Colors.GREEN else Colors.CROSS
+        color_print(f"  {status} {desc:30} ({label})", color)
+
+
 def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     """
     Load trajectory data from a planner-generated CSV.
 
-    Required columns (emitted by global_planning.cpp):
-    time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,yb_x,yb_y,yb_z,
-    df_phi_alpha,df_lyu_alpha,
-    df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,
-    df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z
-
-Optional columns: thrust,aero_force_z,ap_x,ap_y,ap_z,
-S_ap_x,S_ap_z,B_Omega_b_y,alpha_dot,B_aero_force_z
-
-NOTE: Both df_phi and df_lyu quaternion/alpha columns are REQUIRED.
-Older v14-alpha.csv files without orientation data are NOT supported.
+    Required and optional columns are documented in ``REQUIRED_FIELDS`` and
+    ``OPTIONAL_FIELDS``. Orientation columns are mandatory; legacy CSVs without
+    quaternion data are rejected.
     """
     csv_path_obj = Path(csv_path)
     if not csv_path_obj.exists():
@@ -86,38 +130,9 @@ Older v14-alpha.csv files without orientation data are NOT supported.
 
     names = data.dtype.names or []
 
-    # ========================================================================
-    # Field Validation with Pretty Printing
-    # ========================================================================
-
     color_print("Trajectory CSV Validation", Colors.BOLD + Colors.BLUE)
     color_print(f"  File: {csv_path_obj}", Colors.BLUE)
-
-    # Required fields
-    required_fields = {
-        "time": "Time vector",
-        "pos_x, pos_y, pos_z": "Position (3D)",
-        "vel_x, vel_y, vel_z": "Velocity (3D)",
-        "yb_x, yb_y, yb_z": "Body Y-axis",
-        "df_phi_alpha": "DF phi Alpha (differential flatness)",
-        "df_lyu_alpha": "DF Lyu Alpha (force balance)",
-        "df_phi_quat_w, df_phi_quat_x, df_phi_quat_y, df_phi_quat_z": "DF phi Quaternion (WXYZ)",
-        "df_lyu_quat_w, df_lyu_quat_x, df_lyu_quat_y, df_lyu_quat_z": "DF Lyu Quaternion (WXYZ)",
-    }
-
-    missing_required = []
-    for field_key, desc in required_fields.items():
-        field_names = [f.strip() for f in field_key.split(",")]
-        if all(f in names for f in field_names):
-            color_print(f"  {Colors.CHECKMARK} {desc:20} ({field_key})", Colors.GREEN)
-        else:
-            missing_fields = [f for f in field_names if f not in names]
-            color_print(
-                f"  {Colors.CROSS} {desc:20} ({field_key}) "
-                f"[{Colors.BOLD}MISSING: {missing_fields}{Colors.BOLD + Colors.RED}]",
-                Colors.RED,
-            )
-            missing_required.extend(missing_fields)
+    missing_required = _log_required_fields(names)
 
     if missing_required:
         color_print(
@@ -131,26 +146,8 @@ Older v14-alpha.csv files without orientation data are NOT supported.
         )
         raise ValueError(f"Missing required columns: {missing_required}")
 
-    # Optional fields
-    optional_fields = {
-        "thrust": "Thrust command",
-        "aero_force_z": "Aerodynamic force Z",
-        "ap_x, ap_y, ap_z": "Aerodynamic center",
-        "S_ap_x, S_ap_z": "Aerodynamic derivatives",
-        "B_Omega_b_y": "Body angular rate Y",
-        "alpha_dot": "Alpha rate of change",
-        "B_aero_force_z": "Aerodynamic force Z (body)",
-        "quat_w, quat_x, quat_y, quat_z": "Odom quaternion (legacy naming)",
-        "quat_odom_w, quat_odom_x, quat_odom_y, quat_odom_z": "Odom quaternion",
-    }
-
     color_print("\nOptional Fields:", Colors.YELLOW)
-    for field_key, desc in optional_fields.items():
-        field_names = [f.strip() for f in field_key.split(",")]
-        if all(f in names for f in field_names):
-            color_print(f"  {Colors.CHECKMARK} {desc:30} ({field_key})", Colors.GREEN)
-        else:
-            color_print(f"  {Colors.CROSS} {desc:30} ({field_key})", Colors.RESET)
+    _log_optional_fields(names)
 
     # ========================================================================
     # Load Data
@@ -248,62 +245,16 @@ class TrajectoryReference:
                 for i in range(len(self.time))
             ])
 
-        # Extract yb from quad_df_phi_quat (not from CSV)
-        if self.quad_df_phi_quat is not None:
-            self.yb = np.array([
-                extract_yb_from_quat(self.quad_df_phi_quat[i])
-                for i in range(len(self.time))
-            ])
-        else:
+
             # Fallback to CSV yb if no orientation data
-            self.yb = trajectory_data.get("yb", np.zeros((len(self.time), 3)))
+        self.yb = trajectory_data.get("yb", np.zeros((len(self.time), 3)))
 
-        # Create interpolators
-        self._pos_interp = [
-            interp1d(self.time, self.position[:, i], kind="linear", fill_value="extrapolate")
-            for i in range(3)
-        ]
-        self._vel_interp = [
-            interp1d(self.time, self.velocity[:, i], kind="linear", fill_value="extrapolate")
-            for i in range(3)
-        ]
-        self._yb_interp = [
-            interp1d(self.time, self.yb[:, i], kind="linear", fill_value="extrapolate")
-            for i in range(3)
-        ]
-        self._alpha_interp = interp1d(
-            self.time, self.alpha, kind="linear", fill_value="extrapolate"
-        )
-        self._df_phi_quat_interp = None
-        if self.df_phi_quat is not None:
-            self._df_phi_quat_interp = [
-                interp1d(self.time, self.df_phi_quat[:, i], kind="linear", fill_value="extrapolate")
-                for i in range(4)
-            ]
-        self._df_lyu_quat_interp = None
-        if self.df_lyu_quat is not None:
-            self._df_lyu_quat_interp = [
-                interp1d(self.time, self.df_lyu_quat[:, i], kind="linear", fill_value="extrapolate")
-                for i in range(4)
-            ]
-        self._odom_quat_interp = None
-        if self.odom_quat is not None:
-            self._odom_quat_interp = [
-                interp1d(self.time, self.odom_quat[:, i], kind="linear", fill_value="extrapolate")
-                for i in range(4)
-            ]
-
-        # Add interpolator for quad_df_phi_quat (for tracking)
-        self._quad_df_phi_quat_interp = None
-        if self.quad_df_phi_quat is not None:
-            self._quad_df_phi_quat_interp = [
-                interp1d(self.time, self.quad_df_phi_quat[:, i], kind="linear", fill_value="extrapolate")
-                for i in range(4)
-            ]
+        # Sampling time (constant, 50Hz)
+        self._sim_dt = 0.02
 
     def get_reference_at_time(self, t: float) -> dict[str, np.ndarray]:
         """
-        Get interpolated reference state at time t.
+        Get reference state at time t using nearest index lookup (no interpolation).
 
         Args:
             t: Time in seconds
@@ -318,78 +269,105 @@ class TrajectoryReference:
             - df_phi_quat: (4,) array [w, x, y, z] from WING_FRD_BODY_FRAME if available
             - df_lyu_quat: (4,) array [w, x, y, z] from WING_FRD_BODY_FRAME if available
         """
+        # Find nearest index (clamp to valid range)
+        idx = int(np.round(t / self._sim_dt)) % len(self.time)
+
         ref = {
-            "position": np.array([f(t) for f in self._pos_interp]),
-            "velocity": np.array([f(t) for f in self._vel_interp]),
-            "yb": np.array([f(t) for f in self._yb_interp]),
-            "alpha": float(self._alpha_interp(t)),
+            "position": self.position[idx].copy(),
+            "velocity": self.velocity[idx].copy(),
+            "yb": self.yb[idx].copy(),
+            "alpha": float(self.alpha[idx]),
         }
+
         # Add quad frame quaternion for tracking (primary reference)
-        if self._quad_df_phi_quat_interp:
-            quad_df_phi_quat = np.array([f(t) for f in self._quad_df_phi_quat_interp])
+        if self.quad_df_phi_quat is not None:
+            quad_df_phi_quat = self.quad_df_phi_quat[idx].copy()
             norm = np.linalg.norm(quad_df_phi_quat)
             if norm > 1e-6:
                 quad_df_phi_quat = quad_df_phi_quat / norm
             ref["quaternion"] = quad_df_phi_quat
+
         # Keep wing frame quaternions for reference
-        if self._df_phi_quat_interp:
-            df_phi_quat = np.array([f(t) for f in self._df_phi_quat_interp])
+        if self.df_phi_quat is not None:
+            df_phi_quat = self.df_phi_quat[idx].copy()
             norm = np.linalg.norm(df_phi_quat)
             if norm > 1e-6:
                 df_phi_quat = df_phi_quat / norm
             ref["df_phi_quat"] = df_phi_quat
-        if self._df_lyu_quat_interp:
-            df_lyu_quat = np.array([f(t) for f in self._df_lyu_quat_interp])
+
+        if self.df_lyu_quat is not None:
+            df_lyu_quat = self.df_lyu_quat[idx].copy()
             norm = np.linalg.norm(df_lyu_quat)
             if norm > 1e-6:
                 df_lyu_quat = df_lyu_quat / norm
             ref["df_lyu_quat"] = df_lyu_quat
-        if self._odom_quat_interp:
-            quat_odom = np.array([f(t) for f in self._odom_quat_interp])
+
+        if self.odom_quat is not None:
+            quat_odom = self.odom_quat[idx].copy()
             norm = np.linalg.norm(quat_odom)
             if norm > 1e-6:
                 quat_odom = quat_odom / norm
             ref["quat_odom"] = quat_odom
-        return ref
 
-    def get_reference_window(self, t: float, horizon: float, dt: float) -> dict[str, np.ndarray]:
+        return ref
+    
+
+    def get_reference_window(
+        self,
+        cur_idx_ref: int,
+        sample_dt: float,
+        ctrl_dt: float,
+        N: int,
+    ) -> dict[str, np.ndarray]:
         """
-        Get reference trajectory for MPC prediction horizon.
+        Get reference trajectory for MPC prediction horizon using index-based downsampling.
+
+        The trajectory is sampled at sample_dt (must be 0.02s = 50Hz).
+        Downsampling factor = ctrl_dt / sample_dt must be an integer.
+        Reference indices: cur_idx_ref + downsample_factor * i for i in 0..N
 
         Args:
-            t: Current time
-            horizon: Prediction horizon length (seconds)
-            dt: Time step within horizon
+            cur_idx_ref: Current reference index in the trajectory
+            sample_dt: Sampling time of the trajectory (must be 0.02s)
+            ctrl_dt: Control time step of the MPC
+            N: Number of steps in the MPC horizon
 
         Returns:
             Dictionary with reference arrays:
-            - position: (N, 3) array
-            - velocity: (N, 3) array
-            - yb: (N, 3) array
+            - position: (N+1, 3) array
+            - velocity: (N+1, 3) array
+            - yb: (N+1, 3) array
         """
-        N = int(horizon / dt)
-        times = t + np.arange(N + 1) * dt
+        # Validate sample_dt
+        if not np.isclose(sample_dt, 0.02):
+            raise ValueError(f"sample_dt must be 0.02s, got {sample_dt}")
 
-        position_ref = np.array([[f(tau) for f in self._pos_interp] for tau in times])
-        velocity_ref = np.array([[f(tau) for f in self._vel_interp] for tau in times])
-        yb_ref = np.array([[f(tau) for f in self._yb_interp] for tau in times])
+        # Calculate and validate downsampling factor
+        downsample_factor = ctrl_dt / sample_dt
+        if not np.isclose(downsample_factor, np.round(downsample_factor)):
+            raise ValueError(
+                f"downsample_factor = ctrl_dt/sample_dt must be integer. "
+                f"ctrl_dt={ctrl_dt}, sample_dt={sample_dt}, factor={downsample_factor}"
+            )
+        downsample_factor = int(downsample_factor)
 
-        ref = {
+        # Total trajectory length
+        total_steps = len(self.time)
+
+        # Compute indices with wrap-around
+        indices = cur_idx_ref + downsample_factor * np.arange(N + 1)
+        indices = indices % total_steps
+
+        # Extract reference data using direct indexing
+        position_ref = self.position[indices]
+        velocity_ref = self.velocity[indices]
+        yb_ref = self.yb[indices]
+
+        return {
             "position": position_ref,
             "velocity": velocity_ref,
             "yb": yb_ref,
         }
-        if self._df_phi_quat_interp:
-            quat_ref = []
-            for tau in times:
-                quat = np.array([f(tau) for f in self._df_phi_quat_interp])
-                norm = np.linalg.norm(quat)
-                if norm > 1e-6:
-                    quat = quat / norm
-                quat_ref.append(quat)
-            ref["df_phi_quat"] = np.vstack(quat_ref)
-
-        return ref
 
 
 def get_trajectory_path() -> str:

@@ -179,14 +179,12 @@ def main() -> int:
         env["LD_LIBRARY_PATH"] = f"{acados_lib_path}:{ld_library_path}"
 
     try:
-        result = subprocess.run(
-            [str(python_bin)] + args,
-            env=env,
-            check=False
-        )
-        return result.returncode
+        os.execvpe(str(python_bin), [str(python_bin)] + args, env)
     except FileNotFoundError:
         print(f"Error: {python_bin} does not exist or is not executable", file=sys.stderr)
+        return 1
+    except PermissionError:
+        print(f"Error: {python_bin} is not executable", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         return 130  # Standard exit code for SIGINT

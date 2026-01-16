@@ -7,6 +7,8 @@ import casadi as cs
 import dataclasses
 import numpy as np
 
+from feature.lu_mpc.model.sim.aero_coefficients import get_numpy_coefficients
+
 
 @dataclasses.dataclass
 class GdModelConfig:
@@ -24,156 +26,25 @@ class GdModelConfig:
 
     def __post_init__(self):
         """Initialize coefficient arrays if not provided."""
+        coeffs = get_numpy_coefficients()
+
         if self.kCL is None:
-            self.kCL = np.array(
-                [
-                    -2.8465,
-                    23.1516,
-                    -0.7335,
-                    0.1407,
-                    0.0930,
-                    3.8276,
-                    -0.0006,
-                    3.1951,
-                    -0.0289,
-                    0.6425,
-                    0.0164,
-                    0.0031,
-                    0.6174,
-                    -0.1286,
-                    0.0342,
-                    -0.5109,
-                    0.0982,
-                    -0.0006,
-                    0.1985,
-                    -0.0070,
-                    0.0410,
-                    0.0037,
-                    -4.3496,
-                    14.1041,
-                ],
-                dtype=np.float64,
-            )
+            self.kCL = coeffs.kCL.copy()
 
         if self.kCD is None:
-            self.kCD = np.array(
-                [
-                    -0.5908,
-                    -1.8161,
-                    -0.2045,
-                    -0.0036,
-                    -0.2861,
-                    -0.8862,
-                    -0.0590,
-                    -0.9215,
-                    0.0130,
-                    -0.0035,
-                    0.4958,
-                    -0.0032,
-                    0.0762,
-                    0.1533,
-                    -0.0009,
-                    0.1891,
-                    0.0159,
-                    0.0172,
-                    0.2510,
-                    0.0032,
-                    -0.1227,
-                    0.1740,
-                    0.7917,
-                    -4.4927,
-                ],
-                dtype=np.float64,
-            )
+            self.kCD = coeffs.kCD.copy()
 
         if self.kCY is None:
-            self.kCY = np.array(
-                [
-                    -0.0678,
-                    0.1151,
-                    -0.1024,
-                    0.6002,
-                    0.5367,
-                    -0.0922,
-                    -0.8523,
-                    -0.5220,
-                    -0.1006,
-                    0.2266,
-                    -0.0345,
-                    -0.0768,
-                    0.0748,
-                ],
-                dtype=np.float64,
-            )
+            self.kCY = coeffs.kCY.copy()
 
         if self.kCLL is None:
-            self.kCLL = np.array(
-                [
-                    -0.0240,
-                    0.0172,
-                    -0.0219,
-                    -0.0085,
-                    -0.2163,
-                    -0.0143,
-                    -0.0152,
-                    -0.1874,
-                    -0.0021,
-                    -0.0065,
-                    -0.0110,
-                    0.0029,
-                    -0.0184,
-                    -0.0028,
-                    0.0203,
-                    -0.0158,
-                    -0.0245,
-                    -0.0068,
-                ],
-                dtype=np.float64,
-            )
+            self.kCLL = coeffs.kCLL.copy()
 
         if self.kCm is None:
-            self.kCm = np.array(
-                [
-                    -1.9963,
-                    -2.5059,
-                    0.5987,
-                    0.0120,
-                    0.7977,
-                    0.0543,
-                    0.6310,
-                    -0.1122,
-                    -0.0798,
-                    -0.2177,
-                    -0.1059,
-                    0.0029,
-                    -0.1388,
-                    0.0132,
-                    -0.2605,
-                    0.0015,
-                    -0.5789,
-                    0.7902,
-                ],
-                dtype=np.float64,
-            )
+            self.kCm = coeffs.kCm.copy()
 
         if self.kCn is None:
-            self.kCn = np.array(
-                [
-                    0.0681,
-                    -0.0338,
-                    0.0054,
-                    0.0028,
-                    -0.0052,
-                    0.0034,
-                    -0.0048,
-                    0.0217,
-                    0.0111,
-                    0.0121,
-                    0.0685,
-                    0.0240,
-                ],
-                dtype=np.float64,
-            )
+            self.kCn = coeffs.kCn.copy()
 
 
 # Default configuration instance
@@ -549,12 +420,7 @@ class SymbolicGdModel:
         forces_body = self._trans_stab_to_body(alpha, forces_dyl)
 
         # Compute moments (already in body frame)
-        moments_body = cs.vertcat(
-            # 0.5 * rho * v_squared * CLL,
-            cs.SX.zeros(CLL.shape),
-            0.5 * rho * v_squared * CM,
-            cs.SX.zeros(CN.shape),
-        )
+        moments_body = 0.5 * rho * v_squared * cs.vertcat(0.0, CM, 0.0)
 
         # Store symbolic expressions
         self.alpha = alpha
@@ -653,6 +519,59 @@ def test_symbolic_model():
     print("\nSymbolic model test completed!")
 
 
+def _create_mesh_grid(mesh_size: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Create angle grids in degrees and radians."""
+    alpha_deg = np.linspace(-180, 180, mesh_size)
+    beta_deg = np.linspace(-90, 90, mesh_size)
+    alpha_rad = np.deg2rad(alpha_deg)
+    beta_rad = np.deg2rad(beta_deg)
+    alpha_grid_deg, beta_grid_deg = np.meshgrid(alpha_deg, beta_deg, indexing="ij")
+    alpha_grid, beta_grid = np.meshgrid(alpha_rad, beta_rad, indexing="ij")
+    return alpha_grid_deg, beta_grid_deg, alpha_grid, beta_grid
+
+
+def _evaluate_mesh_point(model, alpha_val: float, beta_val: float, v_mag: float = 10.0):
+    """Evaluate aerodynamic coefficients at a single mesh grid location."""
+    vbx = v_mag * np.cos(alpha_val) * np.cos(beta_val)
+    vby = v_mag * np.sin(beta_val)
+    vbz = v_mag * np.sin(alpha_val) * np.cos(beta_val)
+    velb = np.array([vbx, vby, vbz])
+
+    forces, moments, _, _ = model.evaluate(velb)
+    rho = model.config.rho
+    dynamic_pressure = 0.5 * rho * v_mag**2
+    forces_stability = model._trans_body_to_stab(alpha_val, forces)
+
+    cl = -forces_stability[2] / dynamic_pressure
+    cd = -forces_stability[0] / dynamic_pressure
+    cy = forces_stability[1] / dynamic_pressure
+    cll = moments[0] / dynamic_pressure
+    cm = moments[1] / dynamic_pressure
+    cn = moments[2] / dynamic_pressure
+    return cl, cd, cy, cll, cm, cn
+
+
+def _compute_mesh_coefficients(model, alpha_grid: np.ndarray, beta_grid: np.ndarray):
+    """Compute aerodynamic coefficient meshes."""
+    mesh_size = alpha_grid.shape[0]
+    coeffs = {
+        "CL": np.zeros_like(alpha_grid),
+        "CD": np.zeros_like(alpha_grid),
+        "CY": np.zeros_like(alpha_grid),
+        "CLL": np.zeros_like(alpha_grid),
+        "CM": np.zeros_like(alpha_grid),
+        "CN": np.zeros_like(alpha_grid),
+    }
+
+    print(f"Evaluating {mesh_size}x{mesh_size} mesh points...")
+    for i in range(mesh_size):
+        for j in range(mesh_size):
+            values = _evaluate_mesh_point(model, alpha_grid[i, j], beta_grid[i, j])
+            for key, value in zip(coeffs.keys(), values):
+                coeffs[key][i, j] = value
+    return coeffs
+
+
 def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_size=361):
     """
     Generate 3D mesh data for aerodynamic coefficients using CasADi.
@@ -673,106 +592,32 @@ def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_si
 
     # Create model
     model = create_symbolic_gd_model()
-
-    # Generate ranges for alpha and beta
-    alpha_deg = np.linspace(-180, 180, mesh_size)
-    beta_deg = np.linspace(-90, 90, mesh_size)
-
-    # Convert to radians
-    alpha_rad = alpha_deg * (np.pi / 180.0)
-    beta_rad = beta_deg * (np.pi / 180.0)
-
-    # Create meshgrid
-    ALPHA_DEG, BETA_DEG = np.meshgrid(alpha_deg, beta_deg, indexing="ij")
-    ALPHA, BETA = np.meshgrid(alpha_rad, beta_rad, indexing="ij")
+    alpha_deg_grid, beta_deg_grid, alpha_grid, beta_grid = _create_mesh_grid(mesh_size)
 
     print("Computing aerodynamic coefficients with CasADi...")
+    coeffs = _compute_mesh_coefficients(model, alpha_grid, beta_grid)
 
-    # Initialize arrays for coefficients
-    CL = np.zeros_like(ALPHA)
-    CD = np.zeros_like(ALPHA)
-    CY = np.zeros_like(ALPHA)
-    CLL = np.zeros_like(ALPHA)
-    CM = np.zeros_like(ALPHA)
-    CN = np.zeros_like(ALPHA)
-
-    # Evaluate model for each point in the mesh
-    # Note: CasADi evaluation is point-wise, not batched like JAX
-    print(f"Evaluating {mesh_size}x{mesh_size} mesh points...")
-    for i in range(mesh_size):
-        for j in range(mesh_size):
-            # Create velocity from angles
-            alpha_val = ALPHA[i, j]
-            beta_val = BETA[i, j]
-
-            # Set velocity magnitude (can be arbitrary, coefficients are normalized)
-            v_mag = 10.0  # m/s
-            vbx = v_mag * np.cos(alpha_val) * np.cos(beta_val)
-            vby = v_mag * np.sin(beta_val)
-            vbz = v_mag * np.sin(alpha_val) * np.cos(beta_val)
-
-            velb = np.array([vbx, vby, vbz])
-
-            # Evaluate model
-            forces, moments, _, _ = model.evaluate(velb)
-
-            # Extract coefficients from forces and moments
-            # F = 0.5 * rho * V^2 * S * C  =>  C = F / (0.5 * rho * V^2 * S)
-            # For simplicity, assuming unit reference area S = 1
-            rho = model.config.rho
-            v_squared = v_mag**2
-            dynamic_pressure = 0.5 * rho * v_squared
-
-            # Convert body frame forces to stability frame before extracting coefficients
-            forces_stability = model._trans_body_to_stab(alpha_val, forces)
-
-            # Extract coefficients from stability frame forces
-            CL[i, j] = (
-                -forces_stability[2] / dynamic_pressure
-            )  # Lift coefficient (negative Z direction)
-            CD[i, j] = (
-                -forces_stability[0] / dynamic_pressure
-            )  # Drag coefficient (negative X direction)
-            CY[i, j] = (
-                forces_stability[1] / dynamic_pressure
-            )  # Side force coefficient (positive Y direction)
-
-            # Moments are already coefficients (assuming unit reference)
-            CLL[i, j] = moments[0] / dynamic_pressure
-            CM[i, j] = moments[1] / dynamic_pressure
-            CN[i, j] = moments[2] / dynamic_pressure
-
-    print("Converting results to numpy for saving...")
-
-    # Save data using data utilities
-    data_path = save_mesh_data(
-        ALPHA_DEG,
-        BETA_DEG,
-        CL,
-        CD,
-        CY,
-        CLL,
-        CM,
-        CN,
+    save_mesh_data(
+        alpha_deg_grid,
+        beta_deg_grid,
+        coeffs["CL"],
+        coeffs["CD"],
+        coeffs["CY"],
+        coeffs["CLL"],
+        coeffs["CM"],
+        coeffs["CN"],
         filename=filename,
         cache_dir=cache_dir,
         backend="casadi_symbolic",
     )
 
     print("CasADi mesh data generation completed!")
-    print(f"Data shape: ALPHA={ALPHA_DEG.shape}, BETA={BETA_DEG.shape}, CL={CL.shape}")
+    print(
+        f"Data shape: ALPHA={alpha_deg_grid.shape}, BETA={beta_deg_grid.shape}, "
+        f"CL={coeffs['CL'].shape}"
+    )
 
-    # Return the data dictionary for immediate use
-    return {
-        "ALPHA_DEG": ALPHA_DEG,
-        "BETA_DEG": BETA_DEG,
-        "CL": CL,
-        "CD": CD,
-        "CY": CY,
-        "CLL": CLL,
-        "CM": CM,
-        "CN": CN,
-    }
+    return {"ALPHA_DEG": alpha_deg_grid, "BETA_DEG": beta_deg_grid, **coeffs}
 
 
 def generate_cl_cd_cm_coordinated_data(
