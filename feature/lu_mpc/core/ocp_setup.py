@@ -82,8 +82,8 @@ def ocp_nls_cfg(cfg: MpcConfig) -> AcadosOcp:
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
     ocp.solver_options.integrator_type = "ERK"
     ocp.solver_options.nlp_solver_type = "SQP_RTI"
-    ocp.solver_options.nlp_solver_max_iter = 5
-    ocp.solver_options.qp_solver_iter_max = 10
+    ocp.solver_options.nlp_solver_max_iter = 10
+    ocp.solver_options.qp_solver_iter_max = 50
     ocp.solver_options.print_level = 0
     ocp.solver_options.hpipm_mode = "SPEED_ABS"
     ocp.solver_options.sim_method_num_stages = 4

@@ -156,8 +156,6 @@ class GdModelSimulator:
             tau_quad_flu + aero_moments_quad_flu
         )  # Moments are frame-independent
 
-        tot_moment_quad_flu = tau_quad_flu
-        tot_force_quad_flu = thrust_quad_flu
         # Transform forces to world frame for dynamics
         forces_world = quat_apply(quat_quad_flu, tot_force_quad_flu)
 
@@ -216,80 +214,6 @@ class GdModelSimulator:
         # Create solver
         self.acados_solver = AcadosSimSolver(self.acados_sim)
 
-    def simulate(
-        self,
-        initial_state: np.ndarray,
-        control_trajectory: Optional[np.ndarray] = None,
-    ) -> dict:
-        """
-        Run simulation with given initial state and control trajectory.
-
-        Args:
-            initial_state: Initial state vector [p, v, r, q, u]
-            control_trajectory: Control input trajectory (N, 4)
-
-        Returns:
-            Dictionary containing simulation results
-        """
-
-        # Simulation setup
-        N = int(self.config.sim_tot_dur / self.config.sim_dt)
-        nx = initial_state.shape[0]
-        nu = 4  # Control input dimension
-
-        # Storage for results
-        states = np.zeros((N + 1, nx))
-        controls = np.zeros((N, nu))
-        times = np.linspace(0, self.config.sim_tot_dur, N + 1)
-
-        # Set initial condition
-        states[0, :] = initial_state
-
-        # Set initial control (defaults to zero if not provided)
-        if control_trajectory is None:
-            control_trajectory = np.zeros((N, nu))
-        else:
-            control_trajectory = control_trajectory[:N, :]
-
-        # Run simulation
-        for i in range(N):
-            # Set current state
-            self.acados_solver.set("x", states[i, :])
-
-            # Set control input
-            self.acados_solver.set("u", control_trajectory[i, :])
-
-            # Initialize implicit solver if needed
-            if self.config.integrator_type == "IRK":
-                xdot_guess = np.zeros(nx)
-                self.acados_solver.set("xdot", xdot_guess)
-
-            # Solve integration step
-            status = self.acados_solver.solve()
-
-            if status != 0:
-                raise Exception(
-                    f"ACADOS solver failed at step {i} with status {status}"
-                )
-
-            # Store results
-            states[i + 1, :] = self.acados_solver.get("x")
-            controls[i, :] = control_trajectory[i, :]
-
-
-        # Extract meaningful variables for post-processing
-        results = {
-            "states": states,
-            "controls": controls,
-            "times": times,
-            "position": states[:, 0:3],
-            "velocity": states[:, 3:6],
-            "angular_rates": states[:, 6:9],
-            "quaternion": states[:, 9:13],
-            "motor_thrusts": states[:, 13:17],
-        }
-
-        return results
 
     @classmethod
     def create_gd_simulator(cls, config: GdSimConfig = DEFAULT_SIM_CONFIG) -> "GdModelSimulator":

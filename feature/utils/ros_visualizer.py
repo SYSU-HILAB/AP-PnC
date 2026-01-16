@@ -364,7 +364,7 @@ def sleep_period(duration: float) -> None:
 def run_state_visualizer(
     trajectory_csv: str,
     sim_tot_dur: float = 10.0,
-    sim_dt: float = 0.01,
+    sim_dt: float = 0.02,
     ctrl_dt: float = 0.1,
     real_time_factor: float = 1.0,
     executor: Optional[SingleThreadedExecutor] = None,

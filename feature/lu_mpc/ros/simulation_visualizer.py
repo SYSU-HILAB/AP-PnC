@@ -143,7 +143,7 @@ class SimulationVisualizer(Node):
         self.trajectory = TrajectoryReference(trajectory_data)
 
         sim_tot_dur = self.sim_tot_dur if self.sim_tot_dur is not None else self.sim_dt
-        sim_config = GdSimConfig(sim_dt=self.sim_dt, sim_tot_dur=sim_tot_dur)
+        sim_config = GdSimConfig(sim_dt=self.sim_dt)
         self.sim = GdModelSimulator.create_gd_simulator(sim_config)
 
         self.controller = ProposedNmpcController(
@@ -242,12 +242,8 @@ class SimulationVisualizer(Node):
             self.get_logger().info("Simulation completed")
             return False
 
-        # Compute control at control frequency
-        if self.step_count % int(self.ctrl_dt / self.sim_dt) == 0:
-            control = self.controller.compute_control(self.current_state)
-        else:
-            control = self.prev_control if self.step_count > 0 else np.zeros(4)
-
+        # Compute control every sim_dt, reference sampling uses ctrl_dt internally
+        control = self.controller.compute_control(self.current_state)
         self.prev_control = control
 
         # Step simulation
@@ -255,8 +251,7 @@ class SimulationVisualizer(Node):
         self.sim.acados_solver.set("u", control)
 
         if self.sim.config.integrator_type == "IRK":
-            xdot_guess = np.zeros(self.current_state.shape[0])
-            self.sim.acados_solver.set("xdot", xdot_guess)
+            raise NotImplementedError("IRK integrator not implemented in this visualizer.")
 
         status = self.sim.acados_solver.solve()
 

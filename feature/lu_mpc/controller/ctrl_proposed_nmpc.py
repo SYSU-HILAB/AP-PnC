@@ -64,12 +64,19 @@ class ProposedNmpcController:
         print(f"  Control dim: {self.nu}")
         print(f"  Horizon: {self.N} nodes, {self.horizon}s")
 
-    def compute_control(self, sim_state: np.ndarray) -> np.ndarray:
+    def compute_control(
+        self,
+        sim_state: np.ndarray,
+        freeze_reference: bool = False,
+        u_init: np.ndarray | None = None,
+    ) -> np.ndarray:
         """
         Compute control input for current state.
 
         Args:
             sim_state: GD simulator state (17D) [p(3), v(3), r(3), q(4), u(4)]
+            freeze_reference: Reuse the first reference window without advancing
+            u_init: Initial guess for control inputs (shape (4,))
 
         Returns:
             Motor thrust rates (du) as (4,) array
@@ -85,9 +92,17 @@ class ProposedNmpcController:
         # Initialize with current state as guess
         self.solver.set(0, "x", mpc_state)
 
+        # Seed control with last solution if provided
+        if u_init is not None:
+            u_guess = np.asarray(u_init, dtype=float).reshape(self.nu)
+            for i in range(self.N):
+                self.solver.set(i, "u", u_guess)
+
         # Set reference trajectory
-        # self._add_refecence_hover()
-        self._set_reference()
+        if freeze_reference:
+            self._set_reference(cur_idx_ref=0)
+        else:
+            self._set_reference()
 
         # Set initial state
         self.solver.set(0, "lbx", mpc_state)
@@ -108,8 +123,9 @@ class ProposedNmpcController:
         self._cz_state = x_next[-1]
 
         # Increment reference index after solving
-        total_steps = len(self.trajectory.time)
-        self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
+        if not freeze_reference:
+            total_steps = len(self.trajectory.time)
+            self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
 
         return u
 
@@ -150,11 +166,12 @@ class ProposedNmpcController:
 
         return mpc_state
 
-    def _set_reference(self):
+    def _set_reference(self, cur_idx_ref: int | None = None):
         """Set reference trajectory for prediction horizon using current index."""
         # Get reference window using current index
+        idx = self._cur_idx_ref if cur_idx_ref is None else cur_idx_ref
         ref = self.trajectory.get_reference_window(
-            cur_idx_ref=self._cur_idx_ref,
+            cur_idx_ref=idx,
             sample_dt=self._sim_dt,
             ctrl_dt=self.ctrl_dt,
             N=self.N
@@ -199,7 +216,6 @@ class ProposedNmpcController:
         y_ref = np.concatenate([
             p_ref,
             v_ref,
-            np.zeros(3),
             yb_ref,
             np.zeros(4),
         ])
@@ -210,7 +226,6 @@ class ProposedNmpcController:
         y_ref_term = np.concatenate([
             p_ref,
             v_ref,
-            np.zeros(3),
             yb_ref,
         ])
         self.solver.set(self.N, "yref", y_ref_term)

@@ -73,20 +73,6 @@ class MpcConfig:
         qv = 5.0
         return cls(qYB=cls._yb_weights(qh, qv))
 
-    @classmethod
-    def create_with_scalars(
-        cls,
-        qh: float,
-        qv: float,
-        qvelh: float = 1.0,
-        qvelv: float = 1.0,
-        **kwargs: object,
-    ) -> "MpcConfig":
-        return cls(
-            qYB=cls._yb_weights(qh, qv),
-            qVel=cls._vel_weights(qvelh, qvelv),
-            **kwargs,
-        )
 
 
 DEFAULT_CONTROL_CONFIG = ControlConfig()
