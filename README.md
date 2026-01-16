@@ -77,10 +77,6 @@ scripts/tools/plan
 scripts/tools/build              # Regular build
 scripts/tools/build --clean      # Clean build
 
-# Launch ROS2 nodes (instead of ros2 launch)
-scripts/tools/pxinterface        # Launch px4_interface node
-scripts/tools/plan               # Launch trajectory_server
-scripts/tools/sim_run_mpc        # Run MPC simulation
 ```
 
 ### User-Facing vs. Developer Scripts
@@ -107,14 +103,3 @@ This project uses different workspace strategies for Python vs C++/ROS2 componen
 ./pyp script.py           # Uses /home/rec/AP-PnC/.acados_venv (shared)
 scripts/tools/build        # Builds in /home/rec/AP-PnC.worktree/proposed (worktree-specific)
 ```
-
-## Why Use Wrappers?
-
-The wrapper scripts automatically:
-- Source the ROS2 environment (`/opt/ros/humble/setup.bash`)
-- Set `AP_PNC_DIR` to the correct git repository root
-- Configure `LD_LIBRARY_PATH` for ACADOS libraries
-- Handle git worktrees correctly
-- **Unset Python-related environments** (VIRTUAL_ENV, CONDA_PREFIX, PYTHONPATH) to ensure `colcon` uses the **system Python**
-
-**Important**: Using the system Python for colcon build prevents issues where colcon might accidentally use a Python from another project's virtual environment.
