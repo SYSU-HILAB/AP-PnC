@@ -130,11 +130,9 @@ class ProposedNmpcController:
             print(f"Warning: NMPC solver failed with status {status}")
             return np.zeros(self.nu)
 
-        # Get control input
-        u = self.solver.get(0, "u")
-
         # Update cz_state estimate
         x_next = self.solver.get(1, "x")
+        u = x_next[-5:-1]
         self._cz_state = x_next[-1]
 
         # Increment reference index after solving (only in tracking mode)

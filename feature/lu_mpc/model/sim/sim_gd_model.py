@@ -148,6 +148,7 @@ class GdModelSimulator:
         aero_result = self._aero_model.func(vel_b_wing_frd)
         aero_forces_moments = aero_result[0]  # First element is forces_moments vector
         aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
+        # aero_forces_wing_frd[0] = 0.0
         aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
 
         # Transform aerodynamic forces back to FLU frame, then to body frame
@@ -163,9 +164,11 @@ class GdModelSimulator:
 
         # Total forces and moments in body frame
         tot_force_quad_flu = thrust_quad_flu + aero_forces_quad_flu
-        total_moments_quad_flu = (
-            tau_quad_flu + aero_moments_quad_flu
-        )  # Moments are frame-independent
+        # REC: currently not adding aerodynamic moments
+        total_moments_quad_flu = tau_quad_flu
+        # total_moments_quad_flu = (
+        #     tau_quad_flu + aero_moments_quad_flu
+        # )  # Moments are frame-independent
 
         # Transform forces to world frame for dynamics
         force_w = quat_apply(quat_quad_flu, tot_force_quad_flu)

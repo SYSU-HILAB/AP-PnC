@@ -552,13 +552,13 @@ class GlobalPlanner : public rclcpp::Node
           csv_file << t << "," << pos(0) << "," << pos(1) << "," << pos(2)
                    << "," << vel(0) << "," << vel(1) << "," << vel(2) << ","
                    << thrust << "," << df_phi_alpha << "," << df_lyu_alpha << "," << aero_force_z << ","
-                   << yb(0) << "," << yb(1) << "," << yb(2) << ","
+                   << -yb(0) << "," << -yb(1) << "," << -yb(2) << ","
+                   // REC: todo: add a quad_quat_really_tracking_target.
                    << quat_df.w() << "," << quat_df.x() << "," << quat_df.y() << "," << quat_df.z() << ","
                    << df_lyu_quat.w() << "," << df_lyu_quat.x() << "," << df_lyu_quat.y() << "," << df_lyu_quat.z() << ","
-                   << av(0)
-                   << "," << av(1) << "," << av(2) << "," << S_ap_x << ","
-                   << S_ap_z << "," << B_Omega_b_y << "," << alpha_dot << ","
-                   << B_aero_force_z << "\n";
+                   << av(0) << "," << av(1) << "," << av(2) << "," 
+                   << S_ap_x << ","<< S_ap_z << "," 
+                   << B_Omega_b_y << "," << alpha_dot << "," << B_aero_force_z << "\n";
         }
 
         auto p = traj.getPos(t);

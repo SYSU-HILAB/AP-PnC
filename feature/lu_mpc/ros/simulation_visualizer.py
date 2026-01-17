@@ -159,8 +159,6 @@ class SimulationVisualizer(Node):
             ctrl_dt=self.ctrl_dt
         )
 
-        self.current_time = 0.0
-        self.prev_control = np.zeros(4)
 
     def _publish_reference_path(self) -> None:
         """Publish the static reference trajectory as a Path message."""
@@ -239,7 +237,6 @@ class SimulationVisualizer(Node):
         """
         # Compute control every sim_dt, reference sampling uses ctrl_dt internally
         control = self.controller.compute_control(self.simulator.get_state())
-        self.prev_control = control
 
         # Step simulation using the new stateful API
         try:
@@ -248,7 +245,6 @@ class SimulationVisualizer(Node):
             self.get_logger().error(f"Simulation failed: {e}")
             return False
 
-        self.current_time += self.sim_dt
 
         # Check for NaN
         state = self.simulator.get_state()
