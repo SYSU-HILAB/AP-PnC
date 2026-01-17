@@ -191,13 +191,13 @@ benchmark-torch:
     ./pyp -c "from feature.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
 
 test-vmap:
-    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/model/sim/test_gd_model_jax.py
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest test/lu_mpc/model/sim/test_gd_model_jax.py
 
 test-jax-trim:
-    ./pyp tests/lu_mpc/analysis/user_test_jax_trim.py
+    ./pyp test/lu_mpc/analysis/user_test_jax_trim.py
 
 test-sim-model:
-    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/model/sim/test_math_utils.py
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest test/lu_mpc/model/sim/test_math_utils.py
 
 test-symbolic-casadi:
     ./pyp feature/lu_mpc/model/sim/gd_model_casadi.py
@@ -242,7 +242,7 @@ test-ref-traj-viz:
     ./pyp -m feature.lu_mpc.model.ctrl.test_ref_trajectory_viz
 
 test-ros-viz-node:
-    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc/ros
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest test/lu_mpc/ros
 
 viz-ref-traj playback_dt="0.05" config="feature/lu_mpc/ros/config/ref_trajs.rviz":
     #!/usr/bin/env bash
@@ -255,7 +255,7 @@ viz-ref-traj playback_dt="0.05" config="feature/lu_mpc/ros/config/ref_trajs.rviz
     export ACADOS_SOURCE_DIR="${ACADOS_SOURCE_DIR:-/home/rec/AP-PnC/mpc_framework}"
     export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
-    ./pyp tests/lu_mpc/ros/user_test_ref_traj_viz.py --playback-dt {{playback_dt}} --rviz-config {{config}}
+    ./pyp test/lu_mpc/ros/user_test_ref_traj_viz.py --playback-dt {{playback_dt}} --rviz-config {{config}}
 
 viz-traj-tracking config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
     #!/usr/bin/env bash
@@ -268,7 +268,7 @@ viz-traj-tracking config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
     export ACADOS_SOURCE_DIR="${ACADOS_SOURCE_DIR:-/home/rec/AP-PnC/mpc_framework}"
     export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
-    ./pyp tests/lu_mpc/ros/user_test_traj_tracking_viz.py --rviz-config {{config}}
+    ./pyp test/lu_mpc/ros/user_test_traj_tracking_viz.py --rviz-config {{config}}
 
 show_odom config="feature/lu_mpc/ros/config/plotjuggler_odometry_xyz.xml":
     #!/usr/bin/env bash
@@ -280,18 +280,18 @@ show_odom config="feature/lu_mpc/ros/config/plotjuggler_odometry_xyz.xml":
     ros2 run plotjuggler plotjuggler -l {{config}}
 
 test-all:
-    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest tests/lu_mpc
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest test/lu_mpc
 
 lint-tests:
-    ./pyp -m ruff check tests
+    ./pyp -m ruff check test
 
 format-tests:
-    ./pyp -m ruff format tests
+    ./pyp -m ruff format test
 
 jax-trim:
     #!/usr/bin/env bash
     export JAX_PLATFORM_NAME=cpu
-    ./pyp tests/lu_mpc/analysis/user_test_jax_trim.py
+    ./pyp test/lu_mpc/analysis/user_test_jax_trim.py
 
 # === ROS2/C++ BUILD AND TEST ===
 
