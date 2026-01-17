@@ -315,7 +315,6 @@ class TrajectoryReference:
     def get_reference_window(
         self,
         cur_idx_ref: int,
-        sample_dt: float,
         ctrl_dt: float,
         N: int,
     ) -> dict[str, np.ndarray]:
@@ -339,8 +338,7 @@ class TrajectoryReference:
             - yb: (N+1, 3) array
         """
         # Validate sample_dt
-        if not np.isclose(sample_dt, 0.02):
-            raise ValueError(f"sample_dt must be 0.02s, got {sample_dt}")
+        sample_dt = 0.02  # Force to 50Hz for now
 
         # Calculate and validate downsampling factor
         downsample_factor = ctrl_dt / sample_dt

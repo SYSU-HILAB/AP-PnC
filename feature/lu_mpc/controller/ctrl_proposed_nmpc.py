@@ -23,6 +23,7 @@ class ProposedNmpcController:
     def __init__(
         self,
         trajectory: TrajectoryReference,
+        is_hover_task: bool = False,
         ctrl_dt: float | None = None,
     ):
         """
@@ -30,15 +31,16 @@ class ProposedNmpcController:
 
         Args:
             trajectory: TrajectoryReference object
-            config: MpcConfig instance (uses default if None)
+            is_hover_task: If True, controller hovers at initial reference;
+                          if False, tracks full trajectory (default)
             ctrl_dt: Control time step (uses config.control.ctrl_dt if None)
         """
         self.trajectory = trajectory
+        self._is_hover_task = is_hover_task
         self.config = MpcConfig.create_high_performance()
         self.ctrl_dt = ctrl_dt if ctrl_dt is not None else self.config.control.ctrl_dt
 
         # Create OCP
-        print("Creating NMPC OCP...")
         ocp_cfg = ocp_nls_cfg(self.config)
 
         # Create solver
@@ -63,20 +65,17 @@ class ProposedNmpcController:
         print(f"  State dim: {self.nx}")
         print(f"  Control dim: {self.nu}")
         print(f"  Horizon: {self.N} nodes, {self.horizon}s")
+        print(f"  Mode: {'Hover (fixed reference)' if self._is_hover_task else 'Tracking (advancing reference)'}")
 
     def compute_control(
         self,
         sim_state: np.ndarray,
-        freeze_reference: bool = False,
-        u_init: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Compute control input for current state.
 
         Args:
             sim_state: GD simulator state (17D) [p(3), v(3), r(3), q(4), u(4)]
-            freeze_reference: Reuse the first reference window without advancing
-            u_init: Initial guess for control inputs (shape (4,))
 
         Returns:
             Motor thrust rates (du) as (4,) array
@@ -91,22 +90,38 @@ class ProposedNmpcController:
 
         # Initialize with current state as guess
         self.solver.set(0, "x", mpc_state)
-
-        # Seed control with last solution if provided
-        if u_init is not None:
-            u_guess = np.asarray(u_init, dtype=float).reshape(self.nu)
-            for i in range(self.N):
-                self.solver.set(i, "u", u_guess)
-
-        # Set reference trajectory
-        if freeze_reference:
-            self._set_reference(cur_idx_ref=0)
-        else:
-            self._set_reference()
-
         # Set initial state
         self.solver.set(0, "lbx", mpc_state)
         self.solver.set(0, "ubx", mpc_state)
+        
+        # Set reference trajectory based on controller mode
+        if self._is_hover_task:
+            # Hover mode: use constant reference (all points at initial trajectory point)
+            p_ref = self.trajectory.position[0]
+            v_ref = self.trajectory.velocity[0]
+            yb_ref = self.trajectory.yb[0]
+
+            y_ref = np.concatenate([
+                p_ref,
+                v_ref,
+                yb_ref,
+                np.zeros(4),  # motor_thrusts_rate_ref
+            ])
+
+            for i in range(self.N):
+                self.solver.set(i, "yref", y_ref)
+
+            # Terminal reference (no motor thrusts)
+            y_ref_N = np.concatenate([
+                p_ref,
+                v_ref,
+                yb_ref,
+            ])
+            self.solver.set(self.N, "yref", y_ref_N)
+        else:
+            self._set_reference()
+
+
 
         # Solve OCP
         status = self.solver.solve()
@@ -122,8 +137,8 @@ class ProposedNmpcController:
         x_next = self.solver.get(1, "x")
         self._cz_state = x_next[-1]
 
-        # Increment reference index after solving
-        if not freeze_reference:
+        # Increment reference index after solving (only in tracking mode)
+        if not self._is_hover_task:
             total_steps = len(self.trajectory.time)
             self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
 
@@ -134,17 +149,17 @@ class ProposedNmpcController:
         Map GD simulator state (17D) to NMPC state (18D).
 
         Args:
-            sim_state: [p(3), v(3), r(3), q(4), u(4)] = 17D
+            sim_state: [p(3), v(3), r(3), q(4), motor_thrusts(4)] = 17D
 
         Returns:
-            mpc_state: [p(3), v(3), r(3), q(4), u(4), cz(1)] = 18D
+            mpc_state: [p(3), v(3), r(3), q(4), motor_thrusts(4), cz(1)] = 18D
         """
         # Extract sim state components
         p = sim_state[0:3]    # Position
         v = sim_state[3:6]    # Velocity (world frame)
         r = sim_state[6:9]    # Angular rates
         q = sim_state[9:13]   # Quaternion
-        u = sim_state[13:17]  # Motor thrusts
+        motor_thrusts = sim_state[13:17]  # Motor thrusts
 
         # Estimate cz from current state: cz = -acc_b_z / V^2
         # For now, use the current cz_state estimate
@@ -162,17 +177,15 @@ class ProposedNmpcController:
         # 0.00000e+00  0.00000e+00  0.00000e+00  r
         # 1.00000e+00  0.00000e+00  0.00000e+00  0.00000e+00  q
         # 2.45000e+00  2.45000e+00  2.45000e+00  2.45000e+00  0.00000e+00  f_thr+cz
-        mpc_state = np.concatenate([p, v, r, q, u, [cz]])
-
+        mpc_state = np.concatenate([p, v, r, q, motor_thrusts, [cz]])
+    
         return mpc_state
 
-    def _set_reference(self, cur_idx_ref: int | None = None):
+    def _set_reference(self):
         """Set reference trajectory for prediction horizon using current index."""
         # Get reference window using current index
-        idx = self._cur_idx_ref if cur_idx_ref is None else cur_idx_ref
         ref = self.trajectory.get_reference_window(
-            cur_idx_ref=idx,
-            sample_dt=self._sim_dt,
+            cur_idx_ref=self._cur_idx_ref,
             ctrl_dt=self.ctrl_dt,
             N=self.N
         )
@@ -191,7 +204,7 @@ class ProposedNmpcController:
                 p_ref,   # 3
                 v_ref,   # 3
                 yb_ref,  # 3
-                np.zeros(4),  # u_ref
+                np.zeros(4),  # motor_thrusts_rate_ref
             ])
 
             self.solver.set(i, "yref", y_ref)
@@ -206,29 +219,6 @@ class ProposedNmpcController:
         ])
         self.solver.set(self.N, "yref", y_ref_N)
 
-
-    def _add_refecence_hover(self):
-        """Set a constant hover reference using the first trajectory sample."""
-        p_ref = self.trajectory.position[0]
-        v_ref = self.trajectory.velocity[0]
-        yb_ref = self.trajectory.yb[0]
-
-        y_ref = np.concatenate([
-            p_ref,
-            v_ref,
-            yb_ref,
-            np.zeros(4),
-        ])
-
-        for i in range(self.N):
-            self.solver.set(i, "yref", y_ref)
-
-        y_ref_term = np.concatenate([
-            p_ref,
-            v_ref,
-            yb_ref,
-        ])
-        self.solver.set(self.N, "yref", y_ref_term)
 
     def reset(self):
         """Reset controller state."""

@@ -24,7 +24,6 @@ Dependencies:
 
 Parameters:
     - trajectory_csv: str - Path to trajectory CSV file
-    - sim_tot_dur: float | None - Total simulation time in seconds (None = run forever)
     - sim_dt: float - Simulation integration timestep in seconds (default: 0.01)
     - ctrl_dt: float - Controller update period in seconds (default: 0.1)
     - real_time_factor: float - Speed multiplier (1.0 = real-time, 2.0 = 2x) (default: 1.0)
@@ -79,28 +78,29 @@ class SimulationVisualizer(Node):
     def __init__(
         self,
         trajectory_csv: str,
-        sim_tot_dur: float | None = None,
         sim_dt: float = 0.02,
         ctrl_dt: float = 0.1,
         real_time_factor: float = 1.0,
+        is_hover_task: bool = False,
     ):
         """
         Initialize the simulation visualizer node.
 
         Args:
             trajectory_csv: Path to trajectory CSV file
-            sim_tot_dur: Total simulation time in seconds (None = run forever)
             sim_dt: Simulation integration timestep in seconds
             ctrl_dt: Controller update period in seconds
             real_time_factor: Speed multiplier (1.0 = real-time, 2.0 = 2x)
+            is_hover_task: If True, controller hovers at initial reference;
+                           if False, tracks full trajectory (default)
         """
         super().__init__("simulation_visualizer")
 
         # Store parameters
-        self.sim_tot_dur = sim_tot_dur
         self.sim_dt = sim_dt
         self.ctrl_dt = ctrl_dt
         self.real_time_factor = real_time_factor
+        self.is_hover_task = is_hover_task
 
         # Create publishers with shared QoS
         qos_profile = create_reliable_qos(depth=10)
@@ -132,23 +132,15 @@ class SimulationVisualizer(Node):
         self.tracking_path = create_path_message(frame_id="world")
 
         self.get_logger().info("SimulationVisualizer initialized")
-        sim_dur_msg = "infinite" if sim_tot_dur is None else f"{sim_tot_dur}s"
-        self.get_logger().info(f"  Sim duration: {sim_dur_msg}, dt: {sim_dt}s")
+        self.get_logger().info(f"  Sim dt: {sim_dt}s")
         self.get_logger().info(f"  Control dt: {ctrl_dt}s")
         self.get_logger().info(f"  Real-time factor: {real_time_factor}x")
+        self.get_logger().info(f"  Mode: {'Hover' if self.is_hover_task else 'Tracking'}")
 
     def _setup_simulation(self, trajectory_csv: str) -> None:
         """Initialize simulator and controller from trajectory CSV."""
         trajectory_data = load_trajectory_csv(trajectory_csv)
         self.trajectory = TrajectoryReference(trajectory_data)
-
-        sim_tot_dur = self.sim_tot_dur if self.sim_tot_dur is not None else self.sim_dt
-        sim_config = GdSimConfig(sim_dt=self.sim_dt)
-        self.sim = GdModelSimulator.create_gd_simulator(sim_config)
-
-        self.controller = ProposedNmpcController(
-            self.trajectory, ctrl_dt=self.ctrl_dt
-        )
 
         # Initial state from trajectory (WXYZ format)
         p0 = trajectory_data['position'][0]
@@ -156,11 +148,18 @@ class SimulationVisualizer(Node):
         r0 = np.array([0.0, 0.0, 0.0])
         q0 = np.array([0.707, 0.0, 0.0, 0.707])  # WXYZ format
         u0 = np.array([2.45, 2.45, 2.45, 2.45]) * 2.0
-        self.current_state = np.concatenate([p0, v0, r0, q0, u0])
+        init_state = np.concatenate([p0, v0, r0, q0, u0])
+
+        sim_config = GdSimConfig(sim_dt=self.sim_dt)
+        self.simulator = GdModelSimulator.create_gd_simulator(init_state, sim_config)
+
+        self.controller = ProposedNmpcController(
+            self.trajectory,
+            is_hover_task=self.is_hover_task,
+            ctrl_dt=self.ctrl_dt
+        )
 
         self.current_time = 0.0
-        self.step_count = 0
-        self.N_sim = None if self.sim_tot_dur is None else int(self.sim_tot_dur / self.sim_dt)
         self.prev_control = np.zeros(4)
 
     def _publish_reference_path(self) -> None:
@@ -238,42 +237,29 @@ class SimulationVisualizer(Node):
         Returns:
             True if simulation should continue, False if done
         """
-        if self.N_sim is not None and self.step_count >= self.N_sim:
-            self.get_logger().info("Simulation completed")
-            return False
-
         # Compute control every sim_dt, reference sampling uses ctrl_dt internally
-        control = self.controller.compute_control(self.current_state)
+        control = self.controller.compute_control(self.simulator.get_state())
         self.prev_control = control
 
-        # Step simulation
-        self.sim.acados_solver.set("x", self.current_state)
-        self.sim.acados_solver.set("u", control)
-
-        if self.sim.config.integrator_type == "IRK":
-            raise NotImplementedError("IRK integrator not implemented in this visualizer.")
-
-        status = self.sim.acados_solver.solve()
-
-        if status != 0:
-            self.get_logger().error(f"Simulation failed at step {self.step_count}")
+        # Step simulation using the new stateful API
+        try:
+            self.simulator.simulate(control)
+        except RuntimeError as e:
+            self.get_logger().error(f"Simulation failed: {e}")
             return False
 
-        self.current_state = self.sim.acados_solver.get("x")
         self.current_time += self.sim_dt
-        self.step_count += 1
 
         # Check for NaN
-        if np.any(np.isnan(self.current_state)):
-            self.get_logger().error(f"NaN detected at step {self.step_count}")
+        state = self.simulator.get_state()
+        if np.any(np.isnan(state)):
+            self.get_logger().error("NaN detected in simulation state")
             return False
 
         # Publish all data
-        self.publish_odometry(self.current_state)
-        self.publish_motor_thrusts(self.current_state)
-
-        if self.step_count % 10 == 0:
-            self.publish_tracking_path(self.current_state)
+        self.publish_odometry(state)
+        self.publish_motor_thrusts(state)
+        self.publish_tracking_path(state)
 
         return True
 
@@ -291,38 +277,3 @@ class SimulationVisualizer(Node):
             sleep_period(sleep_time)
 
         self.get_logger().info("Simulation finished")
-
-
-def main(args=None):
-    """Main entry point for simulation visualizer."""
-    rclpy.init(args=args)
-
-    ros_dir = Path(__file__).parent
-    traj_csv = ros_dir.parent / 'controller' / 'refs' / 'v14-alpha.csv'
-
-    if not traj_csv.exists():
-        print(f"Error: Trajectory file not found: {traj_csv}")
-        return 1
-
-    node = SimulationVisualizer(
-        trajectory_csv=str(traj_csv),
-        sim_tot_dur=10.0,
-        sim_dt=0.02,
-        ctrl_dt=0.1,
-        real_time_factor=1.0,
-    )
-
-    try:
-        node.run()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-
-    return 0
-
-
-if __name__ == "__main__":
-    import sys
-    sys.exit(main())

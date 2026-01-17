@@ -22,13 +22,13 @@ class GdSimConfig:
 
     # Simulation parameters
     sim_dt: float = 0.02  # Time step in seconds
-    sim_tot_dur: float = 5.0  # Total simulation time in seconds
 
     # ACADOS solver options
     integrator_type: str = "ERK"  # 'IRK', 'ERK', 'GNSF'
     num_stages: int = 4  # Number of stages for implicit integrator
-    num_steps: int = 1  # Number of steps per integration interval
+    num_steps: int = 20  # Number of steps per integration interval
     newton_iter: int = 3  # Newton iterations for implicit solver
+
     #   <turningDirection>cw</turningDirection>
     #   <timeConstantUp>0.0125</timeConstantUp>
     #   <timeConstantDown>0.025</timeConstantDown>
@@ -44,7 +44,7 @@ class GdSimConfig:
     c_tau: float = 0.032  # Torque coefficient
     dx: float = 0.32  # Arm length x
     dy: float = 0.32  # Arm length y
-
+    motor_tau: float = 0.01
     # FLU to FRD transformation
     trans_wing_frd_quad_flu: np.ndarray = np.array(
         [0.0, 0.7071, 0.0, 0.7071]
@@ -68,15 +68,24 @@ class GdModelSimulator:
        i.e., q_wing_frd_to_quad_flu.
     """
 
-    def __init__(self, config: GdSimConfig = DEFAULT_SIM_CONFIG):
+    def __init__(self, init_state: np.ndarray, config: GdSimConfig):
         """
         Initialize the GD model simulator.
 
         Args:
+            init_state: Initial state (17D array) [p(3), v(3), r(3), q(4), motor(4)]
             config: Simulation configuration object
         """
-        self.config = config
-        self.aero_model = SymbolicGdModel(config.aero_config)
+        # Validate state shape
+        expected_shape = (17,)
+        if init_state.shape != expected_shape:
+            raise ValueError(
+                f"init_state must have shape {expected_shape}, got {init_state.shape}"
+            )
+
+        self._cur_state = init_state.astype(np.float64).copy()
+        self._config = config
+        self._aero_model = SymbolicGdModel(config.aero_config)
         self._build_acados_model()
         self._setup_acados_sim()
 
@@ -90,43 +99,45 @@ class GdModelSimulator:
         v = cs.SX.sym("v", 3)  # Velocity [vx, vy, vz]
         r = cs.SX.sym("r", 3)  # Angular rates [p, q, r]
         q = cs.SX.sym("q", 4)  # Quaternion [w, x, y, z]
-        u = cs.SX.sym("u", 4)  # Motor thrusts [u1, u2, u3, u4]
+        motor_thrusts = cs.SX.sym("motor_thrusts", 4)  # Motor thrusts [u1, u2, u3, u4]
 
+
+        motor_thrusts_cmds = cs.SX.sym("motor_thrusts_cmds", 4)
         # Control input (motor rates)
-        du = cs.SX.sym("du", 4)  # Motor thrust rates
+        u = motor_thrusts_cmds
 
         # State derivatives
         p_dot = cs.SX.sym("p_dot", 3)
         v_dot = cs.SX.sym("v_dot", 3)
         r_dot = cs.SX.sym("r_dot", 3)
         q_dot = cs.SX.sym("q_dot", 4)
-        u_dot = cs.SX.sym("u_dot", 4)
+        motor_thrusts_dot = cs.SX.sym("motor_thrusts_dot", 4)
 
         # Combine states and controls
-        x = cs.vertcat(p, v, r, q, u)  # quad frames
-        xdot = cs.vertcat(p_dot, v_dot, r_dot, q_dot, u_dot)
+        x = cs.vertcat(p, v, r, q, motor_thrusts)  # quad frames
+        xdot = cs.vertcat(p_dot, v_dot, r_dot, q_dot, motor_thrusts_dot)
 
         # Constants
-        mass = self.config.mass
-        J = cs.diag(self.config.J)
-        c_tau = self.config.c_tau
-        dx, dy = self.config.dx, self.config.dy
+        mass = self._config.mass
+        J = cs.diag(self._config.J)
+        c_tau = self._config.c_tau
+        dx, dy = self._config.dx, self._config.dy
         g = cs.vertcat(0.0, 0.0, -9.81)  # Gravity in ENU frame
 
         quat_quad_flu = q
 
-        trans_wing_frd_quad_flu = cs.SX(self.config.trans_wing_frd_quad_flu)
+        trans_wing_frd_quad_flu = cs.SX(self._config.trans_wing_frd_quad_flu)
         quat_wing_frd = quat_multiply(quat_quad_flu, trans_wing_frd_quad_flu)
 
         # Motor forces in body frame
-        U = u[0] + u[1] + u[2] + u[3]
+        U = motor_thrusts[0] + motor_thrusts[1] + motor_thrusts[2] + motor_thrusts[3]
         thrust_quad_flu = cs.vertcat(0.0, 0.0, U)
 
         # Motor torques in body frame
         tau_quad_flu = cs.vertcat(
-            dy * (-u[0] - u[1] + u[2] + u[3]),
-            dx * (-u[0] + u[1] + u[2] - u[3]),
-            c_tau * (-u[0] + u[1] - u[2] + u[3]),
+            dy * (-motor_thrusts[0] - motor_thrusts[1] + motor_thrusts[2] + motor_thrusts[3]),
+            dx * (-motor_thrusts[0] + motor_thrusts[1] + motor_thrusts[2] - motor_thrusts[3]),
+            c_tau * (-motor_thrusts[0] + motor_thrusts[1] - motor_thrusts[2] + motor_thrusts[3]),
         )
 
         # Get velocity in body frame for aerodynamics
@@ -134,7 +145,7 @@ class GdModelSimulator:
 
         # Get aerodynamic forces and moments from GD model
         # The GD model expects body-frame velocity in FRD
-        aero_result = self.aero_model.func(vel_b_wing_frd)
+        aero_result = self._aero_model.func(vel_b_wing_frd)
         aero_forces_moments = aero_result[0]  # First element is forces_moments vector
         aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
         aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
@@ -157,73 +168,107 @@ class GdModelSimulator:
         )  # Moments are frame-independent
 
         # Transform forces to world frame for dynamics
-        forces_world = quat_apply(quat_quad_flu, tot_force_quad_flu)
+        force_w = quat_apply(quat_quad_flu, tot_force_quad_flu)
 
         
         # Dynamics equations
-        p_dot_expr = v
-        v_dot_expr = forces_world / mass + g
-        r_dot_expr = cs.inv(J) @ (total_moments_quad_flu - cs.cross(r, J @ r))
-        q_dot_expr = 0.5 * quat_multiply(quat_quad_flu, cs.vertcat(0, r))
-        u_dot_expr = du
-
         # Combine all dynamics
-        f_expl = cs.vertcat(p_dot_expr, v_dot_expr, r_dot_expr, q_dot_expr, u_dot_expr)
+        f_expl = cs.vertcat(
+            v,
+            force_w / mass + g,
+            cs.inv(J) @ (total_moments_quad_flu - cs.cross(r, J @ r)),
+            0.5 * quat_multiply(quat_quad_flu, cs.vertcat(0, r)),
+            (motor_thrusts_cmds - motor_thrusts) / self._config.motor_tau,
+        )
         f_impl = xdot - f_expl
 
         # Create ACADOS model
-        self.acados_model = AcadosModel()
-        self.acados_model.f_impl_expr = f_impl
-        self.acados_model.f_expl_expr = f_expl
-        self.acados_model.x = x
-        self.acados_model.xdot = xdot
-        self.acados_model.u = du
-        self.acados_model.name = model_name
+        self._acados_model = AcadosModel()
+        self._acados_model.f_impl_expr = f_impl
+        self._acados_model.f_expl_expr = f_expl
+        self._acados_model.x = x
+        self._acados_model.xdot = xdot
+        self._acados_model.u = motor_thrusts_cmds
+        self._acados_model.name = model_name
 
-        # Store symbolic expressions for later use
-        self._symbolic_vars = {
-            "x": x,
-            "v": v,
-            "q": quat_quad_flu,
-            "u": u,
-            "vel_wing_frd": vel_b_wing_frd,
-            "aero_forces_quad_flu": aero_forces_quad_flu,
-            "tot_force_quad_flu": tot_force_quad_flu,
-            "forces_world": forces_world,
-        }
 
     def _setup_acados_sim(self):
         """Setup ACADOS simulation solver."""
         # Create ACADOS simulation
-        self.acados_sim = AcadosSim()
-        self.acados_sim.model = self.acados_model
+        self._acados_sim: AcadosSim = AcadosSim()
+        self._acados_sim.model = self._acados_model
 
         # Configure solver options
-        self.acados_sim.solver_options.T = self.config.sim_dt
-        self.acados_sim.solver_options.integrator_type = self.config.integrator_type
-        self.acados_sim.solver_options.num_stages = self.config.num_stages
-        self.acados_sim.solver_options.num_steps = self.config.num_steps
-        self.acados_sim.solver_options.newton_iter = self.config.newton_iter
-        self.acados_sim.solver_options.collocation_type = "GAUSS_RADAU_IIA"
-        self.acados_sim.solver_options.sens_forw = True
-        self.acados_sim.solver_options.sens_adj = False
+        self._acados_sim.solver_options.T = self._config.sim_dt
+        self._acados_sim.solver_options.integrator_type = self._config.integrator_type
+        self._acados_sim.solver_options.num_stages = self._config.num_stages
+        self._acados_sim.solver_options.num_steps = self._config.num_steps
+        self._acados_sim.solver_options.newton_iter = self._config.newton_iter
+        self._acados_sim.solver_options.sens_forw = True
+        self._acados_sim.solver_options.sens_adj = True
 
         # Set parameter values (none needed for pure GD model)
-        self.acados_sim.parameter_values = np.array([])  # No parameters
+        self._acados_sim.parameter_values = np.array([])  # No parameters
 
         # Create solver
-        self.acados_solver = AcadosSimSolver(self.acados_sim)
+        self._acados_solver = AcadosSimSolver(self._acados_sim)
 
 
     @classmethod
-    def create_gd_simulator(cls, config: GdSimConfig = DEFAULT_SIM_CONFIG) -> "GdModelSimulator":
+    def create_gd_simulator(
+        cls,
+        init_state: np.ndarray,
+        config: GdSimConfig,
+    ) -> "GdModelSimulator":
         """
         Factory classmethod to create a GD model simulator.
 
         Args:
+            init_state: Initial state (17D array) [p(3), v(3), r(3), q(4), motor(4)]
             config: Simulation configuration object
 
         Returns:
             GdModelSimulator instance
         """
-        return cls(config)
+        return cls(init_state, config)
+
+    def simulate(self, motors_cmd: np.ndarray) -> np.ndarray:
+        """
+        Step simulation forward by one timestep (infinite simulate).
+        Updates internal state and returns the new state.
+
+        Args:
+            motors_cmd: Motor commands (4D array) [m1, m2, m3, m4]
+
+        Returns:
+            next_state: State after simulation step (17D array)
+        """
+        # Validate input shape
+        if motors_cmd.shape != (4,):
+            raise ValueError(
+                f"motors_cmd must have shape (4,), got {motors_cmd.shape}"
+            )
+
+        # Set current state and control input to solver
+        self._acados_solver.set("x", self._cur_state)
+        self._acados_solver.set("u", motors_cmd)
+
+        # Solve the dynamics
+        status = self._acados_solver.solve()
+
+        if status != 0:
+            raise RuntimeError(f"ACADOS solver failed with status {status}")
+
+        # Update internal state (copy to avoid reference to solver buffer)
+        self._cur_state = self._acados_solver.get("x").copy()
+
+        return self._cur_state.copy()
+
+    def get_state(self) -> np.ndarray:
+        """
+        Get current state.
+
+        Returns:
+            Current state (17D array) [p(3), v(3), r(3), q(4), motor(4)]
+        """
+        return self._cur_state.copy()

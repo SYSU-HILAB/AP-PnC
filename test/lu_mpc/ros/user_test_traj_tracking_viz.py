@@ -53,6 +53,7 @@ def _run_state_publisher(args: argparse.Namespace) -> None:
     node = SimulationVisualizer(
         trajectory_csv=str(args.trajectory),
         real_time_factor=args.real_time_factor,
+        is_hover_task=args.hover,
     )
 
     try:
@@ -75,6 +76,11 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=1.0,
         help="Speed multiplier for the simulation loop.",
+    )
+    parser.add_argument(
+        "--hover",
+        action="store_true",
+        help="Run in hover mode (fixed reference) instead of tracking mode.",
     )
     parser.add_argument(
         "--disable-aero",
