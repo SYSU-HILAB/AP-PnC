@@ -7,7 +7,7 @@ import casadi as cs
 import dataclasses
 import numpy as np
 
-from feature.lu_mpc.model.sim.aero_coefficients import get_numpy_coefficients
+from .aero_coefficients import get_numpy_coefficients
 
 
 @dataclasses.dataclass
@@ -492,33 +492,6 @@ def create_symbolic_gd_model(config: GdModelConfig = DEFAULT_CONFIG) -> Symbolic
     return SymbolicGdModel(config)
 
 
-def test_symbolic_model():
-    """Test the symbolic aerodynamic model."""
-    print("Testing symbolic aerodynamic model...")
-
-    # Create model
-    model = create_symbolic_gd_model()
-
-    # Test with some velocities
-    test_velocities = [
-        [10.0, 0.0, 0.0],  # Level flight
-        [10.0, 0.0, 10.0],  # Climbing
-        [10.0 * 0.707, 10.0, 10.0 * 0.707],  # Combined
-    ]
-
-    for i, velb in enumerate(test_velocities):
-        print(f"\nTest case {i + 1}: velb = {velb}")
-
-        forces, moments, alpha, beta = model.evaluate(velb)
-
-        print(f"Forces: {forces}")
-        print(f"Moments: {moments}")
-        print(f"Alpha: {alpha:.4f} rad ({alpha * 180 / np.pi:.2f} deg)")
-        print(f"Beta: {beta:.4f} rad ({beta * 180 / np.pi:.2f} deg)")
-
-    print("\nSymbolic model test completed!")
-
-
 def _create_mesh_grid(mesh_size: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Create angle grids in degrees and radians."""
     alpha_deg = np.linspace(-180, 180, mesh_size)
@@ -588,7 +561,7 @@ def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_si
     print("Generating CasADi 3D mesh data...")
 
     # Import data utilities
-    from feature.lu_mpc.plotting.data_utils import save_mesh_data
+    from ...plotting.data_utils import save_mesh_data
 
     # Create model
     model = create_symbolic_gd_model()
@@ -639,7 +612,7 @@ def generate_cl_cd_cm_coordinated_data(
     )
 
     # Import data utilities
-    from feature.lu_mpc.plotting.data_utils import save_coordinated_data
+    from ...plotting.data_utils import save_coordinated_data
 
     # Create model
     model = create_symbolic_gd_model()
@@ -706,109 +679,3 @@ def generate_cl_cd_cm_coordinated_data(
 
     # Return the data dictionary for immediate use
     return {"alpha_deg": alpha_deg, "CL": CL, "CD": CD, "CM": CM}
-
-
-def test_frame_conversion():
-    """Test that body-to-stability frame coefficient conversion is working correctly."""
-    print("Testing body-to-stability frame coefficient conversion...")
-
-    # Create model
-    model = create_symbolic_gd_model()
-
-    # Test case: alpha = 10 degrees, beta = 0 degrees (coordinated flight)
-    alpha_deg = 10.0
-    alpha_rad = np.deg2rad(alpha_deg)
-    v_mag = 20.0  # m/s
-
-    # Create velocity vector for coordinated flight
-    vbx = v_mag * np.cos(alpha_rad)
-    vby = 0.0
-    vbz = v_mag * np.sin(alpha_rad)
-    velb = np.array([vbx, vby, vbz])
-
-    # Evaluate model
-    forces, moments, alpha, beta = model.evaluate(velb)
-
-    print("Test conditions:")
-    print(f"  Alpha: {alpha_deg:.1f}° ({alpha:.3f} rad)")
-    print(f"  Beta: {np.rad2deg(beta):.1f}° ({beta:.3f} rad)")
-    print(f"  Velocity: {v_mag:.1f} m/s")
-    print(f"  Velocity vector: [{vbx:.2f}, {vby:.2f}, {vbz:.2f}]")
-    print()
-
-    # Convert to stability frame
-    forces_stability = model._trans_body_to_stab(alpha, forces)
-
-    # Calculate dynamic pressure
-    rho = model.config.rho
-    dynamic_pressure = 0.5 * rho * v_mag**2
-
-    print(f"Dynamic pressure: {dynamic_pressure:.2f} Pa")
-    print()
-
-    # Extract coefficients from body frame (INCORRECT way)
-    CL_body = -forces[2] / dynamic_pressure
-    CD_body = -forces[0] / dynamic_pressure
-    CY_body = forces[1] / dynamic_pressure
-
-    # Extract coefficients from stability frame (CORRECT way)
-    CL_stability = float(-forces_stability[2] / dynamic_pressure)
-    CD_stability = float(-forces_stability[0] / dynamic_pressure)
-    CY_stability = float(forces_stability[1] / dynamic_pressure)
-
-    print("Force coefficients comparison:")
-    print("  Body frame extraction (INCORRECT):")
-    print(f"    CL_body = {CL_body:.4f}")
-    print(f"    CD_body = {CD_body:.4f}")
-    print(f"    CY_body = {CY_body:.4f}")
-    print()
-    print("  Stability frame extraction (CORRECT):")
-    print(f"    CL_stability = {CL_stability:.4f}")
-    print(f"    CD_stability = {CD_stability:.4f}")
-    print(f"    CY_stability = {CY_stability:.4f}")
-    print()
-
-    # For coordinated flight (beta = 0), CY should be approximately 0
-    # The difference shows the importance of proper frame conversion
-    print("Validation:")
-    print(f"  CY_stability (should be ~0 for beta=0): {CY_stability:.6f}")
-    print(f"  CL_body vs CL_stability difference: {abs(CL_body - CL_stability):.6f}")
-    print(f"  CD_body vs CD_stability difference: {abs(CD_body - CD_stability):.6f}")
-    print()
-
-    # Test with non-zero beta to show more dramatic difference
-    print("Testing with non-zero beta (15 degrees):")
-    beta_deg = 15.0
-    beta_rad = np.deg2rad(beta_deg)
-
-    # Create velocity vector with sideslip
-    vbx = v_mag * np.cos(alpha_rad) * np.cos(beta_rad)
-    vby = v_mag * np.sin(beta_rad)
-    vbz = v_mag * np.sin(alpha_rad) * np.cos(beta_rad)
-    velb_beta = np.array([vbx, vby, vbz])
-
-    forces_beta, _, alpha_beta, beta_beta = model.evaluate(velb_beta)
-    forces_stability_beta = model._trans_body_to_stab(alpha_beta, forces_beta)
-
-    # Extract coefficients both ways
-    CL_body_beta = -forces_beta[2] / dynamic_pressure
-    CD_body_beta = -forces_beta[0] / dynamic_pressure
-    CY_body_beta = forces_beta[1] / dynamic_pressure
-
-    CL_stability_beta = float(-forces_stability_beta[2] / dynamic_pressure)
-    CD_stability_beta = float(-forces_stability_beta[0] / dynamic_pressure)
-    CY_stability_beta = float(forces_stability_beta[1] / dynamic_pressure)
-
-    print(f"  Beta: {beta_deg:.1f}°")
-    print(f"    CL difference: {abs(float(CL_body_beta - CL_stability_beta)):.6f}")
-    print(f"    CD difference: {abs(float(CD_body_beta - CD_stability_beta)):.6f}")
-    print(f"    CY difference: {abs(float(CY_body_beta - CY_stability_beta)):.6f}")
-    print()
-
-    print("✅ Frame conversion test completed!")
-
-
-if __name__ == "__main__":
-    test_symbolic_model()
-    print()
-    test_frame_conversion()

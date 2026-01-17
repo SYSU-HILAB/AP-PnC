@@ -16,7 +16,7 @@ class ControlConfig:
     """Basic controller timing configuration."""
 
     ctrl_dt: float = 0.1
-    nodes: int = 10
+    nodes: int = 5
 
     @property
     def control_frequency(self) -> float:
@@ -42,14 +42,14 @@ class MpcConfig:
     lb_u: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=float))
     ub_u: np.ndarray = field(default_factory=lambda: np.array([5.5, 5.5, 5.5, 5.5]))
 
-    qPos: np.ndarray = field(default_factory=lambda: np.array([15.0, 15.0, 10.0]))
+    qPos: np.ndarray = field(default_factory=lambda: np.array([15.0, 15.0, 100.0]))
     qYB: np.ndarray = field(default_factory=lambda: np.array([52.5, 52.5, 126.0]))
     qVel: np.ndarray = field(default_factory=lambda: np.array([1.0, 1.0, 1.0]))
 
-    cz_rate: float = 0.10
+    cz_rate: float = 0.1
 
     qAngV: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 0.0]))
-    rU: np.ndarray = field(default_factory=lambda: np.array([0.03, 0.03, 0.03, 0.03]))
+    rU: np.ndarray = field(default_factory=lambda: np.array([0.001, 0.001, 0.001, 0.001]))
 
     @property
     def nodes(self) -> int:

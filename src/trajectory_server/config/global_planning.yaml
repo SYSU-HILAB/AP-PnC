@@ -29,8 +29,8 @@
     omg_y_weight: 10000.0
     omg_z_max: 0.8
     omg_z_weight: 20000.0
-    thrust_max: 8.5
-    thrust_min: -3.5
+    thrust_max: 4.5
+    thrust_min: -4.5
     thrust_weight: 10000.0
     time_weight: 10000.0
     trajTopic: /control_traj

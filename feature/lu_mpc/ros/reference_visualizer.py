@@ -45,7 +45,7 @@ from geometry_msgs.msg import Point, Vector3
 from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 
-from feature.lu_mpc.controller.trajectory_loader import (
+from ..controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
@@ -323,39 +323,3 @@ class ReferenceVisualizer(Node):
             raise RuntimeError(f"{key} is missing from reference state")
         
         return wing_frd_to_quad_flu(quat_csv)
-
-
-def main(args=None):
-    """Main entry point for reference visualizer."""
-    rclpy.init(args=args)
-
-    # Example: use trajectory from command line or default
-    import sys
-    if len(sys.argv) > 1:
-        traj_csv = sys.argv[1]
-    else:
-        from pathlib import Path
-        ros_dir = Path(__file__).parent
-        traj_csv = str(ros_dir.parent / 'controller' / 'refs' / 'v14-alpha.csv')
-
-    node = ReferenceVisualizer(
-        trajectory_csv=traj_csv,
-        playback_dt=0.05,
-        real_time_factor=1.0,
-        loop_playback=True,
-    )
-
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-
-    return 0
-
-
-if __name__ == "__main__":
-    import sys
-    sys.exit(main())

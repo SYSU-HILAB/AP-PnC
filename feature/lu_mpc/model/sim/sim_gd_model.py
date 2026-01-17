@@ -148,7 +148,6 @@ class GdModelSimulator:
         aero_result = self._aero_model.func(vel_b_wing_frd)
         aero_forces_moments = aero_result[0]  # First element is forces_moments vector
         aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
-        # aero_forces_wing_frd[0] = 0.0
         aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
 
         # Transform aerodynamic forces back to FLU frame, then to body frame

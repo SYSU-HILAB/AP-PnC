@@ -3,8 +3,8 @@ from pathlib import Path
 
 from acados_template import AcadosOcpSolver
 
-from feature.lu_mpc.controller.core.config import MpcConfig
-from feature.lu_mpc.core.ocp_setup import ocp_nls_cfg
+from .core.config import MpcConfig
+from ..core.ocp_setup import ocp_nls_cfg
 from .trajectory_loader import TrajectoryReference, load_trajectory_csv
 
 VELOCITY_EPSILON = 0.1

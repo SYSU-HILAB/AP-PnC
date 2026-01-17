@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
-from feature.lu_mpc.model.sim.aero_coefficients import get_jax_coefficients
+from .aero_coefficients import get_jax_coefficients
 
 # setting jax printf options for better readability
 
@@ -526,14 +526,6 @@ def aerodynamics_B_vb(V_bs):
     return FORCES_B, MOMENTS_B, ALPHA, BETA
 
 
-def test_trans_stab_to_body():
-    # Test with a batch of angles and vectors
-    ALPHA = jnp.array([0.0, jnp.pi / 6, jnp.pi / 4])  # 0, 30, 45 degrees
-    VEC = jnp.array([[1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
-    transformed_vecs = trans_stab_to_body_batch(ALPHA, VEC)
-    print(f"Transformed Vectors:\n{transformed_vecs}")
-
-
 def aerodynamics_DYL_vb(V_bs):
     """
     Docstring for aerodynamics_vb
@@ -561,21 +553,6 @@ def aerodynamics_DYL_vb(V_bs):
         axis=-1,
     )
     return FORCES, MOMENTS, ALPHA, BETA
-
-
-def test_aerodynamics_vb():
-    # Test with a batch of velocities
-    V_bs = jnp.array(
-        [[10.0, 0.0, 0.0], [10.0, 0.0, 10.0], [10.0 * 0.707, 10.0, 10.0 * 0.707]]
-    )
-    FORCES, MOMENTS, ALPHA, BETA = aerodynamics_vb(V_bs)
-    print(f"FORCES: {FORCES}")
-    print(f"MOMENTS: {MOMENTS}")
-    print(f"ALPHA (rad): {ALPHA}")
-    print(f"ALPHA (deg): {ALPHA * (180.0 / jnp.pi)}")
-    print(f"BETA (rad): {BETA}")
-    print(f"BETA (deg): {BETA * (180.0 / jnp.pi)}")
-
 
 def plot_aerodynamic_mesh_jax(azimuth=125.5):
     """
@@ -881,7 +858,7 @@ def generate_cl_cd_cm_coordinated_data(
     print("Generating aerodynamic coefficients under coordinated flight (beta = 0)...")
 
     # Import data utilities
-    from feature.lu_mpc.plotting.data_utils import save_coordinated_data
+    from ...plotting.data_utils import save_coordinated_data
 
     # Generate alpha range (angle of attack)
     alpha_deg = jnp.linspace(
@@ -933,7 +910,7 @@ def generate_mesh_data_jax(
     print("Generating JAX 3D mesh data...")
 
     # Import data utilities
-    from feature.lu_mpc.plotting.data_utils import save_mesh_data
+    from ...plotting.data_utils import save_mesh_data
 
     # Check if GPU is available in JAX
     devices = jax.devices()
@@ -999,7 +976,3 @@ def generate_mesh_data_jax(
         "CM": CM_np,
         "CN": CN_np,
     }
-
-
-if __name__ == "__main__":
-    test_aerodynamics_vb()

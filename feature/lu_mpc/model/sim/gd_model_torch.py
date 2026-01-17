@@ -11,7 +11,7 @@ import torch
 import torch.jit
 import matplotlib.pyplot as plt
 
-from feature.lu_mpc.model.sim.aero_coefficients import get_torch_coefficients
+from .aero_coefficients import get_torch_coefficients
 
 COEFFICIENTS = get_torch_coefficients()
 kCL = COEFFICIENTS.kCL
@@ -615,7 +615,7 @@ def generate_mesh_data_torch(
     print("Generating PyTorch 3D mesh data...")
 
     # Import data utilities
-    from feature.lu_mpc.plotting.data_utils import save_mesh_data
+    from ...plotting.data_utils import save_mesh_data
 
     # Determine device
     if torch.cuda.is_available():

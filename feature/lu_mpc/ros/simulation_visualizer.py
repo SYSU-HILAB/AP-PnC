@@ -46,12 +46,12 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Vector3
 from std_msgs.msg import Float32MultiArray
 
-from feature.lu_mpc.model.sim.sim_gd_model import GdModelSimulator, GdSimConfig
-from feature.lu_mpc.controller.trajectory_loader import (
+from ..model.sim.sim_gd_model import GdModelSimulator, GdSimConfig
+from ..controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
-from feature.lu_mpc.controller.ctrl_proposed_nmpc import ProposedNmpcController
+from ..controller.ctrl_proposed_nmpc import ProposedNmpcController
 from feature.utils.ros_visualizer import (
     make_topic,
     compute_reference_sample_times,
