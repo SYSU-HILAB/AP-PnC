@@ -16,6 +16,35 @@ Before starting, ensure you have:
   - `git`
   - Python 3.10+
 
+## Installing Rust (for `just` command runner)
+
+`just` is built with Rust and requires Cargo to install. If you already have Rust and Cargo installed, skip to the next section.
+
+### Install Rust via rustup (Recommended)
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+This will:
+- Install Rust toolchain (rustc, cargo)
+- Configure your PATH environment variable
+- Add Rust to your shell profile
+
+After installation, restart your terminal or run:
+```bash
+source $HOME/.cargo/env
+```
+
+### Verify Installation
+
+```bash
+cargo --version
+rustc --version
+```
+
+Expected output: version numbers for both tools.
+
 ## Installing `just` (Command Runner)
 
 The `just` command runner is used throughout this project for task automation. It's optional but highly recommended.
@@ -241,6 +270,11 @@ If you have a different number of cores, you can edit the script or launch compo
 ## Common Commands Reference
 
 ```bash
+# Prerequisites Installation
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh   # Install Rust (for just)
+source $HOME/.cargo/env                                        # Load Rust environment
+cargo install just                                              # Install just command runner
+
 # Installation
 just install-all          # Install everything
 just install-venv          # Create virtual environment only
