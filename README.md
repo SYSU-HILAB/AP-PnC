@@ -4,7 +4,6 @@
 
 ---
 
-# Installations
 ## Python Wrapper (`pyp`)
 
 The `pyp` script provides a native Python wrapper that automatically locates and executes the project's Python interpreter from `.acados_venv`. It works both in the main repository and in git worktrees.

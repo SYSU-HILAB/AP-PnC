@@ -11,6 +11,7 @@ github:
 # Navigation
 header_pages:
   - index.md
+  - quickstart.md
   - why-wrapped-python.md
   - control-stack.md
 

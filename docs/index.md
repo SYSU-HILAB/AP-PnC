@@ -2,15 +2,17 @@
 
 Welcome to the AP-PnC (Autonomous Parking with Predictive control) project documentation.
 
+**New to AP-PnC?** [Start with the Quick Start Guide](quickstart.md) to get up and running in minutes.
+
 ## Quick Links
 
 ### User Guide
 - [Why We Use Wrapped Python](why-wrapped-python.md) - Deep dive into our `pyp` wrapper and modern software design
 
 ### Developer Resources
+- [Quick Start Guide](quickstart.md) - Get AP-PnC running in minutes
 - [Control Stack & Module Reference](control-stack.md) - Calling sequence, modules, and ROS topics
-- [Python Wrapper (`pyp`)](https://github.com/WarriorHanamy/AP-PnC#python-wrapper-pyp) - Quick start guide
-- [Installation Guide](https://github.com/WarriorHanamy/AP-PnC) - Setup instructions
+- [Build and Launch Commands](build-and-launch.md) - Correct way to build and launch ROS2 components
 
 ## Project Overview
 
@@ -24,16 +26,25 @@ AP-PnC is a modern autonomous parking framework featuring:
 
 ## Getting Started
 
+For complete installation and setup instructions, see the **[Quick Start Guide](quickstart.md)**.
+
+Quick reference:
+
 ```bash
-# Clone the repository
+# Clone and install
 git clone https://github.com/WarriorHanamy/AP-PnC.git
 cd AP-PnC
-
-# Install everything (acados + Python dependencies)
 just install-all
 
-# Run Python scripts with our wrapper
-./pyp your_script.py
+# Build ROS2 workspace
+./scripts/tools/build
+
+# Run the system
+./scripts/tools/srunall
+
+# Visualize (in new terminal)
+source /opt/ros/humble/setup.bash
+just viz-traj-tracking
 ```
 
 ## Key Features
@@ -65,9 +76,10 @@ just type-check        # Type checking with mypy
 
 | Document | Description |
 |----------|-------------|
+| [Quick Start Guide](quickstart.md) | Get AP-PnC running in minutes |
+| [Build and Launch Commands](build-and-launch.md) | Correct way to build and launch ROS2 components |
 | [Control Stack & Module Reference](control-stack.md) | Architecture, calling procedures, ROS topics |
 | [Why Wrapped Python](why-wrapped-python.md) | Software design philosophy behind our approach |
-| [Main README](https://github.com/WarriorHanamy/AP-PnC) | Project overview and quick start |
 
 ## Contributing
 
