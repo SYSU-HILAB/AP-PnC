@@ -81,9 +81,9 @@ def tailsitter_flu() -> AcadosModel:
     )
     thrust_world = rotate_vector(tb / mass, q)
     aero_world = rotate_vector(F_aero_b_flu_quad_frame / mass, q)
-    vv_dot = thrust_world + g + aero_world
+    acc_w = thrust_world + g + aero_world
 
-    acc_b = inverse_rotate_vector(thrust_world + g + aero_world, q)
+    acc_b = inverse_rotate_vector(acc_w, q)
 
     alpha_dot = (
         (acc_b[2] * cs.cos(alpha) - acc_b[0] * cs.sin(alpha))
@@ -95,7 +95,7 @@ def tailsitter_flu() -> AcadosModel:
 
     f_expl_x = vertcat(
         v,
-        vv_dot,
+        acc_w,
         cs.mtimes(cs.inv(J), (tau_b - cs.cross(r, cs.mtimes(J, r)))),
         0.5 * cs.mtimes(skew_symmetric_matrix(r), q),
     )

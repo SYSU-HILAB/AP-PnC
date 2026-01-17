@@ -5,140 +5,98 @@ import numpy as np
 
 def skew(v):
     return vertcat(
-        horzcat(0, -v[2], v[1]), horzcat(v[2], 0, -v[0]), horzcat(-v[1], v[0], 0)
+        horzcat(0, -v[2], v[1]), 
+        horzcat(v[2], 0, -v[0]), 
+        horzcat(-v[1], v[0], 0)
     )
 
 
-def rodrigues_exp(v):
-    """
-    Axis-angle to Rotation Matrix
-    """
-    theta = norm_2(v) + 1e-6  # avoid singularity
-    n = v / theta
-    S = skew(n)
-    I = SX.eye(3)
-    R = I + mtimes(S, np.sin(theta)) + mtimes(mtimes(S, S), (1 - np.cos(theta)))
-    return R
-
-
-def inv_right_jacobian(theta_vec):
-    """
-    Inverse Right Jacobian approximation: I + 0.5 * skew(theta)
-    """
-    return SX.eye(3) + 0.5 * skew(theta_vec)
-
-
-def aero_forces(v_body):
-    """
-    Simple linear drag model f_a = -k * v_body
-    """
-    k_drag = 0.1
-    return -k_drag * v_body
-
-
 def export_error_state_model():
-    model_name = "enmpc_lu"
+    model_name = "err_state_model_lu"
+
+    # Constants
+    mass = 2.0  # kg
+    e1 = SX([1, 0, 0])  # Thrust direction in Body Frame
 
     # ---------------------------------------------
     # 1. Define Variables (Symbols)
     # ---------------------------------------------
     # Error States: delta_x
-    dp = SX.sym("dp", 3)  # delta position
-    dv = SX.sym("dv", 3)  # delta velocity
-    dtheta = SX.sym("dtheta", 3)  # delta angle (Log mapping)
+    err_state_p = SX.sym("err_state_p", 3)  # delta position
+    err_state_v = SX.sym("err_state_v", 3)  # delta velocity
+    err_state_theta = SX.sym("err_state_theta", 3)  # delta angle (Log mapping)
 
-    x = vertcat(dp, dv, dtheta)
+    err_state = vertcat(err_state_p, err_state_v, err_state_theta)
 
     # Error Controls: delta_u
-    daT = SX.sym("daT", 1)  # delta thrust magnitude
-    domega = SX.sym("domega", 3)  # delta angular velocity (Renamed from dw)
+    increment_aT = SX.sym("increment_aT", 1)  # delta thrust magnitude
+    increment_omega = SX.sym("increment_omega", 3)  # delta angular velocity
 
-    u = vertcat(daT, domega)
+    u = vertcat(increment_aT, increment_omega)
+
+    # State derivative symbols
+    dot_err_state_p_sym = SX.sym("dot_err_state_p", 3)
+    dot_err_state_v_sym = SX.sym("dot_err_state_v", 3)
+    dot_err_state_theta_sym = SX.sym("dot_err_state_theta", 3)
+
+    xdot = vertcat(dot_err_state_p_sym, dot_err_state_v_sym, dot_err_state_theta_sym)
 
     # ---------------------------------------------
     # 2. Define Parameters (Explicit Naming)
     # ---------------------------------------------
     # Trajectory References (Time-varying parameters)
-    p_d = SX.sym("p_d", 3)
-    v_d = SX.sym("v_d", 3)
+    param_v_b_d = SX.sym("v_b_d", 3)
 
     # R_d is passed as a 9x1 vector, then reshaped inside
-    R_d_vec = SX.sym("R_d_vec", 9)
-    R_d = R_d_vec.reshape((3, 3))
+    param_R_d_vec = SX.sym("R_d_vec", 9)
 
-    aT_d = SX.sym("aT_d", 1)
+    param_aT_d = SX.sym("aT_d", 1)
 
     # Renamed w_d -> omega_d for clarity
-    omega_d = SX.sym("omega_d", 3)
+    param_omega_d = SX.sym("omega_d", 3)
+
+    # Aerodynamic force parameters (computed externally using GD model)
+    param_f_a_d = SX.sym("f_a_d", 3)    # Desired aero force (quad FLU body frame)
+    param_par_f_a_par_v_b_d = SX.sym("par_f_a_par_v_b", 9)  # Partials of f_a wrt v_b (3x3 matrix flattened)
 
     # Concatenate all parameters into one vector named 'params'
-    # Order: [p_d(3), v_d(3), R_d(9), aT_d(1), omega_d(3)] -> Total 19 elements
-    params = vertcat(p_d, v_d, R_d_vec, aT_d, omega_d)
-
-    # Constants
-    mass = 1.0  # kg
-    e1 = SX([1, 0, 0])  # Thrust direction in Body Frame
+    # Order: [v_b_d(3), R_d(9), aT_d(1), omega_d(3), f_a_d(3), par_f_a_par_v_b_d(9)]
+    # Total 28 elements (was 19 before adding aero forces and Jacobian)
+    params = vertcat(param_v_b_d, param_R_d_vec, param_aT_d, param_omega_d, param_f_a_d, param_par_f_a_par_v_b_d)
 
     # ---------------------------------------------
-    # 3. State & Input Reconstruction
+    # 3. Obtain Parameters Values
     # ---------------------------------------------
-    # Recover Actual State (x_act)
-    # delta_v = v_d - v_act  => v_act = v_d - delta_v
-    v_act = v_d - dv
-
-    # Recover Orientation (R_act)
-    # R_act = R_d * Exp(-dtheta)
-    R_err_inv = rodrigues_exp(-dtheta)
-    R_act = mtimes(R_d, R_err_inv)
-
-    # Recover Inputs
-    # delta_u = u_d - u_act => u_act = u_d - delta_u
-    aT_act = aT_d - daT
-    omega_act = omega_d - domega  # Renamed from w_act, w_d, dw
-
+    val_v_b_d = param_v_b_d
+    val_R_d = param_R_d_vec.reshape((3, 3))
+    val_aT_d = param_aT_d
+    val_omega_d = param_omega_d
+    val_f_a_d = param_f_a_d
+    val_par_f_a_par_v_b_d = param_par_f_a_par_v_b_d.reshape((3, 3))  # Reshape to 3x3 matrix
     # ---------------------------------------------
-    # 4. Aerodynamics (Zero Wind)
+    # 4. Compute Jacobian Matrices
     # ---------------------------------------------
-    # Actual Aerodynamics
-    v_body_act = mtimes(R_act.T, v_act)
-    f_a_act = aero_forces(v_body_act)
-
-    # Reference Aerodynamics
-    v_body_d = mtimes(R_d.T, v_d)
-    f_a_d = aero_forces(v_body_d)
+    M_v = 1/mass * val_R_d @ val_par_f_a_par_v_b_d @ val_R_d.T
+    M_R = val_R_d @ (
+        -val_aT_d * skew(e1) - skew(val_f_a_d / mass) + val_par_f_a_par_v_b_d @ skew(val_v_b_d/mass)
+    )
+    M_T = val_R_d @ e1 
 
     # ---------------------------------------------
-    # 5. Error Dynamics Equations
+    # 5. Finalize
     # ---------------------------------------------
-
-    # 5.1 Position Error
-    dot_dp = dv
-
-    # 5.2 Velocity Error
-    term_d = aT_d * mtimes(R_d, e1) + (1.0 / mass) * mtimes(R_d, f_a_d)
-    term_act = aT_act * mtimes(R_act, e1) + (1.0 / mass) * mtimes(R_act, f_a_act)
-
-    dot_dv = term_d - term_act
-
-    # 5.3 Orientation Error
-    # dot_dtheta = A^T(dtheta) * (-R_d^T * R_act * omega_act + omega_d)
-
-    A_T = inv_right_jacobian(dtheta)
-
-    # Inner term: -Exp(-dtheta) * omega_act + omega_d
-    # Note: R_d^T * R_act simplifies to R_err_inv (Exp(-dtheta))
-    inner_term = -mtimes(R_err_inv, omega_act) + omega_d
-
-    dot_dtheta = mtimes(A_T, inner_term)
-
-    # ---------------------------------------------
-    # 6. Finalize
-    # ---------------------------------------------
-    f_expl = vertcat(dot_dp, dot_dv, dot_dtheta)
+    f_expl = vertcat(
+        err_state_v,
+        M_v @ err_state_v + M_R @ err_state_theta + M_T * increment_aT,
+        -skew(val_omega_d) @ err_state_theta
+    )
+    f_impl = xdot - f_expl
 
     model = AcadosModel()
+    model.f_impl_expr = f_impl
     model.f_expl_expr = f_expl
-    model.x = x
+    model.x = err_state
+    model.xdot = xdot
     model.u = u
     model.p = params  # Explicitly assigned here
     model.name = model_name
