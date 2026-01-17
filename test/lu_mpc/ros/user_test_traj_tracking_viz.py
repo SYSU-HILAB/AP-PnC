@@ -13,7 +13,7 @@ from pathlib import Path
 import rclpy
 
 from feature.lu_mpc.controller.trajectory_loader import get_trajectory_path
-from feature.lu_mpc.ros.simulation_visualizer import SimulationVisualizer
+from feature.lu_mpc.ros.nmpc_orchestrator import ProposedNmpcOrchestrator
 
 
 def _resolve_rviz_config(user_path: str | None) -> Path:
@@ -50,7 +50,7 @@ def _resolve_trajectory_arg(user_path: Path | None) -> Path:
 
 def _run_state_publisher(args: argparse.Namespace) -> None:
     rclpy.init(args=None)
-    node = SimulationVisualizer(
+    node = ProposedNmpcOrchestrator(
         trajectory_csv=str(args.trajectory),
         real_time_factor=args.real_time_factor,
         is_hover_task=args.hover,

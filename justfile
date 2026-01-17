@@ -228,7 +228,7 @@ test-proposed-nmpc-simple:
 #     git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
 #     export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
 #     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
-#     echo "Starting nMPC ROS2 visualization..."
+#     echo "Starting NMPC ROS2 visualization..."
 #     echo "Make sure ROS2 is sourced: source /opt/ros/humble/setup.bash"
 #     ./pyp -m feature.lu_mpc.model.ctrl.test_proposed_nmpc_viz
 

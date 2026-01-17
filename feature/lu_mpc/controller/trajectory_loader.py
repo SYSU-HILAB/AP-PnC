@@ -212,7 +212,7 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
 class TrajectoryReference:
     """
     Trajectory reference provider with interpolation.
-    Provides reference states for the nMPC controller.
+    Provides reference states for the NMPC controller.
     """
 
     def __init__(self, trajectory_data: dict[str, np.ndarray]):

@@ -2,12 +2,12 @@
 Reference Trajectory Visualization Node
 
 This node publishes the reference trajectory from a CSV file for visualization
-in RViz2. Unlike the simulation_visualizer, this node does NOT run the nMPC
+in RViz2. Unlike the nmpc_orchestrator, this node does NOT run the NMPC
 controller or simulator - it directly replays the CSV trajectory.
 
 Data Sources:
     - Trajectory CSV: Loaded via trajectory_loader module
-    - No controller or simulator used (lightweight alternative to simulation_visualizer)
+    - No controller or simulator used (lightweight alternative to nmpc_orchestrator)
 
 Topics Published:
     - /ref_traj_df_phi: Path - Full df_phi_quat reference trajectory from CSV (static)
@@ -33,7 +33,7 @@ Key Functionality:
     - Continuously publishes reference paths for late-joining RViz subscribers
     - Publishes both df_phi_quat and df_lyu_quat reference paths (offset)
     - Publishes both df_phi_quat and df_lyu_quat odometry (for evolution visualization)
-    - Differs from simulation_visualizer.py: No controller, no simulator, pure CSV replay
+    - Differs from nmpc_orchestrator.py: No controller, no simulator, pure CSV replay
 """
 
 from __future__ import annotations

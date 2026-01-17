@@ -43,7 +43,7 @@ def dummy_traj():
 # ==============================================================================
 
 def test_make_topic_applies_prefix():
-    """Test that make_topic applies the nMPC prefix correctly."""
+    """Test that make_topic applies the NMPC prefix correctly."""
     assert make_topic("odometry") == "/nmpc/odometry"
     assert make_topic("reference_path") == "/nmpc/reference_path"
 

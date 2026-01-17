@@ -1,8 +1,9 @@
 # -*- coding: future-fstrings -*-
 #
-# Launch file for nMPC Visualization
+# Launch file for NMPC Visualization
 # Created on 2025-01-10
 # Updated on 2025-01-14: Renamed viz_node → simulation_visualizer
+# Updated on 2025-01-18: Renamed simulation_visualizer → nmpc_orchestrator
 #
 
 from launch import LaunchDescription
@@ -14,9 +15,9 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     """
-    Launch the nMPC simulation visualizer and RViz2.
+    Launch the NMPC orchestrator and RViz2.
 
-    Uses SimulationVisualizer which runs the full nMPC controller
+    Uses ProposedNmpcOrchestrator which runs the full NMPC controller
     and CasADi simulator for closed-loop visualization.
     """
 
@@ -28,11 +29,11 @@ def generate_launch_description():
         'nmpc_viz.rviz'
     )
 
-    # nMPC Simulation Visualizer Node
+    # NMPC Orchestrator Node
     nmpc_viz_node = Node(
         package='feature_lu_mpc_ros',
-        executable='simulation_visualizer',
-        name='simulation_visualizer',
+        executable='nmpc_orchestrator',
+        name='nmpc_orchestrator',
         output='screen',
         parameters=[
             {'use_sim_time': False}

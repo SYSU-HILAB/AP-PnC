@@ -37,7 +37,7 @@ TOPIC_PREFIX = "/nmpc"
 
 def make_topic(name: str) -> str:
     """
-    Build a fully-qualified ROS2 topic name under the nMPC namespace.
+    Build a fully-qualified ROS2 topic name under the NMPC namespace.
 
     Args:
         name: Topic suffix, e.g. "odometry", "reference_path"
