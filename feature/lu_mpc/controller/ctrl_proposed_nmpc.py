@@ -3,7 +3,7 @@ from pathlib import Path
 
 from acados_template import AcadosOcpSolver
 
-from .core.config import MpcConfig
+from .core.ocp_proposed_mpc import MpcConfig
 from ..core.ocp_setup import ocp_nls_cfg
 from .trajectory_loader import TrajectoryReference, load_trajectory_csv
 

@@ -6,7 +6,7 @@ import casadi as cs
 import numpy as np
 from acados_template import AcadosOcp
 
-from ..controller.core.config import MpcConfig
+from ..controller.core.ocp_proposed_mpc import MpcConfig
 from ..model.ctrl.proposed_model import tailsitter_flu
 
 
