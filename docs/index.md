@@ -1,6 +1,6 @@
 # AP-PnC Documentation
 
-Welcome to the AP-PnC (Autonomous Parking with Predictive control) project documentation.
+Welcome to the AP-PnC (Aerodynamic Prior-Free Trajectory Planning and Tracking Control for a Tail-sitter UAV) project documentation.
 
 **New to AP-PnC?** [Start with the Quick Start Guide](quickstart.md) to get up and running in minutes.
 

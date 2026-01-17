@@ -1,5 +1,7 @@
 # Quick Start Guide
 
+**AP-PnC**: Aerodynamic Prior-Free Trajectory Planning and Tracking Control for a Tail-sitter UAV
+
 This guide will get you from zero to running the AP-PnC trajectory tracking visualization in minutes.
 
 ## Prerequisites
@@ -13,7 +15,54 @@ Before starting, ensure you have:
   - `colcon` (`sudo apt install python3-colcon-common-extensions`)
   - `git`
   - Python 3.10+
-  - `just` command runner (optional, but recommended)
+
+## Installing `just` (Command Runner)
+
+The `just` command runner is used throughout this project for task automation. It's optional but highly recommended.
+
+### Option 1: Install via Cargo (Recommended)
+
+If you have Rust and Cargo installed:
+
+```bash
+cargo install just
+```
+
+### Option 2: Install from Pre-built Binary
+
+Download and install the latest release:
+
+```bash
+# Download latest binary (adjust version if needed)
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+```
+
+### Option 3: Install via Package Manager
+
+**Ubuntu/Debian:**
+```bash
+# Add just's PPA (if available) or use cargo
+sudo apt install cargo  # if not already installed
+cargo install just
+```
+
+**Fedora:**
+```bash
+sudo dnf install just
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S just
+```
+
+### Verify Installation
+
+```bash
+just --version
+```
+
+**Alternative**: If you prefer not to install `just`, all commands can be run directly (e.g., `./installations/install-all.sh` instead of `just install-all`).
 
 ## Installation
 
@@ -64,13 +113,7 @@ The C++ and ROS2 components need to be compiled. Use the provided wrapper script
 ./scripts/tools/build
 ```
 
-This builds the following packages:
-- `trajectory_server` - Trajectory planning server
-- `px4_interface` - PX4 communication bridge
-- `c_nmpc` - ACADOS nMPC controller
-- `nmpc` - Python nMPC bindings
-- `tailsitter_df` - Tailsitter dynamics
-- `utils` - Shared utilities
+This builds all required ROS2 packages for trajectory tracking and control.
 
 **Expected output**: Colcon build summary showing all packages built successfully.
 
@@ -84,21 +127,13 @@ If you encounter build errors, try a clean build:
 
 ## Run the System
 
-The `srunall` script launches the complete UAV system with three components distributed across CPU cores:
+The `srunall` script launches the complete system with components distributed across CPU cores:
 
 ```bash
 ./scripts/tools/srunall
 ```
 
-### What Gets Launched
-
-| Component | Description | Core (8-core CPU) |
-|-----------|-------------|-------------------|
-| Trajectory Server | Provides planned trajectories | 5 |
-| PX4 Interface | ROS2 ↔ PX4 communication bridge | 6 |
-| nMPC Controller | ACADOS nonlinear MPC controller | 7 |
-
-**Expected output**: Three process IDs (PIDs) displayed, indicating all components are running.
+**Expected output**: Process IDs (PIDs) displayed, indicating all components are running.
 
 ### Stopping the System
 
@@ -217,11 +252,9 @@ just status                # Check environment status
 
 # Running
 ./scripts/tools/srunall     # Launch complete system
-./scripts/tools/pxinterface      # Launch PX4 interface only
-./scripts/tools/plan        # Launch trajectory server only
 
 # Visualization
-just viz-traj-tracking      # Trajectory tracking with RViz2
+just viz-traj-tracking      # Visualize the sim-and-ctrl playground
 ./pyp -m feature.lu_mpc.ros.simulation_visualizer    # Direct Python launch
 
 # Python execution

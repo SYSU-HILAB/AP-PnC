@@ -2,7 +2,7 @@
 
 theme: jekyll-theme-cayman
 title: AP-PnC Documentation
-description: Autonomous Parking with Predictive control - Modern software design for robotics
+description: Aerodynamic Prior-Free Trajectory Planning and Tracking Control for a Tail-sitter UAV [AP-PnC] - Modern software design for robotics
 show_downloads: false
 github:
   repository_url: https://github.com/WarriorHanamy/AP-PnC
