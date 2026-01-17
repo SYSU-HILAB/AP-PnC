@@ -132,7 +132,7 @@ class ProposedNmpcController:
 
         # Update cz_state estimate
         x_next = self.solver.get(1, "x")
-        u = x_next[-5:-1]
+        u = x_next[-5:-1] # motor thrusts 0...3
         self._cz_state = x_next[-1]
 
         # Increment reference index after solving (only in tracking mode)
