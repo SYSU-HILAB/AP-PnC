@@ -7,8 +7,7 @@ from pathlib import Path
 
 from acados_template import AcadosOcpSolver
 
-from .config.ocp_proposed_mpc_cfg import MpcConfig
-from .config.ocp_err_state_cfg import ocp_err_state_cfg
+from .config.ocp_err_state_cfg import ocp_err_state_cfg, ErrorStateLinearMpcConfig
 from .trajectory_loader import TrajectoryReference
 from ...utils.math_utils import (
     quat_multiply,
@@ -59,7 +58,6 @@ class ErrStateLmpcController:
         self,
         trajectory: TrajectoryReference,
         is_hover_task: bool = False,
-        ctrl_dt: float | None = None,
     ):
         """
         Initialize the error-state MPC controller.
@@ -68,12 +66,11 @@ class ErrStateLmpcController:
             trajectory: TrajectoryReference object containing reference trajectory
             is_hover_task: If True, controller hovers at initial reference;
                           if False, tracks full trajectory (default)
-            ctrl_dt: Control time step (uses config.control.ctrl_dt if None)
         """
         self.trajectory = trajectory
         self._is_hover_task = is_hover_task
-        self.config = MpcConfig.create_high_performance()
-        self.ctrl_dt = ctrl_dt if ctrl_dt is not None else self.config.control.ctrl_dt
+        self.config = ErrorStateLinearMpcConfig.create_default()
+        self.ctrl_dt = self.config.ctrl_dt
 
         # Create OCP with error state model
         ocp_cfg = ocp_err_state_cfg(self.config)

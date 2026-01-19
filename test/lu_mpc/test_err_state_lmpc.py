@@ -22,7 +22,6 @@ def test_err_state_lmpc():
     controller = ErrStateLmpcController(
         trajectory=trajectory,
         is_hover_task=False,  # Tracking mode
-        ctrl_dt=0.1,
     )
 
     # Test with a sample state
@@ -67,7 +66,6 @@ def test_err_state_lmpc():
     controller_hover = ErrStateLmpcController(
         trajectory=trajectory,
         is_hover_task=True,
-        ctrl_dt=0.1,
     )
 
     control_hover = controller_hover.compute_control(sim_state)

@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 import pandas as pd
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 import matplotlib.pyplot as plt
 import scienceplots
 from numpy.typing import NDArray
@@ -233,7 +233,7 @@ def fit_and_save_bspline(
     data: pd.DataFrame,
     coefficient_type: str,
     config: AeroConfig
-) -> Tuple[Dict, NDArray]:
+) -> tuple[Dict, NDArray]:
     """Fit B-spline and save results.
 
     Args:

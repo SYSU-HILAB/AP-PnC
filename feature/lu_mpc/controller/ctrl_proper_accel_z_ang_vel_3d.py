@@ -15,7 +15,6 @@ from __future__ import annotations
 import casadi as cs
 import numpy as np
 from pathlib import Path
-from typing import Optional, Tuple
 
 from acados_template import AcadosOcpSolver
 
@@ -56,7 +55,7 @@ class PDController:
         self,
         desired: np.ndarray,
         measured: np.ndarray,
-        dt: Optional[float] = None,
+        dt: float | None = None,
     ) -> float:
         """
         Compute PD control output.
@@ -116,7 +115,7 @@ class PIDAntiWindupController:
         self,
         desired: np.ndarray,
         measured: np.ndarray,
-        dt: Optional[float] = None,
+        dt: float | None = None,
     ) -> np.ndarray:
         """
         Compute PID control output with anti-windup.
@@ -276,8 +275,8 @@ class QpMixer:
     def mix(
         self,
         tau_desired: np.ndarray,
-        u_prev: Optional[np.ndarray] = None
-    ) -> Tuple[np.ndarray, np.ndarray, dict]:
+        u_prev: np.ndarray | None = None
+    ) -> tuple[np.ndarray, np.ndarray, dict]:
         """
         Compute motor commands from desired control inputs.
 
@@ -344,11 +343,10 @@ class CtrlProperAccelZAngVel3D:
         self,
         trajectory: TrajectoryReference,
         is_hover_task: bool = False,
-        ctrl_dt: Optional[float] = None,
-        pd_config: Optional[PDControllerConfig] = None,
-        pid_config: Optional[PIDAntiWindupConfig] = None,
-        mixer_config: Optional[QpMixerConfig] = None,
-        mpc_config: Optional[MpcConfig] = None,
+        pd_config: PDControllerConfig | None = None,
+        pid_config: PIDAntiWindupConfig | None = None,
+        mixer_config: QpMixerConfig | None = None,
+        mpc_config: MpcConfig | None = None,
     ):
         """
         Initialize the CtrlProperAccelZAngVel3D.
@@ -356,7 +354,6 @@ class CtrlProperAccelZAngVel3D:
         Args:
             trajectory: TrajectoryReference object
             is_hover_task: If True, hover at initial reference
-            ctrl_dt: Control time step (uses mpc_config if None)
             pd_config: PD controller configuration (uses default if None)
             pid_config: PID controller configuration (uses default if None)
             mixer_config: QP mixer configuration (uses default if None)
@@ -369,7 +366,7 @@ class CtrlProperAccelZAngVel3D:
         if mpc_config is None:
             mpc_config = MpcConfig.create_high_performance()
         self._mpc_config = mpc_config
-        self.ctrl_dt = ctrl_dt if ctrl_dt is not None else mpc_config.control.ctrl_dt
+        self.ctrl_dt = mpc_config.control.ctrl_dt
 
         # Create OCP and solver
         ocp_cfg = ocp_proposed_mpc_cfg(mpc_config)
@@ -582,41 +579,39 @@ class CtrlProperAccelZAngVel3D:
         self._pid_ang_vel.reset()
         self._solver.reset()
 
+    # =========================================================================
+    # Factory Classmethod
+    # =========================================================================
 
-# =============================================================================
-# Factory Function
-# =============================================================================
+    @classmethod
+    def create(
+        cls,
+        trajectory: TrajectoryReference,
+        is_hover_task: bool = False,
+        pd_config: PDControllerConfig | None = None,
+        pid_config: PIDAntiWindupConfig | None = None,
+        mixer_config: QpMixerConfig | None = None,
+        mpc_config: MpcConfig | None = None,
+    ) -> "CtrlProperAccelZAngVel3D":
+        """
+        Factory classmethod to create a CtrlProperAccelZAngVel3D.
 
-def create_ctrl_proper_accel_z_ang_vel_3d(
-    trajectory: TrajectoryReference,
-    is_hover_task: bool = False,
-    ctrl_dt: Optional[float] = None,
-    pd_config: Optional[PDControllerConfig] = None,
-    pid_config: Optional[PIDAntiWindupConfig] = None,
-    mixer_config: Optional[QpMixerConfig] = None,
-    mpc_config: Optional[MpcConfig] = None,
-) -> CtrlProperAccelZAngVel3D:
-    """
-    Factory function to create an CtrlProperAccelZAngVel3D.
+        Args:
+            trajectory: TrajectoryReference object
+            is_hover_task: If True, hover at initial reference
+            pd_config: PD controller configuration (uses default if None)
+            pid_config: PID controller configuration (uses default if None)
+            mixer_config: QP mixer configuration (uses default if None)
+            mpc_config: MPC configuration (uses high_performance default if None)
 
-    Args:
-        trajectory: TrajectoryReference object
-        is_hover_task: If True, hover at initial reference
-        ctrl_dt: Control time step (uses mpc_config if None)
-        pd_config: PD controller configuration (uses default if None)
-        pid_config: PID controller configuration (uses default if None)
-        mixer_config: QP mixer configuration (uses default if None)
-        mpc_config: MPC configuration (uses high_performance default if None)
-
-    Returns:
-        Configured CtrlProperAccelZAngVel3D instance
-    """
-    return CtrlProperAccelZAngVel3D(
-        trajectory=trajectory,
-        is_hover_task=is_hover_task,
-        ctrl_dt=ctrl_dt,
-        pd_config=pd_config,
-        pid_config=pid_config,
-        mixer_config=mixer_config,
-        mpc_config=mpc_config,
-    )
+        Returns:
+            Configured CtrlProperAccelZAngVel3D instance
+        """
+        return cls(
+            trajectory=trajectory,
+            is_hover_task=is_hover_task,
+            pd_config=pd_config,
+            pid_config=pid_config,
+            mixer_config=mixer_config,
+            mpc_config=mpc_config,
+        )

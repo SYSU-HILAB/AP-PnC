@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
@@ -147,10 +147,10 @@ class CtrlProperAccelZAngVel3DConfig:
     """
 
     # MPC configuration (from ocp_proposed_mpc_cfg.py)
-    mpc_config: Optional[object] = None  # Will be set to MpcConfig instance
+    mpc_config: object | None = None  # Will be set to MpcConfig instance
 
     # Trajectory reference
-    trajectory: Optional[TrajectoryReference] = None
+    trajectory: TrajectoryReference | None = None
 
     # Sub-controller configurations
     pd_config: PDControllerConfig = field(default_factory=PDControllerConfig)
@@ -165,11 +165,8 @@ class CtrlProperAccelZAngVel3DConfig:
     # Control mode
     is_hover_task: bool = False  # If True, hover at initial reference
 
-    # Control timing
-    ctrl_dt: Optional[float] = None  # Control time step (uses mpc_config if None)
-
     # Gravity vector (for proper acceleration computation)
-    gravity: np.ndarray = field(default_factory=lambda: np.array([0, 0, 9.81]))
+    gravity: np.ndarray = field(default_factory=lambda: np.array([0, 0, -9.81]))
 
     @classmethod
     def create_default(cls, trajectory: TrajectoryReference) -> CtrlProperAccelZAngVel3DConfig:

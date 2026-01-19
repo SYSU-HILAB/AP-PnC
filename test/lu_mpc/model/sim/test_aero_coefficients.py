@@ -5,7 +5,7 @@ from feature.lu_mpc.model.sim.aero_coefficients import (
     get_jax_coefficients,
     get_numpy_coefficients,
 )
-from feature.lu_mpc.model.sim.gd_model_casadi import create_symbolic_gd_model
+from feature.lu_mpc.model.sim.gd_model_casadi import SymbolicGdModel
 
 
 def test_numpy_and_jax_coefficients_match_values():
@@ -26,7 +26,7 @@ def test_numpy_and_jax_coefficients_match_values():
     ],
 )
 def test_symbolic_model_produces_body_moments(velocity: np.ndarray):
-    model = create_symbolic_gd_model()
+    model = SymbolicGdModel.create()
     _, moments, _, _ = model.evaluate(velocity)
     assert moments.shape == (3,)
     assert not np.allclose(moments[[0, 2]], 0.0)

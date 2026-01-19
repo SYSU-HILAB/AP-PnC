@@ -12,7 +12,6 @@
 import sqlite3
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Tuple
 import os
 import traceback
 import numpy as np
@@ -105,7 +104,7 @@ def get_root_path(config: PhiAeroWriterConfig) -> Path:
         raise PhiAeroError("Failed to get root path", str(e))
 
 
-def validate_phi_coefficients(phi_coefs: NDArray) -> Tuple[int, int]:
+def validate_phi_coefficients(phi_coefs: NDArray) -> tuple[int, int]:
     """Validate phi coefficients array.
 
     Args:

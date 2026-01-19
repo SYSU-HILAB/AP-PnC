@@ -5,12 +5,91 @@ from __future__ import annotations
 import casadi as cs
 import numpy as np
 from acados_template import AcadosOcp
+from dataclasses import dataclass, field
 
-from .ocp_proposed_mpc_cfg import MpcConfig
 from ...model.ctrl.err_state_model import export_error_state_model
 
 
-def ocp_err_state_cfg(cfg: MpcConfig) -> AcadosOcp:
+# =============================================================================
+# Configuration Classes
+# =============================================================================
+
+@dataclass
+class ErrorStateLinearMpcConfig:
+    """
+    Configuration for error-state linear MPC controller.
+
+    Cost weights - tune these for performance:
+    - Heavier weights on position error for tracking
+    - q_pos: Position error weights [x, y, z]
+    - q_vel: Velocity error weights [vx, vy, vz]
+    - q_theta: Angular error weights [phi, theta, psi]
+    - r_u: Control effort weights [increment_aT, increment_omega_x, increment_omega_y, increment_omega_z]
+    """
+
+    # Cost weights
+    q_pos: np.ndarray = field(
+        default_factory=lambda: np.array([15.0, 15.0, 100.0])
+    )  # Position error weights
+    q_vel: np.ndarray = field(
+        default_factory=lambda: np.array([1.0, 1.0, 1.0])
+    )  # Velocity error weights
+    q_theta: np.ndarray = field(
+        default_factory=lambda: np.array([52.5, 52.5, 126.0])
+    )  # Angular error weights
+    r_u: np.ndarray = field(
+        default_factory=lambda: np.array([0.01, 0.01, 0.01, 0.01])
+    )  # Control effort weights
+
+    # Constraints on error angular states
+    lb_r: np.ndarray = field(
+        default_factory=lambda: np.array([-1.5, -2.5, -1.5], dtype=float)
+    )  # Angular error lower bounds
+    ub_r: np.ndarray = field(
+        default_factory=lambda: np.array([1.5, 2.5, 1.5], dtype=float)
+    )  # Angular error upper bounds
+
+    # Constraints on control increments
+    lb_u: np.ndarray = field(
+        default_factory=lambda: np.zeros(4, dtype=float)
+    )  # Lower bounds on control increments
+    ub_u: np.ndarray = field(
+        default_factory=lambda: np.array([5.5, 5.5, 5.5, 5.5])
+    )  # Upper bounds on control increments
+
+    # Control timing
+    ctrl_dt: float = 0.1
+    nodes: int = 5
+
+    @property
+    def T_horizon(self) -> float:
+        """Prediction horizon duration."""
+        return self.ctrl_dt * self.nodes
+
+    @classmethod
+    def create_default(cls) -> "ErrorStateLinearMpcConfig":
+        """Create default error-state linear MPC configuration."""
+        return cls()
+
+    @classmethod
+    def create_high_gain(cls) -> "ErrorStateLinearMpcConfig":
+        """Create high-gain configuration for tighter tracking."""
+        return cls(
+            q_pos=np.array([20.0, 20.0, 150.0]),
+            q_vel=np.array([2.0, 2.0, 2.0]),
+            q_theta=np.array([70.0, 70.0, 180.0]),
+        )
+
+
+DEFAULT_ERROR_STATE_MPC_CONFIG = ErrorStateLinearMpcConfig()
+
+
+# =============================================================================
+# OCP Builder Function
+# =============================================================================
+
+
+def ocp_err_state_cfg(cfg: ErrorStateLinearMpcConfig) -> AcadosOcp:
     """
     Create the AcadosOcp instance for the error state controller.
 
@@ -20,7 +99,7 @@ def ocp_err_state_cfg(cfg: MpcConfig) -> AcadosOcp:
     Parameters: 28D time-varying reference parameters
 
     Args:
-        cfg: MPC configuration
+        cfg: ErrorStateLinearMpcConfig configuration
 
     Returns:
         AcadosOcp configured for error state MPC
@@ -72,12 +151,12 @@ def ocp_err_state_cfg(cfg: MpcConfig) -> AcadosOcp:
     # Initial parameter values (will be set at runtime)
     ocp.parameter_values = np.zeros((nparam))
 
-    # Cost weights - tune these for performance
+    # Cost weights from config - tune these for performance
     # Heavier weights on position error for tracking
-    q_pos = np.array([15.0, 15.0, 100.0])  # Position error weights
-    q_vel = np.array([1.0, 1.0, 1.0])      # Velocity error weights
-    q_theta = np.array([52.5, 52.5, 126.0])  # Angular error weights
-    r_u = np.array([0.01, 0.01, 0.01, 0.01])  # Control effort weights
+    q_pos = cfg.q_pos
+    q_vel = cfg.q_vel
+    q_theta = cfg.q_theta
+    r_u = cfg.r_u
 
     Q_list = np.hstack((q_pos, q_vel, q_theta))
 

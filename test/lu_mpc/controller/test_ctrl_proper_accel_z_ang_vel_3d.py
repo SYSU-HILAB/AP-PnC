@@ -19,7 +19,7 @@ from feature.lu_mpc.controller.ctrl_proper_accel_z_ang_vel_3d import (
     PDControllerConfig,
     PIDAntiWindupController,
     PIDAntiWindupConfig,
-    create_ctrl_proper_accel_z_ang_vel_3d,
+    CtrlProperAccelZAngVel3D,
 )
 
 
@@ -372,7 +372,7 @@ class TestCtrlProperAccelZAngVel3D:
             pytest.skip("Test trajectory not found")
 
         trajectory = load_trajectory_csv(str(traj_path))
-        controller = create_ctrl_proper_accel_z_ang_vel_3d(trajectory)
+        controller = CtrlProperAccelZAngVel3D.create(trajectory)
 
         assert controller is not None
         assert isinstance(controller, type(controller))

@@ -478,18 +478,22 @@ class SymbolicGdModel:
             "moments": self.moments,
         }
 
+    # =========================================================================
+    # Factory Classmethod
+    # =========================================================================
 
-def create_symbolic_gd_model(config: GdModelConfig = DEFAULT_CONFIG) -> SymbolicGdModel:
-    """
-    Factory function to create a symbolic aerodynamic model.
+    @classmethod
+    def create(cls, config: GdModelConfig = DEFAULT_CONFIG) -> "SymbolicGdModel":
+        """
+        Factory classmethod to create a symbolic aerodynamic model.
 
-    Args:
-        config: Configuration object containing model parameters
+        Args:
+            config: Configuration object containing model parameters
 
-    Returns:
-        SymbolicGdModel instance
-    """
-    return SymbolicGdModel(config)
+        Returns:
+            SymbolicGdModel instance
+        """
+        return cls(config)
 
 
 def _create_mesh_grid(mesh_size: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -564,7 +568,7 @@ def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_si
     from ...plotting.data_utils import save_mesh_data
 
     # Create model
-    model = create_symbolic_gd_model()
+    model = SymbolicGdModel.create()
     alpha_deg_grid, beta_deg_grid, alpha_grid, beta_grid = _create_mesh_grid(mesh_size)
 
     print("Computing aerodynamic coefficients with CasADi...")
@@ -615,7 +619,7 @@ def generate_cl_cd_cm_coordinated_data(
     from ...plotting.data_utils import save_coordinated_data
 
     # Create model
-    model = create_symbolic_gd_model()
+    model = SymbolicGdModel.create()
 
     # Generate alpha range (angle of attack)
     alpha_deg = np.linspace(-30, 120, 1501)  # -30 to 120 degrees, 0.1 degree increments

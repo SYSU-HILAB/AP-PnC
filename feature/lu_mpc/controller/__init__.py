@@ -6,7 +6,6 @@ __all__ = [
     "TrajectoryReference",
     "ErrStateLmpcController",
     "CtrlProperAccelZAngVel3D",
-    "create_ctrl_proper_accel_z_ang_vel_3d",
 ]
 
 # Lazy import to avoid circular dependency with core.ocp_setup
@@ -18,7 +17,4 @@ def __getattr__(name: str):
     if name == "CtrlProperAccelZAngVel3D":
         from .ctrl_proper_accel_z_ang_vel_3d import CtrlProperAccelZAngVel3D
         return CtrlProperAccelZAngVel3D
-    if name == "create_ctrl_proper_accel_z_ang_vel_3d":
-        from .ctrl_proper_accel_z_ang_vel_3d import create_ctrl_proper_accel_z_ang_vel_3d
-        return create_ctrl_proper_accel_z_ang_vel_3d
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

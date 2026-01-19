@@ -38,7 +38,6 @@ Key Functionality:
 
 from __future__ import annotations
 
-from typing import Tuple
 import rclpy
 import numpy as np
 from geometry_msgs.msg import Point, Vector3
@@ -69,7 +68,7 @@ def advance_playback_time(
     start_time: float,
     end_time: float,
     loop_playback: bool,
-) -> Tuple[float, bool]:
+) -> tuple[float, bool]:
     """
     Advance the playback cursor, optionally looping back to the start.
 

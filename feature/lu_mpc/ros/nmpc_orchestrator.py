@@ -68,7 +68,6 @@ class ProposedNmpcOrchestrator(Node):
         self,
         trajectory_csv: str,
         sim_dt: float = 0.02,
-        ctrl_dt: float = 0.1,
         real_time_factor: float = 1.0,
         is_hover_task: bool = False,
     ):
@@ -78,7 +77,6 @@ class ProposedNmpcOrchestrator(Node):
         Args:
             trajectory_csv: Path to trajectory CSV file
             sim_dt: Simulation integration timestep in seconds
-            ctrl_dt: Controller update period in seconds
             real_time_factor: Speed multiplier (1.0 = real-time, 2.0 = 2x)
             is_hover_task: If True, controller hovers at initial reference;
                            if False, tracks full trajectory (default)
@@ -87,7 +85,6 @@ class ProposedNmpcOrchestrator(Node):
 
         # Store parameters
         self.sim_dt = sim_dt
-        self.ctrl_dt = ctrl_dt
         self.real_time_factor = real_time_factor
         self.is_hover_task = is_hover_task
 
@@ -102,7 +99,6 @@ class ProposedNmpcOrchestrator(Node):
 
         self.get_logger().info("ProposedNmpcOrchestrator initialized")
         self.get_logger().info(f"  Sim dt: {sim_dt}s")
-        self.get_logger().info(f"  Control dt: {ctrl_dt}s")
         self.get_logger().info(f"  Real-time factor: {real_time_factor}x")
         self.get_logger().info(f"  Mode: {'Hover' if self.is_hover_task else 'Tracking'}")
 
@@ -125,7 +121,6 @@ class ProposedNmpcOrchestrator(Node):
         self.controller = CtrlProperAccelZAngVel3D(
             self.trajectory,
             is_hover_task=self.is_hover_task,
-            ctrl_dt=self.ctrl_dt
         )
 
     def step(self) -> bool:
@@ -173,30 +168,3 @@ class ProposedNmpcOrchestrator(Node):
             sleep_period(sleep_time)
 
         self.get_logger().info("Simulation finished")
-
-
-def main(args=None):
-    """Entry point for running the orchestrator directly."""
-    rclpy.init(args=args)
-
-    # Default trajectory path
-    from ..controller.trajectory_loader import get_trajectory_path
-    trajectory_csv = get_trajectory_path()
-
-    orchestrator = ProposedNmpcOrchestrator(
-        trajectory_csv=trajectory_csv,
-        real_time_factor=1.0,
-        is_hover_task=False,
-    )
-
-    try:
-        orchestrator.run()
-    except KeyboardInterrupt:
-        orchestrator.get_logger().info("Received shutdown signal")
-    finally:
-        orchestrator.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main()
