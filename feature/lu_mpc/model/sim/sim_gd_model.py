@@ -87,7 +87,63 @@ class GdModelSimulator:
         self._config = config
         self._aero_model = SymbolicGdModel(config.aero_config)
         self._build_acados_model()
+        self._build_proper_acc_func()
         self._setup_acados_sim()
+
+    def _build_proper_acc_func(self) -> None:
+        """Placeholder for proper acceleration function if needed in future."""
+        p = cs.SX.sym("p", 3)  # Position [x, y, z]
+        v = cs.SX.sym("v", 3)  # Velocity [vx, vy, vz]
+        r = cs.SX.sym("r", 3)  # Angular rates [p, q, r]
+        q = cs.SX.sym("q", 4)  # Quaternion [w, x, y, z]
+        motor_thrusts = cs.SX.sym("motor_thrusts", 4)
+
+        mass = self._config.mass 
+        quat_quad_flu = q
+        trans_wing_frd_quad_flu = cs.SX(self._config.trans_wing_frd_quad_flu)
+        quat_wing_frd = quat_multiply(quat_quad_flu, trans_wing_frd_quad_flu)
+
+        U = motor_thrusts[0] + motor_thrusts[1] + motor_thrusts[2] + motor_thrusts[3]
+        thrust_quad_flu = cs.vertcat(0.0, 0.0, U)
+
+        vel_b_wing_frd = quat_apply_inverse(quat_wing_frd, v)
+
+        # Get velocity in body frame for aerodynamics
+        vel_b_wing_frd = quat_apply_inverse(quat_wing_frd, v)
+
+        # Get aerodynamic forces and moments from GD model
+        # The GD model expects body-frame velocity in FRD
+        aero_result = self._aero_model.func(vel_b_wing_frd)
+        aero_forces_moments = aero_result[0]  # First element is forces_moments vector
+        aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
+        # Transform aerodynamic forces back to FLU frame, then to body frame
+        # Use inverse transformation to go from wing FRD to quad FLU
+        aero_forces_quad_flu = quat_apply(
+            trans_wing_frd_quad_flu, aero_forces_wing_frd
+        )
+        # Use GD model forces directly
+        aero_forces_quad_flu = aero_forces_quad_flu
+
+        # Total forces and moments in body frame
+        tot_force_quad_flu = thrust_quad_flu + aero_forces_quad_flu
+        self._proper_acc_func = cs.Function(
+            "proper_acc_func",
+            [p, v, r, q, motor_thrusts],
+            [tot_force_quad_flu / mass],
+        )
+
+
+    def get_accp(self) -> np.ndarray:
+        """Get the proper acceleration in body frame.(Quad FLU frame)"""
+        p = self._cur_state[0:3]
+        v = self._cur_state[3:6]
+        r = self._cur_state[6:9]
+        q = self._cur_state[9:13]
+        motor_thrusts = self._cur_state[13:17]
+        accp_quad_flu = self._proper_acc_func(p, v, r, q, motor_thrusts).full().flatten()
+        return accp_quad_flu
+
+
 
     def _build_acados_model(self):
         """Build the ACADOS model with GD aerodynamics."""
@@ -234,7 +290,7 @@ class GdModelSimulator:
         """
         return cls(init_state, config)
 
-    def simulate(self, motors_cmd: np.ndarray) -> np.ndarray:
+    def simulate(self, motors_cmd: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Step simulation forward by one timestep (infinite simulate).
         Updates internal state and returns the new state.
@@ -244,6 +300,7 @@ class GdModelSimulator:
 
         Returns:
             next_state: State after simulation step (17D array)
+            proper_acceleration: Proper acceleration in body frame (3D array)
         """
         # Validate input shape
         if motors_cmd.shape != (4,):
@@ -264,7 +321,7 @@ class GdModelSimulator:
         # Update internal state (copy to avoid reference to solver buffer)
         self._cur_state = self._acados_solver.get("x").copy()
 
-        return self._cur_state.copy()
+        return self._cur_state.copy(), self.get_accp()
 
     def get_state(self) -> np.ndarray:
         """

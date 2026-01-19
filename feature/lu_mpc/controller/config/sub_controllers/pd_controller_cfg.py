@@ -9,12 +9,12 @@ from dataclasses import dataclass
 class PDControllerConfig:
     """Configuration for PD controller tracking proper acceleration."""
 
-    Kp: float = 1.0  # Proportional gain
-    Kd: float = 0.1  # Derivative gain
+    Kp: float = 0.1  # Proportional gain
+    Kd: float = 0.0  # Derivative gain
 
     # Output limits
-    output_min: float = 0.0  # Minimum total thrust (N)
-    output_max: float = 40.0  # Maximum total thrust (N)
+    output_min: float = -5.0  # Minimum total thrust (N)
+    output_max: float = 5.0  # Maximum total thrust (N)
 
     @classmethod
     def create_default(cls) -> PDControllerConfig:

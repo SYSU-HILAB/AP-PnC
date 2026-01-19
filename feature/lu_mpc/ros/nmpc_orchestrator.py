@@ -132,7 +132,10 @@ class ProposedNmpcOrchestrator(Node):
             True if simulation should continue, False if done
         """
         # Compute control every sim_dt, reference sampling uses ctrl_dt internally
-        control = self.controller.compute_control(self.simulator.get_state())
+        control = self.controller.compute_control(
+            sim_state = self.simulator.get_state(), 
+            acc_p_meas=self.simulator.get_accp()
+        )
 
         # Step simulation using the new stateful API
         try:

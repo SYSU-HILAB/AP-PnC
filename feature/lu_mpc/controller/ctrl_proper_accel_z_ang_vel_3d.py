@@ -115,9 +115,27 @@ class CtrlProperAccelZAngVel3D:
         # Gravity vector
         self._gravity = np.array([0, 0, 9.81])
 
+    def _initialize_solver(self, mpc_state: np.ndarray) -> None:
+        """
+        Initialize ACADOS solver with parameters and initial state.
+
+        Args:
+            mpc_state: Initial MPC state (18D) for warm-starting the solver.
+        """
+        # Set parameter [cz_rate] across all shooting nodes
+        params = np.array([self._mpc_config.cz_rate])
+        for i in range(self._N + 1):
+            self._solver.set(i, "p", params)
+
+        # Initialize with current state as guess and bounds
+        self._solver.set(0, "x", mpc_state)
+        self._solver.set(0, "lbx", mpc_state)
+        self._solver.set(0, "ubx", mpc_state)
+
     def compute_control(
         self,
         sim_state: np.ndarray,
+        acc_p_meas: np.ndarray,
     ) -> np.ndarray:
         """
         Compute motor commands from current state.
@@ -131,66 +149,46 @@ class CtrlProperAccelZAngVel3D:
         # 1. Run NMPC solver to get predicted state
         mpc_state = self._est_mpc_state(sim_state)
 
-        # Set parameter [cz_rate]
-        params = np.array([self._mpc_config.cz_rate])
-        for i in range(self._N + 1):
-            self._solver.set(i, "p", params)
+        # 2. Initialize solver with parameters and initial state
+        self._initialize_solver(mpc_state)
 
-        # Initialize with current state as guess
-        self._solver.set(0, "x", mpc_state)
-        self._solver.set(0, "lbx", mpc_state)
-        self._solver.set(0, "ubx", mpc_state)
-
-        # Set reference trajectory
+        # 3. Set reference trajectory
         if self._is_hover_task:
             self._set_hover_reference()
         else:
             self._set_tracking_reference()
 
-        # Solve OCP
+        # 4. Solve OCP
         status = self._solver.solve()
 
         if status != 0:
             print(f"Warning: NMPC solver failed with status {status}")
             return np.zeros(self._nu)
 
-        # 2. Extract desired values from predicted state x[1]
+        # 5. Extract desired values from predicted state x[1]
         x_next = self._solver.get(1, "x")
 
-        # Extract components
-        p_next = x_next[0:3]  # Position
-        v_next = x_next[3:6]  # Velocity
         ang_vel_des = x_next[6:9]  # Angular rates (r)
-        # q_next = x_next[9:13]  # Quaternion
         u_nmpc = x_next[13:17]  # Motor thrusts
 
-        # Update cz_state estimate
-        self._cz_state = x_next[17]
+        accel_p_des = (np.sum(u_nmpc)) / 2.0
+        #<HARD
+        #1. add counter, everytime the compute_control is called, counter +=1
+        #2. print the counter value 
+        
+        #>
 
-        # 3. Compute accel_des from velocity derivative
-        # accel_des = (v_next - v_current) / dt
-        v_current = sim_state[3:6]
-        accel_des = (v_next - v_current) / self.ctrl_dt
-
-        # Compute proper acceleration (proper_accel = accel - gravity)
-        proper_accel_des = accel_des - self._gravity
-
-        # Compute measured proper acceleration
-        # For sim state, we don't have acceleration directly
-        # Estimate as zero for now (tracking error will be handled by PD)
-        proper_accel_meas = np.zeros(3)
-
-        # 4. PD controller for proper acceleration → tot_thrust_cmd
-        tot_thrust_cmd = self._pd_accel.compute(proper_accel_des, proper_accel_meas, self.ctrl_dt)
-
-        # 5. PID controller for angular velocity → 3d_torque_cmd
+        # 6. PD controller for proper acceleration → tot_thrust_cmd
+        incre_thrust = self._pd_accel.compute(accel_p_des, acc_p_meas[2])
+        tot_thrust_cmd = accel_p_des * 2.0 + incre_thrust
+        # 7. PID controller for angular velocity → 3d_torque_cmd
         ang_vel_meas = sim_state[6:9]  # Angular rates from sim state
-        torque_cmd = self._pid_ang_vel.compute(ang_vel_des, ang_vel_meas, self.ctrl_dt)
+        torque_cmd = self._pid_ang_vel.compute(ang_vel_des, ang_vel_meas)
 
-        # 6. QP mixer → motor_thrusts_cmd (4D)
+        # 8. QP mixer → motor_thrusts_cmd (4D)
         tau_desired = np.concatenate([[tot_thrust_cmd], torque_cmd])
         motor_thrusts, motor_rates, info = self._qp_mixer.mix(tau_desired, self._u_prev)
-
+        
         # Update previous command
         self._u_prev = motor_thrusts.copy()
 
@@ -199,7 +197,7 @@ class CtrlProperAccelZAngVel3D:
             total_steps = len(self.trajectory.time)
             self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
 
-        return motor_rates
+        return motor_thrusts
 
     def _est_mpc_state(self, sim_state: np.ndarray) -> np.ndarray:
         """

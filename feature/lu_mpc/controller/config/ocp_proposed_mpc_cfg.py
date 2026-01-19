@@ -24,7 +24,7 @@ class ControlConfig:
     """Basic controller timing configuration."""
 
     ctrl_dt: float = 0.1
-    nodes: int = 5
+    nodes: int = 5 # tuned for tracking in acados simulator.
 
     @property
     def control_frequency(self) -> float:
@@ -160,8 +160,7 @@ def ocp_proposed_mpc_cfg(cfg: MpcConfig) -> AcadosOcp:
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
     ocp.solver_options.integrator_type = "ERK"
     ocp.solver_options.nlp_solver_type = "SQP_RTI"
-    ocp.solver_options.nlp_solver_max_iter = 10
-    ocp.solver_options.qp_solver_iter_max = 50
+    ocp.solver_options.qp_solver_iter_max = 10
     ocp.solver_options.print_level = 0
     ocp.solver_options.hpipm_mode = "SPEED_ABS"
     ocp.solver_options.sim_method_num_stages = 4
