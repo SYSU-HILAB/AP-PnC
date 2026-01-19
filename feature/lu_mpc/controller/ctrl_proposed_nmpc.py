@@ -1,10 +1,12 @@
 import numpy as np
 from pathlib import Path
+from typing import Optional
 
 from acados_template import AcadosOcpSolver
 
-from .core.ocp_proposed_mpc import MpcConfig
-from ..core.ocp_setup import ocp_nls_cfg
+from .config.ocp_proposed_mpc_cfg import MpcConfig, ocp_proposed_mpc_cfg
+from .config.mixer_config import MixerConfig, DEFAULT_MIXER_CONFIG
+from ..model.ctrl.qp_mixer import create_qp_mixer
 from .trajectory_loader import TrajectoryReference, load_trajectory_csv
 
 VELOCITY_EPSILON = 0.1
@@ -25,6 +27,7 @@ class ProposedNmpcController:
         trajectory: TrajectoryReference,
         is_hover_task: bool = False,
         ctrl_dt: float | None = None,
+        mixer_config: Optional[MixerConfig] = None,
     ):
         """
         Initialize the NMPC controller.
@@ -34,6 +37,7 @@ class ProposedNmpcController:
             is_hover_task: If True, controller hovers at initial reference;
                           if False, tracks full trajectory (default)
             ctrl_dt: Control time step (uses config.control.ctrl_dt if None)
+            mixer_config: Optional QP mixer configuration (uses default if None)
         """
         self.trajectory = trajectory
         self._is_hover_task = is_hover_task
@@ -41,7 +45,7 @@ class ProposedNmpcController:
         self.ctrl_dt = ctrl_dt if ctrl_dt is not None else self.config.control.ctrl_dt
 
         # Create OCP
-        ocp_cfg = ocp_nls_cfg(self.config)
+        ocp_cfg = ocp_proposed_mpc_cfg(self.config)
 
         # Create solver
         json_path = Path(__file__).parent.parent / ".cache" / "acados_ocp_proposed_nmpc.json"
@@ -60,6 +64,10 @@ class ProposedNmpcController:
         self._cz_state = 0.0
         self._cur_idx_ref = 0
         self._sim_dt = 0.02  # Trajectory sampling rate (const, 50Hz)
+
+        # Create QP mixer for constrained control allocation
+        self.mixer = create_qp_mixer(mixer_config or DEFAULT_MIXER_CONFIG)
+        self._u_prev = np.zeros(4)  # Track previous motor commands
 
         print(f"NMPC Controller initialized:")
         print(f"  State dim: {self.nx}")
@@ -132,15 +140,27 @@ class ProposedNmpcController:
 
         # Update cz_state estimate
         x_next = self.solver.get(1, "x")
-        u = x_next[-5:-1] # motor thrusts 0...3
+        u_nmpc = x_next[-5:-1]  # motor thrusts from nMPC
         self._cz_state = x_next[-1]
+
+        # Convert nMPC motor thrusts to torques using allocation matrix
+        tau_desired = self.mixer._Gamma @ u_nmpc
+
+        # Feed through QP mixer for constrained optimization
+        u_optimal, du, info = self.mixer.mix(
+            tau_desired=tau_desired,
+            u_prev=self._u_prev
+        )
+
+        # Update previous command
+        self._u_prev = u_optimal.copy()
 
         # Increment reference index after solving (only in tracking mode)
         if not self._is_hover_task:
             total_steps = len(self.trajectory.time)
             self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
 
-        return u
+        return du
 
     def _est_mpc_state(self, sim_state: np.ndarray) -> np.ndarray:
         """
@@ -222,4 +242,5 @@ class ProposedNmpcController:
         """Reset controller state."""
         self._cz_state = 0.0
         self._cur_idx_ref = 0
+        self._u_prev = np.zeros(4)
         self.solver.reset()

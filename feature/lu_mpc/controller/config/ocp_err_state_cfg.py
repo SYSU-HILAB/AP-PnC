@@ -6,8 +6,8 @@ import casadi as cs
 import numpy as np
 from acados_template import AcadosOcp
 
-from ..controller.core.ocp_proposed_mpc import MpcConfig
-from ..model.ctrl.err_state_model import export_error_state_model
+from .ocp_proposed_mpc_cfg import MpcConfig
+from ...model.ctrl.err_state_model import export_error_state_model
 
 
 def ocp_err_state_cfg(cfg: MpcConfig) -> AcadosOcp:

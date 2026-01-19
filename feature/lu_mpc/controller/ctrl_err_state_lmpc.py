@@ -7,8 +7,8 @@ from pathlib import Path
 
 from acados_template import AcadosOcpSolver
 
-from .core.ocp_proposed_mpc import MpcConfig
-from ..core.ocp_err_state_cfg import ocp_err_state_cfg
+from .config.ocp_proposed_mpc_cfg import MpcConfig
+from .config.ocp_err_state_cfg import ocp_err_state_cfg
 from .trajectory_loader import TrajectoryReference
 from feature.utils.math_utils import (
     quat_multiply,
