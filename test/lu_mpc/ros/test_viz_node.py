@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from feature.utils import ros_visualizer
+from ...utils import ros_visualizer
 
 
 class _DummyTrajectory:

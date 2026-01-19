@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..sim.gd_model_casadi import SymbolicGdModel, GdModelConfig, DEFAULT_CONFIG
-from feature.utils.math_utils import quat_multiply, quat_apply, quat_apply_inverse
+from ....utils.math_utils import quat_multiply, quat_apply, quat_apply_inverse
 
 
 class AeroForceEvaluator:

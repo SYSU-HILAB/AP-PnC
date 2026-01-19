@@ -8,8 +8,8 @@ from pathlib import Path
 
 import numpy as np
 
-from feature.utils import Colors, color_print
-from feature.utils.math_utils import wing_frd_to_quad_flu, extract_yb_from_quat
+from ...utils import Colors, color_print
+from ...utils.math_utils import wing_frd_to_quad_flu, extract_yb_from_quat
 
 
 TEMP_DATA_SUBDIR = Path("artifacts") / "simulations" / "temp_data"
