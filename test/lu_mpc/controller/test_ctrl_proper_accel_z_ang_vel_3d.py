@@ -12,14 +12,16 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_allclose
 
-from feature.lu_mpc.controller.ctrl_proper_accel_z_ang_vel_3d import (
-    QpMixer,
-    QpMixerConfig,
+from feature.lu_mpc.controller import CtrlProperAccelZAngVel3D
+from feature.lu_mpc.controller.sub_controllers import (
     PDController,
-    PDControllerConfig,
     PIDAntiWindupController,
+    QpMixer,
+)
+from feature.lu_mpc.controller.config.sub_controllers import (
+    PDControllerConfig,
     PIDAntiWindupConfig,
-    CtrlProperAccelZAngVel3D,
+    QpMixerConfig,
 )
 
 

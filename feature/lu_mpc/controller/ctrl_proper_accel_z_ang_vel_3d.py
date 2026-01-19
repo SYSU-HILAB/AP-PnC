@@ -8,18 +8,19 @@ This module provides a controller that:
 4. Runs PD controller for proper acceleration tracking → tot_thrust_cmd
 5. Runs PID controller with anti-windup for angular velocity tracking → 3d_torque_cmd
 6. Runs QP mixer for [tot_thrust, 3d_torque] tracking → motor_thrusts_cmd (4D)
+
+Sub-controllers are imported from controller.sub_controllers.
 """
 
 from __future__ import annotations
 
-import casadi as cs
 import numpy as np
 from pathlib import Path
 
 from acados_template import AcadosOcpSolver
 
-from .config.ctrl_proper_accel_z_ang_vel_3d_cfg import (
-    CtrlProperAccelZAngVel3DConfig,
+from .config.ocp_proposed_mpc_cfg import ocp_proposed_mpc_cfg, MpcConfig
+from .config.sub_controllers import (
     PDControllerConfig,
     PIDAntiWindupConfig,
     QpMixerConfig,
@@ -27,300 +28,18 @@ from .config.ctrl_proper_accel_z_ang_vel_3d_cfg import (
     DEFAULT_PID_CONFIG,
     DEFAULT_QP_MIXER_CONFIG,
 )
-from .config.ocp_proposed_mpc_cfg import ocp_proposed_mpc_cfg, MpcConfig
+from .sub_controllers import (
+    PDController,
+    PIDAntiWindupController,
+    QpMixer,
+)
 from .trajectory_loader import TrajectoryReference
 
 VELOCITY_EPSILON = 0.1
 
 
 # =============================================================================
-# PD Controller (for proper acceleration tracking)
-# =============================================================================
-
-class PDController:
-    """PD controller for tracking proper acceleration."""
-
-    def __init__(self, config: PDControllerConfig):
-        self._config = config
-        self._Kp = config.Kp
-        self._Kd = config.Kd
-        self._output_min = config.output_min
-        self._output_max = config.output_max
-
-        # State
-        self._prev_error = np.zeros(3)
-        self._dt = 0.02  # Default control period
-
-    def compute(
-        self,
-        desired: np.ndarray,
-        measured: np.ndarray,
-        dt: float | None = None,
-    ) -> float:
-        """
-        Compute PD control output.
-
-        Args:
-            desired: Desired proper acceleration (3D)
-            measured: Measured proper acceleration (3D)
-            dt: Time step (uses default if None)
-
-        Returns:
-            Total thrust command (scalar)
-        """
-        if dt is None:
-            dt = self._dt
-
-        error = desired - measured
-
-        # PD control law
-        p_term = self._Kp * np.sum(error)  # Sum to get total thrust
-        d_term = self._Kd * np.sum(error - self._prev_error) / dt
-
-        output = p_term + d_term
-
-        # Clamp output
-        output = np.clip(output, self._output_min, self._output_max)
-
-        # Update state
-        self._prev_error = error.copy()
-        self._dt = dt
-
-        return output
-
-
-# =============================================================================
-# PID Controller with Anti-Windup (for angular velocity tracking)
-# =============================================================================
-
-class PIDAntiWindupController:
-    """PID controller with anti-windup for tracking angular velocity."""
-
-    def __init__(self, config: PIDAntiWindupConfig):
-        self._config = config
-        self._Kp = config.Kp
-        self._Ki = config.Ki
-        self._Kd = config.Kd
-        self._integral_max = config.integral_max
-        self._integral_min = config.integral_min
-        self._output_min = config.output_min
-        self._output_max = config.output_max
-        self._dt = config.dt
-
-        # State
-        self._integral = np.zeros(3)
-        self._prev_error = np.zeros(3)
-
-    def compute(
-        self,
-        desired: np.ndarray,
-        measured: np.ndarray,
-        dt: float | None = None,
-    ) -> np.ndarray:
-        """
-        Compute PID control output with anti-windup.
-
-        Args:
-            desired: Desired angular velocity (3D)
-            measured: Measured angular velocity (3D)
-            dt: Time step (uses config default if None)
-
-        Returns:
-            Torque command (3D)
-        """
-        if dt is None:
-            dt = self._dt
-
-        error = desired - measured
-
-        # Proportional term
-        p_term = self._Kp * error
-
-        # Integral term with anti-windup
-        self._integral += error * dt
-        self._integral = np.clip(self._integral, self._integral_min, self._integral_max)
-        i_term = self._Ki * self._integral
-
-        # Derivative term
-        d_term = self._Kd * (error - self._prev_error) / dt
-
-        # Compute output
-        output = p_term + i_term + d_term
-
-        # Clamp output per axis
-        output = np.clip(output, self._output_min, self._output_max)
-
-        # Update state
-        self._prev_error = error.copy()
-
-        return output
-
-    def reset(self):
-        """Reset controller state."""
-        self._integral = np.zeros(3)
-        self._prev_error = np.zeros(3)
-
-
-# =============================================================================
-# QP Mixer (moved from model/ctrl/qp_mixer.py)
-# =============================================================================
-
-class QpMixer:
-    """
-    QP-based control mixer for quadrotor control allocation.
-
-    Converts desired total thrust and torques into individual motor commands
-    while respecting motor saturation and rate constraints.
-
-    Aerodynamic model-agnostic: works with any aerodynamic model.
-    """
-
-    def __init__(self, config: QpMixerConfig):
-        """
-        Initialize the QP mixer.
-
-        Args:
-            config: Mixer configuration object
-        """
-        self._config = config
-        self._build_allocation_matrix()
-        self._setup_qp_solver()
-
-    def _build_allocation_matrix(self):
-        """Build the control allocation matrix Γ (4x4)."""
-        dx, dy, c_tau = self._config.dx, self._config.dy, self._config.c_tau
-
-        # Γ maps motor thrusts to [F_total, τ_roll, τ_pitch, τ_yaw]
-        self._Gamma = cs.DM([
-            [1, 1, 1, 1],  # F_total
-            [-dy, -dy, dy, dy],  # τ_roll
-            [-dx, dx, dx, -dx],  # τ_pitch
-            [-c_tau, c_tau, -c_tau, c_tau],  # τ_yaw
-        ])
-
-    def _setup_qp_solver(self):
-        """
-        Setup the CasADi QP solver.
-
-        Creates symbolic QP problem:
-            minimize: 0.5*z'Hz + g'z
-            subject to: lb ≤ z ≤ ub
-                      A_eq*z = b_eq
-        where z = [u; du]
-        """
-        # Decision variables: z = [u; du]
-        u = cs.SX.sym("u", 4)  # Motor thrusts
-        du = cs.SX.sym("du", 4)  # Motor rates
-        z = cs.vertcat(u, du)
-
-        # Parameters (vary at each solve)
-        tau_des = cs.SX.sym("tau_des", 4)  # Desired [F, τ_roll, τ_pitch, τ_yaw]
-        u_prev = cs.SX.sym("u_prev", 4)  # Previous motor commands
-
-        # Cost function
-        cfg = self._config
-        W = cs.DM(cfg.W_tracking)
-        R = cfg.R_prev_cmd
-
-        # Tracking error: ||Γu - τ_des||²_W
-        tau_achieved = self._Gamma @ u
-        tau_error = tau_des - tau_achieved
-        tracking_cost = cs.dot(tau_error, (W @ tau_error))
-
-        # Command smoothness: ||u - u_prev||²_R
-        smoothness_cost = R * cs.sum1((u - u_prev) ** 2)
-
-        # Total cost
-        cost = 0.5 * (tracking_cost + smoothness_cost)
-
-        # Constraints: motor limits and rate limits
-        lb = cs.vertcat(
-            cs.DM(cfg.u_min * np.ones(4)),
-            cs.DM(cfg.du_min * np.ones(4))
-        )
-        ub = cs.vertcat(
-            cs.DM(cfg.u_max * np.ones(4)),
-            cs.DM(cfg.du_max * np.ones(4))
-        )
-
-        # Create NLPSolver (more reliable than qpsol)
-        p = cs.vertcat(tau_des, u_prev)  # Parameters
-        nlp = {
-            'x': z,
-            'p': p,  # Parameters: [tau_desired, u_prev]
-            'f': cost,
-        }
-
-        opts = {
-            'print_time': False,
-            'ipopt': {
-                'print_level': 0,
-                'tol': 1e-6,
-                'max_iter': 100,
-            }
-        }
-
-        # Create solver (using CasADi's nlpsol with ipopt)
-        self._solver = cs.nlpsol(
-            'mixer_solver',
-            'ipopt',
-            nlp,
-            opts
-        )
-
-        # Store bounds for use during solve
-        self._lb = lb
-        self._ub = ub
-
-    def mix(
-        self,
-        tau_desired: np.ndarray,
-        u_prev: np.ndarray | None = None
-    ) -> tuple[np.ndarray, np.ndarray, dict]:
-        """
-        Compute motor commands from desired control inputs.
-
-        Args:
-            tau_desired: Desired [F_total, τ_roll, τ_pitch, τ_yaw]
-            u_prev: Previous motor commands (defaults to equal distribution)
-
-        Returns:
-            u: Motor thrusts [m1, m2, m3, m4]
-            du: Motor rates [dm1, dm2, dm3, dm4]
-            info: Dictionary with solver status, statistics
-        """
-        if u_prev is None:
-            # Initialize with equal thrust distribution
-            u_prev = np.ones(4) * tau_desired[0] / 4.0
-
-        # Initial guess: equal thrust distribution
-        z_init = np.concatenate([
-            np.ones(4) * tau_desired[0] / 4.0,  # u
-            np.zeros(4),  # du
-        ])
-
-        # Solve NLP with parameters
-        sol = self._solver(
-            x0=z_init,
-            lbx=self._lb,
-            ubx=self._ub,
-            p=cs.vertcat(cs.DM(tau_desired), cs.DM(u_prev)),
-        )
-
-        z_opt = sol['x'].full().flatten()
-        u = z_opt[:4]
-        du = z_opt[4:]
-
-        info = {
-            'solver_status': sol.get('return_status', 'unknown'),
-            'cost': float(sol['f']),
-        }
-
-        return u, du, info
-
-
-# =============================================================================
-# Angular Velocity Controller (main controller combining all components)
+# MPC with Angular Velocity Controller (main controller combining all components)
 # =============================================================================
 
 class CtrlProperAccelZAngVel3D:
@@ -578,40 +297,3 @@ class CtrlProperAccelZAngVel3D:
         self._u_prev = np.zeros(4)
         self._pid_ang_vel.reset()
         self._solver.reset()
-
-    # =========================================================================
-    # Factory Classmethod
-    # =========================================================================
-
-    @classmethod
-    def create(
-        cls,
-        trajectory: TrajectoryReference,
-        is_hover_task: bool = False,
-        pd_config: PDControllerConfig | None = None,
-        pid_config: PIDAntiWindupConfig | None = None,
-        mixer_config: QpMixerConfig | None = None,
-        mpc_config: MpcConfig | None = None,
-    ) -> "CtrlProperAccelZAngVel3D":
-        """
-        Factory classmethod to create a CtrlProperAccelZAngVel3D.
-
-        Args:
-            trajectory: TrajectoryReference object
-            is_hover_task: If True, hover at initial reference
-            pd_config: PD controller configuration (uses default if None)
-            pid_config: PID controller configuration (uses default if None)
-            mixer_config: QP mixer configuration (uses default if None)
-            mpc_config: MPC configuration (uses high_performance default if None)
-
-        Returns:
-            Configured CtrlProperAccelZAngVel3D instance
-        """
-        return cls(
-            trajectory=trajectory,
-            is_hover_task=is_hover_task,
-            pd_config=pd_config,
-            pid_config=pid_config,
-            mixer_config=mixer_config,
-            mpc_config=mpc_config,
-        )

@@ -99,6 +99,7 @@ class ProposedNmpcOrchestrator(Node):
 
         self.get_logger().info("ProposedNmpcOrchestrator initialized")
         self.get_logger().info(f"  Sim dt: {sim_dt}s")
+        self.get_logger().info(f"  Ctrl dt: {self.controller.ctrl_dt}s")
         self.get_logger().info(f"  Real-time factor: {real_time_factor}x")
         self.get_logger().info(f"  Mode: {'Hover' if self.is_hover_task else 'Tracking'}")
 
