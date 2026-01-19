@@ -189,7 +189,7 @@ class CtrlProperAccelZAngVel3D:
         self._u_prev = motor_thrusts.copy()
         
         #<HARD
-        #task: collect data to plot, 500 steps, plt.show(), exit util user closes the plot window
+        #task: collect data to plot, 2000 steps, plt.show(), exit util user closes the plot window
         #Fig1. subplot tot_thrust_cmd vs sum of motor_thrusts
         #Fig1. subplot ang_vel_des vs ang_vel_meas
         #Fig1. subplot accel_p_des vs acc_p_meas[2]

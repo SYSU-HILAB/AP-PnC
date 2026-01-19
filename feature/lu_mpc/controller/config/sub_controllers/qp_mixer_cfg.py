@@ -25,29 +25,13 @@ class QpMixerConfig:
     dt: float = 0.02  # Time step for motor dynamics (s)
 
     # QP weights (tunable for performance)
-    W_tracking: np.ndarray = field(default_factory=lambda: np.eye(4))
+    W_tracking: np.ndarray = field(default_factory=lambda: np.diag([1.0, 1.0, 5.0, 5.0]))
     R_prev_cmd: float = 0.1  # Weight on command smoothness
 
     @classmethod
     def create_default(cls) -> QpMixerConfig:
         """Create default mixer configuration."""
         return cls()
-
-    @classmethod
-    def create_aggressive(cls) -> QpMixerConfig:
-        """Create configuration for aggressive maneuvering."""
-        return cls(
-            W_tracking=np.diag([10.0, 5.0, 5.0, 1.0]),  # Prioritize thrust
-            R_prev_cmd=0.01,  # Allow faster changes
-        )
-
-    @classmethod
-    def create_smooth(cls) -> QpMixerConfig:
-        """Create configuration for smooth, efficient flight."""
-        return cls(
-            W_tracking=np.diag([1.0, 1.0, 1.0, 1.0]),
-            R_prev_cmd=1.0,  # Strong smoothness
-        )
 
 
 DEFAULT_QP_MIXER_CONFIG = QpMixerConfig()

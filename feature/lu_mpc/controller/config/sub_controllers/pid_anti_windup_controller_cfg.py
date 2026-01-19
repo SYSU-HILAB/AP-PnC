@@ -10,9 +10,9 @@ import numpy as np
 class PIDAntiWindupConfig:
     """Configuration for PID controller with anti-windup for angular velocity."""
 
-    Kp: np.ndarray = field(default_factory=lambda: np.array([0.2, 0.2, 0.2]))  # Proportional gains
-    Ki: np.ndarray = field(default_factory=lambda: np.array([0.05, 0.05, 0.05]))  # Integral gains
-    Kd: np.ndarray = field(default_factory=lambda: np.array([0.01, 0.01, 0.01]))  # Derivative gains
+    Kp: np.ndarray = field(default_factory=lambda: np.array([0.2, 0.4, 0.2]))  # Proportional gains
+    Ki: np.ndarray = field(default_factory=lambda: np.array([0.05, 0.1, 0.05]))  # Integral gains
+    Kd: np.ndarray = field(default_factory=lambda: np.array([0.001, 0.001, 0.001]))  # Derivative gains
 
     # Anti-windup settings
     integral_max: float = 0.1  # Maximum integral error (anti-windup)
