@@ -10,7 +10,7 @@ from acados_template import AcadosOcpSolver
 from .config.ocp_proposed_mpc_cfg import MpcConfig
 from .config.ocp_err_state_cfg import ocp_err_state_cfg
 from .trajectory_loader import TrajectoryReference
-from feature.utils.math_utils import (
+from ...utils.math_utils import (
     quat_multiply,
     quat_to_rotmat,
 )
@@ -234,6 +234,15 @@ class ErrStateLmpcController:
         params = self._compute_reference_parameters(ref_state)
         self.solver.set(stage_idx, "p", params)
 
+    def _get_quaternion_at_stage(self, stage_idx: int) -> np.ndarray:
+        """Get quaternion for a given MPC stage index."""
+        if self.trajectory.quad_df_phi_quat is None:
+            return np.array([1.0, 0.0, 0.0, 0.0])
+        idx = (self._cur_idx_ref + stage_idx * int(self.ctrl_dt / self._sim_dt)) % len(
+            self.trajectory.time
+        )
+        return self.trajectory.quad_df_phi_quat[idx]
+
     def _set_parameters_for_horizon(self):
         """Set time-varying parameters for all stages in the MPC horizon."""
         if self._is_hover_task:
@@ -255,9 +264,7 @@ class ErrStateLmpcController:
                 ref_state_i = {
                     "position": ref["position"][i],
                     "velocity": ref["velocity"][i],
-                    "quaternion": self.trajectory.quad_df_phi_quat[
-                        (self._cur_idx_ref + i * int(self.ctrl_dt / self._sim_dt)) % len(self.trajectory.time)
-                    ] if self.trajectory.quad_df_phi_quat is not None else np.array([1.0, 0.0, 0.0, 0.0]),
+                    "quaternion": self._get_quaternion_at_stage(i),
                 }
                 self._set_parameters_for_stage(i, ref_state_i)
 

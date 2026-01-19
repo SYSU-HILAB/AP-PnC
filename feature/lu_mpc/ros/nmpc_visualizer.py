@@ -35,7 +35,7 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Vector3
 from std_msgs.msg import Float32MultiArray
 
-from feature.utils.ros_visualizer import (
+from ...utils.ros_visualizer import (
     make_topic,
     compute_reference_sample_times,
     numpy_to_point,
@@ -74,7 +74,7 @@ class NmpcVisualizer:
             Odometry, make_topic("odometry"), qos_profile
         )
         self.aero_pub = node.create_publisher(
-            Vector3, make_topic("aero_forces"), 10
+            Vector3, make_topic("aero_forces"), qos_profile
         )
         self.ref_path_pub = node.create_publisher(
             Path, make_topic("reference_path"), qos_transient_local

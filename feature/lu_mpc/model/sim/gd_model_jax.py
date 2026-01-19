@@ -49,6 +49,22 @@ def deg2rad_single(deg):
 deg2rad_batch = jax.vmap(deg2rad_single)
 
 
+def _regression_batch(reg_single, alpha, beta):
+    """Apply regression function to scalar, 1D, or 2D inputs."""
+    if alpha.ndim == 0:
+        return reg_single(alpha, beta)
+    if alpha.ndim == 1:
+        return jax.vmap(reg_single, in_axes=(0, 0))(alpha, beta)
+    if alpha.ndim == 2:
+        return jax.vmap(jax.vmap(reg_single, in_axes=(0, 0)), in_axes=(0, 0))(
+            alpha, beta
+        )
+    raise ValueError(
+        "Unsupported alpha dimension "
+        f"{alpha.ndim} for alpha shape {alpha.shape} and beta shape {beta.shape}"
+    )
+
+
 @jax.jit
 def reg_CL_single(alpha, beta):
     """Single regression calculation for CL coefficient"""
@@ -105,17 +121,7 @@ def reg_CL_single(alpha, beta):
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_CL_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
-    # Handle different input shapes
-    if alpha.ndim == 0:  # Single values
-        return reg_CL_single(alpha, beta)
-    elif alpha.ndim == 1:  # 1D arrays
-        return jax.vmap(reg_CL_single, in_axes=(0, 0))(alpha, beta)
-    elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_CL_single, in_axes=(0, 0)), in_axes=(0, 0))(
-            alpha, beta
-        )
-    else:
-        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+    return _regression_batch(reg_CL_single, alpha, beta)
 
 
 @jax.jit
@@ -174,17 +180,7 @@ def reg_CD_single(alpha, beta):
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_CD_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
-    # Handle different input shapes
-    if alpha.ndim == 0:  # Single values
-        return reg_CD_single(alpha, beta)
-    elif alpha.ndim == 1:  # 1D arrays
-        return jax.vmap(reg_CD_single, in_axes=(0, 0))(alpha, beta)
-    elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_CD_single, in_axes=(0, 0)), in_axes=(0, 0))(
-            alpha, beta
-        )
-    else:
-        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+    return _regression_batch(reg_CD_single, alpha, beta)
 
 
 @jax.jit
@@ -224,17 +220,7 @@ def reg_CY_single(alpha, beta):
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_CY_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
-    # Handle different input shapes
-    if alpha.ndim == 0:  # Single values
-        return reg_CY_single(alpha, beta)
-    elif alpha.ndim == 1:  # 1D arrays
-        return jax.vmap(reg_CY_single, in_axes=(0, 0))(alpha, beta)
-    elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_CY_single, in_axes=(0, 0)), in_axes=(0, 0))(
-            alpha, beta
-        )
-    else:
-        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+    return _regression_batch(reg_CY_single, alpha, beta)
 
 
 @jax.jit
@@ -283,17 +269,7 @@ def reg_Cll_single(alpha, beta):
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_Cll_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
-    # Handle different input shapes
-    if alpha.ndim == 0:  # Single values
-        return reg_Cll_single(alpha, beta)
-    elif alpha.ndim == 1:  # 1D arrays
-        return jax.vmap(reg_Cll_single, in_axes=(0, 0))(alpha, beta)
-    elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_Cll_single, in_axes=(0, 0)), in_axes=(0, 0))(
-            alpha, beta
-        )
-    else:
-        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+    return _regression_batch(reg_Cll_single, alpha, beta)
 
 
 @jax.jit
@@ -346,17 +322,7 @@ def reg_Cm_single(alpha, beta):
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_Cm_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
-    # Handle different input shapes
-    if alpha.ndim == 0:  # Single values
-        return reg_Cm_single(alpha, beta)
-    elif alpha.ndim == 1:  # 1D arrays
-        return jax.vmap(reg_Cm_single, in_axes=(0, 0))(alpha, beta)
-    elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_Cm_single, in_axes=(0, 0)), in_axes=(0, 0))(
-            alpha, beta
-        )
-    else:
-        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+    return _regression_batch(reg_Cm_single, alpha, beta)
 
 
 @jax.jit
@@ -397,17 +363,7 @@ def reg_Cn_single(alpha, beta):
 # Create flexible batch function that handles 1D and 2D inputs
 def reg_Cn_batch(alpha, beta):
     """Flexible batch function that works with both 1D and 2D inputs"""
-    # Handle different input shapes
-    if alpha.ndim == 0:  # Single values
-        return reg_Cn_single(alpha, beta)
-    elif alpha.ndim == 1:  # 1D arrays
-        return jax.vmap(reg_Cn_single, in_axes=(0, 0))(alpha, beta)
-    elif alpha.ndim == 2:  # 2D meshgrids
-        return jax.vmap(jax.vmap(reg_Cn_single, in_axes=(0, 0)), in_axes=(0, 0))(
-            alpha, beta
-        )
-    else:
-        raise ValueError(f"Unsupported alpha dimension: {alpha.ndim}")
+    return _regression_batch(reg_Cn_single, alpha, beta)
 
 
 @jax.jit
