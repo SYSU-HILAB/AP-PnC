@@ -7,7 +7,7 @@ and controller components, and delegates visualization to NmpcVisualizer.
 
 Components:
     - GdModelSimulator: CasADi-based dynamics simulator
-    - ProposedNmpcController: NMPC controller for trajectory tracking
+    - CtrlProperAccelZAngVel3D: NMPC controller for trajectory tracking
     - NmpcVisualizer: Pure visualization publisher for ROS topics
 
 Topics Published (via NmpcVisualizer):
@@ -18,7 +18,7 @@ Topics Published (via NmpcVisualizer):
     - /nmpc/motor_thrusts: Float32MultiArray - Motor thrust commands [N]
 
 Dependencies:
-    - feature.lu_mpc.controller.ctrl_proposed_nmpc: NMPC controller
+    - feature.lu_mpc.controller.ctrl_proper_accel_z_ang_vel_3d: NMPC controller
     - feature.lu_mpc.model.sim.sim_gd_model: CasADi simulator
     - feature.lu_mpc.controller.trajectory_loader: CSV trajectory loading
     - feature.lu_mpc.ros.nmpc_visualizer: ROS visualization publisher
@@ -51,7 +51,7 @@ from ..controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
-from ..controller.ctrl_proposed_nmpc import ProposedNmpcController
+from ..controller.ctrl_proper_accel_z_ang_vel_3d import CtrlProperAccelZAngVel3D
 from .nmpc_visualizer import NmpcVisualizer
 from ...utils.ros_viz_utils import sleep_period
 
@@ -122,7 +122,7 @@ class ProposedNmpcOrchestrator(Node):
         sim_config = GdSimConfig(sim_dt=self.sim_dt)
         self.simulator = GdModelSimulator.create_gd_simulator(init_state, sim_config)
 
-        self.controller = ProposedNmpcController(
+        self.controller = CtrlProperAccelZAngVel3D(
             self.trajectory,
             is_hover_task=self.is_hover_task,
             ctrl_dt=self.ctrl_dt
