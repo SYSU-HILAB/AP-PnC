@@ -9,13 +9,40 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
 from matplotlib.collections import LineCollection
+
+
+def find_latest_planning_csv(artifacts_dir: str | Path | None = None) -> str | None:
+    """
+    Find the latest planning CSV file in the artifacts directory.
+
+    Args:
+        artifacts_dir: Path to artifacts/simulations/temp_data.
+                      If None, searches relative to this file's location.
+
+    Returns:
+        Path to the latest planning CSV file, or None if not found.
+    """
+    if artifacts_dir is None:
+        repo_root = Path(__file__).parent.parent.parent
+        artifacts_dir = repo_root / "artifacts" / "simulations" / "temp_data"
+    else:
+        artifacts_dir = Path(artifacts_dir)
+
+    if not artifacts_dir.exists():
+        return None
+
+    planning_files = list(artifacts_dir.glob("planning_*.csv"))
+    if not planning_files:
+        return None
+
+    latest_file = max(planning_files, key=lambda p: p.stat().st_mtime)
+    return str(latest_file)
 
 
 def validate_input_data(csv_path: str) -> pd.DataFrame:
@@ -40,19 +67,17 @@ def validate_routes_data(csv_path: str) -> pd.DataFrame:
     required_columns = ["pos_x", "pos_y"]
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
-        raise ValueError(
-            f"Missing routes data: required columns {missing_columns} not found"
-        )
+        raise ValueError(f"Missing routes data: required columns {missing_columns} not found")
     return df
 
 
-def load_config(config_path: Optional[Path]) -> dict:
+def load_config(config_path: Path | None) -> dict:
     """Load the subset of planning parameters needed for visualization."""
     if not config_path or not config_path.exists():
         params = {}
     else:
         try:
-            with open(config_path, "r", encoding="utf-8") as file:
+            with open(config_path, encoding="utf-8") as file:
                 config = yaml.safe_load(file)
             params = config.get("/global_planning_node", {}).get("ros__parameters", {})
         except Exception as err:  # pragma: no cover - defensive logging
@@ -88,7 +113,7 @@ def create_visualization(
     df: pd.DataFrame,
     config: dict,
     output_path: Path,
-    routes_df: Optional[pd.DataFrame] = None,
+    routes_df: pd.DataFrame | None = None,
 ) -> Path:
     """Render the XY trajectory with velocity-based coloring."""
     vel_magnitude = calculate_velocity_magnitude(df)
@@ -114,10 +139,18 @@ def create_visualization(
             label="Waypoints",
         )
 
-    x_min = min(df["pos_x"].min(), routes_df["pos_x"].min() if routes_df is not None else float("inf"))
-    x_max = max(df["pos_x"].max(), routes_df["pos_x"].max() if routes_df is not None else float("-inf"))
-    y_min = min(df["pos_y"].min(), routes_df["pos_y"].min() if routes_df is not None else float("inf"))
-    y_max = max(df["pos_y"].max(), routes_df["pos_y"].max() if routes_df is not None else float("-inf"))
+    x_min = min(
+        df["pos_x"].min(), routes_df["pos_x"].min() if routes_df is not None else float("inf")
+    )
+    x_max = max(
+        df["pos_x"].max(), routes_df["pos_x"].max() if routes_df is not None else float("-inf")
+    )
+    y_min = min(
+        df["pos_y"].min(), routes_df["pos_y"].min() if routes_df is not None else float("inf")
+    )
+    y_max = max(
+        df["pos_y"].max(), routes_df["pos_y"].max() if routes_df is not None else float("-inf")
+    )
     x_padding = (x_max - x_min) * 0.05
     y_padding = (y_max - y_min) * 0.05
 
@@ -143,9 +176,9 @@ def create_visualization(
 
 def plot_trajectory_from_csv(
     trajectory_csv: Path,
-    routes_csv: Optional[Path] = None,
-    config_yaml: Optional[Path] = None,
-    output_path: Optional[Path] = None,
+    routes_csv: Path | None = None,
+    config_yaml: Path | None = None,
+    output_path: Path | None = None,
 ) -> Path:
     """End-to-end helper used by CLI tools to render trajectories."""
     df = validate_input_data(str(trajectory_csv))
@@ -174,8 +207,8 @@ def generate_output_filename(config: dict, file_extension: str = "png") -> str:
 
 def generate_visualization_outputs(
     trajectory_csv: Path,
-    routes_csv: Optional[Path],
-    config_yaml: Optional[Path],
+    routes_csv: Path | None,
+    config_yaml: Path | None,
     output_dir: Path,
 ) -> dict:
     """

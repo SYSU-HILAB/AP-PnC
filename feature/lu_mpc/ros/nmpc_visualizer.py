@@ -35,7 +35,7 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Vector3
 from std_msgs.msg import Float32MultiArray
 
-from ...utils.ros_visualizer import (
+from ...utils.ros_viz_utils import (
     make_topic,
     compute_reference_sample_times,
     numpy_to_point,

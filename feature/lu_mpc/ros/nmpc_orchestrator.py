@@ -53,7 +53,7 @@ from ..controller.trajectory_loader import (
 )
 from ..controller.ctrl_proposed_nmpc import ProposedNmpcController
 from .nmpc_visualizer import NmpcVisualizer
-from ...utils.ros_visualizer import sleep_period
+from ...utils.ros_viz_utils import sleep_period
 
 
 class ProposedNmpcOrchestrator(Node):

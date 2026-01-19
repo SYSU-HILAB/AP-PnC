@@ -50,7 +50,7 @@ from ..controller.trajectory_loader import (
     load_trajectory_csv,
 )
 from ...utils.math_utils import right_quat_multiply, wing_frd_to_quad_flu
-from ...utils.ros_visualizer import (
+from ...utils.ros_viz_utils import (
     compute_reference_sample_times,
     numpy_to_point,
     numpy_to_vector3,

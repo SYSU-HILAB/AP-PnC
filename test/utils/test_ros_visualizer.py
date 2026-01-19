@@ -1,5 +1,5 @@
 """
-Unit tests for feature.utils.ros_visualizer module.
+Unit tests for feature.utils.ros_viz_utils module.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ import pytest
 from geometry_msgs.msg import Point, Vector3, Quaternion, PoseStamped
 from nav_msgs.msg import Path
 
-from feature.utils.ros_visualizer import (
+from feature.utils.ros_viz_utils import (
     make_topic,
     get_topic_prefix,
     numpy_to_point,
