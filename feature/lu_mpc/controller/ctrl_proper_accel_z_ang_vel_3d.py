@@ -34,7 +34,7 @@ from .sub_controllers import (
     QpMixer,
 )
 from .trajectory_loader import TrajectoryReference
-
+import sys
 VELOCITY_EPSILON = 0.1
 
 
@@ -163,6 +163,7 @@ class CtrlProperAccelZAngVel3D:
 
         if status != 0:
             print(f"Warning: NMPC solver failed with status {status}")
+            sys.exit(1)
             return np.zeros(self._nu)
 
         # 5. Extract desired values from predicted state x[1]

@@ -66,17 +66,3 @@ class CtrlProperAccelZAngVel3DConfig:
             mpc_config=MpcConfig.create_high_performance(),
             trajectory=trajectory,
         )
-
-    @classmethod
-    def create_aggressive(cls, trajectory: TrajectoryReference) -> CtrlProperAccelZAngVel3DConfig:
-        """Create aggressive tracking configuration."""
-        from .ocp_proposed_mpc_cfg import MpcConfig
-
-        return cls(
-            mpc_config=MpcConfig.create_high_performance(),
-            trajectory=trajectory,
-            pd_config=PDControllerConfig.create_aggressive(),
-            pid_config=PIDAntiWindupConfig.create_high_gain(),
-            qp_mixer_config=QpMixerConfig.create_aggressive(),
-        )
-
