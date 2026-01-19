@@ -12,7 +12,7 @@ from casadi import SX, vertcat
 import casadi as cs
 import numpy as np
 
-from ...utils.math_utils import (
+from ....utils.math_utils import (
     inverse_rotate_vector,
     quaternion_to_rotation_matrix,
     rotate_vector,

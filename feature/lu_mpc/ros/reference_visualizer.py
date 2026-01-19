@@ -49,8 +49,8 @@ from ..controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
-from feature.utils.math_utils import right_quat_multiply, wing_frd_to_quad_flu
-from feature.utils.ros_visualizer import (
+from ...utils.math_utils import right_quat_multiply, wing_frd_to_quad_flu
+from ...utils.ros_visualizer import (
     compute_reference_sample_times,
     numpy_to_point,
     numpy_to_vector3,
