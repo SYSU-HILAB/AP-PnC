@@ -173,11 +173,6 @@ class CtrlProperAccelZAngVel3D:
         u_nmpc = x_next[13:17]  # Motor thrusts
 
         accel_p_des = (np.sum(u_nmpc)) / 2.0
-        #<HARD
-        #1. add counter, everytime the compute_control is called, counter +=1
-        #2. print the counter value 
-        
-        #>
 
         # 6. PD controller for proper acceleration → tot_thrust_cmd
         incre_thrust = self._pd_accel.compute(accel_p_des, acc_p_meas[2])
@@ -192,6 +187,17 @@ class CtrlProperAccelZAngVel3D:
         
         # Update previous command
         self._u_prev = motor_thrusts.copy()
+        
+        #<HARD
+        #task: collect data to plot, 500 steps, plt.show(), exit util user closes the plot window
+        #Fig1. subplot tot_thrust_cmd vs sum of motor_thrusts
+        #Fig1. subplot ang_vel_des vs ang_vel_meas
+        #Fig1. subplot accel_p_des vs acc_p_meas[2]
+        #Fig1. subplot motor_thrusts
+        #Fig2. subplot torque_cmd vs generated torque from motor_thrusts (3x1)
+        #use import numpy as np_hard
+        
+        #>
 
         # Increment reference index after solving (only in tracking mode)
         if not self._is_hover_task:
