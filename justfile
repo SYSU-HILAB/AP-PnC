@@ -268,7 +268,7 @@ viz-traj-tracking config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
     export ACADOS_SOURCE_DIR="${ACADOS_SOURCE_DIR:-/home/rec/AP-PnC/mpc_framework}"
     export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
-    ./pyp test/lu_mpc/ros/user_test_traj_tracking_viz.py --rviz-config {{config}} --hover
+    ./pyp test/lu_mpc/ros/user_test_traj_tracking_viz.py --rviz-config {{config}}
 
 show-odom config="feature/lu_mpc/ros/config/plotjuggler_odometry_xyz.xml":
     #!/usr/bin/env bash

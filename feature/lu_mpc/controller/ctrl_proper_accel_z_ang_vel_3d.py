@@ -142,11 +142,20 @@ class CtrlProperAccelZAngVel3D:
 
         Args:
             sim_state: GD simulator state (17D) [p(3), v(3), r(3), q(4), u(4)]
+            acc_p_meas: Proper acceleration measurement (3D) in body FLU frame
 
         Returns:
             Motor thrust rates (du) as (4,) array
         """
-        # 1. Run NMPC solver to get predicted state
+        # 1. Update cz_state estimate from acceleration measurement
+        v = sim_state[3:6]  # Velocity (world frame)
+        V_norm = np.linalg.norm(v)
+        if V_norm > VELOCITY_EPSILON:
+            self._cz_state = -acc_p_meas[0] / (V_norm ** 2)
+        else:
+            self._cz_state = 0.0
+
+        # 2. Run NMPC solver to get predicted state
         mpc_state = self._est_mpc_state(sim_state)
 
         # 2. Initialize solver with parameters and initial state
@@ -172,11 +181,11 @@ class CtrlProperAccelZAngVel3D:
         ang_vel_des = x_next[6:9]  # Angular rates (r)
         u_nmpc = x_next[13:17]  # Motor thrusts
 
-        accel_p_des = (np.sum(u_nmpc)) / 2.0
+        accel_pz_des = (np.sum(u_nmpc)) / 2.0
 
         # 6. PD controller for proper acceleration → tot_thrust_cmd
-        incre_thrust = self._pd_accel.compute(accel_p_des, acc_p_meas[2])
-        tot_thrust_cmd = accel_p_des * 2.0 + incre_thrust
+        incre_thrust = self._pd_accel.compute(accel_pz_des, acc_p_meas[2])
+        tot_thrust_cmd = accel_pz_des * 2.0 + incre_thrust
         # 7. PID controller for angular velocity → 3d_torque_cmd
         ang_vel_meas = sim_state[6:9]  # Angular rates from sim state
         torque_cmd = self._pid_ang_vel.compute(ang_vel_des, ang_vel_meas)
@@ -190,13 +199,11 @@ class CtrlProperAccelZAngVel3D:
         
         #<HARD
         #task: collect data to plot, 2000 steps, plt.show(), exit util user closes the plot window
-        #Fig1. subplot tot_thrust_cmd vs sum of motor_thrusts
-        #Fig1. subplot ang_vel_des vs ang_vel_meas
-        #Fig1. subplot accel_p_des vs acc_p_meas[2]
-        #Fig1. subplot motor_thrusts
-        #Fig2. subplot torque_cmd vs generated torque from motor_thrusts (3x1)
-        #use import numpy as np_hard
-        
+        #Fig1. subplot1 self.cz_state vs time
+        #Fig1. subplot2 acc_p_meas[0] vs time
+        #Fig1. subplot3 acc_p_meas[1] vs time
+        #Fig1. subplot4 acc_p_meas[2] vs time
+
         #>
 
         # Increment reference index after solving (only in tracking mode)
@@ -209,6 +216,9 @@ class CtrlProperAccelZAngVel3D:
     def _est_mpc_state(self, sim_state: np.ndarray) -> np.ndarray:
         """
         Map GD simulator state (17D) to NMPC state (18D).
+
+        The cz state is estimated from the acceleration measurement in compute_control()
+        (acc_p_meas[0] / V^2) and stored in self._cz_state.
 
         Args:
             sim_state: [p(3), v(3), r(3), q(4), motor_thrusts(4)] = 17D
