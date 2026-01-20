@@ -62,7 +62,7 @@ class ErrorStateLinearMpcConfig:
     nodes: int = 5
 
     @property
-    def T_horizon(self) -> float:
+    def T(self) -> float:
         """Prediction horizon duration."""
         return self.ctrl_dt * self.nodes
 
@@ -171,7 +171,7 @@ def ocp_err_state_cfg(cfg: ErrorStateLinearMpcConfig) -> AcadosOcp:
 
     # Dimensions and horizon
     ocp.dims.N = cfg.nodes
-    ocp.solver_options.tf = cfg.T_horizon
+    ocp.solver_options.tf = cfg.T
 
     # Initial state constraint (default is zero)
     ocp.constraints.x0 = np.zeros((nx))

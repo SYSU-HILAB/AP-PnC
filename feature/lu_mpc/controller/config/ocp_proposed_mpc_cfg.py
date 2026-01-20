@@ -2,8 +2,7 @@
 MPC configuration and OCP builder for the proposed lu_mpc controller.
 
 This module contains:
-- ControlConfig: Basic controller timing configuration
-- ProposedMpcConfig: MPC parameters (cost weights, constraints, etc.)
+- ProposedMpcConfig: MPC parameters (cost weights, constraints, timing, etc.)
 - ocp_proposed_mpc_cfg: Function that builds the ACADOS OCP
 """
 
@@ -20,26 +19,12 @@ from dataclasses import dataclass, field
 # =============================================================================
 
 @dataclass
-class ControlConfig:
-    """Basic controller timing configuration."""
-
-    ctrl_dt: float = 0.1
-    nodes: int = 10 # tuned for tracking in acados simulator.
-
-    @property
-    def control_frequency(self) -> float:
-        return 1.0 / self.ctrl_dt
-
-    @property
-    def T(self) -> float:
-        return self.ctrl_dt * self.nodes
-
-
-@dataclass
 class ProposedMpcConfig:
     """Cleaned up MPC configuration."""
 
-    control: ControlConfig = field(default_factory=ControlConfig)
+    # Timing configuration
+    ctrl_dt: float = 0.1
+    nodes: int = 10  # tuned for tracking in acados simulator.
     lb_r: np.ndarray = field(
         default_factory=lambda: np.array([-1.5, -2.5, -1.5], dtype=float)
     )
@@ -60,12 +45,12 @@ class ProposedMpcConfig:
     rU: np.ndarray = field(default_factory=lambda: np.array([0.001, 0.001, 0.001, 0.001]))
 
     @property
-    def nodes(self) -> int:
-        return self.control.nodes
+    def control_frequency(self) -> float:
+        return 1.0 / self.ctrl_dt
 
     @property
-    def T_horizon(self) -> float:
-        return self.control.T
+    def T(self) -> float:
+        return self.ctrl_dt * self.nodes
 
     @staticmethod
     def _yb_weights(qh: float, qv: float) -> np.ndarray:
@@ -78,7 +63,6 @@ class ProposedMpcConfig:
         return cls(qYB=cls._yb_weights(qh, qv))
 
 
-DEFAULT_CONTROL_CONFIG = ControlConfig()
 DEFAULT_MPC_CONFIG = ProposedMpcConfig()
 
 
@@ -144,7 +128,7 @@ def ocp_proposed_mpc_cfg(cfg: ProposedMpcConfig) -> AcadosOcp:
     ocp.translate_nls_cost_to_conl()
 
     ocp.dims.N = cfg.nodes
-    ocp.solver_options.tf = cfg.T_horizon
+    ocp.solver_options.tf = cfg.T
     ocp.solver_options.exact_hess_cost = False
 
     ocp.constraints.x0 = np.zeros((nx_aug))

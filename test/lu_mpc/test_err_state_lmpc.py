@@ -1,14 +1,14 @@
-"""Test script for ErrStateLmpcController."""
+"""Test script for ErrStateLmpcAngVelActuatedController."""
 
 import numpy as np
-from feature.lu_mpc.controller import load_trajectory_csv, TrajectoryReference, ErrStateLmpcController
+from feature.lu_mpc.controller import load_trajectory_csv, TrajectoryReference, ErrStateLmpcAngVelActuatedController
 from feature.lu_mpc.controller.config import ErrStateLmpcAngVelActuatedCfg
 
 
 def test_err_state_lmpc():
-    """Test basic functionality of ErrStateLmpcController."""
+    """Test basic functionality of ErrStateLmpcAngVelActuatedController."""
     print("=" * 60)
-    print("Testing ErrStateLmpcController")
+    print("Testing ErrStateLmpcAngVelActuatedController")
     print("=" * 60)
 
     # Load a test trajectory
@@ -21,7 +21,7 @@ def test_err_state_lmpc():
     # Create controller using factory method
     print("\nCreating controller...")
     config = ErrStateLmpcAngVelActuatedCfg.create_default(trajectory=trajectory)
-    controller = ErrStateLmpcController(config)
+    controller = ErrStateLmpcAngVelActuatedController(config)
 
     # Test with a sample state
     print("\nTesting compute_control()...")
@@ -64,7 +64,7 @@ def test_err_state_lmpc():
     print("\nTesting hover mode...")
     config_hover = ErrStateLmpcAngVelActuatedCfg.create_default(trajectory=trajectory)
     config_hover.is_hover_task = True
-    controller_hover = ErrStateLmpcController(config_hover)
+    controller_hover = ErrStateLmpcAngVelActuatedController(config_hover)
 
     control_hover = controller_hover.compute_control(sim_state)
     print(f"Hover mode control output: {control_hover}")

@@ -35,9 +35,9 @@ VELOCITY_EPSILON = 0.1
 # MPC with Angular Velocity Controller (main controller combining all components)
 # =============================================================================
 
-class CtrlProperAccelZAngVel3D:
+class ProposedNmpcAngVelActuatedController:
     """
-    Wrapper around ACADOS NMPC that tracks proper acceleration and angular velocity.
+    Angular-velocity-actuated proposed NMPC controller for trajectory tracking.
 
     This controller encapsulates the low-level ACADOS solver and provides
     a clean interface for trajectory tracking with proper control allocation.
@@ -53,7 +53,7 @@ class CtrlProperAccelZAngVel3D:
 
     def __init__(self, config: ProposedMpcAngVelActuatedCfg):
         """
-        Initialize the CtrlProperAccelZAngVel3D.
+        Initialize the ProposedNmpcAngVelActuatedController.
 
         Args:
             config: Unified configuration containing all controller settings.
@@ -66,7 +66,7 @@ class CtrlProperAccelZAngVel3D:
         # MPC configuration
         mpc_config = config.mpc_config or ProposedMpcConfig.create_high_performance()
         self._mpc_config = mpc_config
-        self.ctrl_dt = mpc_config.control.ctrl_dt
+        self.ctrl_dt = mpc_config.ctrl_dt
 
         # Create OCP and solver
         ocp_cfg = ocp_proposed_mpc_cfg(mpc_config)
@@ -80,7 +80,7 @@ class CtrlProperAccelZAngVel3D:
 
         # Timing
         self._N = mpc_config.nodes
-        self._horizon = mpc_config.T_horizon
+        self._horizon = mpc_config.T
 
         # Create sub-controllers
         self._pd_accel = PDController(config.pd_config)

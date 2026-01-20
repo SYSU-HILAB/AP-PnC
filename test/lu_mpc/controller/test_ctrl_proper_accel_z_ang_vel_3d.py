@@ -1,18 +1,18 @@
 """
-Tests for CtrlProperAccelZAngVel3D and its components.
+Tests for ProposedNmpcAngVelActuatedController and its components.
 
 This includes tests for:
 - QP Mixer (moved from model/ctrl/qp_mixer.py)
 - PD Controller (proper acceleration tracking)
 - PID Controller with anti-windup (angular velocity tracking)
-- CtrlProperAccelZAngVel3D (full integration)
+- ProposedNmpcAngVelActuatedController (full integration)
 """
 
 import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_allclose
 
-from feature.lu_mpc.controller import CtrlProperAccelZAngVel3D
+from feature.lu_mpc.controller import ProposedNmpcAngVelActuatedController
 from feature.lu_mpc.controller.sub_controllers import (
     PDController,
     PIDAntiWindupController,
@@ -355,11 +355,11 @@ class TestPIDAntiWindupController:
 
 
 # =============================================================================
-# CtrlProperAccelZAngVel3D Integration Tests (new)
+# ProposedNmpcAngVelActuatedController Integration Tests (new)
 # =============================================================================
 
-class TestCtrlProperAccelZAngVel3D:
-    """Integration tests for CtrlProperAccelZAngVel3D."""
+class TestProposedNmpcAngVelActuatedController:
+    """Integration tests for ProposedNmpcAngVelActuatedController."""
 
     def test_factory_function(self):
         """Test factory function creates controller."""
@@ -374,7 +374,7 @@ class TestCtrlProperAccelZAngVel3D:
             pytest.skip("Test trajectory not found")
 
         trajectory = load_trajectory_csv(str(traj_path))
-        controller = CtrlProperAccelZAngVel3D.create(trajectory)
+        controller = ProposedNmpcAngVelActuatedController.create(trajectory)
 
         assert controller is not None
         assert isinstance(controller, type(controller))

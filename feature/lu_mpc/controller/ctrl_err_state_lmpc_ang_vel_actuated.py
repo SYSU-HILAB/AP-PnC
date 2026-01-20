@@ -47,9 +47,9 @@ def quat_to_err_theta(q_curr: np.ndarray, q_ref: np.ndarray) -> np.ndarray:
     return 2.0 * q_err[1:4]
 
 
-class ErrStateLmpcController:
+class ErrStateLmpcAngVelActuatedController:
     """
-    Error-state MPC controller for trajectory tracking.
+    Angular-velocity-actuated error-state linear MPC controller for trajectory tracking.
 
     Uses linearized error dynamics with:
     - 9D error state: [err_p(3), err_v(3), err_theta(3)]
@@ -62,7 +62,7 @@ class ErrStateLmpcController:
 
     def __init__(self, config: ErrStateLmpcAngVelActuatedCfg):
         """
-        Initialize the error-state MPC controller.
+        Initialize the ErrStateLmpcAngVelActuatedController.
 
         Args:
             config: Unified configuration containing all controller settings.
@@ -71,14 +71,12 @@ class ErrStateLmpcController:
         self.trajectory = config.trajectory
         self._is_hover_task = config.is_hover_task
 
-        # MPC configuration
-        mpc_config = config.mpc_config or ErrorStateLinearMpcConfig.create_default()
-        self.config = mpc_config
-        self.ctrl_dt = mpc_config.ctrl_dt
+
+        self.mpc_config = config.mpc_config
+        self.ctrl_dt = self.mpc_config.ctrl_dt
 
         # Create OCP with error state model
-        ocp_cfg = ocp_err_state_cfg(mpc_config)
-
+        ocp_cfg = ocp_err_state_cfg(self.mpc_config)
         # Create solver
         json_path = config.json_path
         json_path.parent.mkdir(exist_ok=True)
@@ -90,8 +88,8 @@ class ErrStateLmpcController:
         self.np = ocp_cfg.model.p.size()[0]  # 28 (time-varying parameters)
 
         # Timing
-        self.N = mpc_config.nodes
-        self.horizon = mpc_config.T_horizon
+        self.N = self.mpc_config.nodes
+        self.horizon = self.mpc_config.T
 
         # Create sub-controllers
         self._pd_thrust = PDController(config.pd_config)
@@ -140,7 +138,7 @@ class ErrStateLmpcController:
         # Extract reference state components
         p_ref = ref_state["position"]
         v_ref = ref_state["velocity"]
-        q_ref = ref_state.get("quaternion", np.array([1.0, 0.0, 0.0, 0.0]))  # Identity if not available
+        q_ref = ref_state.get("quaternion", np.array([0.707, 0.0, 0.0, 0.707]))  # Identity if not available
 
         # Position error (world frame)
         err_p = p_sim - p_ref
@@ -176,7 +174,7 @@ class ErrStateLmpcController:
         # Extract reference state
         p_ref = ref_state["position"]
         v_ref = ref_state["velocity"]
-        q_ref = ref_state.get("quaternion", np.array([1.0, 0.0, 0.0, 0.0]))
+        q_ref = ref_state.get("quaternion", np.array([0.707, 0.0, 0.0, 0.707]))
 
         # Get rotation matrix from reference quaternion
         R_ref = quat_to_rotmat(q_ref)

@@ -7,7 +7,7 @@ and controller components, and delegates visualization to NmpcVisualizer.
 
 Components:
     - GdModelSimulator: CasADi-based dynamics simulator
-    - CtrlProperAccelZAngVel3D: NMPC controller for trajectory tracking
+    - ProposedNmpcAngVelActuatedController: NMPC controller for trajectory tracking
     - NmpcVisualizer: Pure visualization publisher for ROS topics
 
 Topics Published (via NmpcVisualizer):
@@ -51,7 +51,7 @@ from ..controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
-from ..controller.ctrl_proposed_nmpc import CtrlProperAccelZAngVel3D
+from ..controller.ctrl_proposed_nmpc_ang_vel_actuated import ProposedNmpcAngVelActuatedController
 from ..controller.config import ProposedMpcAngVelActuatedCfg
 from .nmpc_visualizer import NmpcVisualizer
 from ...utils.ros_viz_utils import sleep_period
@@ -125,7 +125,7 @@ class ProposedNmpcOrchestrator(Node):
             trajectory=self.trajectory
         )
         config.is_hover_task = self.is_hover_task
-        self.controller = CtrlProperAccelZAngVel3D(config)
+        self.controller = ProposedNmpcAngVelActuatedController(config)
 
     def step(self) -> bool:
         """
