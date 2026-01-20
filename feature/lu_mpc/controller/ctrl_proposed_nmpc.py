@@ -20,7 +20,7 @@ from pathlib import Path
 from acados_template import AcadosOcpSolver
 
 from .config.ocp_proposed_mpc_cfg import ocp_proposed_mpc_cfg, ProposedMpcConfig
-from .config.ctrl_proper_accel_z_ang_vel_3d_cfg import ProposedMpcAngVelActuatedCfg
+from .config.ctrl_proposed_nmpc_cfg import ProposedMpcAngVelActuatedCfg
 from .sub_controllers import (
     PDController,
     PIDAntiWindupController,

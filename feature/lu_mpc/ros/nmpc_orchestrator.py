@@ -51,7 +51,7 @@ from ..controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )
-from ..controller.ctrl_proper_accel_z_ang_vel_3d import CtrlProperAccelZAngVel3D
+from ..controller.ctrl_proposed_nmpc import CtrlProperAccelZAngVel3D
 from ..controller.config import ProposedMpcAngVelActuatedCfg
 from .nmpc_visualizer import NmpcVisualizer
 from ...utils.ros_viz_utils import sleep_period

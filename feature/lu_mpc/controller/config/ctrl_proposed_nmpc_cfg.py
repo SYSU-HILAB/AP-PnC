@@ -48,7 +48,7 @@ class ProposedMpcAngVelActuatedCfg:
 
     # ACADOS solver cache path
     json_path: Path = field(
-        default_factory=lambda: Path(__file__).parent.parent.parent / ".cache" / "acados_ocp_ctrl_proper_accel_z_ang_vel_3d.json"
+        default_factory=lambda: Path(__file__).parent.parent.parent / ".cache" / "acados_ocp_ctrl_proposed_nmpc.json"
     )
 
     # Control mode

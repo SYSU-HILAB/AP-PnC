@@ -15,6 +15,6 @@ def __getattr__(name: str):
         from .ctrl_err_state_lmpc import ErrStateLmpcController
         return ErrStateLmpcController
     if name == "CtrlProperAccelZAngVel3D":
-        from .ctrl_proper_accel_z_ang_vel_3d import CtrlProperAccelZAngVel3D
+        from .ctrl_proposed_nmpc import CtrlProperAccelZAngVel3D
         return CtrlProperAccelZAngVel3D
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
