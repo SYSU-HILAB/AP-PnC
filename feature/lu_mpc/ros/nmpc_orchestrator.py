@@ -134,9 +134,14 @@ class ProposedNmpcOrchestrator(Node):
         Returns:
             True if simulation should continue, False if done
         """
+        # Check if trajectory is complete
+        if self.controller.is_trajectory_complete:
+            self.get_logger().info("Trajectory complete")
+            return False
+
         # Compute control every sim_dt, reference sampling uses ctrl_dt internally
         control = self.controller.compute_control(
-            sim_state = self.simulator.get_state(), 
+            sim_state = self.simulator.get_state(),
             acc_p_meas=self.simulator.get_accp()
         )
 

@@ -190,15 +190,15 @@ class ErrStateLmpcController:
         # For now, use a nominal value - this should be computed from trajectory dynamics
         aT_d = np.array([9.81])  
 
-        # 4. omega_d: Reference angular velocity (3)
+        # 3. omega_d: Reference angular velocity (3)
         # For now, use zeros - ideally this would come from the trajectory
         omega_d = np.zeros(3)
 
-        # 5. f_a_d: Reference aerodynamic force (3)
+        # 4. f_a_d: Reference aerodynamic force (3)
         # For now, use zeros - this requires GD model evaluation
         f_a_d = np.zeros(3)
 
-        # 6. par_f_a_par_v_b_d: Jacobian of aero force w.r.t. velocity (9)
+        # 5. par_f_a_par_v_b_d: Jacobian of aero force w.r.t. velocity (9)
         # For now, use zeros - this requires analytical or numerical derivatives
         par_f_a_par_v_b_d = np.zeros(9)
 

@@ -269,8 +269,9 @@ class TrajectoryReference:
             - df_phi_quat: (4,) array [w, x, y, z] from WING_FRD_BODY_FRAME if available
             - df_lyu_quat: (4,) array [w, x, y, z] from WING_FRD_BODY_FRAME if available
         """
-        # Find nearest index (clamp to valid range)
-        idx = int(np.round(t / self._sim_dt)) % len(self.time)
+        # Find nearest index (clamp to valid range, no wrap-around)
+        idx = int(np.round(t / self._sim_dt))
+        idx = max(0, min(idx, len(self.time) - 1))
 
         ref = {
             "position": self.position[idx].copy(),
@@ -351,15 +352,20 @@ class TrajectoryReference:
 
         # Total trajectory length
         total_steps = len(self.time)
+        final_idx = total_steps - 1
 
-        # Compute indices with wrap-around
-        indices = cur_idx_ref + downsample_factor * np.arange(N + 1)
-        indices = indices % total_steps
-
-        # Extract reference data using direct indexing
-        position_ref = self.position[indices]
-        velocity_ref = self.velocity[indices]
-        yb_ref = self.yb[indices]
+        # If current index is past the end, set all references to final state
+        if cur_idx_ref >= final_idx:
+            position_ref = np.tile(self.position[final_idx], (N + 1, 1))
+            velocity_ref = np.tile(self.velocity[final_idx], (N + 1, 1))
+            yb_ref = np.tile(self.yb[final_idx], (N + 1, 1))
+        else:
+            # Normal case: compute indices with clamp to end
+            indices = cur_idx_ref + downsample_factor * np.arange(N + 1)
+            indices = np.clip(indices, 0, final_idx)
+            position_ref = self.position[indices]
+            velocity_ref = self.velocity[indices]
+            yb_ref = self.yb[indices]
 
         return {
             "position": position_ref,

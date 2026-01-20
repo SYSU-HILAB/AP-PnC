@@ -186,10 +186,17 @@ class CtrlProperAccelZAngVel3D:
 
         # Increment reference index after solving (only in tracking mode)
         if not self._is_hover_task:
-            total_steps = len(self.trajectory.time)
-            self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
+            self._cur_idx_ref += 1
 
         return motor_thrusts
+
+    @property
+    def is_trajectory_complete(self) -> bool:
+        """Check if the trajectory has been fully traversed."""
+        if self._is_hover_task:
+            return False
+        total_steps = len(self.trajectory.time)
+        return self._cur_idx_ref >= total_steps
 
     def _est_mpc_state(self, sim_state: np.ndarray) -> np.ndarray:
         """
