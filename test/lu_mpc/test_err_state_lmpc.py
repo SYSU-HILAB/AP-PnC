@@ -2,6 +2,7 @@
 
 import numpy as np
 from feature.lu_mpc.controller import load_trajectory_csv, TrajectoryReference, ErrStateLmpcController
+from feature.lu_mpc.controller.config import ErrStateLmpcAngVelActuatedCfg
 
 
 def test_err_state_lmpc():
@@ -17,12 +18,10 @@ def test_err_state_lmpc():
     trajectory_data = load_trajectory_csv(csv_path)
     trajectory = TrajectoryReference(trajectory_data)
 
-    # Create controller
+    # Create controller using factory method
     print("\nCreating controller...")
-    controller = ErrStateLmpcController(
-        trajectory=trajectory,
-        is_hover_task=False,  # Tracking mode
-    )
+    config = ErrStateLmpcAngVelActuatedCfg.create_default(trajectory=trajectory)
+    controller = ErrStateLmpcController(config)
 
     # Test with a sample state
     print("\nTesting compute_control()...")
@@ -63,10 +62,9 @@ def test_err_state_lmpc():
 
     # Test hover mode
     print("\nTesting hover mode...")
-    controller_hover = ErrStateLmpcController(
-        trajectory=trajectory,
-        is_hover_task=True,
-    )
+    config_hover = ErrStateLmpcAngVelActuatedCfg.create_default(trajectory=trajectory)
+    config_hover.is_hover_task = True
+    controller_hover = ErrStateLmpcController(config_hover)
 
     control_hover = controller_hover.compute_control(sim_state)
     print(f"Hover mode control output: {control_hover}")

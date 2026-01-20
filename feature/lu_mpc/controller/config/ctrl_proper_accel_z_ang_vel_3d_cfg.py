@@ -1,7 +1,7 @@
 """
-Configuration for CtrlProperAccelZAngVel3D.
+Configuration for angular-velocity-actuated proposed MPC.
 
-This module contains configuration class for CtrlProperAccelZAngVel3D.
+This module contains configuration class for ProposedMpcAngVelActuatedCfg.
 Sub-controller configurations (PD, PID, QP Mixer) are imported from
 controller.config.sub_controllers.
 """
@@ -24,19 +24,19 @@ if TYPE_CHECKING:
 
 
 # =============================================================================
-# Proper Acceleration Z and Angular Velocity 3D Controller Configuration (combines all above)
+# Angular-Velocity-Actuated Proposed MPC Controller Configuration (combines all above)
 # =============================================================================
 
 @dataclass
-class CtrlProperAccelZAngVel3DConfig:
+class ProposedMpcAngVelActuatedCfg:
     """
-    Configuration for CtrlProperAccelZAngVel3D.
+    Unified configuration for angular-velocity-actuated proposed MPC.
 
     Combines MPC configuration with PD, PID, and QP mixer configurations.
     """
 
     # MPC configuration (from ocp_proposed_mpc_cfg.py)
-    mpc_config: object | None = None  # Will be set to MpcConfig instance
+    mpc_config: object | None = None  # Will be set to ProposedMpcConfig instance
 
     # Trajectory reference
     trajectory: TrajectoryReference | None = None
@@ -58,11 +58,21 @@ class CtrlProperAccelZAngVel3DConfig:
     gravity: np.ndarray = field(default_factory=lambda: np.array([0, 0, -9.81]))
 
     @classmethod
-    def create_default(cls, trajectory: TrajectoryReference) -> CtrlProperAccelZAngVel3DConfig:
-        """Create default angular velocity controller configuration."""
-        from .ocp_proposed_mpc_cfg import MpcConfig
+    def create_high_performance(cls, trajectory: TrajectoryReference) -> ProposedMpcAngVelActuatedCfg:
+        """Create high-performance proposed MPC controller configuration."""
+        from .ocp_proposed_mpc_cfg import ProposedMpcConfig
 
         return cls(
-            mpc_config=MpcConfig.create_high_performance(),
+            mpc_config=ProposedMpcConfig.create_high_performance(),
+            trajectory=trajectory,
+        )
+
+    @classmethod
+    def create_default(cls, trajectory: TrajectoryReference) -> ProposedMpcAngVelActuatedCfg:
+        """Create default proposed MPC controller configuration."""
+        from .ocp_proposed_mpc_cfg import ProposedMpcConfig
+
+        return cls(
+            mpc_config=ProposedMpcConfig(),
             trajectory=trajectory,
         )

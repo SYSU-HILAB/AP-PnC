@@ -55,7 +55,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 ### NMPC model builder (`src/nmpc`)
 * Python tooling used offline/CI to regenerate the solver artifacts.
 * `model.py` defines `tailsitter_flu()` with augmented states `[p,v,r,q,u,cz_state]`, aerodynamic forces, and quaternion kinematics.
-* `config.py` (`ControlConfig`, `MpcConfig`) centralizes horizon length, weight matrices, state bounds, and regularization terms.
+* `config.py` (`ControlConfig`, `ProposedMpcConfig`) centralizes horizon length, weight matrices, state bounds, and regularization terms.
 * `create_ocp_or_sim.py` builds the `AcadosOcp`, sets cost expressions (`NONLINEAR_LS`), enforces actuator/state bounds, and emits JSON/c_generated code via `AcadosOcpSolver`.
 * Run with `./pyp src/nmpc/create_ocp_or_sim.py` after changing dynamics or weights; `c_generated_code/` is what the C++ node links against.
 

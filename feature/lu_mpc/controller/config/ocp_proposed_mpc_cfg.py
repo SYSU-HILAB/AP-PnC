@@ -3,7 +3,7 @@ MPC configuration and OCP builder for the proposed lu_mpc controller.
 
 This module contains:
 - ControlConfig: Basic controller timing configuration
-- MpcConfig: MPC parameters (cost weights, constraints, etc.)
+- ProposedMpcConfig: MPC parameters (cost weights, constraints, etc.)
 - ocp_proposed_mpc_cfg: Function that builds the ACADOS OCP
 """
 
@@ -36,7 +36,7 @@ class ControlConfig:
 
 
 @dataclass
-class MpcConfig:
+class ProposedMpcConfig:
     """Cleaned up MPC configuration."""
 
     control: ControlConfig = field(default_factory=ControlConfig)
@@ -72,21 +72,21 @@ class MpcConfig:
         return np.array([qh, qh, qv], dtype=float) * 100.0 * 0.35
 
     @classmethod
-    def create_high_performance(cls) -> "MpcConfig":
+    def create_high_performance(cls) -> "ProposedMpcConfig":
         qh = 2.0
         qv = 5.0
         return cls(qYB=cls._yb_weights(qh, qv))
 
 
 DEFAULT_CONTROL_CONFIG = ControlConfig()
-DEFAULT_MPC_CONFIG = MpcConfig()
+DEFAULT_MPC_CONFIG = ProposedMpcConfig()
 
 
 # =============================================================================
 # OCP Builder Function
 # =============================================================================
 
-def ocp_proposed_mpc_cfg(cfg: MpcConfig) -> AcadosOcp:
+def ocp_proposed_mpc_cfg(cfg: ProposedMpcConfig) -> AcadosOcp:
     """
     Create the AcadosOcp instance for the proposed controller.
 
@@ -163,6 +163,5 @@ def ocp_proposed_mpc_cfg(cfg: MpcConfig) -> AcadosOcp:
     ocp.solver_options.qp_solver_iter_max = 10
     ocp.solver_options.print_level = 0
     ocp.solver_options.hpipm_mode = "SPEED_ABS"
-    ocp.solver_options.sim_method_num_stages = 4
 
     return ocp

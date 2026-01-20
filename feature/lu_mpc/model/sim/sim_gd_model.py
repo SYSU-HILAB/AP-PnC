@@ -205,6 +205,8 @@ class GdModelSimulator:
         aero_forces_moments = aero_result[0]  # First element is forces_moments vector
         aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
         aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
+        aero_moments_wing_frd[0] = 0.0  # REC: zeroing roll moment for stability
+        aero_moments_wing_frd[2] = 0.0 # REC: zeroing yaw moment for stability
 
         # Transform aerodynamic forces back to FLU frame, then to body frame
         # Use inverse transformation to go from wing FRD to quad FLU
@@ -221,9 +223,9 @@ class GdModelSimulator:
         tot_force_quad_flu = thrust_quad_flu + aero_forces_quad_flu
         # REC: currently not adding aerodynamic moments
         total_moments_quad_flu = tau_quad_flu
-        # total_moments_quad_flu = (
-        #     tau_quad_flu + aero_moments_quad_flu
-        # )  # Moments are frame-independent
+        total_moments_quad_flu = (
+            tau_quad_flu + aero_moments_quad_flu
+        )  # Moments are frame-independent
 
         # Transform forces to world frame for dynamics
         force_w = quat_apply(quat_quad_flu, tot_force_quad_flu)

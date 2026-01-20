@@ -52,6 +52,7 @@ from ..controller.trajectory_loader import (
     load_trajectory_csv,
 )
 from ..controller.ctrl_proper_accel_z_ang_vel_3d import CtrlProperAccelZAngVel3D
+from ..controller.config import ProposedMpcAngVelActuatedCfg
 from .nmpc_visualizer import NmpcVisualizer
 from ...utils.ros_viz_utils import sleep_period
 
@@ -119,10 +120,12 @@ class ProposedNmpcOrchestrator(Node):
         sim_config = GdSimConfig(sim_dt=self.sim_dt)
         self.simulator = GdModelSimulator.create_gd_simulator(init_state, sim_config)
 
-        self.controller = CtrlProperAccelZAngVel3D(
-            self.trajectory,
-            is_hover_task=self.is_hover_task,
+        # Create controller configuration using factory method
+        config = ProposedMpcAngVelActuatedCfg.create_high_performance(
+            trajectory=self.trajectory
         )
+        config.is_hover_task = self.is_hover_task
+        self.controller = CtrlProperAccelZAngVel3D(config)
 
     def step(self) -> bool:
         """

@@ -19,15 +19,8 @@ from pathlib import Path
 
 from acados_template import AcadosOcpSolver
 
-from .config.ocp_proposed_mpc_cfg import ocp_proposed_mpc_cfg, MpcConfig
-from .config.sub_controllers import (
-    PDControllerConfig,
-    PIDAntiWindupConfig,
-    QpMixerConfig,
-    DEFAULT_PD_CONFIG,
-    DEFAULT_PID_CONFIG,
-    DEFAULT_QP_MIXER_CONFIG,
-)
+from .config.ocp_proposed_mpc_cfg import ocp_proposed_mpc_cfg, ProposedMpcConfig
+from .config.ctrl_proper_accel_z_ang_vel_3d_cfg import ProposedMpcAngVelActuatedCfg
 from .sub_controllers import (
     PDController,
     PIDAntiWindupController,
@@ -58,38 +51,26 @@ class CtrlProperAccelZAngVel3D:
     6. QP mixer: [tot_thrust, 3d_torque] → motor_thrusts (4D)
     """
 
-    def __init__(
-        self,
-        trajectory: TrajectoryReference,
-        is_hover_task: bool = False,
-        pd_config: PDControllerConfig | None = None,
-        pid_config: PIDAntiWindupConfig | None = None,
-        mixer_config: QpMixerConfig | None = None,
-        mpc_config: MpcConfig | None = None,
-    ):
+    def __init__(self, config: ProposedMpcAngVelActuatedCfg):
         """
         Initialize the CtrlProperAccelZAngVel3D.
 
         Args:
-            trajectory: TrajectoryReference object
-            is_hover_task: If True, hover at initial reference
-            pd_config: PD controller configuration (uses default if None)
-            pid_config: PID controller configuration (uses default if None)
-            mixer_config: QP mixer configuration (uses default if None)
-            mpc_config: MPC configuration (uses high_performance default if None)
+            config: Unified configuration containing all controller settings.
         """
-        self.trajectory = trajectory
-        self._is_hover_task = is_hover_task
+        # Extract from config
+        self.trajectory = config.trajectory
+        self._is_hover_task = config.is_hover_task
+        self._gravity = config.gravity
 
         # MPC configuration
-        if mpc_config is None:
-            mpc_config = MpcConfig.create_high_performance()
+        mpc_config = config.mpc_config or ProposedMpcConfig.create_high_performance()
         self._mpc_config = mpc_config
         self.ctrl_dt = mpc_config.control.ctrl_dt
 
         # Create OCP and solver
         ocp_cfg = ocp_proposed_mpc_cfg(mpc_config)
-        json_path = Path(__file__).parent.parent / ".cache" / "acados_ocp_ctrl_proper_accel_z_ang_vel_3d.json"
+        json_path = config.json_path
         json_path.parent.mkdir(exist_ok=True)
         self._solver = AcadosOcpSolver(ocp_cfg, json_file=str(json_path))
 
@@ -102,18 +83,15 @@ class CtrlProperAccelZAngVel3D:
         self._horizon = mpc_config.T_horizon
 
         # Create sub-controllers
-        self._pd_accel = PDController(pd_config or DEFAULT_PD_CONFIG)
-        self._pid_ang_vel = PIDAntiWindupController(pid_config or DEFAULT_PID_CONFIG)
-        self._qp_mixer = QpMixer(mixer_config or DEFAULT_QP_MIXER_CONFIG)
+        self._pd_accel = PDController(config.pd_config)
+        self._pid_ang_vel = PIDAntiWindupController(config.pid_config)
+        self._qp_mixer = QpMixer(config.qp_mixer_config)
 
         # State storage
         self._cz_state = 0.0
         self._cur_idx_ref = 0
         self._sim_dt = 0.02  # Trajectory sampling rate (const, 50Hz)
         self._u_prev = np.zeros(4)  # Track previous motor commands
-
-        # Gravity vector
-        self._gravity = np.array([0, 0, 9.81])
 
     def _initialize_solver(self, mpc_state: np.ndarray) -> None:
         """

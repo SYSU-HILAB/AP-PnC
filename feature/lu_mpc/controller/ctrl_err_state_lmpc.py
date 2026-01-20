@@ -8,6 +8,12 @@ from pathlib import Path
 from acados_template import AcadosOcpSolver
 
 from .config.ocp_err_state_cfg import ocp_err_state_cfg, ErrorStateLinearMpcConfig
+from .config.ctrl_err_state_lmpc_cfg import ErrStateLmpcAngVelActuatedCfg
+from .sub_controllers import (
+    PDController,
+    PIDAntiWindupController,
+    QpMixer,
+)
 from .trajectory_loader import TrajectoryReference
 from ...utils.math_utils import (
     quat_multiply,
@@ -54,29 +60,27 @@ class ErrStateLmpcController:
     making it well-suited for precise trajectory tracking.
     """
 
-    def __init__(
-        self,
-        trajectory: TrajectoryReference,
-        is_hover_task: bool = False,
-    ):
+    def __init__(self, config: ErrStateLmpcAngVelActuatedCfg):
         """
         Initialize the error-state MPC controller.
 
         Args:
-            trajectory: TrajectoryReference object containing reference trajectory
-            is_hover_task: If True, controller hovers at initial reference;
-                          if False, tracks full trajectory (default)
+            config: Unified configuration containing all controller settings.
         """
-        self.trajectory = trajectory
-        self._is_hover_task = is_hover_task
-        self.config = ErrorStateLinearMpcConfig.create_default()
-        self.ctrl_dt = self.config.ctrl_dt
+        # Extract from config
+        self.trajectory = config.trajectory
+        self._is_hover_task = config.is_hover_task
+
+        # MPC configuration
+        mpc_config = config.mpc_config or ErrorStateLinearMpcConfig.create_default()
+        self.config = mpc_config
+        self.ctrl_dt = mpc_config.ctrl_dt
 
         # Create OCP with error state model
-        ocp_cfg = ocp_err_state_cfg(self.config)
+        ocp_cfg = ocp_err_state_cfg(mpc_config)
 
         # Create solver
-        json_path = Path(__file__).parent.parent / ".cache" / "acados_ocp_err_state_lmpc.json"
+        json_path = config.json_path
         json_path.parent.mkdir(exist_ok=True)
         self.solver = AcadosOcpSolver(ocp_cfg, json_file=str(json_path))
 
@@ -86,12 +90,18 @@ class ErrStateLmpcController:
         self.np = ocp_cfg.model.p.size()[0]  # 28 (time-varying parameters)
 
         # Timing
-        self.N = self.config.nodes
-        self.horizon = self.config.T_horizon
+        self.N = mpc_config.nodes
+        self.horizon = mpc_config.T_horizon
+
+        # Create sub-controllers
+        self._pd_thrust = PDController(config.pd_config)
+        self._pid_ang_vel = PIDAntiWindupController(config.pid_config)
+        self._qp_mixer = QpMixer(config.qp_mixer_config)
 
         # State storage
         self._cur_idx_ref = 0
         self._sim_dt = 0.02  # Trajectory sampling rate (const, 50Hz)
+        self._u_prev = np.zeros(4)  # Previous motor commands for QP mixer
 
         print(f"Error-State MPC Controller initialized:")
         print(f"  State dim: {self.nx} (error state)")
@@ -103,6 +113,8 @@ class ErrStateLmpcController:
     def reset(self):
         """Reset controller state."""
         self._cur_idx_ref = 0
+        self._u_prev = np.zeros(4)
+        self._pid_ang_vel.reset()
         self.solver.reset()
 
     def _compute_error_state(
@@ -267,13 +279,13 @@ class ErrStateLmpcController:
 
     def compute_control(self, sim_state: np.ndarray) -> np.ndarray:
         """
-        Compute control input for current state.
+        Compute motor commands from current state.
 
         Args:
             sim_state: GD simulator state (17D) [p(3), v(3), r(3), q(4), u(4)]
 
         Returns:
-            Control increments [increment_aT(1), increment_omega(3)]
+            Motor thrusts (4D)
         """
         # Get reference at current index
         if self._is_hover_task:
@@ -301,14 +313,46 @@ class ErrStateLmpcController:
 
         if status != 0:
             print(f"Warning: Error-state MPC solver failed with status {status}")
-            return np.zeros(self.nu)
+            return np.zeros(4)
 
-        # Get control output
-        u = self.solver.get(0, "u")
+        # Get control increments from MPC
+        u = self.solver.get(0, "u")  # [increment_aT, increment_omega_x, increment_omega_y, increment_omega_z]
+        increment_aT = u[0]
+        increment_omega = u[1:4]
+
+        # Extract reference values from parameters
+        # params = [v_b_d(3), R_d(9), aT_d(1), omega_d(3), f_a_d(3), par_f_a_par_v_b_d(9)]
+        params = self._compute_reference_parameters(ref_state)
+        aT_ref = params[12]      # Index 12 (after 3+9=12)
+        omega_ref = params[13:16] # Indices 13, 14, 15
+
+        # Convert to absolute commands
+        aT_cmd = aT_ref + increment_aT
+        omega_cmd = omega_ref + increment_omega
+
+        # Get current measurements from sim state
+        ang_vel_meas = sim_state[6:9]  # Angular rates
+
+        # PD controller for thrust tracking
+        # Note: Current aT is estimated from motor thrusts
+        current_motor_thrusts = sim_state[13:17]
+        current_aT = np.sum(current_motor_thrusts) / 2.0  # Approximate
+        thrust_correction = self._pd_thrust.compute(aT_cmd, current_aT)
+        tot_thrust_cmd = aT_cmd * 2.0 + thrust_correction  # Scale to total thrust
+
+        # PID controller for angular velocity tracking
+        torque_cmd = self._pid_ang_vel.compute(omega_cmd, ang_vel_meas)
+
+        # QP mixer: convert [tot_thrust, 3d_torque] to motor thrusts (4D)
+        tau_desired = np.concatenate([[tot_thrust_cmd], torque_cmd])
+        motor_thrusts, motor_rates, info = self._qp_mixer.mix(tau_desired, self._u_prev)
+
+        # Update previous command
+        self._u_prev = motor_thrusts.copy()
 
         # Increment reference index after solving (only in tracking mode)
         if not self._is_hover_task:
             total_steps = len(self.trajectory.time)
             self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
 
-        return u
+        return motor_thrusts
