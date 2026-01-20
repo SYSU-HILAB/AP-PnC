@@ -24,7 +24,7 @@ class ControlConfig:
     """Basic controller timing configuration."""
 
     ctrl_dt: float = 0.1
-    nodes: int = 5 # tuned for tracking in acados simulator.
+    nodes: int = 10 # tuned for tracking in acados simulator.
 
     @property
     def control_frequency(self) -> float:

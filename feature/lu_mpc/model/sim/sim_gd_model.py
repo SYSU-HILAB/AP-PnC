@@ -207,7 +207,7 @@ class GdModelSimulator:
         aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
         aero_moments_wing_frd[0] = 0.0  # REC: zeroing roll moment for stability
         aero_moments_wing_frd[2] = 0.0 # REC: zeroing yaw moment for stability
-
+        aero_moments_wing_frd[1] = 0.0
         # Transform aerodynamic forces back to FLU frame, then to body frame
         # Use inverse transformation to go from wing FRD to quad FLU
         aero_forces_quad_flu = quat_apply(

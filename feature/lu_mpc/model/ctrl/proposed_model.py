@@ -11,11 +11,13 @@ from acados_template import AcadosModel
 from casadi import SX, vertcat
 import casadi as cs
 import numpy as np
-
 from ....utils.math_utils import (
     inverse_rotate_vector,
     quaternion_to_rotation_matrix,
     rotate_vector,
+    quat_multiply,
+    quat_apply,
+    quat_apply_inverse,
     skew_matrix,
     skew_symmetric_matrix,
 )
@@ -65,25 +67,24 @@ def tailsitter_flu() -> AcadosModel:
     vb = inverse_rotate_vector(v, q)
     alpha = cs.atan2(vb[0], vb[2] + VELOCITY_EPSILON)
 
-    F_aero_b_frd = cs.SX([0, 0, 0])
-    F_aero_b_frd[0] = 0.0
-    F_aero_b_frd[1] = 0.0
-    F_aero_b_frd[2] = -(cz_state) * cs.dot(v, v)
+    acc_aero_b_wing_frd = cs.SX([0, 0, 0])
+    acc_aero_b_wing_frd[0] = 0.0
+    acc_aero_b_wing_frd[1] = 0.0
+    acc_aero_b_wing_frd[2] = -(cz_state) * cs.dot(v, v)
 
     q_tf = cs.DM(np.array([0.0, 0.707, 0.0, 0.707]))
-    R_tf = quaternion_to_rotation_matrix(q_tf)
-    F_aero_b_flu_quad_frame = cs.mtimes(cs.SX(R_tf), F_aero_b_frd)
+    quat_quad_flu = quat_multiply(q, q_tf)
 
     tau_b = cs.veccat(
         dy * (-u[0] - u[1] + u[2] + u[3]),
         dx * (-u[0] + u[1] + u[2] - u[3]),
         c_tau * (-u[0] + u[1] - u[2] + u[3]),
     )
-    thrust_world = rotate_vector(tb / mass, q)
-    aero_world = rotate_vector(F_aero_b_flu_quad_frame / mass, q)
-    acc_w = thrust_world + g + aero_world
+    thrust_acc_w = quat_apply(q, tb) / mass
+    aero_acc_w = quat_apply(quat_quad_flu, acc_aero_b_wing_frd)
+    acc_w = thrust_acc_w + g + aero_acc_w
 
-    acc_b = inverse_rotate_vector(acc_w, q)
+    acc_b = quat_apply_inverse(q, acc_w)
 
     alpha_dot = (
         (acc_b[2] * cs.cos(alpha) - acc_b[0] * cs.sin(alpha))
@@ -97,7 +98,7 @@ def tailsitter_flu() -> AcadosModel:
         v,
         acc_w,
         cs.mtimes(cs.inv(J), (tau_b - cs.cross(r, cs.mtimes(J, r)))),
-        0.5 * cs.mtimes(skew_symmetric_matrix(r), q),
+        0.5 * quat_multiply(q, cs.vertcat(0, r)),
     )
     f_expl_u = du
 

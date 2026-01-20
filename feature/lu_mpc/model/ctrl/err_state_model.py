@@ -1,14 +1,7 @@
 from acados_template import AcadosModel
 from casadi import SX, vertcat, horzcat, mtimes, norm_2
 import numpy as np
-
-
-def skew(v):
-    return vertcat(
-        horzcat(0, -v[2], v[1]), 
-        horzcat(v[2], 0, -v[0]), 
-        horzcat(-v[1], v[0], 0)
-    )
+from ....utils.math_utils import skew_symmetric
 
 
 def export_error_state_model():
@@ -78,7 +71,7 @@ def export_error_state_model():
     # ---------------------------------------------
     M_v = 1/mass * val_R_d @ val_par_f_a_par_v_b_d @ val_R_d.T
     M_R = val_R_d @ (
-        -val_aT_d * skew(e1) - skew(val_f_a_d / mass) + val_par_f_a_par_v_b_d @ skew(val_v_b_d/mass)
+        -val_aT_d * skew_symmetric(e1) - skew_symmetric(val_f_a_d / mass) + val_par_f_a_par_v_b_d @ skew_symmetric(val_v_b_d/mass)
     )
     M_T = val_R_d @ e1 
 
@@ -88,7 +81,7 @@ def export_error_state_model():
     f_expl = vertcat(
         err_state_v,
         M_v @ err_state_v + M_R @ err_state_theta + M_T * increment_aT,
-        -skew(val_omega_d) @ err_state_theta
+        -skew_symmetric(val_omega_d) @ err_state_theta
     )
     f_impl = xdot - f_expl
 

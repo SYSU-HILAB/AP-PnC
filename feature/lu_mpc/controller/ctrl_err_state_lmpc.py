@@ -187,9 +187,8 @@ class ErrStateLmpcController:
         # 2. R_d: Reference rotation matrix flattened (9)
         R_d = R_ref.flatten()
 
-        # 3. aT_d: Reference thrust magnitude (1)
         # For now, use a nominal value - this should be computed from trajectory dynamics
-        aT_d = np.array([9.81 * 2.0])  # mg for 2kg vehicle
+        aT_d = np.array([9.81])  
 
         # 4. omega_d: Reference angular velocity (3)
         # For now, use zeros - ideally this would come from the trajectory

@@ -25,7 +25,7 @@ class QpMixerConfig:
     dt: float = 0.02  # Time step for motor dynamics (s)
 
     # QP weights (tunable for performance)
-    W_tracking: np.ndarray = field(default_factory=lambda: np.diag([1.0, 1.0, 5.0, 5.0]))
+    W_tracking: np.ndarray = field(default_factory=lambda: np.diag([1.0, 5.0, 1.0, 5.0]))
     R_prev_cmd: float = 0.1  # Weight on command smoothness
 
     @classmethod
