@@ -53,15 +53,18 @@ from ..controller.trajectory_loader import (
 )
 from ..controller.ctrl_proposed_nmpc_ang_vel_actuated import ProposedNmpcAngVelActuatedController
 from ..controller.config import ProposedMpcAngVelActuatedCfg
+from ..controller.ctrl_err_state_lmpc_ang_vel_actuated import ErrStateLmpcAngVelActuatedController
+from ..controller.config.ctrl_err_state_lmpc_cfg import ErrStateLmpcAngVelActuatedCfg
 from .nmpc_visualizer import NmpcVisualizer
 from ...utils.ros_viz_utils import sleep_period
 
 
-class ProposedNmpcOrchestrator(Node):
+class MpcOrchestrator(Node):
     """
-    ROS2 node that orchestrates NMPC simulation and delegates visualization.
+    ROS2 node that orchestrates MPC simulation and delegates visualization.
 
-    This node integrates the controller and simulator to provide closed-loop
+    Supports both nonlinear MPC (nMPC) and error-state linear MPC (elMPC).
+    Integrates the controller and simulator to provide closed-loop
     trajectory tracking, delegating all ROS publishing to NmpcVisualizer.
     """
 
@@ -71,9 +74,10 @@ class ProposedNmpcOrchestrator(Node):
         sim_dt: float = 0.02,
         real_time_factor: float = 1.0,
         is_hover_task: bool = False,
+        controller_type: str = "nmpc",
     ):
         """
-        Initialize the NMPC orchestrator node.
+        Initialize the MPC orchestrator node.
 
         Args:
             trajectory_csv: Path to trajectory CSV file
@@ -81,6 +85,7 @@ class ProposedNmpcOrchestrator(Node):
             real_time_factor: Speed multiplier (1.0 = real-time, 2.0 = 2x)
             is_hover_task: If True, controller hovers at initial reference;
                            if False, tracks full trajectory (default)
+            controller_type: Type of MPC controller - "nmpc" or "lmpc" (default: "nmpc")
         """
         super().__init__("nmpc_orchestrator")
 
@@ -88,6 +93,7 @@ class ProposedNmpcOrchestrator(Node):
         self.sim_dt = sim_dt
         self.real_time_factor = real_time_factor
         self.is_hover_task = is_hover_task
+        self.controller_type = controller_type
 
         # Create visualizer for ROS publishing
         self.visualizer = NmpcVisualizer(self)
@@ -98,7 +104,7 @@ class ProposedNmpcOrchestrator(Node):
         # Publish static reference path
         self.visualizer.publish_reference_path(self.trajectory, self)
 
-        self.get_logger().info("ProposedNmpcOrchestrator initialized")
+        self.get_logger().info(f"MpcOrchestrator initialized with {self.controller_type.upper()} controller")
         self.get_logger().info(f"  Sim dt: {sim_dt}s")
         self.get_logger().info(f"  Ctrl dt: {self.controller.ctrl_dt}s")
         self.get_logger().info(f"  Real-time factor: {real_time_factor}x")
@@ -120,12 +126,21 @@ class ProposedNmpcOrchestrator(Node):
         sim_config = GdSimConfig(sim_dt=self.sim_dt)
         self.simulator = GdModelSimulator.create_gd_simulator(init_state, sim_config)
 
-        # Create controller configuration using factory method
-        config = ProposedMpcAngVelActuatedCfg.create_high_performance(
-            trajectory=self.trajectory
-        )
-        config.is_hover_task = self.is_hover_task
-        self.controller = ProposedNmpcAngVelActuatedController(config)
+        # Create controller based on controller_type
+        if self.controller_type == "nmpc":
+            config = ProposedMpcAngVelActuatedCfg.create_high_performance(
+                trajectory=self.trajectory
+            )
+            config.is_hover_task = self.is_hover_task
+            self.controller = ProposedNmpcAngVelActuatedController(config)
+        elif self.controller_type == "lmpc":
+            config = ErrStateLmpcAngVelActuatedCfg.create_high_gain(
+                trajectory=self.trajectory
+            )
+            config.is_hover_task = self.is_hover_task
+            self.controller = ErrStateLmpcAngVelActuatedController(config)
+        else:
+            raise ValueError(f"Unknown controller_type: {self.controller_type}. Must be 'nmpc' or 'lmpc'")
 
     def step(self) -> bool:
         """
@@ -140,10 +155,15 @@ class ProposedNmpcOrchestrator(Node):
             return False
 
         # Compute control every sim_dt, reference sampling uses ctrl_dt internally
-        control = self.controller.compute_control(
-            sim_state = self.simulator.get_state(),
-            acc_p_meas=self.simulator.get_accp()
-        )
+        # nMPC requires acc_p_meas, elMPC does not
+        sim_state = self.simulator.get_state()
+        if self.controller_type == "nmpc":
+            control = self.controller.compute_control(
+                sim_state=sim_state,
+                acc_p_meas=self.simulator.get_accp()
+            )
+        else:  # lmpc
+            control = self.controller.compute_control(sim_state=sim_state)
 
         # Step simulation using the new stateful API
         try:
@@ -180,3 +200,7 @@ class ProposedNmpcOrchestrator(Node):
             sleep_period(sleep_time)
 
         self.get_logger().info("Simulation finished")
+
+
+# Backward compatibility alias
+ProposedNmpcOrchestrator = MpcOrchestrator

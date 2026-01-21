@@ -240,14 +240,7 @@ class ErrStateLmpcAngVelActuatedController:
         params = self._compute_reference_parameters(ref_state)
         self.solver.set(stage_idx, "p", params)
 
-    def _get_quaternion_at_stage(self, stage_idx: int) -> np.ndarray:
-        """Get quaternion for a given MPC stage index."""
-        if self.trajectory.quad_df_phi_quat is None:
-            return np.array([1.0, 0.0, 0.0, 0.0])
-        idx = (self._cur_idx_ref + stage_idx * int(self.ctrl_dt / self._sim_dt)) % len(
-            self.trajectory.time
-        )
-        return self.trajectory.quad_df_phi_quat[idx]
+
 
     def _set_parameters_for_horizon(self):
         """Set time-varying parameters for all stages in the MPC horizon."""
@@ -270,7 +263,7 @@ class ErrStateLmpcAngVelActuatedController:
                 ref_state_i = {
                     "position": ref["position"][i],
                     "velocity": ref["velocity"][i],
-                    "quaternion": self._get_quaternion_at_stage(i),
+                    "quaternion": ref["quat_quad_flu"][i],
                 }
                 self._set_parameters_for_stage(i, ref_state_i)
 
@@ -353,3 +346,11 @@ class ErrStateLmpcAngVelActuatedController:
             self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
 
         return motor_thrusts
+
+    @property
+    def is_trajectory_complete(self) -> bool:
+        """Check if trajectory tracking is complete."""
+        if self._is_hover_task:
+            return False
+        total_steps = len(self.trajectory.time)
+        return self._cur_idx_ref >= total_steps - 1

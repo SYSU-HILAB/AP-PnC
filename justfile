@@ -196,6 +196,12 @@ test-vmap:
 test-jax-trim:
     ./pyp test/lu_mpc/analysis/user_test_jax_trim.py
 
+test-ctrl-err-state-lmpc:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
+    ./pyp test/lu_mpc/controller/user_test_ctrl_err_state_lmpc_ang_vel_actuated.py
+
 test-sim-model:
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./pyp -m pytest test/lu_mpc/model/sim/test_math_utils.py
 
@@ -269,6 +275,19 @@ viz-traj-tracking config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
     export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
     ./pyp test/lu_mpc/ros/user_test_traj_tracking_viz.py --rviz-config {{config}}
+
+viz-traj-tracking-elmpc config="feature/lu_mpc/ros/config/nmpc_viz.rviz":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
+    echo "Launching error-state MPC tracking visualization + RViz2"
+    set +u
+    source /opt/ros/humble/setup.bash
+    set -u
+    export ACADOS_SOURCE_DIR="${ACADOS_SOURCE_DIR:-/home/rec/AP-PnC/mpc_framework}"
+    export LD_LIBRARY_PATH="/home/rec/AP-PnC/mpc_framework/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export PYTHONPATH="$git_root${PYTHONPATH:+:$PYTHONPATH}"
+    ./pyp test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --rviz-config {{config}} --hover
 
 show-odom config="feature/lu_mpc/ros/config/plotjuggler_odometry_xyz.xml":
     #!/usr/bin/env bash
@@ -345,6 +364,7 @@ alias tpns := test-proposed-nmpc-simple
 alias tsc := test-symbolic-casadi
 alias tfc := test-frame-conversion
 alias ta := test-all
+alias tcesl := test-ctrl-err-state-lmpc
 
 # === DOCKER COMPOSE ===
 
