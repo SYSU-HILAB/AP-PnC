@@ -138,17 +138,11 @@ class ErrStateLmpcAngVelActuatedController:
         # Extract reference state components
         p_ref = ref_state["position"]
         v_ref = ref_state["velocity"]
-        q_ref = ref_state.get("quaternion", np.array([0.707, 0.0, 0.0, 0.707]))  # Identity if not available
-
+        q_ref = ref_state["quat_quad_flu"]
         # Position error (world frame)
-        err_p = p_sim - p_ref
+        err_p = p_ref - p_sim
 
-        # Velocity error - transform to body frame for more intuitive control
-        # Get rotation matrix from reference quaternion
-        R_ref = quat_to_rotmat(q_ref)
-        v_sim_body = R_ref.T @ v_sim
-        v_ref_body = R_ref.T @ v_ref
-        err_v = v_sim_body - v_ref_body
+        err_v = v_ref - v_sim
 
         # Angular error using Log mapping (small-angle approximation)
         err_theta = quat_to_err_theta(q_sim, q_ref)
@@ -286,6 +280,64 @@ class ErrStateLmpcAngVelActuatedController:
 
         # Compute error state
         err_state = self._compute_error_state(sim_state, ref_state)
+
+        #<HARD
+        #Task. this mpc cares about pos, vel, attitude error only
+        #Task. plot err_state use 3 figures, attitude use euler angles to represent. 200 steps
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from scipy.spatial.transform import Rotation as R
+        if not hasattr(self, '_hard_step_counter'):
+            self._hard_step_counter = 0
+            self._hard_err_history_pos = []
+            self._hard_err_history_vel = []
+            self._hard_err_history_att = []
+        self._hard_step_counter += 1
+        self._hard_err_history_pos.append(err_state[0:3])
+        self._hard_err_history_vel.append(err_state[3:6])
+        q_err = err_state[6:10]
+        r = R.from_quat([q_err[1], q_err[2], q_err[3], q_err[0]])
+        euler_err = r.as_euler('xyz', degrees=False)
+        self._hard_err_history_att.append(euler_err)
+        if self._hard_step_counter >= 200:
+            fig, axes = plt.subplots(3, 1, figsize=(10, 12))
+            steps = np.arange(200)
+            pos_hist = np.array(self._hard_err_history_pos)
+            vel_hist = np.array(self._hard_err_history_vel)
+            att_hist = np.array(self._hard_err_history_att)
+            axes[0].plot(steps, pos_hist[:, 0], label='x error')
+            axes[0].plot(steps, pos_hist[:, 1], label='y error')
+            axes[0].plot(steps, pos_hist[:, 2], label='z error')
+            axes[0].set_title('Position Error')
+            axes[0].set_xlabel('Step')
+            axes[0].set_ylabel('Error (m)')
+            axes[0].legend()
+            axes[0].grid(True)
+            axes[1].plot(steps, vel_hist[:, 0], label='vx error')
+            axes[1].plot(steps, vel_hist[:, 1], label='vy error')
+            axes[1].plot(steps, vel_hist[:, 2], label='vz error')
+            axes[1].set_title('Velocity Error')
+            axes[1].set_xlabel('Step')
+            axes[1].set_ylabel('Error (m/s)')
+            axes[1].legend()
+            axes[1].grid(True)
+            axes[2].plot(steps, att_hist[:, 0], label='roll error (phi)')
+            axes[2].plot(steps, att_hist[:, 1], label='pitch error (theta)')
+            axes[2].plot(steps, att_hist[:, 2], label='yaw error (psi)')
+            axes[2].set_title('Attitude Error (Euler Angles)')
+            axes[2].set_xlabel('Step')
+            axes[2].set_ylabel('Error (rad)')
+            axes[2].legend()
+            axes[2].grid(True)
+            plt.tight_layout()
+            plt.savefig('/tmp/hard_err_state_plots.png', dpi=150)
+            print("HARD_CODE: Saved error state plots to /tmp/hard_err_state_plots.png")
+            plt.close()
+            self._hard_step_counter = 0
+            self._hard_err_history_pos = []
+            self._hard_err_history_vel = []
+            self._hard_err_history_att = []
+        #>
 
         # Set time-varying parameters for all stages
         self._set_parameters_for_horizon()

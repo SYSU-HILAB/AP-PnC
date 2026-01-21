@@ -175,14 +175,6 @@ class ProposedNmpcAngVelActuatedController:
         # Update previous command
         self._u_prev = motor_thrusts.copy()
         
-        #<HARD
-        #task: collect data to plot, 2000 steps, plt.show(), exit util user closes the plot window
-        #Fig1. subplot1 self.cz_state vs time
-        #Fig1. subplot2 acc_p_meas[0] vs time
-        #Fig1. subplot3 acc_p_meas[1] vs time
-        #Fig1. subplot4 acc_p_meas[2] vs time
-
-        #>
 
         # Increment reference index after solving (only in tracking mode)
         if not self._is_hover_task:
