@@ -13,6 +13,7 @@ Welcome to the AP-PnC (Aerodynamic Prior-Free Trajectory Planning and Tracking C
 - [Quick Start Guide](quickstart.md) - Get AP-PnC running in minutes
 - [Control Stack & Module Reference](control-stack.md) - Calling sequence, modules, and ROS topics
 - [Build and Launch Commands](build-and-launch.md) - Correct way to build and launch ROS2 components
+- [Test the Lu et al.(TIE '23, IJRR '24, TRO '25)](viz-traj-tracking-elmpc) - An acados implementation of this so-called on-manifold mpc.
 
 ## Project Overview
 
