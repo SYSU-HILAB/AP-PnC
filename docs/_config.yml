@@ -12,8 +12,10 @@ github:
 header_pages:
   - index.md
   - quickstart.md
+  - build-and-launch.md
   - why-wrapped-python.md
   - control-stack.md
+  - viz-traj-tracking-elmpc.md
 
 # Markdown settings
 markdown: kramdown
