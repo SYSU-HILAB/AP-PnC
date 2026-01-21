@@ -41,20 +41,14 @@ class ErrorStateLinearMpcConfig:
         default_factory=lambda: np.array([0.01, 0.01, 0.01, 0.01])
     )  # Control effort weights
 
-    # Constraints on error angular states
-    lb_r: np.ndarray = field(
-        default_factory=lambda: np.array([-1.5, -2.5, -1.5], dtype=float)
-    )  # Angular error lower bounds
-    ub_r: np.ndarray = field(
-        default_factory=lambda: np.array([1.5, 2.5, 1.5], dtype=float)
-    )  # Angular error upper bounds
+
 
     # Constraints on control increments
     lb_u: np.ndarray = field(
-        default_factory=lambda: np.zeros(4, dtype=float)
+        default_factory=lambda: np.array([-5.5, -1.0, -2.5, -1.0], dtype=float)
     )  # Lower bounds on control increments
     ub_u: np.ndarray = field(
-        default_factory=lambda: np.array([5.5, 5.5, 5.5, 5.5])
+        default_factory=lambda: np.array([5.5, 1.0, 2.5, 1.0])
     )  # Upper bounds on control increments
 
     # Control timing
@@ -176,12 +170,6 @@ def ocp_err_state_cfg(cfg: ErrorStateLinearMpcConfig) -> AcadosOcp:
     # Initial state constraint (default is zero)
     ocp.constraints.x0 = np.zeros((nx))
 
-    # Constraints on error angular states (to limit attitude deviation)
-    # Using indices for err_theta: 6, 7, 8 (last 3 of 9 states)
-    ocp.constraints.idxbx = np.array([6, 7, 8])
-    ocp.constraints.lbx = cfg.lb_r  # Angular error lower bounds
-    ocp.constraints.ubx = cfg.ub_r  # Angular error upper bounds
-
     # Constraints on control increments
     ocp.constraints.Jbu = np.eye(nu)
     ocp.constraints.ubu = cfg.ub_u  # Upper bounds on control increments
@@ -196,6 +184,5 @@ def ocp_err_state_cfg(cfg: ErrorStateLinearMpcConfig) -> AcadosOcp:
     ocp.solver_options.qp_solver_iter_max = 50
     ocp.solver_options.print_level = 0
     ocp.solver_options.hpipm_mode = "SPEED_ABS"
-    ocp.solver_options.sim_method_num_stages = 4
 
     return ocp

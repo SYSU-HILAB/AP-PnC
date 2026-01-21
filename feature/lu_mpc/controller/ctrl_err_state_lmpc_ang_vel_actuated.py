@@ -18,15 +18,11 @@ from .trajectory_loader import TrajectoryReference
 from ...utils.math_utils import (
     quat_multiply,
     quat_to_rotmat,
+    quat_conjugate,
 )
 
 
 VELOCITY_EPSILON = 0.1
-
-
-def quat_conjugate(q: np.ndarray) -> np.ndarray:
-    """Return the conjugate of a quaternion."""
-    return np.array([q[0], -q[1], -q[2], -q[3]])
 
 
 def quat_to_err_theta(q_curr: np.ndarray, q_ref: np.ndarray) -> np.ndarray:
@@ -41,10 +37,23 @@ def quat_to_err_theta(q_curr: np.ndarray, q_ref: np.ndarray) -> np.ndarray:
         Angular error vector [theta_x, theta_y, theta_z]
     """
     # q_err = q_ref^* * q_curr
-    q_err = quat_multiply(quat_conjugate(q_ref), q_curr)
+    q_err = quat_multiply(quat_conjugate(q_curr), q_ref)
 
     # Small angle approximation: theta ≈ 2 * q_xyz
-    return 2.0 * q_err[1:4]
+    if q_err[0] < 0:
+        q_err = -q_err
+    
+    delta_w = q_err[0]
+    delta_v = q_err[1:4]
+
+    norm_delta_v = np.linalg.norm(delta_v)
+    if norm_delta_v < 1e-1:
+        return 2.0 * delta_v
+    else:
+        return 2.0 * np.arctan2(norm_delta_v, delta_w) * (delta_v / norm_delta_v)
+
+
+
 
 
 class ErrStateLmpcAngVelActuatedController:
@@ -99,7 +108,7 @@ class ErrStateLmpcAngVelActuatedController:
         # State storage
         self._cur_idx_ref = 0
         self._sim_dt = 0.02  # Trajectory sampling rate (const, 50Hz)
-        self._u_prev = np.zeros(4)  # Previous motor commands for QP mixer
+        self._u_prev = np.full(4, 9.81 * 2.0 / 4.0)  # Previous motor commands for QP mixer
 
         print(f"Error-State MPC Controller initialized:")
         print(f"  State dim: {self.nx} (error state)")
@@ -111,7 +120,7 @@ class ErrStateLmpcAngVelActuatedController:
     def reset(self):
         """Reset controller state."""
         self._cur_idx_ref = 0
-        self._u_prev = np.zeros(4)
+        self._u_prev = np.full(4, 9.81 * 2.0 / 4.0)  # Hover thrust
         self._pid_ang_vel.reset()
         self.solver.reset()
 
@@ -168,8 +177,7 @@ class ErrStateLmpcAngVelActuatedController:
         # Extract reference state
         p_ref = ref_state["position"]
         v_ref = ref_state["velocity"]
-        q_ref = ref_state.get("quaternion", np.array([0.707, 0.0, 0.0, 0.707]))
-
+        q_ref = ref_state['quat_quad_flu']
         # Get rotation matrix from reference quaternion
         R_ref = quat_to_rotmat(q_ref)
 
@@ -281,63 +289,7 @@ class ErrStateLmpcAngVelActuatedController:
         # Compute error state
         err_state = self._compute_error_state(sim_state, ref_state)
 
-        #<HARD
-        #Task. this mpc cares about pos, vel, attitude error only
-        #Task. plot err_state use 3 figures, attitude use euler angles to represent. 200 steps
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from scipy.spatial.transform import Rotation as R
-        if not hasattr(self, '_hard_step_counter'):
-            self._hard_step_counter = 0
-            self._hard_err_history_pos = []
-            self._hard_err_history_vel = []
-            self._hard_err_history_att = []
-        self._hard_step_counter += 1
-        self._hard_err_history_pos.append(err_state[0:3])
-        self._hard_err_history_vel.append(err_state[3:6])
-        q_err = err_state[6:10]
-        r = R.from_quat([q_err[1], q_err[2], q_err[3], q_err[0]])
-        euler_err = r.as_euler('xyz', degrees=False)
-        self._hard_err_history_att.append(euler_err)
-        if self._hard_step_counter >= 200:
-            fig, axes = plt.subplots(3, 1, figsize=(10, 12))
-            steps = np.arange(200)
-            pos_hist = np.array(self._hard_err_history_pos)
-            vel_hist = np.array(self._hard_err_history_vel)
-            att_hist = np.array(self._hard_err_history_att)
-            axes[0].plot(steps, pos_hist[:, 0], label='x error')
-            axes[0].plot(steps, pos_hist[:, 1], label='y error')
-            axes[0].plot(steps, pos_hist[:, 2], label='z error')
-            axes[0].set_title('Position Error')
-            axes[0].set_xlabel('Step')
-            axes[0].set_ylabel('Error (m)')
-            axes[0].legend()
-            axes[0].grid(True)
-            axes[1].plot(steps, vel_hist[:, 0], label='vx error')
-            axes[1].plot(steps, vel_hist[:, 1], label='vy error')
-            axes[1].plot(steps, vel_hist[:, 2], label='vz error')
-            axes[1].set_title('Velocity Error')
-            axes[1].set_xlabel('Step')
-            axes[1].set_ylabel('Error (m/s)')
-            axes[1].legend()
-            axes[1].grid(True)
-            axes[2].plot(steps, att_hist[:, 0], label='roll error (phi)')
-            axes[2].plot(steps, att_hist[:, 1], label='pitch error (theta)')
-            axes[2].plot(steps, att_hist[:, 2], label='yaw error (psi)')
-            axes[2].set_title('Attitude Error (Euler Angles)')
-            axes[2].set_xlabel('Step')
-            axes[2].set_ylabel('Error (rad)')
-            axes[2].legend()
-            axes[2].grid(True)
-            plt.tight_layout()
-            plt.savefig('/tmp/hard_err_state_plots.png', dpi=150)
-            print("HARD_CODE: Saved error state plots to /tmp/hard_err_state_plots.png")
-            plt.close()
-            self._hard_step_counter = 0
-            self._hard_err_history_pos = []
-            self._hard_err_history_vel = []
-            self._hard_err_history_att = []
-        #>
+
 
         # Set time-varying parameters for all stages
         self._set_parameters_for_horizon()
@@ -371,8 +323,10 @@ class ErrStateLmpcAngVelActuatedController:
         # Convert to absolute commands
         aT_cmd = aT_ref + increment_aT
         omega_cmd = omega_ref + increment_omega
-
+        euler_state = err_state[6:9]
         # Get current measurements from sim state
+        
+
         ang_vel_meas = sim_state[6:9]  # Angular rates
 
         # PD controller for thrust tracking
@@ -391,6 +345,100 @@ class ErrStateLmpcAngVelActuatedController:
 
         # Update previous command
         self._u_prev = motor_thrusts.copy()
+
+        #<HARD
+        #Task. this mpc cares about pos, vel, attitude error only
+        #Task. plot err_state use 3 figures, attitude use euler angles to represent. 200 steps
+        #Task. plot motor thrusts as well 4x1 subplot.
+        import matplotlib.pyplot as plt
+        from scipy.spatial.transform import Rotation as R
+        if not hasattr(self, '_hard_step_counter'):
+            self._hard_step_counter = 0
+            self._hard_err_history_pos = []
+            self._hard_err_history_vel = []
+            self._hard_err_history_att = []
+            self._hard_motor_history = []
+        self._hard_step_counter += 1
+        self._hard_err_history_pos.append(err_state[0:3])
+        self._hard_err_history_vel.append(err_state[3:6])
+        euler_err = err_state[6:9]
+        self._hard_err_history_att.append(euler_err)
+        self._hard_motor_history.append(motor_thrusts.copy())
+        if self._hard_step_counter >= 500:
+            steps = np.arange(500)
+            pos_hist = np.array(self._hard_err_history_pos)
+            vel_hist = np.array(self._hard_err_history_vel)
+            att_hist = np.array(self._hard_err_history_att)
+            motor_hist = np.array(self._hard_motor_history)
+            fig1, axes1 = plt.subplots(3, 1, figsize=(10, 12))
+            axes1[0].plot(steps, pos_hist[:, 0], label='x error')
+            axes1[0].plot(steps, pos_hist[:, 1], label='y error')
+            axes1[0].plot(steps, pos_hist[:, 2], label='z error')
+            axes1[0].set_title('Position Error')
+            axes1[0].set_xlabel('Step')
+            axes1[0].set_ylabel('Error (m)')
+            axes1[0].legend()
+            axes1[0].grid(True)
+            axes1[1].plot(steps, vel_hist[:, 0], label='vx error')
+            axes1[1].plot(steps, vel_hist[:, 1], label='vy error')
+            axes1[1].plot(steps, vel_hist[:, 2], label='vz error')
+            axes1[1].set_title('Velocity Error')
+            axes1[1].set_xlabel('Step')
+            axes1[1].set_ylabel('Error (m/s)')
+            axes1[1].legend()
+            axes1[1].grid(True)
+            axes1[2].plot(steps, att_hist[:, 0], label='roll error (phi)')
+            axes1[2].plot(steps, att_hist[:, 1], label='pitch error (theta)')
+            axes1[2].plot(steps, att_hist[:, 2], label='yaw error (psi)')
+            axes1[2].set_title('Attitude Error (Euler Angles)')
+            axes1[2].set_xlabel('Step')
+            axes1[2].set_ylabel('Error (rad)')
+            axes1[2].legend()
+            axes1[2].grid(True)
+            plt.tight_layout()
+            plt.show()
+            fig2, axes2 = plt.subplots(4, 1, figsize=(10, 12))
+            axes2[0].plot(steps, motor_hist[:, 0], label='motor 1')
+            axes2[0].set_title('Motor 1 Thrust')
+            axes2[0].set_xlabel('Step')
+            axes2[0].set_ylabel('Thrust (N)')
+            axes2[0].legend()
+            
+            axes2[0].grid(True)
+            axes2[1].plot(steps, motor_hist[:, 1], label='motor 2')
+            axes2[1].set_title('Motor 2 Thrust')
+            axes2[1].set_xlabel('Step')
+            axes2[1].set_ylabel('Thrust (N)')
+            axes2[1].legend()
+            axes2[1].set_ylim([0,8])
+            axes2[1].grid(True)
+            axes2[2].plot(steps, motor_hist[:, 2], label='motor 3')
+            axes2[2].set_title('Motor 3 Thrust')
+            axes2[2].set_xlabel('Step')
+            axes2[2].set_ylabel('Thrust (N)')
+            axes2[2].legend()
+            axes2[2].set_ylim([0,8])
+            axes2[2].grid(True)
+            axes2[3].plot(steps, motor_hist[:, 3], label='motor 4')
+            axes2[3].set_title('Motor 4 Thrust')
+            axes2[3].set_xlabel('Step')
+            axes2[3].set_ylabel('Thrust (N)')
+            axes2[3].set_ylim([0,8])
+            axes2[3].legend()
+            axes2[3].grid(True)
+            plt.tight_layout()
+            plt.show()
+            import time
+            time.sleep(20.0)
+            print("HARD_CODE: Saved error state plots to /tmp/hard_err_state_plots.png")
+            plt.close('all')
+            self._hard_step_counter = 0
+            self._hard_err_history_pos = []
+            self._hard_err_history_vel = []
+            self._hard_err_history_att = []
+            self._hard_motor_history = []
+        #>
+
 
         # Increment reference index after solving (only in tracking mode)
         if not self._is_hover_task:

@@ -38,6 +38,11 @@ def quat_multiply(q1: cs.SX | np.ndarray, q2: cs.SX | np.ndarray) -> cs.SX | np.
         )
 
 
+def quat_conjugate(q: np.ndarray) -> np.ndarray:
+    """Return the conjugate of a quaternion."""
+    return np.array([q[0], -q[1], -q[2], -q[3]])
+
+
 def right_quat_multiply(
     quat: np.ndarray | None, right: np.ndarray | None
 ) -> np.ndarray | None:
