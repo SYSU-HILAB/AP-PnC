@@ -40,7 +40,7 @@ class AeroForceEvaluator:
         """
         Build CasADi function for computing Jacobian using automatic differentiation.
 
-        Creates a symbolic function that computes forces in quad FLU frame
+        Creates a symbolic function that computes forces in world frame
         from world velocity and orientation, then computes the Jacobian.
         """
         # Symbolic inputs
@@ -70,10 +70,14 @@ class AeroForceEvaluator:
         # Step 4: Transform forces from wing FRD to quad FLU frame
         f_a_quad_flu = self._quat_apply_sym(trans_wing_to_quad, forces_wing_frd)
 
-        # Store symbolic forces
-        self._forces_sym = f_a_quad_flu
+        # Step 5: Transform forces from quad FLU to world frame
+        f_a_world = self._quat_apply_sym(self._quat_quad_flu_sym, f_a_quad_flu)
+
+        # Store symbolic forces (in world frame for Jacobian)
+        self._forces_sym = f_a_world
 
         # Compute Jacobian using CasADi automatic differentiation
+        # Jacobian is ∂fa_world/∂v_world
         jacobian_sym = cs.jacobian(self._forces_sym, self._v_world_sym)
 
         # Create compiled function
@@ -143,8 +147,8 @@ class AeroForceEvaluator:
         """
         Compute the Jacobian of aerodynamic forces with respect to world velocity.
 
-        The Jacobian is ∂fa_quad_flu/∂v_world, where:
-        - fa_quad_flu: Aerodynamic forces in quad FLU body frame
+        The Jacobian is ∂fa_world/∂v_world, where:
+        - fa_world: Aerodynamic forces in world frame
         - v_world: World frame velocity
 
         Uses CasADi automatic differentiation for exact computation.
@@ -154,7 +158,7 @@ class AeroForceEvaluator:
             quat_quad_flu: Quaternion [w, x, y, z] from quad FLU to world
 
         Returns:
-            jacobian: Jacobian matrix (3, 3) where jacobian[i, j] = ∂fa[i]/∂v_world[j]
+            jacobian: Jacobian matrix (3, 3) where jacobian[i, j] = ∂fa_world[i]/∂v_world[j]
         """
         # Evaluate using the compiled CasADi function
         jacobian_result = self._jacobian_func(v_world, quat_quad_flu)

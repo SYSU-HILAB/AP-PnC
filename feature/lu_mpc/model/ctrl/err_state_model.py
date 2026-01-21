@@ -38,41 +38,48 @@ def export_error_state_model():
     # 2. Define Parameters (Explicit Naming)
     # ---------------------------------------------
     # Trajectory References (Time-varying parameters)
-    param_v_b_d = SX.sym("v_b_d", 3)
+    param_v_d = SX.sym("v_d", 3)
+    # Different from IJRR 24, since it will be easier to implement.
+
 
     # R_d is passed as a 9x1 vector, then reshaped inside
     param_R_d_vec = SX.sym("R_d_vec", 9)
 
-    param_aT_d = SX.sym("aT_d", 1)
+    param_aT_d = SX.sym("aT_d", 3)
 
     # Renamed w_d -> omega_d for clarity
     param_omega_d = SX.sym("omega_d", 3)
 
     # Aerodynamic force parameters (computed externally using GD model)
-    param_f_a_d = SX.sym("f_a_d", 3)    # Desired aero force (quad FLU body frame)
-    param_par_f_a_par_v_b_d = SX.sym("par_f_a_par_v_b", 9)  # Partials of f_a wrt v_b (3x3 matrix flattened)
+    param_f_a_w_d = SX.sym("f_a_w_d", 3)    # Desired aero force (quad FLU body frame)
+    # param_par_f_a_par_v_b_d = SX.sym("par_f_a_par_v_b", 9)  # Partials of f_a wrt v_b (3x3 matrix flattened)
+    # REC noted that, it should use param_par_f_a_par_v_w_d instead of param_par_f_a_par_v_b
+    # because this formulation will be much more easy to achieved.
+    # Different from IJRR 24, since it will be easier to implement.
+    param_par_f_a_w_par_v_w_d = SX.sym("par_f_a_w_par_v_w_d", 9)  # Partials of f_a wrt v_w (3x3 matrix flattened)
+
 
     # Concatenate all parameters into one vector named 'params'
-    # Order: [v_b_d(3), R_d(9), aT_d(1), omega_d(3), f_a_d(3), par_f_a_par_v_b_d(9)]
+    # Order: [v_b_d(3), R_d(9), aT_d(3), omega_d(3), f_a_w_d(3), par_f_a_w_par_v_w_d(9)]
     # Total 28 elements (was 19 before adding aero forces and Jacobian)
-    params = vertcat(param_v_b_d, param_R_d_vec, param_aT_d, param_omega_d, param_f_a_d, param_par_f_a_par_v_b_d)
+    params = vertcat(param_v_d, param_R_d_vec, param_aT_d, param_omega_d, param_f_a_w_d, param_par_f_a_w_par_v_w_d)
 
     # ---------------------------------------------
     # 3. Obtain Parameters Values
     # ---------------------------------------------
-    val_v_b_d = param_v_b_d
+    val_v_d = param_v_d
     val_R_d = param_R_d_vec.reshape((3, 3))
-    val_aT_d = param_aT_d
+    val_aT_d = param_aT_d  # world frame  with direction.
     val_omega_d = param_omega_d
-    val_f_a_d = param_f_a_d
-    val_par_f_a_par_v_b_d = param_par_f_a_par_v_b_d.reshape((3, 3))  # Reshape to 3x3 matrix
+    val_f_a_w_d = param_f_a_w_d
+    val_par_f_a_w_par_v_w_d = param_par_f_a_w_par_v_w_d.reshape((3, 3))  # Reshape to 3x3 matrix
     # ---------------------------------------------
     # 4. Compute Jacobian Matrices
     # ---------------------------------------------
-    M_v = 1/mass * val_R_d @ val_par_f_a_par_v_b_d @ val_R_d.T
-    M_R = val_R_d @ (
-        -val_aT_d * skew_symmetric(e1) - skew_symmetric(val_f_a_d / mass) + val_par_f_a_par_v_b_d @ skew_symmetric(val_v_b_d/mass)
-    )
+    M_v = 1/mass * val_par_f_a_w_par_v_w_d
+    M_R = (
+        -skew_symmetric(val_aT_d) - skew_symmetric(val_f_a_w_d / mass) + val_par_f_a_w_par_v_w_d @ skew_symmetric(val_v_d/mass) 
+    ) @ val_R_d
     M_T = val_R_d @ e1 
 
     # ---------------------------------------------

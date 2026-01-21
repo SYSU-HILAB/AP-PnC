@@ -63,7 +63,7 @@ class ErrStateLmpcAngVelActuatedController:
     Uses linearized error dynamics with:
     - 9D error state: [err_p(3), err_v(3), err_theta(3)]
     - 4D control increments: [increment_aT(1), increment_omega(3)]
-    - 28D time-varying parameters from reference trajectory
+    - 30D time-varying parameters from reference trajectory
 
     The controller minimizes the error between current state and reference,
     making it well-suited for precise trajectory tracking.
@@ -94,7 +94,7 @@ class ErrStateLmpcAngVelActuatedController:
         # Solver dimensions
         self.nx = ocp_cfg.model.x.size()[0]  # 9 (error state)
         self.nu = ocp_cfg.model.u.size()[0]  # 4 (control increments)
-        self.np = ocp_cfg.model.p.size()[0]  # 28 (time-varying parameters)
+        self.np = ocp_cfg.model.p.size()[0]  # 30 (time-varying parameters)
 
         # Timing
         self.N = self.mpc_config.nodes
@@ -166,13 +166,13 @@ class ErrStateLmpcAngVelActuatedController:
         ref_state: dict[str, np.ndarray]
     ) -> np.ndarray:
         """
-        Compute the 28 time-varying parameters from reference state.
+        Compute the 30 time-varying parameters from reference state.
 
         Args:
             ref_state: Reference state dictionary
 
         Returns:
-            params: 28D parameter vector [v_b_d(3), R_d(9), aT_d(1), omega_d(3), f_a_d(3), par_f_a_par_v_b_d(9)]
+            params: 30D parameter vector [v_d(3), R_d(9), aT_d(3), omega_d(3), f_a_w_d(3), par_f_a_w_par_v_w_d(9)]
         """
         # Extract reference state
         p_ref = ref_state["position"]
@@ -181,36 +181,37 @@ class ErrStateLmpcAngVelActuatedController:
         # Get rotation matrix from reference quaternion
         R_ref = quat_to_rotmat(q_ref)
 
-        # 1. v_b_d: Reference velocity in body frame (3)
-        v_b_d = R_ref.T @ v_ref
+        # 1. v_d: Reference velocity in world frame (3)
+        v_d = v_ref
 
         # 2. R_d: Reference rotation matrix flattened (9)
         R_d = R_ref.flatten()
 
+        # 3. aT_d: Reference thrust acceleration in world frame (3)
         # For now, use a nominal value - this should be computed from trajectory dynamics
-        aT_d = np.array([9.81])  
+        aT_d = np.array([0.0, 0.0, 9.81])
 
-        # 3. omega_d: Reference angular velocity (3)
+        # 4. omega_d: Reference angular velocity (3)
         # For now, use zeros - ideally this would come from the trajectory
         omega_d = np.zeros(3)
 
-        # 4. f_a_d: Reference aerodynamic force (3)
+        # 5. f_a_w_d: Reference aerodynamic force in world frame (3)
         # For now, use zeros - this requires GD model evaluation
-        f_a_d = np.zeros(3)
+        f_a_w_d = np.zeros(3)
 
-        # 5. par_f_a_par_v_b_d: Jacobian of aero force w.r.t. velocity (9)
+        # 6. par_f_a_w_par_v_w_d: Jacobian of aero force w.r.t. velocity in world frame (9)
         # For now, use zeros - this requires analytical or numerical derivatives
-        par_f_a_par_v_b_d = np.zeros(9)
+        par_f_a_w_par_v_w_d = np.zeros(9)
 
         # Assemble parameters
         params = np.concatenate([
-            v_b_d,           # 3
-            R_d,             # 9
-            aT_d,            # 1
-            omega_d,         # 3
-            f_a_d,           # 3
-            par_f_a_par_v_b_d,  # 9
-        ])  # Total: 28
+            v_d,                       # 3
+            R_d,                       # 9
+            aT_d,                      # 3
+            omega_d,                   # 3
+            f_a_w_d,                   # 3
+            par_f_a_w_par_v_w_d,       # 9
+        ])  # Total: 30
 
         return params
 
@@ -315,10 +316,10 @@ class ErrStateLmpcAngVelActuatedController:
         increment_omega = u[1:4]
 
         # Extract reference values from parameters
-        # params = [v_b_d(3), R_d(9), aT_d(1), omega_d(3), f_a_d(3), par_f_a_par_v_b_d(9)]
+        # params = [v_d(3), R_d(9), aT_d(3), omega_d(3), f_a_w_d(3), par_f_a_w_par_v_w_d(9)]
         params = self._compute_reference_parameters(ref_state)
-        aT_ref = params[12]      # Index 12 (after 3+9=12)
-        omega_ref = params[13:16] # Indices 13, 14, 15
+        aT_ref = params[12:15]   # Indices 12, 13, 14 (after 3+9=12)
+        omega_ref = params[15:18] # Indices 15, 16, 17
 
         # Convert to absolute commands
         aT_cmd = aT_ref + increment_aT
@@ -333,8 +334,10 @@ class ErrStateLmpcAngVelActuatedController:
         # Note: Current aT is estimated from motor thrusts
         current_motor_thrusts = sim_state[13:17]
         current_aT = np.sum(current_motor_thrusts) / 2.0  # Approximate
-        thrust_correction = self._pd_thrust.compute(aT_cmd, current_aT)
-        tot_thrust_cmd = aT_cmd * 2.0 + thrust_correction  # Scale to total thrust
+        # aT_cmd is now a 3D vector in world frame, use its magnitude for thrust control
+        aT_magnitude = np.linalg.norm(aT_cmd)
+        thrust_correction = self._pd_thrust.compute(aT_magnitude, current_aT)
+        tot_thrust_cmd = aT_magnitude * 2.0 + thrust_correction  # Scale to total thrust
 
         # PID controller for angular velocity tracking
         torque_cmd = self._pid_ang_vel.compute(omega_cmd, ang_vel_meas)
