@@ -12,10 +12,11 @@ Frame Conventions:
 
 from __future__ import annotations
 
+import casadi as cs
 import numpy as np
 
 from ..sim.gd_model_casadi import SymbolicGdModel, GdModelConfig, DEFAULT_CONFIG
-from ....utils.math_utils import quat_multiply, quat_apply, quat_apply_inverse
+from ....utils.math_utils import quat_multiply, quat_apply, quat_apply_inverse, quat_to_rotmat
 
 
 class AeroForceEvaluator:
@@ -33,6 +34,81 @@ class AeroForceEvaluator:
             config: GD model configuration (uses default if None)
         """
         self.model = SymbolicGdModel(config or DEFAULT_CONFIG)
+        self._build_jacobian_function()
+
+    def _build_jacobian_function(self):
+        """
+        Build CasADi function for computing Jacobian using automatic differentiation.
+
+        Creates a symbolic function that computes forces in quad FLU frame
+        from world velocity and orientation, then computes the Jacobian.
+        """
+        # Symbolic inputs
+        self._v_world_sym = cs.SX.sym("v_world", 3)  # World velocity
+        self._quat_quad_flu_sym = cs.SX.sym("quat_quad_flu", 4)  # Quad orientation
+
+        # Convert transformation to CasADi
+        trans_wing_to_quad = cs.SX(self.TRANS_WING_FRD_TO_QUAD_FLU)
+
+        # Step 1: Compute wing orientation (FRD) from quad orientation (FLU)
+        quat_wing_frd = self._quat_multiply_sym(
+            self._quat_quad_flu_sym, trans_wing_to_quad
+        )
+
+        # Step 2: Transform world velocity to wing body frame (FRD)
+        vel_b_wing_frd = self._quat_apply_inverse_sym(quat_wing_frd, self._v_world_sym)
+
+        # Step 3: Get forces from the model's symbolic expressions
+        # The model has symbolic forces that depend on velb
+        # We need to substitute the model's velb with our vel_b_wing_frd
+        forces_wing_frd = cs.substitute(
+            self.model.forces,
+            self.model.velb,
+            vel_b_wing_frd
+        )
+
+        # Step 4: Transform forces from wing FRD to quad FLU frame
+        f_a_quad_flu = self._quat_apply_sym(trans_wing_to_quad, forces_wing_frd)
+
+        # Store symbolic forces
+        self._forces_sym = f_a_quad_flu
+
+        # Compute Jacobian using CasADi automatic differentiation
+        jacobian_sym = cs.jacobian(self._forces_sym, self._v_world_sym)
+
+        # Create compiled function
+        self._jacobian_func = cs.Function(
+            "forces_jacobian",
+            [self._v_world_sym, self._quat_quad_flu_sym],
+            [jacobian_sym],
+        )
+
+    def _quat_multiply_sym(
+        self, q1: cs.SX, q2: cs.SX
+    ) -> cs.SX:
+        """CasADi symbolic quaternion multiplication."""
+        w1, x1, y1, z1 = q1[0], q1[1], q1[2], q1[3]
+        w2, x2, y2, z2 = q2[0], q2[1], q2[2], q2[3]
+        return cs.vertcat(
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+        )
+
+    def _quat_apply_sym(self, q: cs.SX, v: cs.SX) -> cs.SX:
+        """Apply CasADi symbolic quaternion rotation to a vector."""
+        qw, qx, qy, qz = q[0], q[1], q[2], q[3]
+        q_xyz = cs.vertcat(qx, qy, qz)
+        t = 2.0 * cs.cross(q_xyz, v)
+        return v + qw * t + cs.cross(q_xyz, t)
+
+    def _quat_apply_inverse_sym(self, q: cs.SX, v: cs.SX) -> cs.SX:
+        """Apply CasADi symbolic inverse quaternion rotation to a vector."""
+        qw, qx, qy, qz = q[0], q[1], q[2], q[3]
+        q_xyz = cs.vertcat(qx, qy, qz)
+        t = 2.0 * cs.cross(q_xyz, v)
+        return v - qw * t + cs.cross(q_xyz, t)
 
     def evaluate_forces(
         self, v_world: np.ndarray, quat_quad_flu: np.ndarray
@@ -54,9 +130,32 @@ class AeroForceEvaluator:
         vel_b_wing_frd = quat_apply_inverse(quat_wing_frd, v_world)
 
         # Step 3: Evaluate GD model (returns forces in wing FRD frame)
-        forces, moments, alpha, beta = self.model.evaluate(vel_b_wing_frd)
+        forces_b, moments, alpha, beta = self.model.evaluate(vel_b_wing_frd)
 
         # Step 4: Transform forces from wing FRD to quad FLU frame
-        f_a_quad_flu = quat_apply(self.TRANS_WING_FRD_TO_QUAD_FLU, forces)
+        f_a_quad_flu = quat_apply(self.TRANS_WING_FRD_TO_QUAD_FLU, forces_b)
 
         return f_a_quad_flu
+
+    def compute_forces_jacobian(
+        self, v_world: np.ndarray, quat_quad_flu: np.ndarray
+    ) -> np.ndarray:
+        """
+        Compute the Jacobian of aerodynamic forces with respect to world velocity.
+
+        The Jacobian is ∂fa_quad_flu/∂v_world, where:
+        - fa_quad_flu: Aerodynamic forces in quad FLU body frame
+        - v_world: World frame velocity
+
+        Uses CasADi automatic differentiation for exact computation.
+
+        Args:
+            v_world: World frame velocity (3,) [vx, vy, vz] in m/s
+            quat_quad_flu: Quaternion [w, x, y, z] from quad FLU to world
+
+        Returns:
+            jacobian: Jacobian matrix (3, 3) where jacobian[i, j] = ∂fa[i]/∂v_world[j]
+        """
+        # Evaluate using the compiled CasADi function
+        jacobian_result = self._jacobian_func(v_world, quat_quad_flu)
+        return jacobian_result.full()

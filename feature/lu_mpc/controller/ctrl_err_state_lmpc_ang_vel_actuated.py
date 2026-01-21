@@ -265,7 +265,7 @@ class ErrStateLmpcAngVelActuatedController:
                 ref_state_i = {
                     "position": ref["position"][i],
                     "velocity": ref["velocity"][i],
-                    "quaternion": ref["quat_quad_flu"][i],
+                    "quat_quad_flu": ref["quat_quad_flu"][i],
                 }
                 self._set_parameters_for_stage(i, ref_state_i)
 
