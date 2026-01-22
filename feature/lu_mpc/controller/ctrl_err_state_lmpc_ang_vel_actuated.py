@@ -63,7 +63,7 @@ class ErrStateLmpcAngVelActuatedController:
     Uses linearized error dynamics with:
     - 9D error state: [err_p(3), err_v(3), err_theta(3)]
     - 4D control increments: [increment_aT(1), increment_omega(3)]
-    - 30D time-varying parameters from reference trajectory
+    - 28D time-varying parameters from reference trajectory
 
     The controller minimizes the error between current state and reference,
     making it well-suited for precise trajectory tracking.
@@ -94,7 +94,7 @@ class ErrStateLmpcAngVelActuatedController:
         # Solver dimensions
         self.nx = ocp_cfg.model.x.size()[0]  # 9 (error state)
         self.nu = ocp_cfg.model.u.size()[0]  # 4 (control increments)
-        self.np = ocp_cfg.model.p.size()[0]  # 30 (time-varying parameters)
+        self.np = ocp_cfg.model.p.size()[0]  # 28 (time-varying parameters)
 
         # Timing
         self.N = self.mpc_config.nodes
@@ -113,7 +113,7 @@ class ErrStateLmpcAngVelActuatedController:
         print(f"Error-State MPC Controller initialized:")
         print(f"  State dim: {self.nx} (error state)")
         print(f"  Control dim: {self.nu} (control increments)")
-        print(f"  Param dim: {self.np} (time-varying)")
+        print(f"  Param dim: {self.np} (28 time-varying)")
         print(f"  Horizon: {self.N} nodes, {self.horizon}s")
         print(f"  Mode: {'Hover (fixed reference)' if self._is_hover_task else 'Tracking (advancing reference)'}")
 
@@ -166,13 +166,16 @@ class ErrStateLmpcAngVelActuatedController:
         ref_state: dict[str, np.ndarray]
     ) -> np.ndarray:
         """
-        Compute the 30 time-varying parameters from reference state.
+        Compute the 28 time-varying parameters from reference state.
+
+        Order matches export_error_state_model():
+        [R_d(9), mass_normalized_par_f_a_w_par_v_w_d(9), aT_d(1), mass_normalized_f_a_w_d(3), v_d(3), omega_d(3)]
 
         Args:
             ref_state: Reference state dictionary
 
         Returns:
-            params: 30D parameter vector [v_d(3), R_d(9), aT_d(3), omega_d(3), f_a_w_d(3), par_f_a_w_par_v_w_d(9)]
+            params: 28D parameter vector
         """
         # Extract reference state
         p_ref = ref_state["position"]
@@ -181,37 +184,37 @@ class ErrStateLmpcAngVelActuatedController:
         # Get rotation matrix from reference quaternion
         R_ref = quat_to_rotmat(q_ref)
 
-        # 1. v_d: Reference velocity in world frame (3)
-        v_d = v_ref
-
-        # 2. R_d: Reference rotation matrix flattened (9)
+        # 1. R_d: Reference rotation matrix flattened (9)
         R_d = R_ref.flatten()
 
-        # 3. aT_d: Reference thrust acceleration in world frame (3)
-        # For now, use a nominal value - this should be computed from trajectory dynamics
-        aT_d = np.array([0.0, 0.0, 9.81])
+        # 2. mass_normalized_par_f_a_w_par_v_w_d: Jacobian of aero force w.r.t. velocity in world frame (9)
+        # For now, use zeros - this requires analytical or numerical derivatives
+        mass_normalized_par_f_a_w_par_v_w_d = np.zeros(9)
 
-        # 4. omega_d: Reference angular velocity (3)
+        # 3. aT_d: Reference thrust acceleration magnitude (1) - SCALAR
+        # For now, use a nominal value - this should be computed from trajectory dynamics
+        aT_d = 9.81  # Scalar thrust acceleration
+
+        # 4. mass_normalized_f_a_w_d: Reference aerodynamic force in world frame (3)
+        # For now, use zeros - this requires GD model evaluation
+        mass_normalized_f_a_w_d = np.zeros(3)
+
+        # 5. v_d: Reference velocity in world frame (3)
+        v_d = v_ref
+
+        # 6. omega_d: Reference angular velocity (3)
         # For now, use zeros - ideally this would come from the trajectory
         omega_d = np.zeros(3)
 
-        # 5. f_a_w_d: Reference aerodynamic force in world frame (3)
-        # For now, use zeros - this requires GD model evaluation
-        f_a_w_d = np.zeros(3)
-
-        # 6. par_f_a_w_par_v_w_d: Jacobian of aero force w.r.t. velocity in world frame (9)
-        # For now, use zeros - this requires analytical or numerical derivatives
-        par_f_a_w_par_v_w_d = np.zeros(9)
-
-        # Assemble parameters
+        # Assemble parameters in order matching export_error_state_model()
         params = np.concatenate([
-            v_d,                       # 3
-            R_d,                       # 9
-            aT_d,                      # 3
-            omega_d,                   # 3
-            f_a_w_d,                   # 3
-            par_f_a_w_par_v_w_d,       # 9
-        ])  # Total: 30
+            R_d,                                   # 0-8:   9 elements
+            mass_normalized_par_f_a_w_par_v_w_d,  # 9-17:  9 elements
+            [aT_d],                               # 18:    1 element (scalar as array)
+            mass_normalized_f_a_w_d,              # 19-21: 3 elements
+            v_d,                                  # 22-24: 3 elements
+            omega_d,                              # 25-27: 3 elements
+        ])  # Total: 28
 
         return params
 
@@ -287,6 +290,7 @@ class ErrStateLmpcAngVelActuatedController:
             t_current = self._cur_idx_ref * self._sim_dt
             ref_state = self.trajectory.get_reference_at_time(t_current)
 
+        sim_state[2] = sim_state[2] - 1.0  # Use current altitude
         # Compute error state
         err_state = self._compute_error_state(sim_state, ref_state)
 
@@ -307,8 +311,7 @@ class ErrStateLmpcAngVelActuatedController:
         status = self.solver.solve()
 
         if status != 0:
-            print(f"Warning: Error-state MPC solver failed with status {status}")
-            return np.zeros(4)
+            raise ValueError(f"Error: Error-state MPC solver failed with status {status}")
 
         # Get control increments from MPC
         u = self.solver.get(0, "u")  # [increment_aT, increment_omega_x, increment_omega_y, increment_omega_z]
@@ -316,17 +319,17 @@ class ErrStateLmpcAngVelActuatedController:
         increment_omega = u[1:4]
 
         # Extract reference values from parameters
-        # params = [v_d(3), R_d(9), aT_d(3), omega_d(3), f_a_w_d(3), par_f_a_w_par_v_w_d(9)]
+        # params = [R_d(9), mass_normalized_par_f_a_w_par_v_w_d(9), aT_d(1), mass_normalized_f_a_w_d(3), v_d(3), omega_d(3)]
         params = self._compute_reference_parameters(ref_state)
-        aT_ref = params[12:15]   # Indices 12, 13, 14 (after 3+9=12)
-        omega_ref = params[15:18] # Indices 15, 16, 17
+        aT_ref = params[18]          # Index 18 (scalar thrust acceleration)
+        omega_ref = params[25:28]    # Indices 25, 26, 27 (angular velocity)
 
         # Convert to absolute commands
-        aT_cmd = aT_ref + increment_aT
-        omega_cmd = omega_ref + increment_omega
+        aT_cmd = aT_ref - increment_aT  # Scalar thrust acceleration
+        omega_cmd = omega_ref - increment_omega
         euler_state = err_state[6:9]
         # Get current measurements from sim state
-        
+
 
         ang_vel_meas = sim_state[6:9]  # Angular rates
 
@@ -334,10 +337,9 @@ class ErrStateLmpcAngVelActuatedController:
         # Note: Current aT is estimated from motor thrusts
         current_motor_thrusts = sim_state[13:17]
         current_aT = np.sum(current_motor_thrusts) / 2.0  # Approximate
-        # aT_cmd is now a 3D vector in world frame, use its magnitude for thrust control
-        aT_magnitude = np.linalg.norm(aT_cmd)
-        thrust_correction = self._pd_thrust.compute(aT_magnitude, current_aT)
-        tot_thrust_cmd = aT_magnitude * 2.0 + thrust_correction  # Scale to total thrust
+        # aT_cmd is a scalar thrust acceleration
+        thrust_correction = self._pd_thrust.compute(aT_cmd, current_aT)
+        tot_thrust_cmd = aT_cmd * 2.0 + thrust_correction  # Scale to total thrust
 
         # PID controller for angular velocity tracking
         torque_cmd = self._pid_ang_vel.compute(omega_cmd, ang_vel_meas)
@@ -353,6 +355,7 @@ class ErrStateLmpcAngVelActuatedController:
         #Task. this mpc cares about pos, vel, attitude error only
         #Task. plot err_state use 3 figures, attitude use euler angles to represent. 200 steps
         #Task. plot motor thrusts as well 4x1 subplot.
+        #Task. plot body_rates trakcing as well 3x1 subplot.
         import matplotlib.pyplot as plt
         from scipy.spatial.transform import Rotation as R
         if not hasattr(self, '_hard_step_counter'):
@@ -361,12 +364,16 @@ class ErrStateLmpcAngVelActuatedController:
             self._hard_err_history_vel = []
             self._hard_err_history_att = []
             self._hard_motor_history = []
+            self._hard_omega_cmd_history = []
+            self._hard_omega_meas_history = []
         self._hard_step_counter += 1
         self._hard_err_history_pos.append(err_state[0:3])
         self._hard_err_history_vel.append(err_state[3:6])
         euler_err = err_state[6:9]
         self._hard_err_history_att.append(euler_err)
         self._hard_motor_history.append(motor_thrusts.copy())
+        self._hard_omega_cmd_history.append(omega_cmd.copy())
+        self._hard_omega_meas_history.append(ang_vel_meas.copy())
         if self._hard_step_counter >= 500:
             steps = np.arange(500)
             pos_hist = np.array(self._hard_err_history_pos)
@@ -431,6 +438,32 @@ class ErrStateLmpcAngVelActuatedController:
             axes2[3].grid(True)
             plt.tight_layout()
             plt.show()
+            fig3, axes3 = plt.subplots(3, 1, figsize=(10, 10))
+            omega_cmd_hist = np.array(self._hard_omega_cmd_history)
+            omega_meas_hist = np.array(self._hard_omega_meas_history)
+            axes3[0].plot(steps, omega_cmd_hist[:, 0], 'r-', label='omega_x cmd')
+            axes3[0].plot(steps, omega_meas_hist[:, 0], 'b--', label='omega_x meas')
+            axes3[0].set_title('Body Rate X Tracking')
+            axes3[0].set_xlabel('Step')
+            axes3[0].set_ylabel('Angular Rate (rad/s)')
+            axes3[0].legend()
+            axes3[0].grid(True)
+            axes3[1].plot(steps, omega_cmd_hist[:, 1], 'r-', label='omega_y cmd')
+            axes3[1].plot(steps, omega_meas_hist[:, 1], 'b--', label='omega_y meas')
+            axes3[1].set_title('Body Rate Y Tracking')
+            axes3[1].set_xlabel('Step')
+            axes3[1].set_ylabel('Angular Rate (rad/s)')
+            axes3[1].legend()
+            axes3[1].grid(True)
+            axes3[2].plot(steps, omega_cmd_hist[:, 2], 'r-', label='omega_z cmd')
+            axes3[2].plot(steps, omega_meas_hist[:, 2], 'b--', label='omega_z meas')
+            axes3[2].set_title('Body Rate Z Tracking')
+            axes3[2].set_xlabel('Step')
+            axes3[2].set_ylabel('Angular Rate (rad/s)')
+            axes3[2].legend()
+            axes3[2].grid(True)
+            plt.tight_layout()
+            plt.show()
             import time
             time.sleep(20.0)
             print("HARD_CODE: Saved error state plots to /tmp/hard_err_state_plots.png")
@@ -440,6 +473,8 @@ class ErrStateLmpcAngVelActuatedController:
             self._hard_err_history_vel = []
             self._hard_err_history_att = []
             self._hard_motor_history = []
+            self._hard_omega_cmd_history = []
+            self._hard_omega_meas_history = []
         #>
 
 
