@@ -8,7 +8,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 2. **Trajectory buffering (`src/traj_buffer`)** listens to new `RefTrajectory`s plus mode/ready flags. It conditions the path (offset removal, thrust initialization, down-sampling) and continually publishes fixed-size `RefTrajectoryBullet` packets (`ref_trajectory_bullet`) that always cover one second of future motion. It also mirrors the path to RViz via `ref_vis`.
 3. **State estimation & PX4 bridge (`src/px4_interface`)** receives raw PX4 `VehicleOdometry` and `VehicleStatus`, applies frame transforms, and republishes `interface/State` on `/cur_state` (and `/cur_state_odom` for visualization). The same node subscribes to `/mpc_controls`, converts FLU controls/rates into PX4 FRD commands, and streams them to `/fmu/in/vehicle_thrust_acc_setpoint`. Heartbeat and tracking info are also bridged to PX4 via `/fmu/in/offboard_control_mode` and `/fmu/in/tracking_info`.
 4. **NMPC runtime (`src/c_nmpc`)** combines the latest `/cur_state`, `/ref_trajectory_bullet`, and `/fmu/out/vehicle_acceleration`. `stateCallback()` updates the acados NLP bounds and publishes `/ref_can_set` so the buffer knows the solver is live. `referenceCallback()` loads the whole reference horizon into acados, injects aerodynamic parameters, triggers `solve()`, and publishes `/mpc_controls` plus `/tracking_info`.
-5. **Additional sensors/utilities** such as `src/mocap-px4/src/frame_transform` (converts `/mocap/odometry` into PX4 visual odometry) and `src/mockamp` (publishes obstacle clouds on `mock_map`) feed the planner and estimator.
+5. **Additional sensors/utilities** such as `src/mocap-px4/src/frame_transform` (converts `/mocap/odometry` into PX4 visual odometry).
 6. **Differential-flatness & aerodynamics layers** (`src/tailsitter_df`, `src/aerodynamics`, `src/utils`) supply the planner and NMPC with aerodynamic coefficients, analytic derivatives, and config readers. Python tooling in `src/nmpc` regenerates acados models and JSON artifacts when weights or dynamics change.
 
 ## Module Details
@@ -72,11 +72,6 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
   * `frame_transform` – library of quaternion/coordinate utilities.
   * `mocap_to_visual_odometry` – subscribes to `/mocap/odometry`, averages a window to remove bias, applies FLU→PX4 transforms, filters velocity with an alpha-beta filter, and publishes PX4 `VehicleOdometry` messages on `/fmu/in/vehicle_visual_odometry`.
 * Tunable parameters: `time_unit`, `alpha`, `beta`, and bias window size.
-
-### MockaMap (`src/mockamp`)
-* Node `mockamap` publishes procedural obstacle clouds for simulation/testing.
-* Parameters control maze complexity, density, scale, and generator seed (`mockamp/src/mockamap.cpp`).
-* Publishes `sensor_msgs/PointCloud2` on `mock_map` at a configurable frequency; upstream planners can subscribe directly.
 
 ### Differential-flatness & aerodynamics (`src/tailsitter_df`, `src/aerodynamics`, `src/utils`)
 * `src/tailsitter_df/src/tailsitter_df.cpp` implements lift/drag modeling with autodiff. It loads aerodynamic matrices (`phi`) and mass from `global.toml`, computes body-frame bases `(xb,yb,zb)`, and exports helpers such as `df_forward`, `df_backward`, and aerodynamic Jacobians.
