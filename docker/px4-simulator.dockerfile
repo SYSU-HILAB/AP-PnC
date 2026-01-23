@@ -28,9 +28,9 @@ RUN set -ex && \
 COPY installations/install-dds-agent.sh /tmp/agent_src/install-dds-agent.sh
 RUN /tmp/agent_src/install-dds-agent.sh
 
-ARG CACHE_BUSTER=default
+ARG CACHE_BUSTER="rebuild"
 RUN echo "Cache buster: $CACHE_BUSTER" && \
-    git clone https://github.com/WarriorHanamy/px4-vtol.git --depth=1 -b docker --recursive /px4-vtol
+    git clone https://github.com/WarriorHanamy/px4-vtol.git --recursive /px4-vtol
 WORKDIR /px4-vtol
 
 ENV PATH="/px4-vtol/Tools:$PATH"

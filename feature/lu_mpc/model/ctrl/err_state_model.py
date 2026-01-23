@@ -3,7 +3,6 @@ from casadi import SX, vertcat, horzcat, mtimes, norm_2
 import numpy as np
 from ....utils.math_utils import skew_symmetric
 
-
 def export_error_state_model():
     model_name = "err_state_model_lu"
     thrust_acc_ray = SX([0, 0, 1])  # Thrust direction in Body Frame
@@ -83,20 +82,35 @@ def export_error_state_model():
     # M_R = val_R_d @ (
     #     -val_aT_d * skew_symmetric(M_T) - skew_symmetric(val_mass_normalized_f_a_w_d) + M_v @ skew_symmetric(val_v_d) 
     # )
-    M_R = val_R_d @ (
-        val_aT_d * skew_symmetric(thrust_acc_ray) - skew_symmetric(val_mass_normalized_f_a_w_d) + M_v @ skew_symmetric(val_v_d) 
-    )
+    M_R = (
+        -val_aT_d * skew_symmetric(M_T) - skew_symmetric(val_mass_normalized_f_a_w_d) + M_v @ skew_symmetric(val_v_d) 
+    )@ val_R_d
+
+    M_R = (
+        -val_aT_d * skew_symmetric(M_T)
+    )@ val_R_d
 
     # ---------------------------------------------
     # 5. Finalize
     # ---------------------------------------------
+    # f_expl = vertcat(
+    #     err_state_v,
+    #     M_v @ err_state_v + M_R @ err_state_theta,
+    #     -skew_symmetric(val_omega_d) @ err_state_theta
+    # ) + vertcat(
+    #     SX.zeros(3, 1),
+    #     M_T * increment_aT,
+    #     # SX.zeros(3, 1),
+    #     increment_omega,
+    #     # SX.zeros(3, 1)
+    # )
     f_expl = vertcat(
         err_state_v,
-        M_v @ err_state_v + M_R @ err_state_theta,
+        M_R @ err_state_theta,
         -skew_symmetric(val_omega_d) @ err_state_theta
     ) + vertcat(
         SX.zeros(3, 1),
-        M_T * increment_aT,
+        -M_T * increment_aT,
         # SX.zeros(3, 1),
         increment_omega,
         # SX.zeros(3, 1)
@@ -113,3 +127,4 @@ def export_error_state_model():
     model.name = model_name
 
     return model
+

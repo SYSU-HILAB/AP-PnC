@@ -25,18 +25,19 @@ from ...utils.math_utils import (
 VELOCITY_EPSILON = 0.1
 
 
-def quat_to_err_theta(q_curr: np.ndarray, q_ref: np.ndarray) -> np.ndarray:
+def quat_to_err_theta(q_ref: np.ndarray, q_curr: np.ndarray) -> np.ndarray:
     """
     Compute angular error between two quaternions using small-angle approximation.
 
     Args:
-        q_curr: Current quaternion [w, x, y, z]
         q_ref: Reference quaternion [w, x, y, z]
+        q_curr: Current quaternion [w, x, y, z]
+
 
     Returns:
         Angular error vector [theta_x, theta_y, theta_z]
     """
-    # q_err = q_ref^* * q_curr
+    # q_err = q_curr_conj * q_ref
     q_err = quat_multiply(quat_conjugate(q_curr), q_ref)
 
     # Small angle approximation: theta ≈ 2 * q_xyz
@@ -126,8 +127,8 @@ class ErrStateLmpcAngVelActuatedController:
 
     def _compute_error_state(
         self,
-        sim_state: np.ndarray,
-        ref_state: dict[str, np.ndarray]
+        ref_state: dict[str, np.ndarray],
+        sim_state: np.ndarray
     ) -> np.ndarray:
         """
         Compute error state from simulation state and reference state.
@@ -139,22 +140,21 @@ class ErrStateLmpcAngVelActuatedController:
         Returns:
             err_state: 9D error state [err_p(3), err_v(3), err_theta(3)]
         """
-        # Extract simulation state components
-        p_sim = sim_state[0:3]    # Position (world frame)
-        v_sim = sim_state[3:6]    # Velocity (world frame)
-        q_sim = sim_state[9:13]   # Quaternion [w, x, y, z]
-
         # Extract reference state components
         p_ref = ref_state["position"]
         v_ref = ref_state["velocity"]
         q_ref = ref_state["quat_quad_flu"]
         # Position error (world frame)
+
+        p_sim = sim_state[0:3]
+        v_sim = sim_state[3:6]
+        q_sim = sim_state[9:13]
+
         err_p = p_ref - p_sim
-
         err_v = v_ref - v_sim
-
-        # Angular error using Log mapping (small-angle approximation)
-        err_theta = quat_to_err_theta(q_sim, q_ref)
+        err_p = p_sim - p_ref
+        err_v = v_sim - v_ref
+        err_theta = quat_to_err_theta(q_ref=q_ref, q_curr=q_sim)
 
         # Assemble error state
         err_state = np.concatenate([err_p, err_v, err_theta])
@@ -163,7 +163,8 @@ class ErrStateLmpcAngVelActuatedController:
 
     def _compute_reference_parameters(
         self,
-        ref_state: dict[str, np.ndarray]
+        ref_state: dict[str, np.ndarray],
+        ang_vel_meas: np.ndarray = np.zeros(3)
     ) -> np.ndarray:
         """
         Compute the 28 time-varying parameters from reference state.
@@ -205,6 +206,7 @@ class ErrStateLmpcAngVelActuatedController:
         # 6. omega_d: Reference angular velocity (3)
         # For now, use zeros - ideally this would come from the trajectory
         omega_d = np.zeros(3)
+        # omega_d = ang_vel_meas
 
         # Assemble parameters in order matching export_error_state_model()
         params = np.concatenate([
@@ -290,9 +292,9 @@ class ErrStateLmpcAngVelActuatedController:
             t_current = self._cur_idx_ref * self._sim_dt
             ref_state = self.trajectory.get_reference_at_time(t_current)
 
-        sim_state[2] = sim_state[2] - 1.0  # Use current altitude
+        sim_state[0] = sim_state[0] - 0.2  # Use current altitude
         # Compute error state
-        err_state = self._compute_error_state(sim_state, ref_state)
+        err_state = self._compute_error_state(ref_state=ref_state, sim_state=sim_state)
 
 
 
@@ -318,9 +320,11 @@ class ErrStateLmpcAngVelActuatedController:
         increment_aT = u[0]
         increment_omega = u[1:4]
 
+
+        ang_vel_meas = sim_state[6:9]  # Angular rates
         # Extract reference values from parameters
         # params = [R_d(9), mass_normalized_par_f_a_w_par_v_w_d(9), aT_d(1), mass_normalized_f_a_w_d(3), v_d(3), omega_d(3)]
-        params = self._compute_reference_parameters(ref_state)
+        params = self._compute_reference_parameters(ref_state, ang_vel_meas)
         aT_ref = params[18]          # Index 18 (scalar thrust acceleration)
         omega_ref = params[25:28]    # Indices 25, 26, 27 (angular velocity)
 
@@ -331,7 +335,6 @@ class ErrStateLmpcAngVelActuatedController:
         # Get current measurements from sim state
 
 
-        ang_vel_meas = sim_state[6:9]  # Angular rates
 
         # PD controller for thrust tracking
         # Note: Current aT is estimated from motor thrusts

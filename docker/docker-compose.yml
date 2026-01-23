@@ -3,44 +3,70 @@ version: "3.8"
 services:
   px4-simulator:
     build:
-      context: .
+      context: ..
       dockerfile: docker/px4-simulator.dockerfile
       network: host
     image: px4-simulator:latest
     container_name: px4-simulator
     privileged: true
     network_mode: host
+    runtime: nvidia
+    ipc: host
     environment:
       - DISPLAY=${DISPLAY}
       - QT_X11_NO_MITSHM=1
       - ACCEPT_EULA=Y
       - PRIVACY_CONSENT=Y
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - XDG_RUNTIME_DIR=/tmp/runtime-root
     volumes:
-      - ${HOME}/.Xauthority:/root/.Xauthority
-      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${HOME}/.gz/sim:/root/.gz/sim
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          memory: 8G
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, graphics, utility, video]
     command: bash
     stdin_open: true
     tty: true
 
   qground_control:
     build:
-      context: .
+      context: ..
       dockerfile: docker/qgc.dockerfile
       network: host
     image: qground_control:latest
     container_name: qground_control
     privileged: true
     network_mode: host
+    runtime: nvidia
     environment:
       - DISPLAY=${DISPLAY}
       - QT_X11_NO_MITSHM=1
       - ACCEPT_EULA=Y
       - PRIVACY_CONSENT=Y
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - XDG_RUNTIME_DIR=/tmp/runtime-root
     volumes:
-      - ${HOME}/.Xauthority:/qgc/.Xauthority
-      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME}/.Xauthority:/qgc/.Xauthority:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ./artifacts/benchmarks/ulgs:/home/qgc/artifacts/benchmarks/ulgs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, graphics, utility, video]
     command: qgc
 
   # ap-pnc:
