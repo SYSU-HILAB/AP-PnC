@@ -19,11 +19,11 @@ services:
       - PRIVACY_CONSENT=Y
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
-      - XDG_RUNTIME_DIR=/tmp/runtime-root
+      - XDG_RUNTIME_DIR=/tmp/runtime-px4
     volumes:
-      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+      - ${HOME}/.Xauthority:/home/px4/.Xauthority:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ${HOME}/.gz/sim:/root/.gz/sim
+      - ${HOME}/.gz/sim:/home/px4/.gz/sim
     deploy:
       resources:
         limits:
@@ -34,6 +34,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu, compute, graphics, utility, video]
+    user: "1001:1001"
     command: bash
     stdin_open: true
     tty: true
