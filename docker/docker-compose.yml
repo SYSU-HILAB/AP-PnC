@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   px4-simulator:
     build:
@@ -34,7 +32,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu, compute, graphics, utility, video]
-    user: "1001:1001"
+    user: "1002:1002"
     command: bash
     stdin_open: true
     tty: true
