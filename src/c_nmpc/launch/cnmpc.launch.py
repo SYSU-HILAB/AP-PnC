@@ -40,6 +40,7 @@ def generate_launch_description():
             environment={
                 'RMW_IMPLEMENTATION': 'rmw_fastrtps_cpp',
                 'ROS_DISABLE_LOANED_MESSAGES': '0',
+                'RMW_FASTRTPS_USE_QOS_FROM_XML': '1',
                 'FASTRTPS_DEFAULT_PROFILES_FILE': os.path.join(
                     get_package_share_directory('traj_buffer'),
                     'fastdds.xml')

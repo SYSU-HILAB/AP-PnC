@@ -15,4 +15,34 @@
             <useBuiltinTransports>true</useBuiltinTransports>
         </rtps>
     </participant>
+
+    <!-- Default publisher profile -->
+    <publisher profile_name="default_publisher" is_default_profile="true">
+        <historyMemoryPolicy>DYNAMIC</historyMemoryPolicy>
+    </publisher>
+
+    <!-- Default subscriber profile -->
+    <subscriber profile_name="default_subscriber" is_default_profile="true">
+        <historyMemoryPolicy>DYNAMIC</historyMemoryPolicy>
+    </subscriber>
+
+    <!-- Publisher profile with data sharing for zero-copy -->
+    <publisher profile_name="zero_copy_publisher">
+        <historyMemoryPolicy>DYNAMIC</historyMemoryPolicy>
+        <qos>
+            <data_sharing>
+                <kind>AUTOMATIC</kind>
+            </data_sharing>
+        </qos>
+    </publisher>
+
+    <!-- Subscriber profile with data sharing for zero-copy -->
+    <subscriber profile_name="zero_copy_subscriber">
+        <historyMemoryPolicy>DYNAMIC</historyMemoryPolicy>
+        <qos>
+            <data_sharing>
+                <kind>AUTOMATIC</kind>
+            </data_sharing>
+        </qos>
+    </subscriber>
 </profiles>

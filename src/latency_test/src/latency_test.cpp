@@ -49,9 +49,9 @@ public:
     subscription_ = this->create_subscription<RefTrajectoryBullet>(
         "/ref_trajectory_bullet",
         reliable_qos,
-        [this](const RefTrajectoryBullet::SharedPtr msg)
+        [this](RefTrajectoryBullet::UniquePtr msg)
         {
-          this->handle_message(msg);
+          this->handle_message(std::move(msg));
         }
     );
 
@@ -109,7 +109,7 @@ public:
 
 private:
   // Handle message (callback-based, but middleware may use zero-copy internally)
-  void handle_message(const RefTrajectoryBullet::SharedPtr msg)
+  void handle_message(RefTrajectoryBullet::UniquePtr msg)
   {
     auto now = ros_clock_.now();
 

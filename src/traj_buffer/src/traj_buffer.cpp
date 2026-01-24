@@ -94,9 +94,8 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
       msg_fixed_point_.tracking_valid = tracking_valid_;
       msg_fixed_point_.timestamp      = this->now();
 
-      auto loaned_msg = traj_bullet_pub_->borrow_loaned_message();
-      loaned_msg.get() = msg_fixed_point_;
-      traj_bullet_pub_->publish(std::move(loaned_msg));
+      // Publish with automatic zero-copy via FastDDS data sharing (configured in fastdds.xml)
+      traj_bullet_pub_->publish(msg_fixed_point_);
     }
 
     // traj_type_ == RefTrajType::PLANNING
@@ -142,9 +141,8 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
 
       msg_planning_traj_.timestamp = this->now();
       index_ += 1;
-      auto loaned_msg = traj_bullet_pub_->borrow_loaned_message();
-      loaned_msg.get() = msg_planning_traj_;
-      traj_bullet_pub_->publish(std::move(loaned_msg));
+      // Publish with automatic zero-copy via FastDDS data sharing (configured in fastdds.xml)
+      traj_bullet_pub_->publish(msg_planning_traj_);
     }
   }
 };

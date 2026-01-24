@@ -100,6 +100,18 @@ ap_pnc_setup_env() {
     if [ -f "$workspace_setup" ]; then
         source "$workspace_setup"
     fi
+
+    # Zero-copy configuration for rmw_fastrtps
+    export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    export ROS_DISABLE_LOANED_MESSAGES=0
+    export RMW_FASTRTPS_USE_QOS_FROM_XML=1
+
+    # FastDDS XML configuration path
+    if [ -d "$git_root/install/traj_buffer/share/traj_buffer" ]; then
+        export FASTRTPS_DEFAULT_PROFILES_FILE="$git_root/install/traj_buffer/share/traj_buffer/fastdds.xml"
+    elif [ -f "$git_root/src/traj_buffer/config/fastdds.xml" ]; then
+        export FASTRTPS_DEFAULT_PROFILES_FILE="$git_root/src/traj_buffer/config/fastdds.xml"
+    fi
 }
 
 # === Display Functions ===
