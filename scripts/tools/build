@@ -21,7 +21,7 @@ if ! command -v colcon &> /dev/null; then
 fi
 
 # Clean previous build if requested
-if [ "$1" = "--clean" ] || [ "$1" = "-c" ]; then
+if [ "${1:-}" = "--clean" ] || [ "${1:-}" = "-c" ]; then
     echo -e "${AP_PNC_COLOR_YELLOW}Cleaning previous build...${AP_PNC_COLOR_RESET}"
     rm -rf "$GIT_ROOT/build" "$GIT_ROOT/install" "$GIT_ROOT/log"
     shift

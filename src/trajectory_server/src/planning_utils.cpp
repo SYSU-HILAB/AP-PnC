@@ -173,7 +173,7 @@ std::ofstream& init_planning_csv_file(const Config& config)
            << "yb_x,yb_y,yb_z,"
            << "df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,"
            << "df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,"
-           << "Wap_x,Wap_y,Wap_z,"
+           << "W_ap_x,W_ap_y,W_ap_z,"
            << "S_ap_x,S_ap_z,"
            << "S_Omega_x,S_Omega_y,S_Omega_z,"
            << "B_Omega_x_df_lyu,B_Omega_y_df_lyu,B_Omega_z_df_lyu,"
