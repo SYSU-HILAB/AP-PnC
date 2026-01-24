@@ -24,8 +24,14 @@ find_package(Eigen3 REQUIRED)
 
 # Include directories
 
-# only global_planning.cpp
-file(GLOB ${PROJECT_NAME}_SRCS src/*.cpp)
+# New modularized source files (global_planning.cpp has been split)
+set(${PROJECT_NAME}_SRCS
+    src/planning_config.cpp
+    src/planning_utils.cpp
+    src/attitude_computer.cpp
+    src/trajectory_planner.cpp
+    src/global_planning_main.cpp
+)
 # Declare a C++ executable
 # include_directories(include/gcopter)
 ament_auto_add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_SRCS}) # Add other source files as needed

@@ -1,0 +1,294 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
+ * All rights reserved.
+ *
+ * Authors:
+ * Hanamy: rongerch@outlook.com
+ *
+ * Paper:
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ */
+
+#include <chrono>
+#include <cmath>
+#include <iostream>
+
+#include <trajectory_server/trajectory_planner.hpp>
+#include <trajectory_server/planning_utils.hpp>
+
+#include <tailsitter_df/tailsitter_df.hpp>
+
+using std::chrono_literals::operator""s;
+
+namespace trajectory_server
+{
+
+// Static AeroAlphaSolver instance for df_lyu_alpha lookup from force balance
+// equation Solves: S_ap_z*cos(alpha) + S_ap_x*sin(alpha) = F_aero_z/mass
+static auto g_lyu_aerodynamics = std::make_shared<aerodynamics::LyuAerodynamics>();
+static aerodynamics::AeroAlphaSolver g_alpha_solver(g_lyu_aerodynamics);
+
+GlobalPlanner::GlobalPlanner() : Node("global_planning_node"), config(this)
+{
+  config.UpdateConfig(this);
+  auto reliable_qos =
+      rclcpp::QoS(10).transient_local().reliable().keep_last(1);
+  trajVizPub = this->create_publisher<geometry_msgs::msg::PoseArray>(
+      "traj_viz", reliable_qos);
+
+  trajPub = this->create_publisher<RefTrajectory>(config.trajTopic, reliable_qos);
+
+  init_basic_trajectory_type(config.basic_trajectory_type);
+  timer =
+      this->create_wall_timer(2s, std::bind(&GlobalPlanner::plan, this));
+
+}
+
+void GlobalPlanner::init_basic_trajectory_type(const int type)
+{
+  // basic_trajniscate
+  if (type == 1)
+  {
+    basic_traj = std::make_unique<basic_trajectories::Lemniscate>(
+        config.basic_trajectory_radius, config.basic_trajectory_rate,
+        config.basic_trajectory_height, config.basic_trajectory_curvature_factor);
+    return;
+  }
+  if (type == 2)
+  {
+    basic_traj = std::make_unique<basic_trajectories::Circle>(
+        config.basic_trajectory_radius, config.basic_trajectory_rate,
+        config.basic_trajectory_height);
+    return;
+  }
+  if (type == 3)
+  {
+    basic_traj = std::make_unique<basic_trajectories::Sin>(
+        config.basic_trajectory_radius, config.basic_traj_wave_len,
+        config.basic_trajectory_height);
+    config.basic_trajectory_rate = basic_traj->getAngularSpeed();
+    return;
+  }
+  if (type == 4)
+  {
+    if (!config.trajecotry_cirled)
+    {
+      basic_traj = std::make_unique<basic_trajectories::Line>(
+          config.basic_trajectory_radius, config.basic_trajectory_rate,
+          config.basic_trajectory_height);
+      return;
+    }
+    else
+    {
+      RCLCPP_ERROR(this->get_logger(),
+                   "The line trajectory must not be cirled!");
+      abort();
+    }
+  }
+  else
+  {
+    RCLCPP_ERROR(this->get_logger(), "The trajecotry type is not supported!");
+  }
+}
+
+void GlobalPlanner::create_basic_trajecotry_sfc(
+    std::vector<Eigen::MatrixX4d>& hPolys)
+{
+  Eigen::RowVector4d h1, h2, h3, h4, h5, h6;
+
+  Eigen::MatrixX4d H;
+  H.resize(6, 4);
+
+  auto route = basic_traj->samplingPointArray(config.pieceN);
+
+  auto traj_vis_msg            = basic_traj->toMsg();
+  traj_vis_msg.header.frame_id = config.frame;
+  traj_vis_msg.header.stamp    = this->get_clock()->now();
+  this->trajVizPub->publish(traj_vis_msg);
+
+  Eigen::Vector3d pc, v_direction, u_direction;
+  for (size_t i = 1; i < route.size() - 1; i++)
+  {
+    auto point = route[i];
+    pc         = point.col(0);  // Center of the box
+
+    // Define the half-lengths of the box in each direction
+    double front   = config.box_front_length;
+    double back    = config.box_back_length;
+    double outside = config.box_side_outside_length;
+    double inside  = config.box_side_inside_length;
+    double up      = config.box_up_length;
+    double down    = config.box_down_length;
+
+    // Create the six planes of the box (axis-aligned)
+    // Each plane is defined as [a, b, c, d] where ax + by + cz + d <= 0
+    // Front (x+)
+    h1 << 1, 0, 0, -pc.x() - front;
+    // Back (x-)
+    h2 << -1, 0, 0, pc.x() - back;
+    // Outside (y+)
+    h3 << 0, 1, 0, -pc.y() - outside;
+    // Inside (y-)
+    h4 << 0, -1, 0, pc.y() - inside;
+    // Up (z+)
+    h5 << 0, 0, 1, -pc.z() - up;
+    // Down (z-)
+    h6 << 0, 0, -1, pc.z() - down;
+
+    // Stack the planes into a matrix
+    H << h1, h2, h3, h4, h5, h6;
+    hPolys.push_back(H);
+  }
+}
+
+void GlobalPlanner::plan()
+{
+  if (init_setup)
+  {
+    return;
+  }
+  std::vector<Eigen::MatrixX4d> hPolys;
+  RCLCPP_INFO(this->get_logger(), "In Planning");
+  create_basic_trajecotry_sfc(hPolys);
+
+  Eigen::Matrix3d iniState, finState;
+  auto            route = basic_traj->samplingPointArray(config.pieceN);
+  iniState << route.front().col(0), Eigen::Vector3d::Zero(),
+      Eigen::Vector3d::Zero();
+  finState << route.back().col(0), Eigen::Vector3d::Zero(),
+      Eigen::Vector3d::Zero();
+  gcopter::GCOPTER_PolytopeSFC gcopter;
+
+  traj.clear();
+  Eigen::VectorXd initTime;
+  initTime.resize(config.pieceN);
+  initTime.setConstant(2 * M_PI / config.basic_trajectory_rate /
+                       config.pieceN);
+
+  Eigen::Matrix3Xd initPointsPos(3, config.pieceN - 1);
+  for (int i = 0; i < config.pieceN - 1; i++)
+  {
+    Eigen::Vector3d v = route[i].col(1);
+    v.normalize();
+    Eigen::Vector3d u = v.cross(Eigen::Vector3d::UnitZ());
+    initPointsPos.col(i) =
+        route[i + 1].col(0) + u * config.box_side_outside_length * 0.8;
+  }
+
+  if (!init_setup)
+  {
+    if (!gcopter.setup_basic_trajectory(
+            iniState, finState, initTime, initPointsPos, hPolys,
+            config.smoothingEps, config.integralIntervs))
+    {
+      return;
+    }
+    auto opt_start = std::chrono::high_resolution_clock::now();
+
+    if (std::isinf(gcopter.optimize(traj, config.relCostTol)))
+    {
+      return;
+    }
+    auto opt_end = std::chrono::high_resolution_clock::now();
+
+    std::cerr << "PLANNING Duration"
+              << std::chrono::duration_cast<std::chrono::milliseconds>(
+                     opt_end - opt_start)
+                     .count()
+              << "ms" << std::endl;
+
+    init_setup = true;
+
+    auto route_msg            = basic_traj->toMsg(100);
+    route_msg.header.frame_id = config.frame;
+    route_msg.header.stamp    = this->get_clock()->now();
+    this->trajVizPub->publish(route_msg);
+
+    auto& tailsitter_data = tailsitter_df::Data::getInstance();
+    tailsitter_data.reset(config.trajecotry_cirled);
+
+    // Initialize Newton-Raphson solver with initial alpha = 90 degrees at t=0
+    constexpr double INITIAL_ALPHA_DEG = 90.0;
+    g_alpha_solver.resetAlpha(INITIAL_ALPHA_DEG);
+
+    control_traj_msg.points.clear();
+    // Track df_lyu_quat to avoid quaternion sign flips between samples
+    Eigen::Quaterniond prev_df_lyu_quat = Eigen::Quaterniond::Identity();
+    bool                df_lyu_quat_initialized = false;
+    auto& csv_file = init_planning_csv_file(config);
+    RCLCPP_INFO(this->get_logger(), "CSV file opened");
+    for (double t = 0.0; t <= traj.getTotalDuration() + DBL_EPSILON;
+         t += config.traj_pub_rsl)
+    {
+      Eigen::Vector3d omg;
+      double          thrust;
+
+      tailsitter_data.df_backward_auto(traj.getVel(t), traj.getAcc(t),
+                                       traj.getJer(t), thrust, omg);
+
+      {
+        // Create trajectory sample using factory method
+        TrajectorySampleData sample = TrajectorySampleData::from_trajectory(
+            traj, t, tailsitter_data, config.mass, g_alpha_solver,
+            prev_df_lyu_quat, df_lyu_quat_initialized);
+
+        // Update continuity state
+        if (!df_lyu_quat_initialized)
+        {
+          df_lyu_quat_initialized = true;
+        }
+        prev_df_lyu_quat = sample.quat_lyu;
+
+        write_trajectory_sample(csv_file, sample);
+      }
+
+      auto p = traj.getPos(t);
+      auto v = traj.getVel(t);
+
+      auto yb_df = tailsitter_data.getYb();
+
+      // reference trajectory uses quad FLU body frame, so negate yb
+      Eigen::Vector3d YB =
+          (Eigen::Vector3d() << -yb_df(0), -yb_df(1), -yb_df(2)).finished();
+
+      control_traj_msg.timestamp = this->get_clock()->now();
+      auto traj_point            = TrajectoryPoint();
+      traj_point.point[TrajectoryPoint::POS_START_INDEX]     = p[0];
+      traj_point.point[TrajectoryPoint::POS_START_INDEX + 1] = p[1];
+      traj_point.point[TrajectoryPoint::POS_START_INDEX + 2] = p[2];
+      traj_point.point[TrajectoryPoint::VEL_START_INDEX]     = v[0];
+      traj_point.point[TrajectoryPoint::VEL_START_INDEX + 1] = v[1];
+      traj_point.point[TrajectoryPoint::VEL_START_INDEX + 2] = v[2];
+      traj_point.point[TrajectoryPoint::YB_START_INDEX]      = YB[0];
+      traj_point.point[TrajectoryPoint::YB_START_INDEX + 1]  = YB[1];
+      traj_point.point[TrajectoryPoint::YB_START_INDEX + 2]  = YB[2];
+      // default set to zero
+      control_traj_msg.points.push_back(traj_point);
+    }
+
+    trajPub->publish(control_traj_msg);
+    RCLCPP_WARN(this->get_logger(), "Trajectory Published !!!\n");
+    std::vector<Eigen::Vector3d> route_path;
+    for (int i = 0; i < config.pieceN; i++)
+    {
+      route_path.emplace_back(route[i].col(0));
+    }
+    if (traj.getPieceNum() > 0)
+    {
+      // Record routes to separate CSV file after successful optimization
+      auto& routes_csv_file = init_routes_csv_file(config);
+      for (size_t i = 0; i < route.size(); i++)
+      {
+        const auto route_sample = RouteSampleData::from_trajectory_point(route[i], i);
+        write_route_sample(routes_csv_file, route_sample);
+      }
+      routes_csv_file.close();
+      RCLCPP_INFO(this->get_logger(), "Routes CSV file created, and filled out.");
+    }
+    csv_file.close();
+  }
+}
+
+}  // namespace trajectory_server
