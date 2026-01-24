@@ -9,7 +9,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 3. **State estimation & PX4 bridge (`src/px4_interface`)** receives raw PX4 `VehicleOdometry` and `VehicleStatus`, applies frame transforms, and republishes `interface/State` on `/cur_state` (and `/cur_state_odom` for visualization). The same node subscribes to `/mpc_controls`, converts FLU controls/rates into PX4 FRD commands, and streams them to `/fmu/in/vehicle_thrust_acc_setpoint`. Heartbeat and tracking info are also bridged to PX4 via `/fmu/in/offboard_control_mode` and `/fmu/in/tracking_info`.
 4. **NMPC runtime (`src/c_nmpc`)** combines the latest `/cur_state`, `/ref_trajectory_bullet`, and `/fmu/out/vehicle_acceleration`. `stateCallback()` updates the acados NLP bounds and publishes `/ref_can_set` so the buffer knows the solver is live. `referenceCallback()` loads the whole reference horizon into acados, injects aerodynamic parameters, triggers `solve()`, and publishes `/mpc_controls` plus `/tracking_info`.
 5. **Additional sensors/utilities** such as `src/mocap-px4/src/frame_transform` (converts `/mocap/odometry` into PX4 visual odometry).
-6. **Differential-flatness & aerodynamics layers** (`src/tailsitter_df`, `src/aerodynamics`, `src/utils`) supply the planner and NMPC with aerodynamic coefficients, analytic derivatives, and config readers. Python tooling in `src/nmpc` regenerates acados models and JSON artifacts when weights or dynamics change.
+6. **Differential-flatness & aerodynamics layers** (`src/tailsitter_df`, `src/aerodynamics`, `src/utils`) supply the planner and NMPC with aerodynamic coefficients, analytic derivatives, and config readers. Python tooling in `src/c_nmpc/nmpc` regenerates acados models and JSON artifacts when weights or dynamics change.
 
 ## Module Details
 
@@ -52,12 +52,12 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 * `accCallback()` filters PX4 accelerometer data to update `cz_filtered_`, enforcing a ±0.4 bound.
 * Parameters `mass` and `cz_rate` come from ROS parameters (defaults in `global.toml` under `[c_nmpc]`).
 
-### NMPC model builder (`src/nmpc`)
+### NMPC model builder (`src/c_nmpc/nmpc`)
 * Python tooling used offline/CI to regenerate the solver artifacts.
 * `model.py` defines `tailsitter_flu()` with augmented states `[p,v,r,q,u,cz_state]`, aerodynamic forces, and quaternion kinematics.
 * `config.py` (`ControlConfig`, `ProposedMpcConfig`) centralizes horizon length, weight matrices, state bounds, and regularization terms.
 * `create_ocp_or_sim.py` builds the `AcadosOcp`, sets cost expressions (`NONLINEAR_LS`), enforces actuator/state bounds, and emits JSON/c_generated code via `AcadosOcpSolver`.
-* Run with `./pyp src/nmpc/create_ocp_or_sim.py` after changing dynamics or weights; `c_generated_code/` is what the C++ node links against.
+* Run with `./pyp src/c_nmpc/nmpc/create_ocp_or_sim.py` after changing dynamics or weights; `c_generated_code/` is what the C++ node links against.
 
 ### PX4 bridge (`src/px4_interface/src/px4_interface.cpp`)
 * Node name `px4_interface`.
@@ -127,7 +127,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 
 ## Extending or Modifying the Stack
 
-* **Changing dynamics/weights** – update `src/nmpc/model.py` or `src/nmpc/config.py`, re-run `./pyp src/nmpc/create_ocp_or_sim.py`, then rebuild the ROS 2 workspace so `c_nmpc` links against the refreshed `c_generated_code`.
+* **Changing dynamics/weights** – update `src/c_nmpc/nmpc/model.py` or `src/c_nmpc/nmpc/config.py`, re-run `./pyp src/c_nmpc/nmpc/create_ocp_or_sim.py`, then rebuild the ROS 2 workspace so `c_nmpc` links against the refreshed `c_generated_code`.
 * **Adding new trajectories** – implement the shape inside `src/basic_trajectories` (follow `Circle` or `Lemniscate`), expose it in `GlobalPlanner::init_basic_trajectory_type`, and add parameters in `global.toml` or the relevant ROS 2 launch file.
 * **Integrating new sensors** – publish your measurement on a fresh topic and tap into `px4_interface` or `trajectory_buffer` as needed. Both nodes rely on `interface/msg/*.msg`, so reuse or extend those definitions.
 * **Tuning aerodynamic logic** – edit `global.toml` (mass, `phi`) and the filters inside `src/tailsitter_df` or `src/c_nmpc`. Re-run the NMPC builder after large changes so solver bounds stay consistent.

@@ -1,5 +1,5 @@
-[submodule "src/px4_msgs/msg"]
-	path = src/px4_msgs/msg
+[submodule "src/interfaces/px4_msgs/msg"]
+	path = src/interfaces/px4_msgs/msg
 	url = https://github.com/WarriorHanamy/vtol-px4-msgs.git
 	branch = main
 [submodule "src/external_libraries/tomlplusplus"]
