@@ -31,6 +31,8 @@ OPTIONAL_FIELDS: dict[tuple[str, ...], str] = {
     ("alpha_dot",): "Alpha rate of change",
     ("B_ap_x_df_lyu",): "Body ap_x from df_lyu",
     ("S_Omega_x", "S_Omega_y", "S_Omega_z"): "Spatial angular velocities",
+    ("B_Omega_x_df_lyu", "B_Omega_y_df_lyu", "B_Omega_z_df_lyu"): "Body frame angular velocities (df_lyu)",
+    ("B_fa_z_df_lyu",): "Body frame aerodynamic force z-component (df_lyu)",
     ("quat_w", "quat_x", "quat_y", "quat_z"): "Odom quaternion (legacy)",
     ("quat_odom_w", "quat_odom_x", "quat_odom_y", "quat_odom_z"): "Odom quaternion",
 }
@@ -187,6 +189,24 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     trajectory["df_lyu_quat"] = _stack_columns(data, df_lyu_quat_columns)
 
     # ========================================================================
+    # Load Optional Fields
+    # ========================================================================
+
+    # Load spatial angular velocities (S_Omega_x, S_Omega_y, S_Omega_z)
+    s_omega_columns = ["S_Omega_x", "S_Omega_y", "S_Omega_z"]
+    if all(col in names for col in s_omega_columns):
+        trajectory["S_Omega"] = _stack_columns(data, s_omega_columns)
+
+    # Load body frame angular velocities (B_Omega_x_df_lyu, B_Omega_y_df_lyu, B_Omega_z_df_lyu)
+    b_omega_columns = ["B_Omega_x_df_lyu", "B_Omega_y_df_lyu", "B_Omega_z_df_lyu"]
+    if all(col in names for col in b_omega_columns):
+        trajectory["B_Omega_df_lyu"] = _stack_columns(data, b_omega_columns)
+
+    # Load body frame aerodynamic force z-component (B_fa_z_df_lyu)
+    if "B_fa_z_df_lyu" in names:
+        trajectory["B_fa_z_df_lyu"] = np.atleast_1d(data["B_fa_z_df_lyu"])
+
+    # ========================================================================
     # Summary
     # ========================================================================
 
@@ -241,9 +261,13 @@ class TrajectoryReference:
                 for i in range(len(self.time))
             ])
 
-
-            # Fallback to CSV yb if no orientation data
+        # Fallback to CSV yb if no orientation data
         self.yb = trajectory_data.get("yb", np.zeros((len(self.time), 3)))
+
+        # Optional angular velocity and aerodynamic force fields
+        self.S_Omega = trajectory_data.get("S_Omega")  # Spatial angular velocities
+        self.B_Omega_df_lyu = trajectory_data.get("B_Omega_df_lyu")  # Body frame angular velocities
+        self.B_fa_z_df_lyu = trajectory_data.get("B_fa_z_df_lyu")  # Body frame aero force z-component
 
         # Sampling time (constant, 50Hz)
         self._sim_dt = 0.02
@@ -262,8 +286,11 @@ class TrajectoryReference:
             - yb: (3,) array
             - alpha: scalar
             - quat_quad_flu: (4,) array [w, x, y, z] in QUAD_FLU_BODY_FRAME
-            - df_phi_quat: (4,) array [w, x, y, z] in WING_FRD_BODY_FRAME 
-            - df_lyu_quat: (4,) array [w, x, y, z] in WING_FRD_BODY_FRAME 
+            - df_phi_quat: (4,) array [w, x, y, z] in WING_FRD_BODY_FRAME
+            - df_lyu_quat: (4,) array [w, x, y, z] in WING_FRD_BODY_FRAME
+            - S_Omega: (3,) array with spatial angular velocities [x, y, z] (optional)
+            - B_Omega_df_lyu: (3,) array with body frame angular velocities [x, y, z] (optional)
+            - B_fa_z_df_lyu: scalar with body frame aerodynamic force z-component (optional)
         """
         # Find nearest index (clamp to valid range, no wrap-around)
         idx = int(np.round(t / self._sim_dt))
@@ -298,6 +325,14 @@ class TrajectoryReference:
             if norm > 1e-6:
                 df_lyu_quat = df_lyu_quat / norm
             ref["df_lyu_quat"] = df_lyu_quat
+
+        # Add optional angular velocity and aerodynamic force fields
+        if self.S_Omega is not None:
+            ref["S_Omega"] = self.S_Omega[idx].copy()
+        if self.B_Omega_df_lyu is not None:
+            ref["B_Omega_df_lyu"] = self.B_Omega_df_lyu[idx].copy()
+        if self.B_fa_z_df_lyu is not None:
+            ref["B_fa_z_df_lyu"] = float(self.B_fa_z_df_lyu[idx])
 
         return ref
     
