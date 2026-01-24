@@ -37,10 +37,11 @@ def load_trajectory_csv(csv_path: str) -> dict:
     """
     Load trajectory CSV file from global_planning.
 
-    CSV columns:
-    time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,thrust,df_phi_alpha,df_lyu_alpha,
-    aero_force_z,yb_x,yb_y,yb_z,quat_w,quat_x,quat_y,quat_z,ap_x,ap_y,ap_z,
-    S_ap_x,S_ap_z,B_Omega_b_y,alpha_dot,B_aero_force_z
+    CSV columns (30 total):
+    time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,B_ap_x_df_lyu,df_phi_alpha,df_lyu_alpha,
+    yb_x,yb_y,yb_z,df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,
+    df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,Wap_x,Wap_y,Wap_z,
+    S_ap_x,S_ap_z,S_Omega_x,S_Omega_y,S_Omega_z,alpha_dot
     """
     data = np.loadtxt(csv_path, delimiter=",", skiprows=1)
 
@@ -48,18 +49,19 @@ def load_trajectory_csv(csv_path: str) -> dict:
         "time": data[:, 0],
         "pos": data[:, 1:4],
         "vel": data[:, 4:7],
-        "thrust": data[:, 7],
+        "B_ap_x_df_lyu": data[:, 7],
         "df_phi_alpha": data[:, 8],  # Differential flatness alpha (radians)
         "df_lyu_alpha": data[:, 9],  # DF Lyu alpha from force balance (radians)
-        "aero_force_z": data[:, 10],
-        "yb": data[:, 11:14],
-        "quat": data[:, 14:18],
-        "ap": data[:, 18:21],
-        "S_ap_x": data[:, 21],
-        "S_ap_z": data[:, 22],
-        "B_Omega_b_y": data[:, 23],
-        "alpha_dot": data[:, 24],
-        "B_aero_force_z": data[:, 25],
+        "yb": data[:, 10:13],
+        "df_phi_quat": data[:, 13:17],
+        "df_lyu_quat": data[:, 17:21],
+        "Wap": data[:, 21:24],
+        "S_ap_x": data[:, 24],
+        "S_ap_z": data[:, 25],
+        "S_Omega_x": data[:, 26],
+        "S_Omega_y": data[:, 27],
+        "S_Omega_z": data[:, 28],
+        "alpha_dot": data[:, 29],
     }
 
 

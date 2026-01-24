@@ -26,13 +26,11 @@ REQUIRED_FIELDS: dict[tuple[str, ...], str] = {
 }
 
 OPTIONAL_FIELDS: dict[tuple[str, ...], str] = {
-    ("thrust",): "Thrust command",
-    ("aero_force_z",): "Aerodynamic force Z",
     ("ap_x", "ap_y", "ap_z"): "Aerodynamic center",
     ("S_ap_x", "S_ap_z"): "Aerodynamic derivatives",
-    ("B_Omega_b_y",): "Body angular rate Y",
     ("alpha_dot",): "Alpha rate of change",
-    ("B_aero_force_z",): "Aero force Z (body)",
+    ("B_ap_x_df_lyu",): "Body ap_x from df_lyu",
+    ("S_Omega_x", "S_Omega_y", "S_Omega_z"): "Spatial angular velocities",
     ("quat_w", "quat_x", "quat_y", "quat_z"): "Odom quaternion (legacy)",
     ("quat_odom_w", "quat_odom_x", "quat_odom_y", "quat_odom_z"): "Odom quaternion",
 }
@@ -171,10 +169,8 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     if odom_columns is not None:
         trajectory["odom_quat"] = _stack_columns(data, odom_columns)
 
-    thrust_col = "thrust" if "thrust" in names else None
-    trajectory["thrust"] = (
-        np.atleast_1d(data[thrust_col]) if thrust_col else np.zeros_like(trajectory["time"])
-    )
+    # Thrust is no longer included in the CSV output
+    trajectory["thrust"] = np.zeros_like(trajectory["time"])
 
     df_phi_alpha = np.atleast_1d(data["df_phi_alpha"])
     trajectory["df_phi_alpha"] = df_phi_alpha

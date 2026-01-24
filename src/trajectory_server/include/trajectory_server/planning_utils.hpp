@@ -41,10 +41,9 @@ struct TrajectorySampleData
   Eigen::Vector3d vel;
 
   // Forces and angles
-  double thrust;
+  double B_ap_x_df_lyu;  //update using  S_ap_x cos alpha - S_ap_z sin alpha upon lyu alpha.   
   double df_phi_alpha;   ///< Alpha from differential flat
   double df_lyu_alpha;   ///< Alpha from Lyu aerodynamics solver
-  double aero_force_z;
 
   // Body frame Y-axis (negated for FLU frame)
   Eigen::Vector3d yb;
@@ -54,16 +53,24 @@ struct TrajectorySampleData
   Eigen::Quaterniond quat_lyu;   ///< Quaternion from Lyu aerodynamics
 
   // Acceleration without gravity (Wap = a - g)
-  Eigen::Vector3d Wap;
+  Eigen::Vector3d W_ap;
 
   // Aerodynamic specific force components
   double S_ap_x;
   double S_ap_z;
 
+  // Spatial frame angular velocities
+  double S_Omega_x;
+  double S_Omega_y;
+  double S_Omega_z;
+
+  double B_Omega_x_df_lyu; // S_Omega_x cos alpha - S_Omega_z sin alpha; upon lyu_alpha
+  double B_Omega_y_df_lyu; // set to zero.
+  double B_Omega_z_df_lyu; // S_Omega_x sin alpha - S_Omega_z cos alpha ; upon lyu_alpha
+
+  double B_fa_z_df_lyu;
   // Body frame angular velocity and rate
-  double B_Omega_b_y;
   double alpha_dot;
-  double B_aero_force_z;
 
   /**
    * @brief Factory method: Create sample from trajectory and tailsitter data

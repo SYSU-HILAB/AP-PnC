@@ -7,7 +7,7 @@
 #
 
 # Prevent multiple inclusion
-[ -n "$_AP_PNC_ENV_LOADED" ] && return 0
+[ -n "${_AP_PNC_ENV_LOADED:-}" ] && return 0
 _AP_PNC_ENV_LOADED=1
 
 # === ANSI Color Codes ===
@@ -92,13 +92,14 @@ ap_pnc_setup_env() {
     # Source system ROS2 environment first (for building)
     local ros_setup="/opt/ros/humble/setup.bash"
     if [ -f "$ros_setup" ]; then
-        source "$ros_setup"
+        # ROS2 setup files have unbound variables; temporarily disable set -u
+        { set +u; source "$ros_setup"; set -u; }
     fi
 
     # Source ROS2 workspace setup if available (overrides system)
     local workspace_setup="$git_root/install/setup.bash"
     if [ -f "$workspace_setup" ]; then
-        source "$workspace_setup"
+        { set +u; source "$workspace_setup"; set -u; }
     fi
 
     # Zero-copy configuration for rmw_fastrtps

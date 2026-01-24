@@ -38,32 +38,46 @@ TrajectorySampleData TrajectorySampleData::from_trajectory(
   data.vel = traj.getVel(t);
 
   Eigen::Vector3d omg;
+  double thrust;
   tailsitter_data.df_backward_auto(traj.getVel(t), traj.getAcc(t),
-                                   traj.getJer(t), data.thrust, omg);
+                                   traj.getJer(t), thrust, omg);
 
   const auto& yb  = tailsitter_data.getYb();
   const auto& acc = traj.getAcc(t);
 
   // Calculate acceleration without gravity
-  const Eigen::Vector3d gravity(0, 0, 9.81);
-  data.Wap = acc - gravity;
+  const Eigen::Vector3d gravity(0, 0, -9.81);
+  data.W_ap = acc - gravity;
 
   // Get aerodynamic data
   data.df_phi_alpha = tailsitter_data.getAlpha();  // Alpha from differential flat
-  data.alpha_dot    = tailsitter_data.getAlphaDot();
-  data.aero_force_z = tailsitter_data.getBAeroForce()(2);
-  data.B_aero_force_z = tailsitter_data.getBAeroForceZ();
-  data.S_ap_x        = tailsitter_data.getSApX();
-  data.S_ap_z        = tailsitter_data.getSApZ();
-  data.B_Omega_b_y   = tailsitter_data.getBOmegaY();
+  data.alpha_dot    = tailsitter_data.getAlphaDot(); // will be updated in python codes.
+  data.S_ap_x       = tailsitter_data.getSApX();
+  data.S_ap_z       = tailsitter_data.getSApZ();
+  data.S_Omega_x    = tailsitter_data.getSOmegaX();
+  data.S_Omega_y    = tailsitter_data.getSOmegaY();
+  data.S_Omega_z    = tailsitter_data.getSOmegaZ();
 
   // Solve force balance equation for df_lyu_alpha:
   // S_ap_z*cos(alpha) + S_ap_x*sin(alpha) = F_aero_z/mass
-  const double V          = data.vel.norm();
-  data.df_lyu_alpha       = alpha_solver.solve(V, data.S_ap_x, data.S_ap_z, mass);
+  const double V = data.vel.norm();
+  data.df_lyu_alpha = alpha_solver.solve(V, data.S_ap_x, data.S_ap_z, mass);
+
+  // Compute B_ap_x_df_lyu: S_ap_x*cos(df_lyu_alpha) - S_ap_z*sin(df_lyu_alpha)
+  data.B_ap_x_df_lyu = data.S_ap_x * std::cos(data.df_lyu_alpha) -
+                       data.S_ap_z * std::sin(data.df_lyu_alpha);
+
+  // Compute B_Omega_df_lyu: spatial frame angular velocities transformed to body frame
+  const double cos_alpha = std::cos(data.df_lyu_alpha);
+  const double sin_alpha = std::sin(data.df_lyu_alpha);
+  data.B_Omega_x_df_lyu = data.S_Omega_x * cos_alpha - data.S_Omega_z * sin_alpha;
+  data.B_Omega_y_df_lyu = 0.0;  // set to zero as per header comment
+  data.B_Omega_z_df_lyu = data.S_Omega_x * sin_alpha + data.S_Omega_z * cos_alpha;
+
+  // Compute B_fa_z_df_lyu: body frame aerodynamic force z-component (scaled by mass)
+  data.B_fa_z_df_lyu = mass * (data.S_ap_x * sin_alpha + data.S_ap_z * cos_alpha);
 
   data.quat_df = tailsitter_data.getQuaternion();
-
   // Compute df_lyu_quat using the helper function
   data.quat_lyu = compute_df_lyu_quat(data.vel, acc, data.df_lyu_alpha);
 
@@ -152,17 +166,19 @@ std::ofstream& init_planning_csv_file(const Config& config)
     return csv_file;
   }
 
-  // header t, p, v, thrust, df_phi_alpha, df_lyu_alpha, aero_force_z  with header
-  // name
+  // CSV header matching TrajectorySampleData struct fields
   csv_file << "time,pos_x,pos_y,pos_z,"
            << "vel_x,vel_y,vel_z,"
-           << "thrust,df_phi_alpha,df_lyu_alpha,aero_force_z,"
+           << "B_ap_x_df_lyu,df_phi_alpha,df_lyu_alpha,"
            << "yb_x,yb_y,yb_z,"
            << "df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,"
            << "df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,"
            << "Wap_x,Wap_y,Wap_z,"
-           << "S_ap_x,S_ap_z,B_Omega_b_y,"
-           << "alpha_dot,B_aero_force_z\n";
+           << "S_ap_x,S_ap_z,"
+           << "S_Omega_x,S_Omega_y,S_Omega_z,"
+           << "B_Omega_x_df_lyu,B_Omega_y_df_lyu,B_Omega_z_df_lyu,"
+           << "B_fa_z_df_lyu,"
+           << "alpha_dot\n";
   return csv_file;
 }
 
@@ -214,18 +230,19 @@ void write_trajectory_sample(std::ofstream& csv_file, const TrajectorySampleData
   csv_file << data.t << ","
            << data.pos(0) << "," << data.pos(1) << "," << data.pos(2) << ","
            << data.vel(0) << "," << data.vel(1) << "," << data.vel(2) << ","
-           << data.thrust << ","
+           << data.B_ap_x_df_lyu << ","
            << data.df_phi_alpha << "," << data.df_lyu_alpha << ","
-           << data.aero_force_z << ","
            << data.yb(0) << "," << data.yb(1) << "," << data.yb(2) << ","
            << data.quat_df.w() << "," << data.quat_df.x() << ","
            << data.quat_df.y() << "," << data.quat_df.z() << ","
            << data.quat_lyu.w() << "," << data.quat_lyu.x() << ","
            << data.quat_lyu.y() << "," << data.quat_lyu.z() << ","
-           << data.Wap(0) << "," << data.Wap(1) << "," << data.Wap(2) << ","
+           << data.W_ap(0) << "," << data.W_ap(1) << "," << data.W_ap(2) << ","
            << data.S_ap_x << "," << data.S_ap_z << ","
-           << data.B_Omega_b_y << ","
-           << data.alpha_dot << "," << data.B_aero_force_z << "\n";
+           << data.S_Omega_x << "," << data.S_Omega_y << "," << data.S_Omega_z << ","
+           << data.B_Omega_x_df_lyu << "," << data.B_Omega_y_df_lyu << "," << data.B_Omega_z_df_lyu << ","
+           << data.B_fa_z_df_lyu << ","
+           << data.alpha_dot << "\n";
 }
 
 RouteSampleData RouteSampleData::from_trajectory_point(const Eigen::MatrixXd& point, size_t i)

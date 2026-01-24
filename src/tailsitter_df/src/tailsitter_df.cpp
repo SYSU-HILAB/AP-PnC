@@ -159,6 +159,9 @@ namespace tailsitter_df
     real   &S_ap_z        = data.S_ap_z;
     real   &B_Omega_b_y   = data.B_Omega_b_y;
     real   &alpha_dot     = data.alpha_dot;
+    real   &S_Omega_x     = data.S_Omega_x;
+    real   &S_Omega_y     = data.S_Omega_y;
+    real   &S_Omega_z     = data.S_Omega_z;
 
     realV3 x_s    = v / v.norm();
     realV3 temp   = -(realM3::Identity() - x_s * x_s.transpose()) * (a - g);
@@ -260,6 +263,9 @@ namespace tailsitter_df
     //               (S_ap_z_dot + alpha_dot * S_ap_x) * sin(alpha);
 
     B_Omega_b_y = omega_sy + alpha_dot;
+    S_Omega_x   = omega_sx;
+    S_Omega_y   = omega_sy;
+    S_Omega_z   = omega_sz;
 
     return (Eigen::Vector4<real>() << tan_acc, omega_sx, B_Omega_b_y, omega_sz)
         .finished();
