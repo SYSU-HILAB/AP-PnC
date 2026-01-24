@@ -109,8 +109,7 @@ scripts/tools/pxinterface
 # Launch trajectory server
 scripts/tools/plan
 
-# Run MPC simulation
-scripts/tools/sim_run_mpc
+
 
 # Run MPC on real hardware
 scripts/tools/real_run_mpc

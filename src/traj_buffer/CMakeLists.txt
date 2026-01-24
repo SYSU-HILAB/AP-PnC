@@ -30,4 +30,9 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+# Install config directory for FastDDS
+install(DIRECTORY config/
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 ament_auto_package()

@@ -92,8 +92,11 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
       }
       tracking_valid_                 = false;
       msg_fixed_point_.tracking_valid = tracking_valid_;
+      msg_fixed_point_.timestamp      = this->now();
 
-      traj_bullet_pub_->publish(msg_fixed_point_);
+      auto loaned_msg = traj_bullet_pub_->borrow_loaned_message();
+      loaned_msg.get() = msg_fixed_point_;
+      traj_bullet_pub_->publish(std::move(loaned_msg));
     }
 
     // traj_type_ == RefTrajType::PLANNING
@@ -137,8 +140,11 @@ void TrajectoryBuffer::refTrajectoryBulletPublish(
           msg_planning_traj_.points[1]
               .point[interface::msg::TrajectoryPoint::VEL_START_INDEX + 2]);
 
+      msg_planning_traj_.timestamp = this->now();
       index_ += 1;
-      traj_bullet_pub_->publish(msg_planning_traj_);
+      auto loaned_msg = traj_bullet_pub_->borrow_loaned_message();
+      loaned_msg.get() = msg_planning_traj_;
+      traj_bullet_pub_->publish(std::move(loaned_msg));
     }
   }
 };
