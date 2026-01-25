@@ -35,6 +35,7 @@ class AeroForceEvaluator:
         """
         self.model = SymbolicGdModel(config or DEFAULT_CONFIG)
         self._build_jacobian_function()
+        self._build_body_forces_jacobian_alpha_function()
 
     def _build_jacobian_function(self):
         """
@@ -84,6 +85,42 @@ class AeroForceEvaluator:
         self._jacobian_func = cs.Function(
             "forces_jacobian",
             [self._v_world_sym, self._quat_quad_flu_sym],
+            [jacobian_sym],
+        )
+
+    def _build_body_forces_jacobian_alpha_function(self):
+        """
+        Build CasADi function for computing ∂B_fa/∂alpha Jacobian.
+
+        Uses simplified velocity model: velb = [V*cos(alpha), 0, V*sin(alpha)].
+        The Jacobian is a 3x1 vector (derivative of 3D force vector with respect to scalar alpha).
+        """
+        # Symbolic inputs
+        self._V_sym = cs.SX.sym("V")  # Velocity magnitude
+        self._alpha_sym = cs.SX.sym("alpha")  # Angle of attack
+
+        # Construct body velocity: [V*cos(alpha), 0, V*sin(alpha)]
+        velb_sym = cs.vertcat(
+            self._V_sym * cs.cos(self._alpha_sym),
+            0.0,
+            self._V_sym * cs.sin(self._alpha_sym)
+        )
+
+        # Get body-frame forces from model (B_fa in WING_FRD frame)
+        # Substitute model's velb with our constructed velb_sym
+        B_fa_sym = cs.substitute(
+            self.model.forces,
+            self.model.velb,
+            velb_sym
+        )
+
+        # Compute Jacobian: ∂B_fa/∂alpha (3x1 vector)
+        jacobian_sym = cs.jacobian(B_fa_sym, self._alpha_sym)
+
+        # Create compiled function
+        self._body_forces_jacobian_alpha_func = cs.Function(
+            "body_forces_jacobian_alpha",
+            [self._V_sym, self._alpha_sym],
             [jacobian_sym],
         )
 
@@ -163,3 +200,26 @@ class AeroForceEvaluator:
         # Evaluate using the compiled CasADi function
         jacobian_result = self._jacobian_func(v_world, quat_quad_flu)
         return jacobian_result.full()
+
+    def compute_body_forces_jacobian_alpha(
+        self, V: float, alpha: float
+    ) -> np.ndarray:
+        """
+        Compute the Jacobian of body-frame aerodynamic forces with respect to angle of attack.
+
+        The Jacobian is ∂B_fa/∂alpha, where:
+        - B_fa: Aerodynamic forces in body frame (3D vector in WING_FRD)
+        - alpha: Angle of attack (scalar in radians)
+
+        Uses the simplified velocity model: velb = [V*cos(alpha), 0, V*sin(alpha)]
+
+        Args:
+            V: Velocity magnitude (m/s)
+            alpha: Angle of attack (radians)
+
+        Returns:
+            Jacobian vector (3,) where jacobian[i] = ∂B_fa[i]/∂alpha
+        """
+        # Evaluate using the compiled CasADi function
+        jacobian_result = self._body_forces_jacobian_alpha_func(V, alpha)
+        return jacobian_result.full().flatten()

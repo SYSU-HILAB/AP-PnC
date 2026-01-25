@@ -10,6 +10,7 @@ import numpy as np
 
 from ...utils import Colors, color_print
 from ...utils.math_utils import wing_frd_to_quad_flu, extract_yb_from_quat
+from ..model.ctrl.aero_evaluator import AeroForceEvaluator
 
 
 TEMP_DATA_SUBDIR = Path("artifacts") / "simulations" / "temp_data"
@@ -23,19 +24,17 @@ REQUIRED_FIELDS: dict[tuple[str, ...], str] = {
     ("df_lyu_alpha",): "DF Lyu Alpha",
     ("df_phi_quat_w", "df_phi_quat_x", "df_phi_quat_y", "df_phi_quat_z"): "DF phi Quaternion",
     ("df_lyu_quat_w", "df_lyu_quat_x", "df_lyu_quat_y", "df_lyu_quat_z"): "DF Lyu Quaternion",
+    ("S_ap_x", "S_ap_z"): "Aerodynamic derivatives",
+    ("S_ap_x_dot", "S_ap_z_dot"): "Aerodynamic derivative rates",
+    ("S_Omega_x", "S_Omega_y", "S_Omega_z"): "Spatial angular velocities",
+    ("B_Omega_x_df_lyu", "B_Omega_y_df_lyu", "B_Omega_z_df_lyu"): "Body frame angular velocities (df_lyu)",
+    ("B_fa_z_df_lyu",): "Body frame aerodynamic force z-component (df_lyu)",
 }
 
 OPTIONAL_FIELDS: dict[tuple[str, ...], str] = {
     ("ap_x", "ap_y", "ap_z"): "Aerodynamic center",
-    ("S_ap_x", "S_ap_z"): "Aerodynamic derivatives",
-    ("S_ap_x_dot", "S_ap_z_dot"): "Aerodynamic derivative rates",
     ("alpha_dot",): "Alpha rate of change",
     ("B_ap_x_df_lyu",): "Body ap_x from df_lyu",
-    ("S_Omega_x", "S_Omega_y", "S_Omega_z"): "Spatial angular velocities",
-    ("B_Omega_x_df_lyu", "B_Omega_y_df_lyu", "B_Omega_z_df_lyu"): "Body frame angular velocities (df_lyu)",
-    ("B_fa_z_df_lyu",): "Body frame aerodynamic force z-component (df_lyu)",
-    ("quat_w", "quat_x", "quat_y", "quat_z"): "Odom quaternion (legacy)",
-    ("quat_odom_w", "quat_odom_x", "quat_odom_y", "quat_odom_z"): "Odom quaternion",
 }
 
 
@@ -48,7 +47,7 @@ def _temp_data_dir() -> Path:
     return _repo_root() / TEMP_DATA_SUBDIR
 
 
-def _find_planning_csv() -> Path | None:
+def find_planning_csv() -> Path | None:
     """Locate the latest planning CSV emitted by the global planner."""
     temp_dir = _temp_data_dir()
     if not temp_dir.exists():
@@ -160,21 +159,6 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     trajectory["velocity"] = _stack_columns(data, ["vel_x", "vel_y", "vel_z"])
     trajectory["yb"] = _stack_columns(data, ["yb_x", "yb_y", "yb_z"])
 
-    # Optional odometry quaternion recorded by planner (for frame alignment)
-    odom_columns: list[str] | None = None
-    for candidate in [
-        ["quat_odom_w", "quat_odom_x", "quat_odom_y", "quat_odom_z"],
-        ["quat_w", "quat_x", "quat_y", "quat_z"],
-    ]:
-        if all(col in names for col in candidate):
-            odom_columns = candidate
-            break
-    if odom_columns is not None:
-        trajectory["odom_quat"] = _stack_columns(data, odom_columns)
-
-    # Thrust is no longer included in the CSV output
-    trajectory["thrust"] = np.zeros_like(trajectory["time"])
-
     df_phi_alpha = np.atleast_1d(data["df_phi_alpha"])
     trajectory["df_phi_alpha"] = df_phi_alpha
     trajectory["alpha"] = df_phi_alpha
@@ -189,41 +173,34 @@ def load_trajectory_csv(csv_path: str) -> dict[str, np.ndarray]:
     df_lyu_quat_columns = ["df_lyu_quat_w", "df_lyu_quat_x", "df_lyu_quat_y", "df_lyu_quat_z"]
     trajectory["df_lyu_quat"] = _stack_columns(data, df_lyu_quat_columns)
 
+    # Load spatial aerodynamic derivatives (required)
+    # Create (N, 3) array with S_ap = [S_ap_x, 0.0, S_ap_z]
+    s_ap_x = np.atleast_1d(data["S_ap_x"])
+    s_ap_z = np.atleast_1d(data["S_ap_z"])
+    s_ap_zeros = np.zeros_like(s_ap_x)
+    trajectory["S_ap"] = np.column_stack([s_ap_x, s_ap_zeros, s_ap_z])
+
+    # Load spatial aerodynamic derivative rates (required)
+    # Create (N, 3) array with S_ap_dot = [S_ap_x_dot, 0.0, S_ap_z_dot]
+    s_ap_x_dot = np.atleast_1d(data["S_ap_x_dot"])
+    s_ap_z_dot = np.atleast_1d(data["S_ap_z_dot"])
+    s_ap_dot_zeros = np.zeros_like(s_ap_x_dot)
+    trajectory["S_ap_dot"] = np.column_stack([s_ap_x_dot, s_ap_dot_zeros, s_ap_z_dot])
+
+    # Load spatial angular velocities (required)
+    s_omega_columns = ["S_Omega_x", "S_Omega_y", "S_Omega_z"]
+    trajectory["S_Omega"] = _stack_columns(data, s_omega_columns)
+
+    # Load body frame angular velocities (required)
+    b_omega_columns = ["B_Omega_x_df_lyu", "B_Omega_y_df_lyu", "B_Omega_z_df_lyu"]
+    trajectory["B_Omega_df_lyu"] = _stack_columns(data, b_omega_columns)
+
+    # Load body frame aerodynamic force z-component (required)
+    trajectory["B_fa_z_df_lyu"] = np.atleast_1d(data["B_fa_z_df_lyu"])
+
     # ========================================================================
     # Load Optional Fields
     # ========================================================================
-
-    # Load spatial angular velocities (S_Omega_x, S_Omega_y, S_Omega_z)
-    s_omega_columns = ["S_Omega_x", "S_Omega_y", "S_Omega_z"]
-    if all(col in names for col in s_omega_columns):
-        trajectory["S_Omega"] = _stack_columns(data, s_omega_columns)
-
-    # Load body frame angular velocities (B_Omega_x_df_lyu, B_Omega_y_df_lyu, B_Omega_z_df_lyu)
-    b_omega_columns = ["B_Omega_x_df_lyu", "B_Omega_y_df_lyu", "B_Omega_z_df_lyu"]
-    if all(col in names for col in b_omega_columns):
-        trajectory["B_Omega_df_lyu"] = _stack_columns(data, b_omega_columns)
-
-    # Load body frame aerodynamic force z-component (B_fa_z_df_lyu)
-    if "B_fa_z_df_lyu" in names:
-        trajectory["B_fa_z_df_lyu"] = np.atleast_1d(data["B_fa_z_df_lyu"])
-
-    # Load spatial aerodynamic derivatives (S_ap_x, S_ap_z)
-    # Create (N, 3) array with S_ap = [S_ap_x, 0.0, S_ap_z]
-    s_ap_columns = ["S_ap_x", "S_ap_z"]
-    if all(col in names for col in s_ap_columns):
-        s_ap_x = np.atleast_1d(data["S_ap_x"])
-        s_ap_z = np.atleast_1d(data["S_ap_z"])
-        s_ap_zeros = np.zeros_like(s_ap_x)
-        trajectory["S_ap"] = np.column_stack([s_ap_x, s_ap_zeros, s_ap_z])
-
-    # Load spatial aerodynamic derivative rates (S_ap_x_dot, S_ap_z_dot)
-    # Create (N, 3) array with S_ap_dot = [S_ap_x_dot, 0.0, S_ap_z_dot]
-    s_ap_dot_columns = ["S_ap_x_dot", "S_ap_z_dot"]
-    if all(col in names for col in s_ap_dot_columns):
-        s_ap_x_dot = np.atleast_1d(data["S_ap_x_dot"])
-        s_ap_z_dot = np.atleast_1d(data["S_ap_z_dot"])
-        s_ap_dot_zeros = np.zeros_like(s_ap_x_dot)
-        trajectory["S_ap_dot"] = np.column_stack([s_ap_x_dot, s_ap_dot_zeros, s_ap_z_dot])
 
     # ========================================================================
     # Summary
@@ -260,11 +237,14 @@ class TrajectoryReference:
         self.time = trajectory_data["time"]
         self.position = trajectory_data["position"]
         self.velocity = trajectory_data["velocity"]
-        self.thrust = trajectory_data.get("thrust", np.zeros(len(self.time)))
-        self.alpha = trajectory_data.get("alpha", np.zeros(len(self.time)))
-        self.df_phi_quat = trajectory_data.get("df_phi_quat")
-        self.df_lyu_quat = trajectory_data.get("df_lyu_quat")
-        self.odom_quat = trajectory_data.get("odom_quat")
+        # df_lyu_alpha, rad
+        self.alpha = trajectory_data["df_lyu_alpha"]
+
+        # Initialize aero_evaluator with default config
+        self.aero_evaluator = AeroForceEvaluator()
+
+        self.df_phi_quat = trajectory_data["df_phi_quat"]
+        self.df_lyu_quat = trajectory_data["df_lyu_quat"]
 
         # Compute QUAD_FLU_FRAME quaternions from WING_FRD_FRAME
         self.quat_df_phi_quad_flu = None
@@ -280,15 +260,27 @@ class TrajectoryReference:
                 for i in range(len(self.time))
             ])
 
-        # Fallback to CSV yb if no orientation data
-        self.yb = trajectory_data.get("yb", np.zeros((len(self.time), 3)))
+        self.yb = trajectory_data["yb"]
 
-        # Optional angular velocity and aerodynamic force fields
-        self.S_Omega = trajectory_data.get("S_Omega")  # Spatial angular velocities
-        self.B_Omega_df_lyu = trajectory_data.get("B_Omega_df_lyu")  # Body frame angular velocities
-        self.B_fa_z_df_lyu = trajectory_data.get("B_fa_z_df_lyu")  # Body frame aero force z-component
-        self.S_ap = trajectory_data.get("S_ap")  # Spatial aerodynamic derivatives [S_ap_x, 0.0, S_ap_z]
-        self.S_ap_dot = trajectory_data.get("S_ap_dot")  # Aerodynamic derivative rates [S_ap_x_dot, 0.0, S_ap_z_dot]
+        # Required aerodynamic force fields
+        self.S_ap = trajectory_data["S_ap"]  # Spatial aerodynamic derivatives [S_ap_x, 0.0, S_ap_z]
+        self.S_ap_dot = trajectory_data["S_ap_dot"]  # Aerodynamic derivative rates [S_ap_x_dot, 0.0, S_ap_z_dot]
+        self.S_Omega = trajectory_data["S_Omega"]  # Spatial angular velocities
+        self.B_Omega_df_lyu = trajectory_data["B_Omega_df_lyu"]  # Body frame angular velocities
+        self.B_fa_z_df_lyu = trajectory_data["B_fa_z_df_lyu"]  # Body frame aero force z-component
+
+        # Compute aerodynamic force coefficients
+        # kappa_a = S_ap_x * cos(alpha) - S_ap_z * sin(alpha)
+        # kappa_b = S_ap_z_dot * cos(alpha) + S_ap_x_dot * sin(alpha)
+        cos_alpha = np.cos(self.alpha)
+        sin_alpha = np.sin(self.alpha)
+        s_ap_x = self.S_ap[:, 0]
+        s_ap_z = self.S_ap[:, 2]
+        s_ap_x_dot = self.S_ap_dot[:, 0]
+        s_ap_z_dot = self.S_ap_dot[:, 2]
+        self.kappa_a = s_ap_x * cos_alpha - s_ap_z * sin_alpha
+        self.kappa_b = s_ap_z_dot * cos_alpha + s_ap_x_dot * sin_alpha
+
 
         # Sampling time (constant, 50Hz)
         self._sim_dt = 0.02
@@ -320,11 +312,11 @@ class TrajectoryReference:
             - quat_quad_flu: (N+1, 4) array from QUAD_FLU_BODY_FRAME
             - df_phi_quat: (N+1, 4) array from WING_FRD_BODY_FRAME
             - df_lyu_quat: (N+1, 4) array from WING_FRD_BODY_FRAME
-            - S_Omega: (N+1, 3) array with spatial angular velocities (optional)
-            - B_Omega_df_lyu: (N+1, 3) array with body frame angular velocities (optional)
-            - B_fa_z_df_lyu: (N+1,) array with body frame aerodynamic force z-component (optional)
-            - S_ap: (N+1, 3) array with spatial aerodynamic derivatives [S_ap_x, 0.0, S_ap_z] (optional)
-            - S_ap_dot: (N+1, 3) array with aerodynamic derivative rates [S_ap_x_dot, 0.0, S_ap_z_dot] (optional)
+            - S_Omega: (N+1, 3) array with spatial angular velocities
+            - B_Omega_df_lyu: (N+1, 3) array with body frame angular velocities
+            - B_fa_z_df_lyu: (N+1,) array with body frame aerodynamic force z-component
+            - S_ap: (N+1, 3) array with spatial aerodynamic derivatives [S_ap_x, 0.0, S_ap_z]
+            - S_ap_dot: (N+1, 3) array with aerodynamic derivative rates [S_ap_x_dot, 0.0, S_ap_z_dot]
         """
         # Validate sample_dt
         sample_dt = 0.02  # Force to 50Hz for now
@@ -348,46 +340,14 @@ class TrajectoryReference:
             velocity_ref = np.tile(self.velocity[final_idx], (N + 1, 1))
             yb_ref = np.tile(self.yb[final_idx], (N + 1, 1))
             alpha_ref = np.tile(self.alpha[final_idx], N + 1)
-            quat_quad_flu_ref = (
-                np.tile(self.quat_quad_flu[final_idx], (N + 1, 1))
-                if self.quat_quad_flu is not None
-                else None
-            )
-            df_phi_quat_ref = (
-                np.tile(self.df_phi_quat[final_idx], (N + 1, 1))
-                if self.df_phi_quat is not None
-                else None
-            )
-            df_lyu_quat_ref = (
-                np.tile(self.df_lyu_quat[final_idx], (N + 1, 1))
-                if self.df_lyu_quat is not None
-                else None
-            )
-            S_Omega_ref = (
-                np.tile(self.S_Omega[final_idx], (N + 1, 1))
-                if self.S_Omega is not None
-                else None
-            )
-            B_Omega_df_lyu_ref = (
-                np.tile(self.B_Omega_df_lyu[final_idx], (N + 1, 1))
-                if self.B_Omega_df_lyu is not None
-                else None
-            )
-            B_fa_z_df_lyu_ref = (
-                np.tile(self.B_fa_z_df_lyu[final_idx], N + 1)
-                if self.B_fa_z_df_lyu is not None
-                else None
-            )
-            S_ap_ref = (
-                np.tile(self.S_ap[final_idx], (N + 1, 1))
-                if self.S_ap is not None
-                else None
-            )
-            S_ap_dot_ref = (
-                np.tile(self.S_ap_dot[final_idx], (N + 1, 1))
-                if self.S_ap_dot is not None
-                else None
-            )
+            quat_quad_flu_ref = np.tile(self.quat_quad_flu[final_idx], (N + 1, 1))
+            df_phi_quat_ref = np.tile(self.df_phi_quat[final_idx], (N + 1, 1))
+            df_lyu_quat_ref = np.tile(self.df_lyu_quat[final_idx], (N + 1, 1))
+            S_Omega_ref = np.tile(self.S_Omega[final_idx], (N + 1, 1))
+            B_Omega_df_lyu_ref = np.tile(self.B_Omega_df_lyu[final_idx], (N + 1, 1))
+            B_fa_z_df_lyu_ref = np.tile(self.B_fa_z_df_lyu[final_idx], N + 1)
+            S_ap_ref = np.tile(self.S_ap[final_idx], (N + 1, 1))
+            S_ap_dot_ref = np.tile(self.S_ap_dot[final_idx], (N + 1, 1))
         else:
             # Normal case: compute indices with clamp to end
             indices = cur_idx_ref + downsample_factor * np.arange(N + 1)
@@ -396,14 +356,14 @@ class TrajectoryReference:
             velocity_ref = self.velocity[indices]
             yb_ref = self.yb[indices]
             alpha_ref = self.alpha[indices]
-            quat_quad_flu_ref = self.quat_quad_flu[indices] if self.quat_quad_flu is not None else None
-            df_phi_quat_ref = self.df_phi_quat[indices] if self.df_phi_quat is not None else None
-            df_lyu_quat_ref = self.df_lyu_quat[indices] if self.df_lyu_quat is not None else None
-            S_Omega_ref = self.S_Omega[indices] if self.S_Omega is not None else None
-            B_Omega_df_lyu_ref = self.B_Omega_df_lyu[indices] if self.B_Omega_df_lyu is not None else None
-            B_fa_z_df_lyu_ref = self.B_fa_z_df_lyu[indices] if self.B_fa_z_df_lyu is not None else None
-            S_ap_ref = self.S_ap[indices] if self.S_ap is not None else None
-            S_ap_dot_ref = self.S_ap_dot[indices] if self.S_ap_dot is not None else None
+            quat_quad_flu_ref = self.quat_quad_flu[indices]
+            df_phi_quat_ref = self.df_phi_quat[indices]
+            df_lyu_quat_ref = self.df_lyu_quat[indices]
+            S_Omega_ref = self.S_Omega[indices]
+            B_Omega_df_lyu_ref = self.B_Omega_df_lyu[indices]
+            B_fa_z_df_lyu_ref = self.B_fa_z_df_lyu[indices]
+            S_ap_ref = self.S_ap[indices]
+            S_ap_dot_ref = self.S_ap_dot[indices]
 
         return {
             "position": position_ref,
@@ -463,7 +423,7 @@ def get_trajectory_path() -> str:
     Raises:
         FileNotFoundError: If no planning CSV is found (user must run planner first)
     """
-    planning_csv = _find_planning_csv()
+    planning_csv = find_planning_csv()
     if planning_csv:
         return str(planning_csv)
     temp_dir = _temp_data_dir()
