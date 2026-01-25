@@ -111,7 +111,10 @@ def test_load_trajectory_csv_produces_expected_arrays(tmp_path: Path):
     assert "df_phi_quat" in trajectory and trajectory["df_phi_quat"].shape == (2, 4)
 
     reference = TrajectoryReference(trajectory)
-    sample = reference.get_reference_at_time(0.5)
+    sample_window = reference.get_reference_window(cur_idx_ref=0, ctrl_dt=0.02, N=0)
+
+    # Extract first (only) element from window
+    sample = {"position": sample_window["position"][0], "yb": sample_window["yb"][0]}
 
     assert sample["position"].shape == (3,)
     assert sample["yb"].shape == (3,)

@@ -111,6 +111,9 @@ class ErrStateLmpcAngVelActuatedController:
         self._sim_dt = 0.02  # Trajectory sampling rate (const, 50Hz)
         self._u_prev = np.full(4, 9.81 * 2.0 / 4.0)  # Previous motor commands for QP mixer
 
+        # Set reference (zero for error-state MPC) - only needs to be set once
+        self._set_reference_only_once()
+
         print(f"Error-State MPC Controller initialized:")
         print(f"  State dim: {self.nx} (error state)")
         print(f"  Control dim: {self.nu} (control increments)")
@@ -164,7 +167,6 @@ class ErrStateLmpcAngVelActuatedController:
     def _compute_reference_parameters(
         self,
         ref_state: dict[str, np.ndarray],
-        ang_vel_meas: np.ndarray = np.zeros(3)
     ) -> np.ndarray:
         """
         Compute the 28 time-varying parameters from reference state.
@@ -220,12 +222,8 @@ class ErrStateLmpcAngVelActuatedController:
 
         return params
 
-    def _set_reference(self):
-        """Set reference trajectory for prediction horizon using current index."""
-        # For error state MPC, the reference is always zero (goal is zero error)
-        # Path stages (0 to N-1): cost output includes state and control (nx + nu = 13)
-        # Terminal stage (N): cost output includes only state (nx = 9)
-
+    def _set_reference_only_once(self):
+        """Set reference trajectory for prediction horizon (zero for error-state MPC)."""
         ny_path = self.nx + self.nu  # 13 for path stages
         ny_terminal = self.nx        # 9 for terminal stage
 
@@ -237,110 +235,118 @@ class ErrStateLmpcAngVelActuatedController:
 
         self.solver.set(self.N, "yref", y_ref_terminal)
 
-    def _set_parameters_for_stage(self, stage_idx: int, ref_state: dict[str, np.ndarray]):
+    def _get_error_state(self, sim_state: np.ndarray) -> tuple[np.ndarray, dict[str, np.ndarray]]:
         """
-        Set time-varying parameters for a specific MPC stage.
+        Get reference state and compute error state from simulation state.
 
-        Args:
-            stage_idx: Stage index (0 to N)
-            ref_state: Reference state dictionary
-        """
-        params = self._compute_reference_parameters(ref_state)
-        self.solver.set(stage_idx, "p", params)
-
-
-
-    def _set_parameters_for_horizon(self):
-        """Set time-varying parameters for all stages in the MPC horizon."""
-        if self._is_hover_task:
-            # Hover mode: all stages use same parameters (initial reference)
-            ref = self.trajectory.get_reference_at_time(0.0)
-            params = self._compute_reference_parameters(ref)
-            for i in range(self.N + 1):
-                self.solver.set(i, "p", params)
-        else:
-            # Tracking mode: each stage uses different reference parameters
-            ref = self.trajectory.get_reference_window(
-                cur_idx_ref=self._cur_idx_ref,
-                ctrl_dt=self.ctrl_dt,
-                N=self.N
-            )
-
-            # Set parameters for each stage based on reference window
-            for i in range(self.N + 1):
-                ref_state_i = {
-                    "position": ref["position"][i],
-                    "velocity": ref["velocity"][i],
-                    "quat_quad_flu": ref["quat_quad_flu"][i],
-                }
-                self._set_parameters_for_stage(i, ref_state_i)
-
-    def compute_control(self, sim_state: np.ndarray) -> np.ndarray:
-        """
-        Compute motor commands from current state.
+        Combines reference extraction and error state computation into a single step.
 
         Args:
             sim_state: GD simulator state (17D) [p(3), v(3), r(3), q(4), u(4)]
 
         Returns:
-            Motor thrusts (4D)
+            err_state: 9D error state [err_p(3), err_v(3), err_theta(3)]
+            ref_state: Reference state dictionary
         """
-        # Get reference at current index
-        if self._is_hover_task:
-            ref_state = self.trajectory.get_reference_at_time(0.0)
-        else:
-            t_current = self._cur_idx_ref * self._sim_dt
-            ref_state = self.trajectory.get_reference_at_time(t_current)
+        # Get reference at current index (hover uses index 0, tracking advances)
+        cur_idx_ref = 0 if self._is_hover_task else self._cur_idx_ref
+        ref_window = self.trajectory.get_reference_window(
+            cur_idx_ref=cur_idx_ref,
+            ctrl_dt=self.ctrl_dt,
+            N=0  # Single step
+        )
 
-        sim_state[0] = sim_state[0] - 0.2  # Use current altitude
+        # Extract first (only) element from window
+        ref_state = {
+            "position": ref_window["position"][0],
+            "velocity": ref_window["velocity"][0],
+            "quat_quad_flu": ref_window["quat_quad_flu"][0],
+        }
+
         # Compute error state
         err_state = self._compute_error_state(ref_state=ref_state, sim_state=sim_state)
 
+        return err_state, ref_state
 
+    def _set_shooting_0_x0(self, state: np.ndarray) -> None:
+        """Set shooting node 0 initial state, lower bound, and upper bound."""
+        self.solver.set(0, "x", state)
+        self.solver.set(0, "lbx", state)
+        self.solver.set(0, "ubx", state)
 
-        # Set time-varying parameters for all stages
-        self._set_parameters_for_horizon()
+    def _set_parameters_for_horizon(self):
+        """Set time-varying parameters for all stages in the MPC horizon."""
+        # Get reference window - hover mode uses index 0, tracking mode advances
+        cur_idx_ref = 0 if self._is_hover_task else self._cur_idx_ref
+        N = 0 if self._is_hover_task else self.N
 
-        # Set initial error state
-        self.solver.set(0, "x", err_state)
-        self.solver.set(0, "lbx", err_state)
-        self.solver.set(0, "ubx", err_state)
+        ref_window = self.trajectory.get_reference_window(
+            cur_idx_ref=cur_idx_ref,
+            ctrl_dt=self.ctrl_dt,
+            N=N
+        )
+        if self._is_hover_task:
+            # Repeat the single reference for all stages
+            for key in ref_window:
+                ref_window[key] = np.tile(
+                    ref_window[key],
+                    (self.N + 1, 1),
+                )
 
-        # Set reference (zero for error state)
-        self._set_reference()
+        # Set parameters for each stage based on reference window
+        for i in range(self.N + 1):
+            ref_state_i = {
+                "position": ref_window["position"][i],
+                "velocity": ref_window["velocity"][i],
+                "quat_quad_flu": ref_window["quat_quad_flu"][i],
+            }
+            params = self._compute_reference_parameters(ref_state_i)
+            self.solver.set(i, "p", params)
 
-        # Solve OCP
-        status = self.solver.solve()
+    def _low_level_control(
+        self,
+        u: np.ndarray,
+        ref_state: dict[str, np.ndarray],
+        sim_state: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Low-level control: extract increments, compute reference values, and track with sub-controllers.
 
-        if status != 0:
-            raise ValueError(f"Error: Error-state MPC solver failed with status {status}")
+        Steps:
+        - Extract control increments from MPC solution
+        - Compute reference values from parameters
+        - Convert increments to absolute commands
+        - PD controller for thrust tracking
+        - PID controller for angular velocity tracking
+        - QP mixer: convert [tot_thrust, torque] to motor thrusts (4D)
 
-        # Get control increments from MPC
-        u = self.solver.get(0, "u")  # [increment_aT, increment_omega_x, increment_omega_y, increment_omega_z]
+        Args:
+            u: MPC solution control vector [increment_aT, increment_omega_x, increment_omega_y, increment_omega_z]
+            ref_state: Reference state dictionary
+            sim_state: GD simulator state (17D) [p(3), v(3), r(3), q(4), u(4)]
+
+        Returns:
+            motor_thrusts: Motor thrusts (4D)
+        """
+        # Extract control increments from MPC solution
         increment_aT = u[0]
         increment_omega = u[1:4]
 
-
-        ang_vel_meas = sim_state[6:9]  # Angular rates
-        # Extract reference values from parameters
-        # params = [R_d(9), mass_normalized_par_f_a_w_par_v_w_d(9), aT_d(1), mass_normalized_f_a_w_d(3), v_d(3), omega_d(3)]
-        params = self._compute_reference_parameters(ref_state, ang_vel_meas)
+        # Compute reference values from parameters
+        params = self._compute_reference_parameters(ref_state)
         aT_ref = params[18]          # Index 18 (scalar thrust acceleration)
         omega_ref = params[25:28]    # Indices 25, 26, 27 (angular velocity)
 
-        # Convert to absolute commands
+        # Convert increments to absolute commands
         aT_cmd = aT_ref - increment_aT  # Scalar thrust acceleration
         omega_cmd = omega_ref - increment_omega
-        euler_state = err_state[6:9]
-        # Get current measurements from sim state
 
-
+        # Get measurements
+        ang_vel_meas = sim_state[6:9]  # Angular rates
+        current_motor_thrusts = sim_state[13:17]
 
         # PD controller for thrust tracking
-        # Note: Current aT is estimated from motor thrusts
-        current_motor_thrusts = sim_state[13:17]
-        current_aT = np.sum(current_motor_thrusts) / 2.0  # Approximate
-        # aT_cmd is a scalar thrust acceleration
+        current_aT = np.sum(current_motor_thrusts) / 2.0  # Approximate current thrust
         thrust_correction = self._pd_thrust.compute(aT_cmd, current_aT)
         tot_thrust_cmd = aT_cmd * 2.0 + thrust_correction  # Scale to total thrust
 
@@ -351,8 +357,42 @@ class ErrStateLmpcAngVelActuatedController:
         tau_desired = np.concatenate([[tot_thrust_cmd], torque_cmd])
         motor_thrusts, motor_rates, info = self._qp_mixer.mix(tau_desired, self._u_prev)
 
-        # Update previous command
+        # Update previous command for QP mixer
         self._u_prev = motor_thrusts.copy()
+
+        return motor_thrusts
+
+    def compute_control(self, sim_state: np.ndarray) -> np.ndarray:
+        """
+        Compute motor commands from current state.
+
+        Error-state MPC compute procedure:
+        1. Initialize solver: get reference, compute error state, set parameters and initial condition
+        2. Solve OCP
+        3. Low-level control: extract increments, compute reference values, and track with sub-controllers
+        4. Update reference index for tracking mode
+
+        Args:
+            sim_state: GD simulator state (17D) [p(3), v(3), r(3), q(4), u(4)]
+
+        Returns:
+            Motor thrusts (4D)
+        """
+        # 1. Initialize solver: get reference (9D), compute error state, set parameters and initial condition
+        sim_state[0] = sim_state[0] - 0.2  # Altitude adjustment
+        err_state, ref_state = self._get_error_state(sim_state)
+        self._set_parameters_for_horizon()
+        self._set_shooting_0_x0(err_state)
+
+        # 2. Solve OCP
+        status = self.solver.solve()
+
+        if status != 0:
+            raise ValueError(f"Error: Error-state MPC solver failed with status {status}")
+
+        # 3. Low-level control: extract increments, compute reference values, and track with sub-controllers
+        u = self.solver.get(0, "u")  # [increment_aT, increment_omega_x, increment_omega_y, increment_omega_z]
+        motor_thrusts = self._low_level_control(u, ref_state, sim_state)
 
         #<HARD
         #Task. this mpc cares about pos, vel, attitude error only
@@ -367,16 +407,12 @@ class ErrStateLmpcAngVelActuatedController:
             self._hard_err_history_vel = []
             self._hard_err_history_att = []
             self._hard_motor_history = []
-            self._hard_omega_cmd_history = []
-            self._hard_omega_meas_history = []
         self._hard_step_counter += 1
         self._hard_err_history_pos.append(err_state[0:3])
         self._hard_err_history_vel.append(err_state[3:6])
         euler_err = err_state[6:9]
         self._hard_err_history_att.append(euler_err)
         self._hard_motor_history.append(motor_thrusts.copy())
-        self._hard_omega_cmd_history.append(omega_cmd.copy())
-        self._hard_omega_meas_history.append(ang_vel_meas.copy())
         if self._hard_step_counter >= 500:
             steps = np.arange(500)
             pos_hist = np.array(self._hard_err_history_pos)
@@ -416,7 +452,7 @@ class ErrStateLmpcAngVelActuatedController:
             axes2[0].set_xlabel('Step')
             axes2[0].set_ylabel('Thrust (N)')
             axes2[0].legend()
-            
+            axes2[0].set_ylim([0,8])
             axes2[0].grid(True)
             axes2[1].plot(steps, motor_hist[:, 1], label='motor 2')
             axes2[1].set_title('Motor 2 Thrust')
@@ -441,50 +477,13 @@ class ErrStateLmpcAngVelActuatedController:
             axes2[3].grid(True)
             plt.tight_layout()
             plt.show()
-            fig3, axes3 = plt.subplots(3, 1, figsize=(10, 10))
-            omega_cmd_hist = np.array(self._hard_omega_cmd_history)
-            omega_meas_hist = np.array(self._hard_omega_meas_history)
-            axes3[0].plot(steps, omega_cmd_hist[:, 0], 'r-', label='omega_x cmd')
-            axes3[0].plot(steps, omega_meas_hist[:, 0], 'b--', label='omega_x meas')
-            axes3[0].set_title('Body Rate X Tracking')
-            axes3[0].set_xlabel('Step')
-            axes3[0].set_ylabel('Angular Rate (rad/s)')
-            axes3[0].legend()
-            axes3[0].grid(True)
-            axes3[1].plot(steps, omega_cmd_hist[:, 1], 'r-', label='omega_y cmd')
-            axes3[1].plot(steps, omega_meas_hist[:, 1], 'b--', label='omega_y meas')
-            axes3[1].set_title('Body Rate Y Tracking')
-            axes3[1].set_xlabel('Step')
-            axes3[1].set_ylabel('Angular Rate (rad/s)')
-            axes3[1].legend()
-            axes3[1].grid(True)
-            axes3[2].plot(steps, omega_cmd_hist[:, 2], 'r-', label='omega_z cmd')
-            axes3[2].plot(steps, omega_meas_hist[:, 2], 'b--', label='omega_z meas')
-            axes3[2].set_title('Body Rate Z Tracking')
-            axes3[2].set_xlabel('Step')
-            axes3[2].set_ylabel('Angular Rate (rad/s)')
-            axes3[2].legend()
-            axes3[2].grid(True)
-            plt.tight_layout()
-            plt.show()
-            import time
-            time.sleep(20.0)
-            print("HARD_CODE: Saved error state plots to /tmp/hard_err_state_plots.png")
-            plt.close('all')
-            self._hard_step_counter = 0
-            self._hard_err_history_pos = []
-            self._hard_err_history_vel = []
-            self._hard_err_history_att = []
-            self._hard_motor_history = []
-            self._hard_omega_cmd_history = []
-            self._hard_omega_meas_history = []
+            import sys
+            sys.exit(0)
         #>
 
-
-        # Increment reference index after solving (only in tracking mode)
-        if not self._is_hover_task:
-            total_steps = len(self.trajectory.time)
-            self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
+        # 4. Update reference index for tracking mode
+        total_steps = len(self.trajectory.time)
+        self._cur_idx_ref = (self._cur_idx_ref + 1) % total_steps
 
         return motor_thrusts
 

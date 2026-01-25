@@ -272,71 +272,6 @@ class TrajectoryReference:
         # Sampling time (constant, 50Hz)
         self._sim_dt = 0.02
 
-    def get_reference_at_time(self, t: float) -> dict[str, np.ndarray]:
-        """
-        Get reference state at time t using nearest index lookup (no interpolation).
-
-        Args:
-            t: Time in seconds
-
-        Returns:
-            Dictionary with reference state:
-            - position: (3,) array
-            - velocity: (3,) array
-            - yb: (3,) array
-            - alpha: scalar
-            - quat_quad_flu: (4,) array [w, x, y, z] in QUAD_FLU_BODY_FRAME
-            - df_phi_quat: (4,) array [w, x, y, z] in WING_FRD_BODY_FRAME
-            - df_lyu_quat: (4,) array [w, x, y, z] in WING_FRD_BODY_FRAME
-            - S_Omega: (3,) array with spatial angular velocities [x, y, z] (optional)
-            - B_Omega_df_lyu: (3,) array with body frame angular velocities [x, y, z] (optional)
-            - B_fa_z_df_lyu: scalar with body frame aerodynamic force z-component (optional)
-        """
-        # Find nearest index (clamp to valid range, no wrap-around)
-        idx = int(np.round(t / self._sim_dt))
-        idx = max(0, min(idx, len(self.time) - 1))
-
-        ref = {
-            "position": self.position[idx].copy(),
-            "velocity": self.velocity[idx].copy(),
-            "yb": self.yb[idx].copy(),
-            "alpha": float(self.alpha[idx]),
-        }
-
-        # Add quat_quad_flu as quat_quad_flu for err_state_nmpc
-        if self.quat_quad_flu is not None:
-            quat_quad_flu = self.quat_quad_flu[idx].copy()
-            norm = np.linalg.norm(quat_quad_flu)
-            if norm > 1e-6:
-                quat_quad_flu = quat_quad_flu / norm
-            ref["quat_quad_flu"] = quat_quad_flu
-
-        # Keep wing frame quaternions for reference
-        if self.df_phi_quat is not None:
-            df_phi_quat = self.df_phi_quat[idx].copy()
-            norm = np.linalg.norm(df_phi_quat)
-            if norm > 1e-6:
-                df_phi_quat = df_phi_quat / norm
-            ref["df_phi_quat"] = df_phi_quat
-
-        if self.df_lyu_quat is not None:
-            df_lyu_quat = self.df_lyu_quat[idx].copy()
-            norm = np.linalg.norm(df_lyu_quat)
-            if norm > 1e-6:
-                df_lyu_quat = df_lyu_quat / norm
-            ref["df_lyu_quat"] = df_lyu_quat
-
-        # Add optional angular velocity and aerodynamic force fields
-        if self.S_Omega is not None:
-            ref["S_Omega"] = self.S_Omega[idx].copy()
-        if self.B_Omega_df_lyu is not None:
-            ref["B_Omega_df_lyu"] = self.B_Omega_df_lyu[idx].copy()
-        if self.B_fa_z_df_lyu is not None:
-            ref["B_fa_z_df_lyu"] = float(self.B_fa_z_df_lyu[idx])
-
-        return ref
-    
-
     def get_reference_window(
         self,
         cur_idx_ref: int,
@@ -352,7 +287,6 @@ class TrajectoryReference:
 
         Args:
             cur_idx_ref: Current reference index in the trajectory
-            sample_dt: Sampling time of the trajectory (must be 0.02s)
             ctrl_dt: Control time step of the MPC
             N: Number of steps in the MPC horizon
 
@@ -361,7 +295,13 @@ class TrajectoryReference:
             - position: (N+1, 3) array
             - velocity: (N+1, 3) array
             - yb: (N+1, 3) array
-            - quat_quad_flu: (N+1, 4) array from QUAD_FLU_BODY_FRAME if available
+            - alpha: (N+1,) array
+            - quat_quad_flu: (N+1, 4) array from QUAD_FLU_BODY_FRAME
+            - df_phi_quat: (N+1, 4) array from WING_FRD_BODY_FRAME
+            - df_lyu_quat: (N+1, 4) array from WING_FRD_BODY_FRAME
+            - S_Omega: (N+1, 3) array with spatial angular velocities (optional)
+            - B_Omega_df_lyu: (N+1, 3) array with body frame angular velocities (optional)
+            - B_fa_z_df_lyu: (N+1,) array with body frame aerodynamic force z-component (optional)
         """
         # Validate sample_dt
         sample_dt = 0.02  # Force to 50Hz for now
@@ -384,9 +324,35 @@ class TrajectoryReference:
             position_ref = np.tile(self.position[final_idx], (N + 1, 1))
             velocity_ref = np.tile(self.velocity[final_idx], (N + 1, 1))
             yb_ref = np.tile(self.yb[final_idx], (N + 1, 1))
+            alpha_ref = np.tile(self.alpha[final_idx], N + 1)
             quat_quad_flu_ref = (
                 np.tile(self.quat_quad_flu[final_idx], (N + 1, 1))
                 if self.quat_quad_flu is not None
+                else None
+            )
+            df_phi_quat_ref = (
+                np.tile(self.df_phi_quat[final_idx], (N + 1, 1))
+                if self.df_phi_quat is not None
+                else None
+            )
+            df_lyu_quat_ref = (
+                np.tile(self.df_lyu_quat[final_idx], (N + 1, 1))
+                if self.df_lyu_quat is not None
+                else None
+            )
+            S_Omega_ref = (
+                np.tile(self.S_Omega[final_idx], (N + 1, 1))
+                if self.S_Omega is not None
+                else None
+            )
+            B_Omega_df_lyu_ref = (
+                np.tile(self.B_Omega_df_lyu[final_idx], (N + 1, 1))
+                if self.B_Omega_df_lyu is not None
+                else None
+            )
+            B_fa_z_df_lyu_ref = (
+                np.tile(self.B_fa_z_df_lyu[final_idx], N + 1)
+                if self.B_fa_z_df_lyu is not None
                 else None
             )
         else:
@@ -396,13 +362,25 @@ class TrajectoryReference:
             position_ref = self.position[indices]
             velocity_ref = self.velocity[indices]
             yb_ref = self.yb[indices]
+            alpha_ref = self.alpha[indices]
             quat_quad_flu_ref = self.quat_quad_flu[indices] if self.quat_quad_flu is not None else None
+            df_phi_quat_ref = self.df_phi_quat[indices] if self.df_phi_quat is not None else None
+            df_lyu_quat_ref = self.df_lyu_quat[indices] if self.df_lyu_quat is not None else None
+            S_Omega_ref = self.S_Omega[indices] if self.S_Omega is not None else None
+            B_Omega_df_lyu_ref = self.B_Omega_df_lyu[indices] if self.B_Omega_df_lyu is not None else None
+            B_fa_z_df_lyu_ref = self.B_fa_z_df_lyu[indices] if self.B_fa_z_df_lyu is not None else None
 
         return {
             "position": position_ref,
             "velocity": velocity_ref,
             "yb": yb_ref,
+            "alpha": alpha_ref,
             "quat_quad_flu": quat_quad_flu_ref,
+            "df_phi_quat": df_phi_quat_ref,
+            "df_lyu_quat": df_lyu_quat_ref,
+            "S_Omega": S_Omega_ref,
+            "B_Omega_df_lyu": B_Omega_df_lyu_ref,
+            "B_fa_z_df_lyu": B_fa_z_df_lyu_ref,
         }
 
 

@@ -93,6 +93,12 @@ class ProposedNmpcAngVelActuatedController:
         self._sim_dt = 0.02  # Trajectory sampling rate (const, 50Hz)
         self._u_prev = np.zeros(4)  # Track previous motor commands
 
+    def _set_shooting_0_x0(self, state: np.ndarray) -> None:
+        """Set shooting node 0 initial state, lower bound, and upper bound."""
+        self._solver.set(0, "x", state)
+        self._solver.set(0, "lbx", state)
+        self._solver.set(0, "ubx", state)
+
     def _initialize_solver(self, mpc_state: np.ndarray) -> None:
         """
         Initialize ACADOS solver with parameters and initial state.
@@ -106,9 +112,7 @@ class ProposedNmpcAngVelActuatedController:
             self._solver.set(i, "p", params)
 
         # Initialize with current state as guess and bounds
-        self._solver.set(0, "x", mpc_state)
-        self._solver.set(0, "lbx", mpc_state)
-        self._solver.set(0, "ubx", mpc_state)
+        self._set_shooting_0_x0(mpc_state)
 
     def compute_control(
         self,
@@ -223,27 +227,63 @@ class ProposedNmpcAngVelActuatedController:
 
         return mpc_state
 
+    def _get_hover_reference_window(self) -> dict[str, np.ndarray]:
+        """
+        Create a window of identical references for hover mode.
+
+        Returns:
+            Dictionary with (N+1, ...) arrays where all entries are ref_state[0]
+        """
+        N = self._N
+
+        # Get initial reference state
+        ref_single = {
+            "position": self.trajectory.position[0],
+            "velocity": self.trajectory.velocity[0],
+            "yb": self.trajectory.yb[0],
+        }
+
+        if self.trajectory.quat_quad_flu is not None:
+            ref_single["quat_quad_flu"] = self.trajectory.quat_quad_flu[0]
+
+        # Tile to (N+1, ...) shape
+        ref_window = {}
+        for key, value in ref_single.items():
+            if isinstance(value, np.ndarray):
+                if value.ndim == 1:  # Scalar field
+                    ref_window[key] = np.tile(value, N + 1)
+                else:  # Vector field
+                    ref_window[key] = np.tile(value, (N + 1, 1))
+
+        return ref_window
+
     def _set_hover_reference(self):
         """Set constant reference (hover mode)."""
-        p_ref = self.trajectory.position[0]
-        v_ref = self.trajectory.velocity[0]
-        yb_ref = self.trajectory.yb[0]
+        ref_window = self._get_hover_reference_window()
 
-        y_ref = np.concatenate([
-            p_ref,
-            v_ref,
-            yb_ref,
-            np.zeros(4),  # motor_thrusts_rate_ref
-        ])
-
+        # Set reference for each stage
         for i in range(self._N):
+            p_ref = ref_window['position'][i]
+            v_ref = ref_window['velocity'][i]
+            yb_ref = ref_window['yb'][i]
+
+            y_ref = np.concatenate([
+                p_ref,
+                v_ref,
+                yb_ref,
+                np.zeros(4),  # motor_thrusts_rate_ref
+            ])
             self._solver.set(i, "yref", y_ref)
 
         # Terminal reference (no motor thrusts)
+        p_ref_N = ref_window['position'][-1]
+        v_ref_N = ref_window['velocity'][-1]
+        yb_ref_N = ref_window['yb'][-1]
+
         y_ref_N = np.concatenate([
-            p_ref,
-            v_ref,
-            yb_ref,
+            p_ref_N,
+            v_ref_N,
+            yb_ref_N,
         ])
         self._solver.set(self._N, "yref", y_ref_N)
 

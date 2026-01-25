@@ -162,6 +162,41 @@ class NmpcVisualizer:
 
         self.track_path_pub.publish(self.tracking_path)
 
+    def _get_reference_at_time_index(self, trajectory, t: float) -> int:
+        """
+        Convert time to trajectory index.
+
+        Args:
+            trajectory: TrajectoryReference instance
+            t: Time in seconds
+
+        Returns:
+            Index in trajectory arrays
+        """
+        sim_dt = 0.02  # Trajectory sampling rate
+        idx = int(np.round(t / sim_dt))
+        return max(0, min(idx, len(trajectory.time) - 1))
+
+    def _get_reference_single(self, trajectory, idx: int) -> dict:
+        """
+        Get single reference state at index.
+
+        Args:
+            trajectory: TrajectoryReference instance
+            idx: Index in trajectory
+
+        Returns:
+            Dictionary with single reference state
+        """
+        ref = {
+            "position": trajectory.position[idx].copy(),
+        }
+
+        if trajectory.quat_quad_flu is not None:
+            ref["quaternion"] = trajectory.quat_quad_flu[idx].copy()
+
+        return ref
+
     def publish_reference_path(self, trajectory, node: Node) -> None:
         """
         Publish the static reference trajectory as a Path message.
@@ -178,7 +213,8 @@ class NmpcVisualizer:
         )
 
         for t in sample_times:
-            ref = trajectory.get_reference_at_time(t)
+            idx = self._get_reference_at_time_index(trajectory, t)
+            ref = self._get_reference_single(trajectory, idx)
             add_pose_to_path(
                 ref_path,
                 ref['position'],

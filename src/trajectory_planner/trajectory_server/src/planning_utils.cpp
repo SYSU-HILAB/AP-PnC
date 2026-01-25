@@ -71,7 +71,7 @@ TrajectorySampleData TrajectorySampleData::from_trajectory(
   const double cos_alpha = std::cos(data.df_lyu_alpha);
   const double sin_alpha = std::sin(data.df_lyu_alpha);
   data.B_Omega_x_df_lyu = data.S_Omega_x * cos_alpha - data.S_Omega_z * sin_alpha;
-  data.B_Omega_y_df_lyu = 0.0;  // set to zero as per header comment
+  data.B_Omega_y_df_lyu = data.S_Omega_y;  // set to S_Omega_y as per header comment
   data.B_Omega_z_df_lyu = data.S_Omega_x * sin_alpha + data.S_Omega_z * cos_alpha;
 
   // Compute B_fa_z_df_lyu: body frame aerodynamic force z-component (scaled by mass)

@@ -194,6 +194,49 @@ class ReferenceVisualizer(Node):
         self.get_logger().info(f"Reference playback {state}")
         return self.paused
 
+    def _get_reference_at_time_index(self, t: float) -> int:
+        """
+        Convert time to trajectory index (no interpolation).
+
+        Args:
+            t: Time in seconds
+
+        Returns:
+            Index in trajectory arrays
+        """
+        sim_dt = 0.02  # Trajectory sampling rate
+        idx = int(np.round(t / sim_dt))
+        return max(0, min(idx, len(self.trajectory.time) - 1))
+
+    def _get_reference_single(self, idx: int) -> dict:
+        """
+        Get single reference state at index (used for visualization).
+
+        This is a convenience wrapper for visualization that samples
+        a single element from trajectory arrays.
+
+        Args:
+            idx: Index in trajectory
+
+        Returns:
+            Dictionary with single reference state
+        """
+        ref = {
+            "position": self.trajectory.position[idx].copy(),
+            "velocity": self.trajectory.velocity[idx].copy(),
+            "yb": self.trajectory.yb[idx].copy(),
+            "alpha": float(self.trajectory.alpha[idx]),
+        }
+
+        if self.trajectory.quat_quad_flu is not None:
+            ref["quat_quad_flu"] = self.trajectory.quat_quad_flu[idx].copy()
+        if self.trajectory.df_phi_quat is not None:
+            ref["df_phi_quat"] = self.trajectory.df_phi_quat[idx].copy()
+        if self.trajectory.df_lyu_quat is not None:
+            ref["df_lyu_quat"] = self.trajectory.df_lyu_quat[idx].copy()
+
+        return ref
+
     def _publish_reference_path(self) -> None:
         """Publish both df_phi_quat and df_lyu_quat reference trajectories."""
         # df_phi quaternion path
@@ -209,7 +252,8 @@ class ReferenceVisualizer(Node):
         )
 
         for t in sample_times:
-            ref = self.trajectory.get_reference_at_time(t)
+            idx = self._get_reference_at_time_index(t)
+            ref = self._get_reference_single(idx)
 
             # DF phi quaternion path
             df_phi_quat = self._compose_reference_quat(ref, "df_phi_quat")
@@ -248,7 +292,8 @@ class ReferenceVisualizer(Node):
             return
 
         # Get reference state at current time
-        ref = self.trajectory.get_reference_at_time(self.current_time)
+        idx = self._get_reference_at_time_index(self.current_time)
+        ref = self._get_reference_single(idx)
         stamp = self.get_clock().now().to_msg()
 
         # Publish odometry (both df_phi_quat and df_lyu_quat)
