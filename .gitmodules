@@ -1,31 +1,28 @@
-[submodule "src/interfaces/px4_msgs/msg"]
-	path = src/interfaces/px4_msgs/msg
+[submodule "src/interface_msgs/px4_msgs/msg"]
+	path = src/interface_msgs/px4_msgs/msg
 	url = https://github.com/WarriorHanamy/vtol-px4-msgs.git
 	branch = main
-[submodule "src/external_libraries/tomlplusplus"]
-	path = src/external_libraries/tomlplusplus
-	url = https://github.com/marzer/tomlplusplus.git
-[submodule "src/external_libraries/yamlcpp"]
-	path = src/external_libraries/yamlcpp
-	url = https://github.com/jbeder/yaml-cpp.git
 [submodule "mpc_framework"]
 	path = mpc_framework
 	url = https://github.com/acados/acados.git
-[submodule "src/mocap-px4/src/mocap-ros2"]
-	path = src/mocap-px4/src/mocap-ros2
-	url = https://github.com/SYSU-HILAB/mocap-ros2.git
-[submodule "src/external_libraries/BSplinebasis"]
-	path = src/external_libraries/BSplinebasis
-	url = https://github.com/WarriorHanamy/BSplinebasis.git
-	branch = main
 [submodule "scripts/sciplots"]
 	path = scripts/sciplots
 	url = https://github.com/WarriorHanamy/sciplots.git
-[submodule "src/utils"]
-	path = src/utils
+[submodule "src/trajectory_planner/tailsitter_df/include/autodiff"]
+	path = src/trajectory_planner/tailsitter_df/include/autodiff
+	url = https://github.com/WarriorHanamy/autodiff.git
+	branch = main
+[submodule "src/utils/ROS2-Utils"]
+	path = src/utils/ROS2-Utils
 	url = https://github.com/WarriorHanamy/ROS2-Utils.git
 	branch = main
-[submodule "src/tailsitter_df/include/autodiff"]
-	path = src/tailsitter_df/include/autodiff
-	url = https://github.com/WarriorHanamy/autodiff.git
+[submodule "src/utils/external_libraries/tomlplusplus"]
+	path = src/utils/external_libraries/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git
+[submodule "src/utils/external_libraries/yamlcpp"]
+	path = src/utils/external_libraries/yamlcpp
+	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "src/utils/external_libraries/BSplinebasis"]
+	path = src/utils/external_libraries/BSplinebasis
+	url = https://github.com/WarriorHanamy/BSplinebasis.git
 	branch = main
