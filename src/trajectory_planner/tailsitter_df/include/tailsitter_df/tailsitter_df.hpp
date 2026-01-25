@@ -56,6 +56,9 @@ namespace tailsitter_df
     real                    S_Omega_x;
     real                    S_Omega_y;
     real                    S_Omega_z;
+    // Aerodynamic specific force derivatives
+    real                    S_ap_x_dot;
+    real                    S_ap_z_dot;
     // when circled, in ENU, zb_fixed is set to be aligned with North direction.
     realV3                  zb_fixed = (realV3() << 0, 1, 0).finished(); 
 
@@ -172,6 +175,8 @@ namespace tailsitter_df
     double getBOmegaY() const { return B_Omega_b_y.val(); }
     double getSApX() const { return S_ap_x.val(); }
     double getSApZ() const { return S_ap_z.val(); }
+    double getSApXDot() const { return S_ap_x_dot.val(); }
+    double getSApZDot() const { return S_ap_z_dot.val(); }
     double getBAeroForceZ() const { return B_aero_force_z.val(); }
   };
 }  // namespace tailsitter_df

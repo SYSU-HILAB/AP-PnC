@@ -54,6 +54,8 @@ TrajectorySampleData TrajectorySampleData::from_trajectory(
   data.alpha_dot    = tailsitter_data.getAlphaDot(); // will be updated in python codes.
   data.S_ap_x       = tailsitter_data.getSApX();
   data.S_ap_z       = tailsitter_data.getSApZ();
+  data.S_ap_x_dot   = tailsitter_data.getSApXDot();
+  data.S_ap_z_dot   = tailsitter_data.getSApZDot();
   data.S_Omega_x    = tailsitter_data.getSOmegaX();
   data.S_Omega_y    = tailsitter_data.getSOmegaY();
   data.S_Omega_z    = tailsitter_data.getSOmegaZ();
@@ -174,7 +176,7 @@ std::ofstream& init_planning_csv_file(const Config& config)
            << "df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,"
            << "df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,"
            << "W_ap_x,W_ap_y,W_ap_z,"
-           << "S_ap_x,S_ap_z,"
+           << "S_ap_x,S_ap_z,S_ap_x_dot,S_ap_z_dot,"
            << "S_Omega_x,S_Omega_y,S_Omega_z,"
            << "B_Omega_x_df_lyu,B_Omega_y_df_lyu,B_Omega_z_df_lyu,"
            << "B_fa_z_df_lyu,"
@@ -239,6 +241,7 @@ void write_trajectory_sample(std::ofstream& csv_file, const TrajectorySampleData
            << data.quat_lyu.y() << "," << data.quat_lyu.z() << ","
            << data.W_ap(0) << "," << data.W_ap(1) << "," << data.W_ap(2) << ","
            << data.S_ap_x << "," << data.S_ap_z << ","
+           << data.S_ap_x_dot << "," << data.S_ap_z_dot << ","
            << data.S_Omega_x << "," << data.S_Omega_y << "," << data.S_Omega_z << ","
            << data.B_Omega_x_df_lyu << "," << data.B_Omega_y_df_lyu << "," << data.B_Omega_z_df_lyu << ","
            << data.B_fa_z_df_lyu << ","

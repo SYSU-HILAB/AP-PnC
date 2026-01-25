@@ -162,6 +162,8 @@ namespace tailsitter_df
     real   &S_Omega_x     = data.S_Omega_x;
     real   &S_Omega_y     = data.S_Omega_y;
     real   &S_Omega_z     = data.S_Omega_z;
+    real   &S_ap_x_dot    = data.S_ap_x_dot;
+    real   &S_ap_z_dot    = data.S_ap_z_dot;
 
     realV3 x_s    = v / v.norm();
     realV3 temp   = -(realM3::Identity() - x_s * x_s.transpose()) * (a - g);
@@ -198,11 +200,11 @@ namespace tailsitter_df
     at(0) = S_ap_x * cos(alpha) - S_ap_z * sin(alpha);
     attitude << xb, yb, zb;
     q               = Eigen::Quaternion<real>(attitude);
-    
-    real S_ap_z_dot = z_s.transpose() * j;
+
+    S_ap_z_dot      = z_s.transpose() * j;
     S_ap_z_dot      = S_ap_z_dot + omega_sy * S_ap_x;
 
-    real S_ap_x_dot = x_s.transpose() * j;
+    S_ap_x_dot      = x_s.transpose() * j;
     S_ap_x_dot      = S_ap_x_dot - omega_sy * S_ap_z;
 
     realV3 vb = attitude.transpose() * v;

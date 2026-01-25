@@ -8,6 +8,8 @@
 # (2) Omega components (spatial and body frame)
 # (3) Alpha comparison (df_phi_alpha vs df_lyu_alpha)
 # (4) B_ap_x_df_lyu (proper acceleration) and B_fa_z_df_lyu (aero force, mass-scaled)
+# (5) S_ap_x and S_ap_x_dot (spatial aero force x and its derivative)
+# (6) S_ap_z and S_ap_z_dot (spatial aero force z and its derivative)
 #
 
 import os
@@ -39,11 +41,11 @@ def load_trajectory_csv(csv_path: str) -> dict:
     """
     Load trajectory CSV file from global_planning.
 
-    CSV columns (34 total):
+    CSV columns (36 total):
     time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,B_ap_x_df_lyu,df_phi_alpha,df_lyu_alpha,
     yb_x,yb_y,yb_z,df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,
     df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,Wap_x,Wap_y,Wap_z,
-    S_ap_x,S_ap_z,S_Omega_x,S_Omega_y,S_Omega_z,
+    S_ap_x,S_ap_z,S_ap_x_dot,S_ap_z_dot,S_Omega_x,S_Omega_y,S_Omega_z,
     B_Omega_x_df_lyu,B_Omega_y_df_lyu,B_Omega_z_df_lyu,B_fa_z_df_lyu,alpha_dot
     """
     data = np.loadtxt(csv_path, delimiter=",", skiprows=1)
@@ -61,14 +63,16 @@ def load_trajectory_csv(csv_path: str) -> dict:
         "Wap": data[:, 21:24],
         "S_ap_x": data[:, 24],
         "S_ap_z": data[:, 25],
-        "S_Omega_x": data[:, 26],
-        "S_Omega_y": data[:, 27],
-        "S_Omega_z": data[:, 28],
-        "B_Omega_x_df_lyu": data[:, 29],
-        "B_Omega_y_df_lyu": data[:, 30],
-        "B_Omega_z_df_lyu": data[:, 31],
-        "B_fa_z_df_lyu": data[:, 32],
-        "alpha_dot": data[:, 33],
+        "S_ap_x_dot": data[:, 26],
+        "S_ap_z_dot": data[:, 27],
+        "S_Omega_x": data[:, 28],
+        "S_Omega_y": data[:, 29],
+        "S_Omega_z": data[:, 30],
+        "B_Omega_x_df_lyu": data[:, 31],
+        "B_Omega_y_df_lyu": data[:, 32],
+        "B_Omega_z_df_lyu": data[:, 33],
+        "B_fa_z_df_lyu": data[:, 34],
+        "alpha_dot": data[:, 35],
     }
 
 
@@ -76,15 +80,16 @@ def plot_aero_omegas(
     data: dict, output_path: str = None, show: bool = True
 ) -> None:
     """
-    Plot 4 subplots: df_lyu_alpha, Omegas, Alpha comparison,
-    B_ap_x_df_lyu (proper acc) and B_fa_z_df_lyu (aero force).
+    Plot 6 subplots: df_lyu_alpha, Omegas, Alpha comparison,
+    B_ap_x_df_lyu (proper acc) and B_fa_z_df_lyu (aero force),
+    S_ap_x and S_ap_x_dot, S_ap_z and S_ap_z_dot.
 
     Args:
         data: Dictionary containing trajectory data
         output_path: Path to save the plot (optional)
         show: Whether to display the plot interactively
     """
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig, axes = plt.subplots(3, 2, figsize=(14, 14))
     fig.suptitle("Aerodynamic Angles and Omegas Analysis", fontsize=14)
 
     t = data["time"]
@@ -136,6 +141,30 @@ def plot_aero_omegas(
     ax4.set_title("(4) Body Frame: B_ap_x (accel) & B_fa_z (aero force, mass-scaled)")
     ax4.legend()
     ax4.grid(True, alpha=0.3)
+
+    # Plot (5): S_ap_x and S_ap_x_dot (spatial aerodynamic derivatives)
+    ax5 = axes[2, 0]
+    ax5.plot(t, data["S_ap_x"], color="green", linewidth=1.5, label="S_ap_x")
+    ax5.plot(t, data["S_ap_x_dot"], color="orange", linewidth=1.5,
+             linestyle="--", label="S_ap_x_dot (derivative)")
+    ax5.axhline(y=0, color="k", linestyle="--", alpha=0.3)
+    ax5.set_xlabel("Time (s)")
+    ax5.set_ylabel("Specific Force (m/s²) / Rate (m/s³)")
+    ax5.set_title("(5) S_ap_x (spatial aero force x) & S_ap_x_dot")
+    ax5.legend()
+    ax5.grid(True, alpha=0.3)
+
+    # Plot (6): S_ap_z and S_ap_z_dot (spatial aerodynamic derivatives)
+    ax6 = axes[2, 1]
+    ax6.plot(t, data["S_ap_z"], color="purple", linewidth=1.5, label="S_ap_z")
+    ax6.plot(t, data["S_ap_z_dot"], color="magenta", linewidth=1.5,
+             linestyle="--", label="S_ap_z_dot (derivative)")
+    ax6.axhline(y=0, color="k", linestyle="--", alpha=0.3)
+    ax6.set_xlabel("Time (s)")
+    ax6.set_ylabel("Specific Force (m/s²) / Rate (m/s³)")
+    ax6.set_title("(6) S_ap_z (spatial aero force z) & S_ap_z_dot")
+    ax6.legend()
+    ax6.grid(True, alpha=0.3)
 
     plt.tight_layout()
 
@@ -194,6 +223,18 @@ def print_statistics(data: dict) -> None:
     print("Stability frame omegas (S_Omega):")
     for name, values in [("x", data["S_Omega_x"]), ("y", data["S_Omega_y"]), ("z", data["S_Omega_z"])]:
         print(f"  S_Omega_{name}: [{values.min():.4f}, {values.max():.4f}] rad/s")
+    print()
+
+    # S_ap statistics (spatial aerodynamic specific force components)
+    print("Spatial aerodynamic specific force components (S_ap):")
+    for name, values in [("x", data["S_ap_x"]), ("z", data["S_ap_z"])]:
+        print(f"  S_ap_{name}: [{values.min():.4f}, {values.max():.4f}] m/s²")
+    print()
+
+    # S_ap_dot statistics (spatial aerodynamic specific force rates)
+    print("Spatial aerodynamic specific force rates (S_ap_dot):")
+    for name, values in [("x", data["S_ap_x_dot"]), ("z", data["S_ap_z_dot"])]:
+        print(f"  S_ap_{name}_dot: [{values.min():.4f}, {values.max():.4f}] m/s³")
     print()
 
     # B_Omega_df_lyu statistics

@@ -36,11 +36,11 @@ def load_trajectory_csv(csv_path: str) -> dict:
     """
     Load trajectory CSV file from global_planning.
 
-    CSV columns (30 total):
+    CSV columns (32 total):
     time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,B_ap_x_df_lyu,df_phi_alpha,df_lyu_alpha,
     yb_x,yb_y,yb_z,df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,
     df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,Wap_x,Wap_y,Wap_z,
-    S_ap_x,S_ap_z,S_Omega_x,S_Omega_y,S_Omega_z,alpha_dot
+    S_ap_x,S_ap_z,S_ap_x_dot,S_ap_z_dot,S_Omega_x,S_Omega_y,S_Omega_z,alpha_dot
     """
     data = np.loadtxt(csv_path, delimiter=",", skiprows=1)
 
@@ -57,10 +57,12 @@ def load_trajectory_csv(csv_path: str) -> dict:
         "Wap": data[:, 21:24],
         "S_ap_x": data[:, 24],
         "S_ap_z": data[:, 25],
-        "S_Omega_x": data[:, 26],
-        "S_Omega_y": data[:, 27],
-        "S_Omega_z": data[:, 28],
-        "alpha_dot": data[:, 29],
+        "S_ap_x_dot": data[:, 26],
+        "S_ap_z_dot": data[:, 27],
+        "S_Omega_x": data[:, 28],
+        "S_Omega_y": data[:, 29],
+        "S_Omega_z": data[:, 30],
+        "alpha_dot": data[:, 31],
     }
 
 

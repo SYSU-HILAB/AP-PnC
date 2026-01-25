@@ -58,6 +58,8 @@ struct TrajectorySampleData
   // Aerodynamic specific force components
   double S_ap_x;
   double S_ap_z;
+  double S_ap_x_dot;
+  double S_ap_z_dot;
 
   // Spatial frame angular velocities
   double S_Omega_x;
