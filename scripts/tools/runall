@@ -24,7 +24,6 @@ cleanup() {
     pkill -f "c_nmpc" 2>/dev/null
     pkill -f "px4_interface" 2>/dev/null
     pkill -f "trajectory_server" 2>/dev/null
-    pkill -f "real_run_mpc" 2>/dev/null
 
     # Kill any orphaned sh processes from the same TTY (more targeted)
     local current_tty=$(tty)
@@ -63,7 +62,7 @@ if [ "$cores" -eq 4 ]; then
     PIDS+=($!)
     taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py &
     PIDS+=($!)
-    taskset -c $((cores-1)) "$SCRIPT_DIR/real_run_mpc" > /dev/null &
+    taskset -c $((cores-1)) ros2 launch c_nmpc cnmpc.launch.py > /dev/null &
     PIDS+=($!)
 elif [ "$cores" -eq 8 ]; then
     echo "Detected 8 CPU cores, distributing tasks to cores 5-7"
@@ -71,7 +70,7 @@ elif [ "$cores" -eq 8 ]; then
     PIDS+=($!)
     taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py &
     PIDS+=($!)
-    taskset -c $((cores-1)) "$SCRIPT_DIR/real_run_mpc" > /dev/null &
+    taskset -c $((cores-1)) ros2 launch c_nmpc cnmpc.launch.py > /dev/null &
     PIDS+=($!)
 elif [ "$cores" -eq 16 ]; then
     echo "Detected 16 CPU cores, distributing tasks to cores 13-15"
@@ -79,7 +78,7 @@ elif [ "$cores" -eq 16 ]; then
     PIDS+=($!)
     taskset -c $((cores-2)) ros2 launch px4_interface px4_interface.launch.py &
     PIDS+=($!)
-    taskset -c $((cores-1)) "$SCRIPT_DIR/real_run_mpc" > /dev/null &
+    taskset -c $((cores-1)) ros2 launch c_nmpc cnmpc.launch.py > /dev/null &
     PIDS+=($!)
 else
     echo "CPU cores not supported, please check your CPU configuration"

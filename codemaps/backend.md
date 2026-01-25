@@ -29,7 +29,7 @@ src/
 ├── px4_interface/            # PX4 hardware interface
 │   └── px4_interface.cpp      # ROS2 node for PX4 SITL
 │
-├── c_nmpc/                   # ACADOS nMPC interface
+├── c_nmpc/                   # ACADOS NMPC interface
 │   └── c_proposed_nmpc.{hpp,cpp}
 │
 ├── tailsitter_df/            # Dynamics model
@@ -207,7 +207,7 @@ private:
 - `rclcpp` (ROS2 C++ client library)
 - `mavsdk` (MAVLink bridge)
 
-### 4. C++ nMPC (`src/c_nmpc/`)
+### 4. C++ NMPC (`src/c_nmpc/`)
 
 #### CProposedNMPC Class
 **File**: `c_proposed_nmpc.{hpp,cpp}`
@@ -361,7 +361,7 @@ tailsitter_df → aerodynamics
 
 ### Real-Time Constraints
 - **Trajectory Server**: < 100ms planning time
-- **nMPC Solve**: < 10ms per iteration
+- **NMPC Solve**: < 10ms per iteration
 - **Aerodynamic Lookup**: < 1μs per query (cached)
 
 ### Memory Usage

@@ -42,7 +42,7 @@ feature/lu_mpc/
 ├── test/                      # Test suite
 │   ├── test_sim_model.py              # Model tests
 │   ├── test_vmap.py                   # JAX vectorization tests
-│   └── test_acados_nmpc.py            # nMPC tests
+│   └── test_acados_nmpc.py            # NMPC tests
 │
 └── .cache/                    # Cached data
     ├── mesh_aero_data_jax.npy
@@ -278,7 +278,7 @@ class GDModelTorch:
 #### Proposed Model
 **File**: `proposed_model.py`
 
-Full tailsitter dynamics model for nMPC formulation.
+Full tailsitter dynamics model for NMPC formulation.
 
 ```python
 from feature.lu_mpc.model.ctrl.proposed_model import ProposedModel
@@ -321,7 +321,7 @@ u = [alpha, phi, theta, total_thrust]
 **Key Methods**:
 ```python
 class ProposedModel:
-    """Full tailsitter dynamics for nMPC.
+    """Full tailsitter dynamics for NMPC.
 
     State: 18D (position, velocity, attitude, quaternion, motors, thrust)
     Control: 4D (alpha, phi, theta, total_thrust)
@@ -429,7 +429,7 @@ class AeroEvaluator:
 
 ### 3. Controllers (`feature/lu_mpc/controller/`)
 
-#### Proposed nMPC Controller
+#### Proposed NMPC Controller
 **File**: `ctrl_proposed_nmpc.py`
 
 Non-linear MPC controller using ACADOS solver.
@@ -571,7 +571,7 @@ plot_mesh_aero(
 
 ### 5. ROS2 Integration (`feature/lu_mpc/ros/`)
 
-#### nMPC Visualization Node
+#### NMPC Visualization Node
 **File**: `feature/lu_mpc/ros/nodes/test_proposed_nmpc_viz.py`
 
 ```python
@@ -590,7 +590,7 @@ main(
 #### Launch Files
 **Directory**: `feature/lu_mpc/ros/launch/`
 
-- `test_proposed_nmpc_viz.launch.py`: Launch nMPC with visualization
+- `test_proposed_nmpc_viz.launch.py`: Launch NMPC with visualization
 - `test_ref_trajectory_viz.launch.py`: Playback reference trajectory
 
 ## Execution
@@ -630,8 +630,8 @@ just plot-mesh-aero-torch             # PyTorch mesh
 # Testing
 just test-vmap                        # JAX vectorization
 just test-sim-model                   # Simulation model
-just test-proposed-nmpc               # ACADOS nMPC
-just test-proposed-nmpc-viz           # nMPC with ROS2
+just test-proposed-nmpc               # ACADOS NMPC
+just test-proposed-nmpc-viz           # NMPC with ROS2
 
 # Benchmarks
 just compare-timing                   # CasADi vs JAX vs Torch

@@ -433,7 +433,7 @@ Current State + Reference Trajectory
          ↓
     Error-State Computation
          ↓
-        nMPC Solver (ACADOS)
+        NMPC Solver (ACADOS)
          ↓
     Optimal Control Sequence
          ↓

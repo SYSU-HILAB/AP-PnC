@@ -1,6 +1,6 @@
 # Error-State MPC Trajectory Tracking Visualization
 
-The `viz-traj-tracking-elmpc` command visualizes closed-loop trajectory tracking using the error-state linear MPC (elMPC) controller. This is an alternative to the nonlinear MPC (nMPC) tracker, using linearized error dynamics for faster computation.
+The `viz-traj-tracking-elmpc` command visualizes closed-loop trajectory tracking using the error-state linear MPC (elMPC) controller. This is an alternative to the nonlinear MPC (NMPC) tracker, using linearized error dynamics for faster computation.
 
 ## What is Error-State MPC?
 
@@ -12,8 +12,8 @@ Error-State MPC (elMPC) is a linear Model Predictive Control approach that:
 - **4D control**: `[increment_aT(1), increment_omega(3)]` - increments to thrust and angular velocity
 - **Time-varying parameters**: 28D parameter vector from reference trajectory includes velocity, rotation, thrust, angular rate, and aerodynamic forces
 
-**Key differences from nMPC**:
-| Feature | nMPC | elMPC |
+**Key differences from NMPC**:
+| Feature | NMPC | elMPC |
 |---------|------|-------|
 | State dimension | 18D (full state) | 9D (error state) |
 | Dynamics | Nonlinear | Linearized around reference |

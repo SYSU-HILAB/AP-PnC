@@ -63,7 +63,7 @@ class MpcOrchestrator(Node):
     """
     ROS2 node that orchestrates MPC simulation and delegates visualization.
 
-    Supports both nonlinear MPC (nMPC) and error-state linear MPC (elMPC).
+    Supports both nonlinear MPC (NMPC) and error-state linear MPC (elMPC).
     Integrates the controller and simulator to provide closed-loop
     trajectory tracking, delegating all ROS publishing to NmpcVisualizer.
     """
@@ -155,7 +155,7 @@ class MpcOrchestrator(Node):
             return False
 
         # Compute control every sim_dt, reference sampling uses ctrl_dt internally
-        # nMPC requires acc_p_meas, elMPC does not
+        # NMPC requires acc_p_meas, elMPC does not
         sim_state = self.simulator.get_state()
         if self.controller_type == "nmpc":
             control = self.controller.compute_control(

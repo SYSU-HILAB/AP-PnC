@@ -85,16 +85,17 @@ Use the wrapper scripts in `scripts/tools/`:
 
 | Wrapper | Launches | Description |
 |---------|----------|-------------|
-| `scripts/tools/pxinterface` | `px4_interface` | PX4 interface node |
 | `scripts/tools/plan` | `trajectory_server` | Trajectory planning server |
 
 ### Example
 ```bash
-# Instead of:
-# ros2 launch px4_interface px4_interface.launch.py
+# Launch trajectory server
+scripts/tools/plan
 
-# Use:
-scripts/tools/pxinterface
+# For PX4 interface, use runall or launch directly:
+scripts/tools/runall  # Launches full system (px4_interface + trajectory_server + MPC)
+# Or:
+ros2 launch px4_interface px4_interface.launch.py
 ```
 
 ## Available Wrapper Scripts
@@ -103,16 +104,11 @@ scripts/tools/pxinterface
 # Build
 scripts/tools/build [--clean]
 
-# Launch PX4 interface
-scripts/tools/pxinterface
-
 # Launch trajectory server
 scripts/tools/plan
 
-
-
-# Run MPC on real hardware
-scripts/tools/real_run_mpc
+# Launch full system (px4_interface + trajectory_server + MPC)
+scripts/tools/runall
 ```
 
 ## Environment Setup
@@ -137,19 +133,16 @@ The `.env_setup.sh` script:
 ### Build Fails with "package not found"
 ```bash
 # Make sure you're using the wrapper, not colcon directly
-scripts/tools/build --clean
+./scripts/tools/build --clean
 ```
 
 ### Launch Fails with "node not found"
 ```bash
 # First build the workspace
-scripts/tools/build
+./scripts/tools/build
 
-# Then source the workspace
-source install/setup.bash
-
-# Then use the wrapper to launch
-scripts/tools/pxinterface
+# Use runall for the full system
+./scripts/tools/runall
 ```
 
 ### Library Not Found Errors
@@ -165,7 +158,7 @@ The project provides two visualization nodes for trajectory tracking in RViz2:
 
 ### Simulation Visualizer
 
-Runs the full nMPC controller and CasADi simulator for closed-loop visualization:
+Runs the full NMPC controller and CasADi simulator for closed-loop visualization:
 
 ```bash
 # Using Python directly

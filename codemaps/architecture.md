@@ -7,7 +7,7 @@
 
 AP-PnC is a hybrid C++/Python framework for autonomous parking and trajectory tracking of tailsitter UAVs. The system combines:
 
-- **Non-linear MPC (nMPC)**: Real-time optimization via ACADOS
+- **Non-linear MPC (NMPC)**: Real-time optimization via ACADOS
 - **Multi-backend Python**: CasADi, JAX, PyTorch support
 - **ROS2 Integration**: Humble distribution for robotics middleware
 - **Aerodynamic Modeling**: Multiple solver methods with adaptive optimization
@@ -27,7 +27,7 @@ AP-PnC is a hybrid C++/Python framework for autonomous parking and trajectory tr
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Control Layer                              │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │                  ACADOS nMPC                             │  │
+│  │                  ACADOS NMPC                             │  │
 │  │  ┌────────────┐  ┌────────────┐  ┌────────────┐        │  │
 │  │  │   QP       │  │   HPIPM    │  │  qpOASES   │        │  │
 │  │  │  Solvers   │  │   Solver   │  │  Solver    │        │  │
@@ -68,7 +68,7 @@ AP-PnC/
 │   ├── aerodynamics/           # Aerodynamic solvers (lookup, Newton-Raphson)
 │   ├── trajectory_server/      # Trajectory planning and generation
 │   ├── px4_interface/          # PX4 SITL ROS2 node
-│   ├── c_nmpc/                 # C++ nMPC ACADOS implementation
+│   ├── c_nmpc/                 # C++ NMPC ACADOS implementation
 │   ├── tailsitter_df/          # Tailsitter dynamics model
 │   ├── basic_trajectories/     # Trajectory primitives
 │   ├── utils/                  # Utilities (config, CSV, profiling)
@@ -99,7 +99,7 @@ Same aerodynamic models can be evaluated with different backends:
 ### 2. Layered Control Architecture
 ```
 Reference Trajectory → Global Planner → Local MPC → Motor Commands
-                      (Trajectory       (nMPC)         (PX4)
+                      (Trajectory       (NMPC)         (PX4)
                        Server)
 ```
 
@@ -133,7 +133,7 @@ State Vector: [x, y, z, vx, vy, vz, phi, theta, psi,
 ### Control Flow
 ```
 1. Reference Trajectory → Error-State Computation
-2. Error-State + Model → ACADOS nMPC
+2. Error-State + Model → ACADOS NMPC
 3. ACADOS Solution → Control Inputs (u = [α, φ, θ, total_thrust])
 4. Control Inputs → Motor Mixing → PX4 Motor Commands
 ```
