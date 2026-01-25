@@ -281,9 +281,144 @@ class TrajectoryReference:
         self.kappa_a = s_ap_x * cos_alpha - s_ap_z * sin_alpha
         self.kappa_b = s_ap_z_dot * cos_alpha + s_ap_x_dot * sin_alpha
 
-
+        # Compute M_z_alpha: Jacobian of body frame z-force with respect to alpha
+        # M_z_alpha = ∂B_fa_z/∂alpha (B_f_z alpha)
+        self.M_z_alpha = self._compute_M_z_alpha() /2.0
+        # self.M_z_alpha = 10.0 * np.ones_like(self.M_z_alpha)  
+        
+        
+        #<HARD override for testing
+        # Compute alpha_dot: rate of change of angle of attack
+        # alpha_dot = kappa_b / (M_z_alpha - kappa_a)
+        ALPHA_DOT_EPS = 1e-6
+        self.alpha_dot = (self.kappa_b) / ((self.M_z_alpha - self.kappa_a) + ALPHA_DOT_EPS)
+            
+        #<HARD
+        #Task: plot kappa_a, kappa_b, M_z_alpha over trajectory to verify reasonable values subplots 1x3
+        #Task: plot alpha alpha_dot over trajectory to verify reasonable values in a plot
+        #Task: plot S_ap_x, S_ap_x_dot (they are twin); S_ap_z, S_ap_z_dot (they are twin); subplots 1x2
+        #Task: add a horizontal baseline for S_ap_x_dot and S_ap_z_dot at 0.0
+        #All plt.show() calls should be blocking
+        import matplotlib.pyplot as plt
+        steps = np.arange(len(self.time))
+        # Plot 1: kappa_a, kappa_b, M_z_alpha (1x3 subplots)
+        fig1, axes1 = plt.subplots(1, 3, figsize=(18, 5))
+        axes1[0].plot(steps, self.kappa_a, label='kappa_a', color='green')
+        axes1[0].set_title('kappa_a over Trajectory')
+        axes1[0].set_xlabel('Step')
+        axes1[0].set_ylabel('kappa_a')
+        axes1[0].grid(True)
+        axes1[0].legend()
+        axes1[1].plot(steps, self.kappa_b, label='kappa_b', color='orange')
+        axes1[1].set_title('kappa_b over Trajectory')
+        axes1[1].set_xlabel('Step')
+        axes1[1].set_ylabel('kappa_b')
+        axes1[1].grid(True)
+        axes1[1].legend()
+        axes1[2].plot(steps, self.M_z_alpha, label='M_z_alpha', color='purple')
+        axes1[2].set_title('M_z_alpha over Trajectory')
+        axes1[2].set_xlabel('Step')
+        axes1[2].set_ylabel('M_z_alpha')
+        axes1[2].grid(True)
+        axes1[2].legend()
+        plt.tight_layout()
+        plt.show()
+        # Plot 2: alpha, alpha_dot on twin axes
+        fig2, ax2_alpha = plt.subplots(1, 1, figsize=(12, 6))
+        ax2_alpha.plot(steps, self.alpha, label='alpha (rad)', color='blue')
+        ax2_alpha.set_title('alpha and alpha_dot over Trajectory (twin axes)')
+        ax2_alpha.set_xlabel('Step')
+        ax2_alpha.set_ylabel('alpha (rad)', color='blue')
+        ax2_alpha.tick_params(axis='y', labelcolor='blue')
+        ax2_alpha.grid(True)
+        ax2_alpha.legend(loc='upper left')
+        ax2_alpha_dot = ax2_alpha.twinx()
+        ax2_alpha_dot.plot(steps, self.alpha_dot, label='alpha_dot (rad/s)', color='red', linestyle='--')
+        ax2_alpha_dot.set_ylabel('alpha_dot (rad/s)', color='red')
+        ax2_alpha_dot.tick_params(axis='y', labelcolor='red')
+        ax2_alpha_dot.legend(loc='upper right')
+        ax2_alpha_dot.axhline(y=0.0, color='black', linestyle=':', linewidth=1, alpha=0.5)
+        plt.tight_layout()
+        plt.show()
+        # Plot 3: S_ap_x with S_ap_x_dot (twin), S_ap_z with S_ap_z_dot (twin) - 1x2 subplots
+        fig3, axes3 = plt.subplots(1, 2, figsize=(14, 6))
+        axes3[0].plot(steps, self.S_ap[:, 0], label='S_ap_x', color='cyan')
+        axes3[0].set_title('S_ap_x and S_ap_x_dot over Trajectory (twin axes)')
+        axes3[0].set_xlabel('Step')
+        axes3[0].set_ylabel('S_ap_x', color='cyan')
+        axes3[0].tick_params(axis='y', labelcolor='cyan')
+        axes3[0].grid(True)
+        axes3[0].legend(loc='upper left')
+        axes3_twin = axes3[0].twinx()
+        axes3_twin.plot(steps, self.S_ap_dot[:, 0], label='S_ap_x_dot', color='magenta', linestyle='--')
+        axes3_twin.set_ylabel('S_ap_x_dot', color='magenta')
+        axes3_twin.tick_params(axis='y', labelcolor='magenta')
+        axes3_twin.legend(loc='upper right')
+        axes3_twin.axhline(y=0.0, color='black', linestyle=':', linewidth=1, alpha=0.5)
+        axes3[1].plot(steps, self.S_ap[:, 2], label='S_ap_z', color='brown')
+        axes3[1].set_title('S_ap_z and S_ap_z_dot over Trajectory (twin axes)')
+        axes3[1].set_xlabel('Step')
+        axes3[1].set_ylabel('S_ap_z', color='brown')
+        axes3[1].tick_params(axis='y', labelcolor='brown')
+        axes3[1].grid(True)
+        axes3[1].legend(loc='upper left')
+        axes3_twin2 = axes3[1].twinx()
+        axes3_twin2.plot(steps, self.S_ap_dot[:, 2], label='S_ap_z_dot', color='pink', linestyle='--')
+        axes3_twin2.set_ylabel('S_ap_z_dot', color='pink')
+        axes3_twin2.tick_params(axis='y', labelcolor='pink')
+        axes3_twin2.legend(loc='upper right')
+        axes3_twin2.axhline(y=0.0, color='black', linestyle=':', linewidth=1, alpha=0.5)
+        plt.tight_layout()
+        plt.show()
+        print(f"[HARD] kappa/M_z_alpha plot shown")
+        print(f"[HARD] kappa_a range: [{np.min(self.kappa_a):.4f}, {np.max(self.kappa_a):.4f}]")
+        print(f"[HARD] kappa_b range: [{np.min(self.kappa_b):.4f}, {np.max(self.kappa_b):.4f}]")
+        print(f"[HARD] M_z_alpha range: [{np.min(self.M_z_alpha):.4f}, {np.max(self.M_z_alpha):.4f}]")
+        print(f"[HARD] alpha/alpha_dot twin plot shown")
+        print(f"[HARD] alpha range: [{np.min(self.alpha):.4f}, {np.max(self.alpha):.4f}] rad")
+        print(f"[HARD] alpha_dot range: [{np.min(self.alpha_dot):.4f}, {np.max(self.alpha_dot):.4f}] rad/s")
+        print(f"[HARD] S_ap twin plots shown")
+        print(f"[HARD] S_ap_x range: [{np.min(self.S_ap[:, 0]):.4f}, {np.max(self.S_ap[:, 0]):.4f}]")
+        print(f"[HARD] S_ap_x_dot range: [{np.min(self.S_ap_dot[:, 0]):.4f}, {np.max(self.S_ap_dot[:, 0]):.4f}]")
+        print(f"[HARD] S_ap_z range: [{np.min(self.S_ap[:, 2]):.4f}, {np.max(self.S_ap[:, 2]):.4f}]")
+        print(f"[HARD] S_ap_z_dot range: [{np.min(self.S_ap_dot[:, 2]):.4f}, {np.max(self.S_ap_dot[:, 2]):.4f}]")
+        import sys
+        sys.exit(0)
+        #>
         # Sampling time (constant, 50Hz)
         self._sim_dt = 0.02
+
+    def _compute_M_z_alpha(self) -> np.ndarray:
+        """
+        Compute M_z_alpha: Jacobian of body frame z-force with respect to alpha.
+
+        M_z_alpha = ∂B_fa_z/∂alpha, where B_fa_z is the z-component of
+        body-frame aerodynamic forces.
+
+        Uses compute_body_forces_jacobian_alpha from aero_evaluator which
+        computes ∂B_fa/∂alpha (3D vector) via automatic differentiation.
+
+        Returns:
+            M_z_alpha: (N,) array where M_z_alpha[i] = ∂B_fa_z[i]/∂alpha[i]
+        """
+        n_points = len(self.time)
+        M_z_alpha = np.zeros(n_points)
+
+        # Get velocity magnitude from trajectory velocity data
+        velocities = self.velocity  # (N, 3) array [vx, vy, vz]
+        V_magnitudes = np.linalg.norm(velocities, axis=1)  # (N,) array
+
+        # Compute M_z_alpha for each trajectory point (only when V > 1)
+        for i in range(n_points):
+            V = float(V_magnitudes[i])
+            if V > 1.0:
+                alpha = float(self.alpha[i])
+                # compute_body_forces_jacobian_alpha returns [∂B_fa_x/∂alpha, ∂B_fa_y/∂alpha, ∂B_fa_z/∂alpha]
+                jacobian = self.aero_evaluator.compute_body_forces_jacobian_alpha(V, alpha)
+                M_z_alpha[i] = jacobian[2]  # Extract z-component
+            # else: M_z_alpha[i] remains 0.0 (already initialized)
+
+        return M_z_alpha
 
     def get_reference_window(
         self,
@@ -317,6 +452,8 @@ class TrajectoryReference:
             - B_fa_z_df_lyu: (N+1,) array with body frame aerodynamic force z-component
             - S_ap: (N+1, 3) array with spatial aerodynamic derivatives [S_ap_x, 0.0, S_ap_z]
             - S_ap_dot: (N+1, 3) array with aerodynamic derivative rates [S_ap_x_dot, 0.0, S_ap_z_dot]
+            - M_z_alpha: (N+1,) array with ∂B_fa_z/∂alpha (Jacobian of z-force w.r.t. alpha)
+            - alpha_dot: (N+1,) array with alpha rate of change
         """
         # Validate sample_dt
         sample_dt = 0.02  # Force to 50Hz for now
@@ -348,6 +485,8 @@ class TrajectoryReference:
             B_fa_z_df_lyu_ref = np.tile(self.B_fa_z_df_lyu[final_idx], N + 1)
             S_ap_ref = np.tile(self.S_ap[final_idx], (N + 1, 1))
             S_ap_dot_ref = np.tile(self.S_ap_dot[final_idx], (N + 1, 1))
+            M_z_alpha_ref = np.tile(self.M_z_alpha[final_idx], N + 1)
+            alpha_dot_ref = np.tile(self.alpha_dot[final_idx], N + 1)
         else:
             # Normal case: compute indices with clamp to end
             indices = cur_idx_ref + downsample_factor * np.arange(N + 1)
@@ -364,6 +503,8 @@ class TrajectoryReference:
             B_fa_z_df_lyu_ref = self.B_fa_z_df_lyu[indices]
             S_ap_ref = self.S_ap[indices]
             S_ap_dot_ref = self.S_ap_dot[indices]
+            M_z_alpha_ref = self.M_z_alpha[indices]
+            alpha_dot_ref = self.alpha_dot[indices]
 
         return {
             "position": position_ref,
@@ -378,6 +519,8 @@ class TrajectoryReference:
             "B_fa_z_df_lyu": B_fa_z_df_lyu_ref,
             "S_ap": S_ap_ref,
             "S_ap_dot": S_ap_dot_ref,
+            "M_z_alpha": M_z_alpha_ref,
+            "alpha_dot": alpha_dot_ref,
         }
 
 
