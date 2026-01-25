@@ -7,6 +7,20 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+# Find tomlplusplus from external_libraries
+# The library is built as part of external_libraries but not exported
+if(TARGET tomlplusplus::tomlplusplus)
+  # Target already available
+else()
+  # Add tomlplusplus as subdirectory
+  set(TOMLPLUSPLUS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../utils/external_libraries/tomlplusplus")
+  if(EXISTS "${TOMLPLUSPLUS_DIR}/CMakeLists.txt")
+    add_subdirectory("${TOMLPLUSPLUS_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/tomlplusplus")
+  else()
+    message(FATAL_ERROR "tomlplusplus not found at ${TOMLPLUSPLUS_DIR}")
+  endif()
+endif()
+
 # Zhang Lyu aerodynamics
 add_library(
   rt_nonfinite_matlab
@@ -53,6 +67,7 @@ ament_auto_add_library(${PROJECT_NAME}_alpha_solver
     src/aero_alpha_solver.cpp
 )
 target_link_libraries(${PROJECT_NAME}_alpha_solver
+    tomlplusplus::tomlplusplus
     ${PROJECT_NAME}_lyu
     ${PROJECT_NAME}_aerodynamics_lib
 )
@@ -65,12 +80,6 @@ target_link_libraries(aero_comparison
   ${PROJECT_NAME}_non
   ${PROJECT_NAME}_advanced_lift_drag
   ${PROJECT_NAME}_bspline
-)
-
-# Generate aerodynamic lookup table
-ament_auto_add_executable(generate_aero_lookup_table scripts/generate_aero_lookup_table.cpp)
-target_link_libraries(generate_aero_lookup_table
-  ${PROJECT_NAME}_lyu
 )
 
 # GTest for AeroAlphaSolver

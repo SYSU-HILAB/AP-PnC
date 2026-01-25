@@ -87,7 +87,7 @@ def export_error_state_model():
     )@ val_R_d
 
     M_R = (
-        -val_aT_d * skew_symmetric(M_T)
+        val_aT_d * skew_symmetric(M_T)
     )@ val_R_d
 
     # ---------------------------------------------
@@ -110,7 +110,7 @@ def export_error_state_model():
         -skew_symmetric(val_omega_d) @ err_state_theta
     ) + vertcat(
         SX.zeros(3, 1),
-        -M_T * increment_aT,
+        M_T * increment_aT,
         # SX.zeros(3, 1),
         increment_omega,
         # SX.zeros(3, 1)

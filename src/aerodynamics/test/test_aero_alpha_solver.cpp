@@ -72,19 +72,6 @@ TEST_F(AeroAlphaSolverTest, ResetAlphaWorks)
   SUCCEED();
 }
 
-TEST_F(AeroAlphaSolverTest, ConfigMethodsWork)
-{
-  AeroAlphaSolver::Config config;
-  config.max_iterations = 100;
-  config.tolerance = 1e-10;
-
-  solver->setConfig(config);
-
-  auto retrieved_config = solver->getConfig();
-  EXPECT_EQ(retrieved_config.max_iterations, 100);
-  EXPECT_DOUBLE_EQ(retrieved_config.tolerance, 1e-10);
-}
-
 TEST_F(AeroAlphaSolverTest, InvalidInputThrows)
 {
   EXPECT_THROW(solver->solve(10.0, 0.0, 9.81, -1.0), std::invalid_argument);

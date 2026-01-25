@@ -14,10 +14,13 @@
 #include <aerodynamics/aero_alpha_solver.hpp>
 
 #include <cmath>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
+
+#include <toml++/toml.hpp>
 
 namespace aerodynamics
 {
@@ -25,33 +28,15 @@ namespace aerodynamics
 // Constants for conversion
 constexpr double DEG_TO_RAD = M_PI / 180.0;
 
-AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_interface)
-    : aero_interface_(std::move(aero_interface)),
-      config_(),
-      prev_alpha_rad_(config_.initial_alpha_deg * DEG_TO_RAD),
-      alpha_offset_rad_(0.0),
-      unwrapping_initialized_(false),
-      prev_wrapped_alpha_(0.0),
-      last_iterations_(0)
-{
-  if (!aero_interface_)
-  {
-    throw std::invalid_argument("AeroAlphaSolver: aerodynamics interface cannot be null");
-  }
-
-  // Print initialization info for user identification
-  std::cout << "AeroAlphaSolver initialized with Newton-Raphson solver" << std::endl;
-  std::cout << "  - Max iterations: " << config_.max_iterations << std::endl;
-  std::cout << "  - Tolerance: " << std::scientific << config_.tolerance << std::fixed
-            << std::endl;
-  std::cout << "  - Initial alpha: " << config_.initial_alpha_deg << " degrees" << std::endl;
-}
-
 AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_interface,
-                                 const Config& config)
+                                 const std::string& toml_path)
     : aero_interface_(std::move(aero_interface)),
-      config_(config),
-      prev_alpha_rad_(config_.initial_alpha_deg * DEG_TO_RAD),
+      max_iterations_(50),
+      tolerance_(1e-8),
+      damping_factor_(1.0),
+      derivative_epsilon_(1e-6),
+      initial_alpha_deg_(90.0),
+      prev_alpha_rad_(90.0 * DEG_TO_RAD),
       alpha_offset_rad_(0.0),
       unwrapping_initialized_(false),
       prev_wrapped_alpha_(0.0),
@@ -62,13 +47,56 @@ AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_int
     throw std::invalid_argument("AeroAlphaSolver: aerodynamics interface cannot be null");
   }
 
+  // Load configuration from TOML
+  std::string config_path = toml_path;
+  if (config_path.empty())
+  {
+    const char* env_p = std::getenv("AP_PNC_DIR");
+    if (env_p != nullptr)
+    {
+      config_path = std::string(env_p) + "/global.toml";
+    }
+  }
+
+  if (!config_path.empty())
+  {
+    try
+    {
+      toml::table tbl = toml::parse_file(config_path);
+      auto solver_config = tbl["aero_alpha_solver"];
+
+      if (solver_config)
+      {
+        max_iterations_ = solver_config["max_iterations"].value_or(50);
+        tolerance_ = solver_config["tolerance"].value_or(1e-8);
+        damping_factor_ = solver_config["damping_factor"].value_or(1.0);
+        derivative_epsilon_ = solver_config["derivative_epsilon"].value_or(1e-6);
+        initial_alpha_deg_ = solver_config["initial_alpha_deg"].value_or(90.0);
+
+        // Update prev_alpha_rad_ to match loaded config
+        prev_alpha_rad_ = initial_alpha_deg_ * DEG_TO_RAD;
+      }
+    }
+    catch (const toml::parse_error& e)
+    {
+      std::cerr << "Warning: Failed to parse " << config_path << ": " << e.what()
+                << ". Using default values." << std::endl;
+    }
+  }
+
   // Print initialization info for user identification
-  std::cout << "AeroAlphaSolver initialized with Newton-Raphson solver (custom config)"
-            << std::endl;
-  std::cout << "  - Max iterations: " << config_.max_iterations << std::endl;
-  std::cout << "  - Tolerance: " << std::scientific << config_.tolerance << std::fixed
-            << std::endl;
-  std::cout << "  - Initial alpha: " << config_.initial_alpha_deg << " degrees" << std::endl;
+  std::cerr << "AeroAlphaSolver initialized with Newton-Raphson solver" << std::endl;
+  std::cerr << "  - Max iterations: " << max_iterations_ << std::endl;
+  std::cerr << "  - Tolerance: " << std::scientific << tolerance_ << std::fixed << std::endl;
+  std::cerr << "  - Initial alpha: " << initial_alpha_deg_ << " degrees" << std::endl;
+  if (!config_path.empty())
+  {
+    std::cerr << "  - Config file: " << config_path << std::endl;
+  }
+  else
+  {
+    std::cerr << "  - Config: Using default values (AP_PNC_DIR not set)" << std::endl;
+  }
 }
 
 double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mass)
@@ -81,13 +109,13 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
   // Use previous alpha as initial guess (temporal coherence)
   double alpha = prev_alpha_rad_;
 
-  for (int i = 0; i < config_.max_iterations; ++i)
+  for (int i = 0; i < max_iterations_; ++i)
   {
     // Compute residual: f(alpha) = LHS - RHS
     double f = computeResidual(alpha, V, S_ap_x, S_ap_z, mass);
 
     // Check convergence
-    if (std::abs(f) < config_.tolerance)
+    if (std::abs(f) < tolerance_)
     {
       prev_alpha_rad_ = alpha;
       last_iterations_ = i + 1;
@@ -107,7 +135,7 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
     }
 
     // Newton-Raphson update with damping
-    double delta = config_.damping_factor * f / df;
+    double delta = damping_factor_ * f / df;
     alpha -= delta;
 
     // Store current wrapped alpha before modification
@@ -150,7 +178,7 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
 
   // Convergence failed
   std::stringstream ss;
-  ss << "AeroAlphaSolver::solve: Failed to converge after " << config_.max_iterations
+  ss << "AeroAlphaSolver::solve: Failed to converge after " << max_iterations_
      << " iterations. Final residual: " << std::scientific
      << computeResidual(alpha, V, S_ap_x, S_ap_z, mass) << ", alpha=" << alpha;
   throw std::runtime_error(ss.str());
@@ -170,16 +198,6 @@ void AeroAlphaSolver::resetUnwrapping(double initial_alpha_deg)
 
   // Also reset the temporal coherence state
   prev_alpha_rad_ = initial_alpha_deg * DEG_TO_RAD;
-}
-
-AeroAlphaSolver::Config AeroAlphaSolver::getConfig() const
-{
-  return config_;
-}
-
-void AeroAlphaSolver::setConfig(const Config& config)
-{
-  config_ = config;
 }
 
 int AeroAlphaSolver::getLastIterationCount() const
@@ -213,7 +231,7 @@ double AeroAlphaSolver::computeResidual(double alpha_rad, double V, double S_ap_
 double AeroAlphaSolver::computeDerivative(double alpha_rad, double V, double S_ap_x,
                                           double S_ap_z, double mass) const
 {
-  double epsilon = config_.derivative_epsilon;
+  double epsilon = derivative_epsilon_;
 
   // Central difference for better accuracy
   double f_plus = computeResidual(alpha_rad + epsilon, V, S_ap_x, S_ap_z, mass);

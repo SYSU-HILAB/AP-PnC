@@ -14,6 +14,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include <Eigen/Dense>
 
@@ -31,6 +32,13 @@ namespace aerodynamics
  * This is a direct aerodynamic force balance approach without lookup tables.
  * The solver uses Newton-Raphson iteration with temporal coherence for fast convergence.
  *
+ * Configuration is read directly from global.toml under the [aero_alpha_solver] section:
+ * - max_iterations: Maximum Newton-Raphson iterations (default: 50)
+ * - tolerance: Convergence tolerance for |f(alpha)| (default: 1e-8)
+ * - damping_factor: Damping factor (0 < d <= 1) for stability (default: 1.0)
+ * - derivative_epsilon: Epsilon for numerical derivative (default: 1e-6)
+ * - initial_alpha_deg: Initial alpha guess in degrees (default: 90.0)
+ *
  * @note The solver is stateful and maintains the previous alpha value for temporal coherence.
  * This makes it non-thread-safe by design - each trajectory planning instance should have
  * its own solver.
@@ -39,32 +47,16 @@ class AeroAlphaSolver
 {
  public:
   /**
-   * @brief Configuration for Newton-Raphson solver
-   */
-  struct Config
-  {
-    int max_iterations = 50;        ///< Maximum Newton-Raphson iterations
-    double tolerance = 1e-8;        ///< Convergence tolerance for |f(alpha)|
-    double damping_factor = 1.0;    ///< Damping factor (0 < d <= 1) for stability
-    double derivative_epsilon = 1e-6; ///< Epsilon for numerical derivative
-    double initial_alpha_deg = 90.0; ///< Initial alpha guess (degrees)
-  };
-
-  /**
-   * @brief Constructor with default configuration
+   * @brief Constructor - reads configuration from global.toml
+   *
+   * Reads configuration from $AP_PNC_DIR/global.toml under [aero_alpha_solver] section.
+   * If AP_PNC_DIR is not set or the file cannot be parsed, uses default values.
    *
    * @param aero_interface Aerodynamics model for computing forces
+   * @param toml_path Optional custom path to TOML configuration file
    */
-  explicit AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_interface);
-
-  /**
-   * @brief Constructor with custom configuration
-   *
-   * @param aero_interface Aerodynamics model for computing forces
-   * @param config Solver configuration
-   */
-  AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_interface,
-                  const Config& config);
+  explicit AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_interface,
+                           const std::string& toml_path = "");
 
   ~AeroAlphaSolver() = default;
 
@@ -107,20 +99,6 @@ class AeroAlphaSolver
   void resetUnwrapping(double initial_alpha_deg);
 
   /**
-   * @brief Get current solver configuration
-   *
-   * @return Current configuration
-   */
-  Config getConfig() const;
-
-  /**
-   * @brief Update solver configuration
-   *
-   * @param config New configuration
-   */
-  void setConfig(const Config& config);
-
-  /**
    * @brief Get number of iterations from last solve
    *
    * @return Number of iterations used in the last solve call
@@ -131,8 +109,12 @@ class AeroAlphaSolver
   /// Aerodynamics model for computing forces
   std::shared_ptr<AerodynamicsInterface> aero_interface_;
 
-  /// Solver configuration
-  Config config_;
+  /// Solver configuration parameters (read from global.toml)
+  int max_iterations_;              ///< Maximum Newton-Raphson iterations
+  double tolerance_;                ///< Convergence tolerance for |f(alpha)|
+  double damping_factor_;           ///< Damping factor (0 < d <= 1) for stability
+  double derivative_epsilon_;       ///< Epsilon for numerical derivative
+  double initial_alpha_deg_;        ///< Initial alpha guess (degrees)
 
   /// Previous alpha for temporal coherence (radians)
   mutable double prev_alpha_rad_;
