@@ -73,6 +73,8 @@ struct TrajectorySampleData
   double B_fa_z_df_lyu;
   // Body frame angular velocity and rate
   double alpha_dot;
+  // Solver diagnostic fields
+  double alpha_residual;  ///< Residual from alpha solver (|f(alpha)|)
 
   /**
    * @brief Factory method: Create sample from trajectory and tailsitter data

@@ -39,12 +39,13 @@ TEST_F(AeroAlphaSolverTest, ConvergesForTypicalConditions)
   double S_ap_z = 9.81; // Hover
   double mass = 2.0;    // 2 kg
 
-  double alpha = solver->solve(V, S_ap_x, S_ap_z, mass);
+  auto result = solver->solve(V, S_ap_x, S_ap_z, mass);
 
   // Should converge to a reasonable alpha value
-  EXPECT_GT(alpha, -M_PI);
-  EXPECT_LT(alpha, M_PI);
+  EXPECT_GT(result.alpha, -M_PI);
+  EXPECT_LT(result.alpha, M_PI);
   EXPECT_LE(solver->getLastIterationCount(), 20);
+  EXPECT_LT(result.residual, 1e-6);  // Residual should be small
 }
 
 TEST_F(AeroAlphaSolverTest, TemporalCoherence)
@@ -56,11 +57,11 @@ TEST_F(AeroAlphaSolverTest, TemporalCoherence)
 
   solver->resetAlpha(45.0);  // Start at 45 degrees
 
-  double alpha1 = solver->solve(V, S_ap_x, S_ap_z, mass);
-  double alpha2 = solver->solve(V, S_ap_x, S_ap_z, mass);
+  auto result1 = solver->solve(V, S_ap_x, S_ap_z, mass);
+  auto result2 = solver->solve(V, S_ap_x, S_ap_z, mass);
 
   // Second solve should give the same result
-  EXPECT_DOUBLE_EQ(alpha1, alpha2);
+  EXPECT_DOUBLE_EQ(result1.alpha, result2.alpha);
 }
 
 TEST_F(AeroAlphaSolverTest, ResetAlphaWorks)
@@ -91,8 +92,8 @@ TEST_F(AeroAlphaSolverTest, AngleUnwrappingMaintainsContinuity)
 
   for (double S_ap_x : S_ap_x_values)
   {
-    double alpha = solver->solve(V, S_ap_x, 9.81, mass);
-    alphas.push_back(alpha);
+    auto result = solver->solve(V, S_ap_x, 9.81, mass);
+    alphas.push_back(result.alpha);
   }
 
   // Check that consecutive alpha differences are small (< π)
@@ -112,17 +113,18 @@ TEST_F(AeroAlphaSolverTest, AngleUnwrappingAcrossMultipleWraps)
 
   solver->resetAlpha(0.0);
 
-  double prev_alpha = solver->solve(V, 0.0, 9.81, mass);
+  auto prev_result = solver->solve(V, 0.0, 9.81, mass);
+  double prev_alpha = prev_result.alpha;
 
   // Simulate many iterations that would cause wrapping
   for (int i = 0; i < 100; ++i)
   {
-    double alpha = solver->solve(V, i * 0.1, 9.81, mass);
-    double delta = std::abs(alpha - prev_alpha);
+    auto result = solver->solve(V, i * 0.1, 9.81, mass);
+    double delta = std::abs(result.alpha - prev_alpha);
 
     // No jump should exceed π
     EXPECT_LT(delta, M_PI) << "Large jump at iteration " << i;
-    prev_alpha = alpha;
+    prev_alpha = result.alpha;
   }
 }
 
@@ -133,15 +135,19 @@ TEST_F(AeroAlphaSolverTest, ResetUnwrappingClearsAccumulatedOffset)
 
   // Generate a sequence of alphas to accumulate offset
   solver->resetAlpha(0.0);
-  double alpha1 = solver->solve(V, 5.0, 9.81, mass);
-  double alpha2 = solver->solve(V, 5.0, 9.81, mass);
+  auto result1 = solver->solve(V, 5.0, 9.81, mass);
+  auto result2 = solver->solve(V, 5.0, 9.81, mass);
+  double alpha1 = result1.alpha;
+  double alpha2 = result2.alpha;
 
   // Now reset and verify the unwrapping state is cleared
   solver->resetUnwrapping(45.0);
 
   // Solve again - should use fresh initial guess without accumulated offset
-  double alpha3 = solver->solve(V, 5.0, 9.81, mass);
-  double alpha4 = solver->solve(V, 5.0, 9.81, mass);
+  auto result3 = solver->solve(V, 5.0, 9.81, mass);
+  auto result4 = solver->solve(V, 5.0, 9.81, mass);
+  double alpha3 = result3.alpha;
+  double alpha4 = result4.alpha;
 
   // The two consecutive solves after reset should be identical
   // (temporal coherence still works)

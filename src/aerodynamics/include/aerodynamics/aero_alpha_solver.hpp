@@ -24,6 +24,30 @@ namespace aerodynamics
 {
 
 /**
+ * @brief Result structure for alpha solver
+ *
+ * Contains the solved alpha value along with diagnostic information
+ * about the solution quality and dynamics.
+ */
+struct AlphaSolverResult
+{
+  double alpha;       ///< Solved angle of attack (radians)
+  double residual;    ///< Final residual value (|f(alpha)|) at solution
+  double alpha_dot;   ///< Estimated rate of change of alpha (rad/s)
+
+  /**
+   * @brief Factory method: Create result from just alpha value (legacy compatibility)
+   *
+   * @param alpha_val Solved angle of attack (radians)
+   * @return AlphaSolverResult with zero residual and alpha_dot
+   */
+  static AlphaSolverResult from_alpha(double alpha_val)
+  {
+    return AlphaSolverResult{ alpha_val, 0.0, 0.0 };
+  }
+};
+
+/**
  * @brief Newton-Raphson solver for angle of attack from force balance equation
  *
  * Solves the aerodynamic force balance equation:
@@ -72,11 +96,33 @@ class AeroAlphaSolver
    * @param S_ap_x Specific force x-component (m/s²), projection of (a-g) onto velocity direction
    * @param S_ap_z Specific force z-component (m/s²), projection of (a-g) onto perpendicular direction
    * @param mass Vehicle mass (kg)
-   * @return Alpha in radians
+   * @return AlphaSolverResult containing alpha, residual, and alpha_dot (set to 0)
+   *
+   * @throws std::runtime_error if solver fails to converge
+   *
+   * @note This version does not compute alpha_dot. Use the overloaded version with time derivatives
+   *       for accurate alpha_dot computation using implicit function theorem.
+   */
+  AlphaSolverResult solve(double V, double S_ap_x, double S_ap_z, double mass);
+
+  /**
+   * @brief Solve for alpha with time derivatives for accurate alpha_dot computation
+   *
+   * Solves the force balance equation and computes alpha_dot using implicit function theorem:
+   * alpha_dot = -(df/dS_ap_x * S_ap_x_dot + df/dS_ap_z * S_ap_z_dot + df/dV * V_dot) / (df/dalpha)
+   *
+   * @param V Velocity magnitude (m/s)
+   * @param S_ap_x Specific force x-component (m/s²)
+   * @param S_ap_z Specific force z-component (m/s²)
+   * @param S_ap_x_dot Time derivative of S_ap_x (m/s³)
+   * @param S_ap_z_dot Time derivative of S_ap_z (m/s³)
+   * @param mass Vehicle mass (kg)
+   * @return AlphaSolverResult containing alpha, residual, and alpha_dot
    *
    * @throws std::runtime_error if solver fails to converge
    */
-  double solve(double V, double S_ap_x, double S_ap_z, double mass);
+  AlphaSolverResult solve(double V, double S_ap_x, double S_ap_z, double S_ap_x_dot,
+                          double S_ap_z_dot, double mass);
 
   /**
    * @brief Reset temporal coherence state
@@ -160,6 +206,48 @@ class AeroAlphaSolver
    */
   double computeDerivative(double alpha_rad, double V, double S_ap_x, double S_ap_z,
                            double mass) const;
+
+  /**
+   * @brief Compute partial derivative df/dS_ap_x (mid difference)
+   *
+   * @param alpha_rad Angle of attack in radians
+   * @return sin(alpha)
+   */
+  double computeDerivativeS_ap_x(double alpha_rad) const;
+
+  /**
+   * @brief Compute partial derivative df/dS_ap_z (mid difference)
+   *
+   * @param alpha_rad Angle of attack in radians
+   * @return cos(alpha)
+   */
+  double computeDerivativeS_ap_z(double alpha_rad) const;
+
+  /**
+   * @brief Compute partial derivative df/dV using central difference
+   *
+   * @param alpha_rad Angle of attack in radians
+   * @param V Velocity magnitude (m/s)
+   * @param mass Vehicle mass (kg)
+   * @return Numerical derivative of residual with respect to V
+   */
+  double computeDerivativeV(double alpha_rad, double V, double mass) const;
+
+  /**
+   * @brief Compute alpha_dot using implicit function theorem
+   *
+   * From f(alpha, S_ap_x, S_ap_z, V) = 0:
+   * alpha_dot = -(df/dS_ap_x * S_ap_x_dot + df/dS_ap_z * S_ap_z_dot + df/dV * V_dot) / (df/dalpha)
+   *
+   * @param alpha_rad Solved angle of attack (radians)
+   * @param V Velocity magnitude (m/s)
+   * @param S_ap_x_dot Time derivative of S_ap_x (m/s³)
+   * @param S_ap_z_dot Time derivative of S_ap_z (m/s³)
+   * @param mass Vehicle mass (kg)
+   * @return alpha_dot in rad/s
+   */
+  double computeAlphaDot(double alpha_rad, double V, double S_ap_x_dot, double S_ap_z_dot,
+                         double mass) const;
 };
 
 }  // namespace aerodynamics

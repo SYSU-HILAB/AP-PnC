@@ -99,7 +99,7 @@ AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_int
   }
 }
 
-double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mass)
+AlphaSolverResult AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mass)
 {
   if (mass <= 0.0)
   {
@@ -109,6 +109,9 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
   // Use previous alpha as initial guess (temporal coherence)
   double alpha = prev_alpha_rad_;
 
+  // Compute initial residual for alpha_dot estimation
+  double f_initial = computeResidual(alpha, V, S_ap_x, S_ap_z, mass);
+
   for (int i = 0; i < max_iterations_; ++i)
   {
     // Compute residual: f(alpha) = LHS - RHS
@@ -117,9 +120,16 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
     // Check convergence
     if (std::abs(f) < tolerance_)
     {
+      // Store previous alpha before updating for next call
+      double prev_alpha = prev_alpha_rad_;
       prev_alpha_rad_ = alpha;
       last_iterations_ = i + 1;
-      return alpha;
+
+      // alpha_dot is set to 0.0 for this version
+      // Use the overloaded solve method with time derivatives for accurate alpha_dot
+      double alpha_dot = 0.0;
+
+      return AlphaSolverResult{ alpha, std::abs(f), alpha_dot };
     }
 
     // Compute derivative df/d(alpha)
@@ -176,11 +186,12 @@ double AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z, double mas
     }
   }
 
-  // Convergence failed
+  // Convergence failed - throw with residual information
   std::stringstream ss;
+  double final_residual = computeResidual(alpha, V, S_ap_x, S_ap_z, mass);
   ss << "AeroAlphaSolver::solve: Failed to converge after " << max_iterations_
-     << " iterations. Final residual: " << std::scientific
-     << computeResidual(alpha, V, S_ap_x, S_ap_z, mass) << ", alpha=" << alpha;
+     << " iterations. Final residual: " << std::scientific << final_residual
+     << ", alpha=" << alpha;
   throw std::runtime_error(ss.str());
 }
 
@@ -238,6 +249,155 @@ double AeroAlphaSolver::computeDerivative(double alpha_rad, double V, double S_a
   double f_minus = computeResidual(alpha_rad - epsilon, V, S_ap_x, S_ap_z, mass);
 
   return (f_plus - f_minus) / (2 * epsilon);
+}
+
+double AeroAlphaSolver::computeDerivativeS_ap_x(double alpha_rad) const
+{
+  // df/dS_ap_x = sin(alpha)
+  // From: f = S_ap_z*cos(alpha) + S_ap_x*sin(alpha) - F_aero_z/mass
+  return std::sin(alpha_rad);
+}
+
+double AeroAlphaSolver::computeDerivativeS_ap_z(double alpha_rad) const
+{
+  // df/dS_ap_z = cos(alpha)
+  // From: f = S_ap_z*cos(alpha) + S_ap_x*sin(alpha) - F_aero_z/mass
+  return std::cos(alpha_rad);
+}
+
+double AeroAlphaSolver::computeDerivativeV(double alpha_rad, double V, double mass) const
+{
+  double epsilon = derivative_epsilon_;
+
+  // Central difference: df/dV
+  // Note: This computes the partial derivative with respect to V, treating alpha as constant
+  // The residual depends on V through the aerodynamic force F_aero_z(V_b)
+  double f_plus = computeResidual(alpha_rad, V + epsilon, 0.0, 0.0, mass);
+  double f_minus = computeResidual(alpha_rad, V - epsilon, 0.0, 0.0, mass);
+
+  return (f_plus - f_minus) / (2 * epsilon);
+}
+
+double AeroAlphaSolver::computeAlphaDot(double alpha_rad, double V, double S_ap_x_dot,
+                                        double S_ap_z_dot, double mass) const
+{
+  // Using implicit function theorem:
+  // df/dt = ∂f/∂alpha * alpha_dot + ∂f/∂S_ap_x * S_ap_x_dot + ∂f/∂S_ap_z * S_ap_z_dot + ∂f/∂V * V_dot = 0
+  //
+  // Therefore:
+  // alpha_dot = -(∂f/∂S_ap_x * S_ap_x_dot + ∂f/∂S_ap_z * S_ap_z_dot + ∂f/∂V * V_dot) / (∂f/∂alpha)
+  //
+  // Note: We assume V_dot = 0 for trajectory planning (velocity is independent variable)
+  // If V_dot is needed, it should be added to the computation.
+
+  double df_dalpha = computeDerivative(alpha_rad, V, 0.0, 0.0, mass);
+  double df_dS_ap_x = computeDerivativeS_ap_x(alpha_rad);
+  double df_dS_ap_z = computeDerivativeS_ap_z(alpha_rad);
+  // df_dV is multiplied by V_dot which we assume to be 0, so we skip it
+
+  // Avoid division by zero
+  if (std::abs(df_dalpha) < 1e-12)
+  {
+    return 0.0;
+  }
+
+  // Compute alpha_dot using implicit function theorem
+  double alpha_dot = -(df_dS_ap_x * S_ap_x_dot + df_dS_ap_z * S_ap_z_dot) / df_dalpha;
+
+  return alpha_dot;
+}
+
+// Overloaded solve method with time derivatives for accurate alpha_dot computation
+AlphaSolverResult AeroAlphaSolver::solve(double V, double S_ap_x, double S_ap_z,
+                                         double S_ap_x_dot, double S_ap_z_dot, double mass)
+{
+  if (mass <= 0.0)
+  {
+    throw std::invalid_argument("AeroAlphaSolver::solve: mass must be positive");
+  }
+
+  // Use previous alpha as initial guess (temporal coherence)
+  double alpha = prev_alpha_rad_;
+
+  for (int i = 0; i < max_iterations_; ++i)
+  {
+    // Compute residual: f(alpha) = LHS - RHS
+    double f = computeResidual(alpha, V, S_ap_x, S_ap_z, mass);
+
+    // Check convergence
+    if (std::abs(f) < tolerance_)
+    {
+      // Update state for next call
+      prev_alpha_rad_ = alpha;
+      last_iterations_ = i + 1;
+
+      // Compute alpha_dot using implicit function theorem (mid difference)
+      double alpha_dot_val = computeAlphaDot(alpha, V, S_ap_x_dot, S_ap_z_dot, mass);
+
+      return AlphaSolverResult{ alpha, std::abs(f), alpha_dot_val };
+    }
+
+    // Compute derivative df/d(alpha)
+    double df = computeDerivative(alpha, V, S_ap_x, S_ap_z, mass);
+
+    // Avoid division by zero
+    if (std::abs(df) < 1e-12)
+    {
+      std::stringstream ss;
+      ss << "AeroAlphaSolver::solve: Zero derivative encountered at alpha=" << alpha
+         << " (iteration " << i << ")";
+      throw std::runtime_error(ss.str());
+    }
+
+    // Newton-Raphson update with damping
+    double delta = damping_factor_ * f / df;
+    alpha -= delta;
+
+    // Store current wrapped alpha before modification
+    double wrapped_alpha = alpha;
+    while (wrapped_alpha < -M_PI)
+    {
+      wrapped_alpha += 2 * M_PI;
+    }
+    while (wrapped_alpha > M_PI)
+    {
+      wrapped_alpha -= 2 * M_PI;
+    }
+
+    // Detect and compensate for wrap events on first iteration
+    if (i == 0 && unwrapping_initialized_)
+    {
+      double delta_wrapped = wrapped_alpha - prev_wrapped_alpha_;
+
+      // If jump is larger than π, it's a wrap event
+      if (delta_wrapped > M_PI)
+      {
+        alpha_offset_rad_ -= 2 * M_PI;  // Wrapped from positive to negative
+      }
+      else if (delta_wrapped < -M_PI)
+      {
+        alpha_offset_rad_ += 2 * M_PI;  // Wrapped from negative to positive
+      }
+    }
+
+    // Apply unwrapping offset
+    alpha = wrapped_alpha + alpha_offset_rad_;
+
+    // Update tracking variables
+    if (i == 0)
+    {
+      prev_wrapped_alpha_ = wrapped_alpha;
+      unwrapping_initialized_ = true;
+    }
+  }
+
+  // Convergence failed - throw with residual information
+  std::stringstream ss;
+  double final_residual = computeResidual(alpha, V, S_ap_x, S_ap_z, mass);
+  ss << "AeroAlphaSolver::solve: Failed to converge after " << max_iterations_
+     << " iterations. Final residual: " << std::scientific << final_residual
+     << ", alpha=" << alpha;
+  throw std::runtime_error(ss.str());
 }
 
 }  // namespace aerodynamics

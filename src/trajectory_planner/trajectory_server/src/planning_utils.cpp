@@ -51,7 +51,6 @@ TrajectorySampleData TrajectorySampleData::from_trajectory(
 
   // Get aerodynamic data
   data.df_phi_alpha = tailsitter_data.getAlpha();  // Alpha from differential flat
-  data.alpha_dot    = tailsitter_data.getAlphaDot(); // will be updated in python codes.
   data.S_ap_x       = tailsitter_data.getSApX();
   data.S_ap_z       = tailsitter_data.getSApZ();
   data.S_ap_x_dot   = tailsitter_data.getSApXDot();
@@ -63,7 +62,11 @@ TrajectorySampleData TrajectorySampleData::from_trajectory(
   // Solve force balance equation for df_lyu_alpha:
   // S_ap_z*cos(alpha) + S_ap_x*sin(alpha) = F_aero_z/mass
   const double V = data.vel.norm();
-  data.df_lyu_alpha = alpha_solver.solve(V, data.S_ap_x, data.S_ap_z, mass);
+  auto alpha_result = alpha_solver.solve(V, data.S_ap_x, data.S_ap_z,
+                                        data.S_ap_x_dot, data.S_ap_z_dot, mass);
+  data.df_lyu_alpha = alpha_result.alpha;
+  data.alpha_dot = alpha_result.alpha_dot;  // Computed using implicit function theorem
+  data.alpha_residual = alpha_result.residual;
 
   // Compute B_ap_x_df_lyu: S_ap_x*cos(df_lyu_alpha) - S_ap_z*sin(df_lyu_alpha)
   data.B_ap_x_df_lyu = data.S_ap_x * std::cos(data.df_lyu_alpha) -
@@ -180,7 +183,7 @@ std::ofstream& init_planning_csv_file(const Config& config)
            << "S_Omega_x,S_Omega_y,S_Omega_z,"
            << "B_Omega_x_df_lyu,B_Omega_y_df_lyu,B_Omega_z_df_lyu,"
            << "B_fa_z_df_lyu,"
-           << "alpha_dot\n";
+           << "alpha_dot,alpha_residual\n";
   return csv_file;
 }
 
@@ -245,7 +248,7 @@ void write_trajectory_sample(std::ofstream& csv_file, const TrajectorySampleData
            << data.S_Omega_x << "," << data.S_Omega_y << "," << data.S_Omega_z << ","
            << data.B_Omega_x_df_lyu << "," << data.B_Omega_y_df_lyu << "," << data.B_Omega_z_df_lyu << ","
            << data.B_fa_z_df_lyu << ","
-           << data.alpha_dot << "\n";
+           << data.alpha_dot << "," << data.alpha_residual << "\n";
 }
 
 RouteSampleData RouteSampleData::from_trajectory_point(const Eigen::MatrixXd& point, size_t i)

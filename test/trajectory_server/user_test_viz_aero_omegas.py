@@ -41,12 +41,12 @@ def load_trajectory_csv(csv_path: str) -> dict:
     """
     Load trajectory CSV file from global_planning.
 
-    CSV columns (36 total):
+    CSV columns (37 total):
     time,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,B_ap_x_df_lyu,df_phi_alpha,df_lyu_alpha,
     yb_x,yb_y,yb_z,df_phi_quat_w,df_phi_quat_x,df_phi_quat_y,df_phi_quat_z,
     df_lyu_quat_w,df_lyu_quat_x,df_lyu_quat_y,df_lyu_quat_z,Wap_x,Wap_y,Wap_z,
     S_ap_x,S_ap_z,S_ap_x_dot,S_ap_z_dot,S_Omega_x,S_Omega_y,S_Omega_z,
-    B_Omega_x_df_lyu,B_Omega_y_df_lyu,B_Omega_z_df_lyu,B_fa_z_df_lyu,alpha_dot
+    B_Omega_x_df_lyu,B_Omega_y_df_lyu,B_Omega_z_df_lyu,B_fa_z_df_lyu,alpha_dot,alpha_residual
     """
     data = np.loadtxt(csv_path, delimiter=",", skiprows=1)
 
@@ -73,6 +73,7 @@ def load_trajectory_csv(csv_path: str) -> dict:
         "B_Omega_z_df_lyu": data[:, 33],
         "B_fa_z_df_lyu": data[:, 34],
         "alpha_dot": data[:, 35],
+        "alpha_residual": data[:, 36],
     }
 
 
@@ -80,16 +81,17 @@ def plot_aero_omegas(
     data: dict, output_path: str = None, show: bool = True
 ) -> None:
     """
-    Plot 6 subplots: df_lyu_alpha, Omegas, Alpha comparison,
+    Plot 8 subplots: df_lyu_alpha, Omegas, Alpha comparison,
     B_ap_x_df_lyu (proper acc) and B_fa_z_df_lyu (aero force),
-    S_ap_x and S_ap_x_dot, S_ap_z and S_ap_z_dot.
+    S_ap_x and S_ap_x_dot, S_ap_z and S_ap_z_dot,
+    alpha & alpha_dot (twin plot), alpha & alpha_residual (twin plot).
 
     Args:
         data: Dictionary containing trajectory data
         output_path: Path to save the plot (optional)
         show: Whether to display the plot interactively
     """
-    fig, axes = plt.subplots(3, 2, figsize=(14, 14))
+    fig, axes = plt.subplots(4, 2, figsize=(14, 18))
     fig.suptitle("Aerodynamic Angles and Omegas Analysis", fontsize=14)
 
     t = data["time"]
@@ -165,6 +167,48 @@ def plot_aero_omegas(
     ax6.set_title("(6) S_ap_z (spatial aero force z) & S_ap_z_dot")
     ax6.legend()
     ax6.grid(True, alpha=0.3)
+
+    # Plot (7): Alpha and alpha_dot (twin plot)
+    ax7 = axes[3, 0]
+    ax7.plot(t, np.degrees(data["df_lyu_alpha"]), color="blue", linewidth=1.5, label="df_lyu_alpha")
+    ax7.set_xlabel("Time (s)")
+    ax7.set_ylabel("Angle (degrees)", color="blue")
+    ax7.tick_params(axis="y", labelcolor="blue")
+    ax7.set_title("(7) Alpha (df_lyu_alpha) & Alpha_dot")
+    ax7.grid(True, alpha=0.3)
+
+    # Twin axis for alpha_dot
+    ax7_dot = ax7.twinx()
+    ax7_dot.plot(t, data["alpha_dot"], color="red", linewidth=1.5,
+                 linestyle="--", label="alpha_dot", alpha=0.7)
+    ax7_dot.set_ylabel("Alpha_dot (rad/s)", color="red")
+    ax7_dot.tick_params(axis="y", labelcolor="red")
+
+    # Combine legends
+    lines1, labels1 = ax7.get_legend_handles_labels()
+    lines2, labels2 = ax7_dot.get_legend_handles_labels()
+    ax7.legend(lines1 + lines2, labels1 + labels2, loc="best")
+
+    # Plot (8): Alpha and alpha_residual (twin plot)
+    ax8 = axes[3, 1]
+    ax8.plot(t, np.degrees(data["df_lyu_alpha"]), color="blue", linewidth=1.5, label="df_lyu_alpha")
+    ax8.set_xlabel("Time (s)")
+    ax8.set_ylabel("Angle (degrees)", color="blue")
+    ax8.tick_params(axis="y", labelcolor="blue")
+    ax8.set_title("(8) Alpha (df_lyu_alpha) & Alpha_residual")
+    ax8.grid(True, alpha=0.3)
+
+    # Twin axis for alpha_residual
+    ax8_residual = ax8.twinx()
+    ax8_residual.plot(t, data["alpha_residual"], color="green", linewidth=1.5,
+                      linestyle="--", label="alpha_residual", alpha=0.7)
+    ax8_residual.set_ylabel("Residual", color="green")
+    ax8_residual.tick_params(axis="y", labelcolor="green")
+
+    # Combine legends
+    lines1, labels1 = ax8.get_legend_handles_labels()
+    lines2, labels2 = ax8_residual.get_legend_handles_labels()
+    ax8.legend(lines1 + lines2, labels1 + labels2, loc="best")
 
     plt.tight_layout()
 
@@ -245,6 +289,21 @@ def print_statistics(data: dict) -> None:
         ("z", data["B_Omega_z_df_lyu"]),
     ]:
         print(f"  B_Omega_{name}_df_lyu: [{values.min():.4f}, {values.max():.4f}] rad/s")
+    print()
+
+    # Alpha_dot statistics
+    print("Alpha_dot (from alpha solver):")
+    print(f"  Range: [{data['alpha_dot'].min():.6f}, {data['alpha_dot'].max():.6f}] rad/s")
+    print(f"  Mean:  {data['alpha_dot'].mean():.6f} rad/s")
+    print(f"  Std:   {data['alpha_dot'].std():.6f} rad/s")
+    print()
+
+    # Alpha_residual statistics
+    print("Alpha_residual (solver residual |f(alpha)|):")
+    print(f"  Range: [{data['alpha_residual'].min():.6e}, {data['alpha_residual'].max():.6e}]")
+    print(f"  Mean:  {data['alpha_residual'].mean():.6e}")
+    print(f"  Std:   {data['alpha_residual'].std():.6e}")
+    print(f"  Max residual: {data['alpha_residual'].max():.6e} (should be < tolerance)")
 
     print("=" * 60)
 
