@@ -87,9 +87,9 @@ def ocp_proposed_mpc_cfg(cfg: ProposedMpcConfig) -> AcadosOcp:
     nu = model.u.size()[0]
     nparam = model.p.size()[0]
 
-    ocp.cost.cost_type_0 = "NONLINEAR_LS"
-    ocp.cost.cost_type_e = "NONLINEAR_LS"
-    ocp.cost.cost_type = "NONLINEAR_LS"
+    ocp.cost.cost_type_0 = "EXTERNAL"
+    ocp.cost.cost_type_e = "EXTERNAL"
+    ocp.cost.cost_type = "EXTERNAL"
     sym_p = model.x[:3]
     sym_v = model.x[3:6]
     # sym_r = model.x[6:9]
@@ -106,30 +106,37 @@ def ocp_proposed_mpc_cfg(cfg: ProposedMpcConfig) -> AcadosOcp:
     cost_x = cs.vertcat(sym_p, sym_v, sym_yb)
     cost_x_size = cost_x.shape[0]
 
-    model.cost_y_expr_0 = cs.vertcat(cost_x, sym_u)
-    model.cost_y_expr = cs.vertcat(cost_x, sym_u)
-    model.cost_y_expr_e = cost_x
 
-    ny = cost_x_size + nu
 
-    ocp.cost.yref_0 = np.zeros((ny))
-    ocp.cost.yref = np.zeros((ny))
-    ocp.cost.yref_e = np.zeros((cost_x_size))
-    ocp.parameter_values = np.zeros((nparam))
-
+    cost_x = cs.vertcat(sym_p, sym_v, sym_yb)
+    
+    # --- 3. 定义权重矩阵 (转化为 CasADi 常数或参数) ---
     Q_list = np.hstack((cfg.qPos, cfg.qVel, cfg.qYB))
-    W_mat_terminal = np.diag(Q_list)
-    W_mat = np.diag(np.hstack((Q_list, cfg.rU)))
+    W_x = cs.diag(Q_list)
+    W_u = cs.diag(cfg.rU)
 
-    ocp.cost.W_0 = np.zeros((ny, ny))
-    ocp.cost.W = W_mat
-    ocp.cost.W_e = W_mat_terminal
+    # --- 4. 构建标量 Cost 表达式 ---
+    # 注意：External cost 必须是标量。这里假设 yref 为 0。
+    # 如果 yref 不为 0，建议将其放入 model.p 中，然后在这里减去：(cost_x - p_ref).T @ W_x @ (cost_x - p_ref)
+    expr_ext_cost_x = cost_x.T @ W_x @ cost_x
+    expr_ext_cost_u = sym_u.T @ W_u @ sym_u
 
-    ocp.translate_nls_cost_to_conl()
+    model.cost_expr_ext_cost_0 = expr_ext_cost_x + expr_ext_cost_u
+    model.cost_expr_ext_cost = expr_ext_cost_x + expr_ext_cost_u
+    model.cost_expr_ext_cost_e = expr_ext_cost_x
+
+    ocp.parameter_values = np.zeros((nparam))
+    ocp.dims.N = cfg.nodes
+    ocp.solver_options.tf = cfg.T
+
+    # --- 6. 关键设置：开启 Exact Hessian ---
+    ocp.solver_options.hessian_approx = "EXACT"
+    ocp.solver_options.nlp_solver_exact_hessian = "RECURSIVE" # 或 "FULL"
+    ocp.solver_options.exact_hess_cost = True 
+    ocp.solver_options.exact_hess_dyn = True  # 动力学也使用 Exact Hessian
 
     ocp.dims.N = cfg.nodes
     ocp.solver_options.tf = cfg.T
-    ocp.solver_options.exact_hess_cost = False
 
     ocp.constraints.x0 = np.zeros((nx_aug))
     ocp.constraints.idxbx = np.array([6, 7, 8, 13, 14, 15, 16])
@@ -141,7 +148,7 @@ def ocp_proposed_mpc_cfg(cfg: ProposedMpcConfig) -> AcadosOcp:
     ocp.constraints.lbu = -ocp.constraints.ubu
 
     ocp.solver_options.qp_solver = "FULL_CONDENSING_HPIPM"
-    ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
+    ocp.solver_options.hessian_approx = "EXACT"
     ocp.solver_options.integrator_type = "ERK"
     ocp.solver_options.nlp_solver_type = "SQP_RTI"
     ocp.solver_options.qp_solver_iter_max = 10
