@@ -108,10 +108,10 @@ class AcadosInterface
         tailsitter_flu_acados_get_nlp_out(acados_ocp_capsule);
 
     set_current_state_lbx =
-        std::bind(ocp_nlp_constraints_model_set, nlp_config, nlp_dims, nlp_in,
+        std::bind(ocp_nlp_constraints_model_set, nlp_config, nlp_dims, nlp_in, nlp_out,
                   0, "lbx", std::placeholders::_1);
     set_current_state_ubx =
-        std::bind(ocp_nlp_constraints_model_set, nlp_config, nlp_dims, nlp_in,
+        std::bind(ocp_nlp_constraints_model_set, nlp_config, nlp_dims, nlp_in, nlp_out,
                   0, "ubx", std::placeholders::_1);
     set_reference_stage =
         std::bind(ocp_nlp_cost_model_set, nlp_config, nlp_dims, nlp_in,

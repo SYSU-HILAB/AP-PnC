@@ -99,12 +99,6 @@ def ocp_nls() -> AcadosOcp:
     We_mat = Q_mat
     ## weight
     ocp.cost.W_0 = W_mat
-    # Q_list = np.hstack((
-    #     0.05 * MpcConfig.qPos,
-    #     0.05 * MpcConfig.qVel,
-    #     0.05 * MpcConfig.qAngV,
-    #     MpcConfig.qYB
-    # ))
     W_mat = np.diag(np.hstack((Q_list, MpcConfig.rU)))
 
     ocp.cost.W = W_mat
@@ -126,8 +120,6 @@ def ocp_nls() -> AcadosOcp:
     ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1.0 * 0.8
     ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1.0 * 0.8
 
-
-    print(ocp.dims)
     # set options
     ocp.solver_options.qp_solver = "FULL_CONDENSING_HPIPM"  # FULL_CONDENSING_QPOASES
     # PARTIAL_CONDENSING_OSQP
@@ -135,26 +127,9 @@ def ocp_nls() -> AcadosOcp:
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"  # 'GAUSS_NEWTON', 'EXACT'
     ocp.solver_options.integrator_type = "ERK"
     ocp.solver_options.nlp_solver_type = "SQP_RTI"  # SQP_RTI, SQP
-    # ocp.solver_options.nlp_solver_ext_qp_res = 1
     ocp.solver_options.nlp_solver_max_iter = 5
-    # ocp.solver_options.nlp_solver_max_iter = 20
     ocp.solver_options.qp_solver_iter_max = 10
-    # ocp.solver_options.eps_sufficient_descent = 1e-8
-    # ocp.solver_options.qp_tol_eq = 1e-04
-    # ocp.solver_options.qp_solver_tol_stat = 1e-02
     ocp.solver_options.print_level = 0
-    # ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
-    # ocp.solver_options.line_search_use_sufficient_descent = 1
-    # ocp.solver_options.alpha_reduction = 0.9
-
-    # ocp.solver_options.alpha_min = 0.001
-    # ocp.solver_options.ext_cost_num_hess = 1
-    # ocp.solver_options.qp_solver_cond_ric_alg = 0
-    # ocp.solver_options.globalization_use_SOC = 1
-    # ocp.solver_options.levenberg_marquardt = 1e1
-    # ocp.solver_options.nlp_solver_ext_qp_res = 1
-    # newton step
-    # ocp.solver_options.nlp_solver_step_length = 1.0
     ocp.solver_options.hpipm_mode = "SPEED_ABS"
     # SPEED_ABS SPEED BALANCE ROBUST
     # ocp.dims.nh_0 = 1

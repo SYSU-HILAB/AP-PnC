@@ -5,6 +5,7 @@
 [submodule "mpc_framework"]
 	path = mpc_framework
 	url = https://github.com/acados/acados.git
+	branch = main
 [submodule "scripts/sciplots"]
 	path = scripts/sciplots
 	url = https://github.com/WarriorHanamy/sciplots.git

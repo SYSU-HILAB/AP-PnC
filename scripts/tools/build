@@ -44,6 +44,7 @@ cd "$GIT_ROOT" || exit 1
 
 # Use system python3 explicitly for colcon build
 colcon build "${COLCON_ARGS[@]}" \
+    --packages-skip mpc_framework \
     --cmake-args -DPYTHON_EXECUTABLE=/usr/bin/python3 -DCMAKE_BUILD_TYPE=Release
 
 # Capture exit status immediately
