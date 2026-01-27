@@ -30,7 +30,6 @@ def sync_circled_property(toml_file_path: Path, yaml_file_path: Path) -> None:
     target = yaml_data.setdefault("/global_planning_node", {}).setdefault(
         "ros__parameters", {}
     )
-    target["BasicTrajectoryCirled"] = setup.get("circled", False)
     target["BasicTrajectoryRadius"] = setup.get("radius", 0.0)
     target["BasicTrajectoryType"] = setup.get("type", "")
     target["v_max"] = setup.get("v_max", 0.0)

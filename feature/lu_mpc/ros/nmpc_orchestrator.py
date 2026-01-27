@@ -47,10 +47,7 @@ import rclpy
 from rclpy.node import Node
 
 from ..model.sim.sim_gd_model import GdModelSimulator, GdSimConfig
-from ..controller.trajectory_loader import (
-    TrajectoryReference,
-    load_trajectory_csv,
-)
+from ..controller.trajectory_loader import TrajectoryReference
 from ..controller.ctrl_proposed_nmpc_ang_vel_actuated import ProposedNmpcAngVelActuatedController
 from ..controller.config import ProposedMpcAngVelActuatedCfg
 from ..controller.ctrl_err_state_lmpc_ang_vel_actuated import ErrStateLmpcAngVelActuatedController
@@ -112,14 +109,16 @@ class MpcOrchestrator(Node):
 
     def _setup_simulation(self, trajectory_csv: str) -> None:
         """Initialize simulator and controller from trajectory CSV."""
-        trajectory_data = load_trajectory_csv(trajectory_csv)
-        self.trajectory = TrajectoryReference(trajectory_data)
+        self.trajectory = TrajectoryReference(trajectory_csv)
 
         # Initial state from trajectory (WXYZ format)
-        p0 = trajectory_data['position'][0]
-        v0 = trajectory_data['velocity'][0]
+        p0 = self.trajectory.position[0]
+        v0 = self.trajectory.velocity[0]
         r0 = np.array([0.0, 0.0, 0.0])
-        q0 = np.array([0.707, 0.0, 0.0, 0.707])  # WXYZ format
+        q0 = self.trajectory.quat_quad_flu[0]  # WXYZ format
+        #<HARD
+        # task: plot
+        #>
         u0 = np.array([2.45, 2.45, 2.45, 2.45]) * 2.0
         init_state = np.concatenate([p0, v0, r0, q0, u0])
 

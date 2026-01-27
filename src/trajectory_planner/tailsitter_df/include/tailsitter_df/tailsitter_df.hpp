@@ -39,10 +39,14 @@ namespace tailsitter_df
     // Private autodiff members
     realV3                  B_aero_force = realV3::Zero();
     realV3                  eta;
-    realV3                  xb, yb, zb;
+    realV3                  xb = (realV3() << 0, 0, 1).finished();
+    realV3                  yb = (realV3() << 0, -1, 0).finished();
+    realV3                  zb = (realV3() << 1, 0, 0).finished();
+    realV3                  zb_fixed = (realV3() << 1, 0, 0).finished(); 
+
     realV3                  vel;
     realV3                  temp;
-    realM3                  attitude;
+    realM3                  attitude = realM3::Identity();
     Eigen::Quaternion<real> q;
     real                    S_ap_x;
     real                    S_ap_z;
@@ -59,8 +63,6 @@ namespace tailsitter_df
     // Aerodynamic specific force derivatives
     real                    S_ap_x_dot;
     real                    S_ap_z_dot;
-    // when circled, in ENU, zb_fixed is set to be aligned with North direction.
-    realV3                  zb_fixed = (realV3() << 0, 1, 0).finished(); 
 
    public:
     Eigen::Matrix<double, 4, 9> J;
@@ -78,23 +80,15 @@ namespace tailsitter_df
                                                   const Vector3real &a,
                                                   const Vector3real &j);
 
-    void reset(bool circled = true)
+
+    void reset()
     {
-      auto   xb_init_always = (realV3() << 0, 0, 1).finished();
-      realV3 yb_init;
-      if (circled)
-      {
-        yb_init = (realV3() << 1, 0, 0).finished();
-      }
-      else
-      {
-        yb_init = (realV3() << 0, -1, 0).finished();
-      }
-      zb_fixed = xb_init_always.cross(yb_init);
-      zb_fixed.normalize();
-      yb_init.normalize();
-      zb_fixed.normalize();
+      xb = (realV3() << 0, 0, 1).finished();
+      yb = (realV3() << 0, -1, 0).finished();
+      zb = (realV3() << 1, 0, 0).finished();
+      zb_fixed = zb;
     }
+
 
     // Add df_backward_auto as a member function
     Eigen::MatrixXd df_backward_auto(const Eigen::Vector3d &vel,

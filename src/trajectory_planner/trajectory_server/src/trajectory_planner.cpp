@@ -74,19 +74,10 @@ void GlobalPlanner::init_basic_trajectory_type(const int type)
   }
   if (type == 4)
   {
-    if (!config.trajecotry_cirled)
-    {
-      basic_traj = std::make_unique<basic_trajectories::Line>(
-          config.basic_trajectory_radius, config.basic_trajectory_rate,
-          config.basic_trajectory_height);
-      return;
-    }
-    else
-    {
-      RCLCPP_ERROR(this->get_logger(),
-                   "The line trajectory must not be cirled!");
-      abort();
-    }
+    basic_traj = std::make_unique<basic_trajectories::Line>(
+        config.basic_trajectory_radius, config.basic_trajectory_rate,
+        config.basic_trajectory_height);
+    return;
   }
   else
   {
@@ -180,6 +171,9 @@ void GlobalPlanner::plan()
 
   if (!init_setup)
   {
+    // Reset body frame before optimization
+    tailsitter_df::Data::getInstance().reset();
+
     if (!gcopter.setup_basic_trajectory(
             iniState, finState, initTime, initPointsPos, hPolys,
             config.smoothingEps, config.integralIntervs))
@@ -208,7 +202,7 @@ void GlobalPlanner::plan()
     this->trajVizPub->publish(route_msg);
 
     auto& tailsitter_data = tailsitter_df::Data::getInstance();
-    tailsitter_data.reset(config.trajecotry_cirled);
+    tailsitter_data.reset();
 
     // Reset Newton-Raphson solver for new trajectory
     // Note: Solver configuration is already read from global.toml in constructor

@@ -33,8 +33,8 @@ Eigen::Quaterniond compute_df_lyu_quat(const Eigen::Vector3d& vel,
     // Interpolate yb based on velocity scaling
     double scaling = vel.norm() / vThreshold;
     Eigen::Vector3d yb_from_v = vel.cross(eta).normalized();
-    // For cirled trajectories, zb_fixed is North direction (0, 1, 0) in ENU
-    Eigen::Vector3d zb_fixed(0, 1, 0);
+    // zb_fixed is the body Z direction (1, 0, 0) in NED
+    Eigen::Vector3d zb_fixed(1, 0, 0);
     Eigen::Vector3d yb_from_fixed_frame = zb_fixed.cross(xb).normalized();
 
     Eigen::Vector3d yb =

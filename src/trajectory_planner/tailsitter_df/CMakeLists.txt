@@ -4,7 +4,6 @@ project(tailsitter_df)
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
-set(CMAKE_BUILD_TYPE Release)
 set(HOME $ENV{HOME})
 
 # find dependencies

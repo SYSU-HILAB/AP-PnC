@@ -44,10 +44,7 @@ from geometry_msgs.msg import Point, Vector3
 from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 
-from ..controller.trajectory_loader import (
-    TrajectoryReference,
-    load_trajectory_csv,
-)
+from ..controller.trajectory_loader import TrajectoryReference
 from ...utils.math_utils import right_quat_multiply, wing_frd_to_quad_flu
 from ...utils.ros_viz_utils import (
     compute_reference_sample_times,
@@ -130,14 +127,8 @@ class ReferenceVisualizer(Node):
         self.paused = False
         self.df_lyu_offset = df_lyu_offset if df_lyu_offset is not None else np.array([80.0, 0.0, 0.0])
 
-        # Load trajectory
-        trajectory = load_trajectory_csv(trajectory_csv)
-        if trajectory.get("df_lyu_quat") is None:
-            raise ValueError(
-                "ReferenceVisualizer requires df_lyu_quat columns "
-                "(df_lyu_quat_w, df_lyu_quat_x, df_lyu_quat_y, df_lyu_quat_z) in the trajectory CSV."
-            )
-        self.trajectory = TrajectoryReference(trajectory)
+        # Load trajectory (validation happens automatically inside TrajectoryReference)
+        self.trajectory = TrajectoryReference(trajectory_csv)
         self.start_time = float(self.trajectory.time[0])
         self.end_time = float(self.trajectory.time[-1])
         self.current_time = self.start_time

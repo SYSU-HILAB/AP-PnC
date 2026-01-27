@@ -61,7 +61,6 @@ struct Config
   int    basic_trajectory_type             = 1;
   double basic_trajectory_curvature_factor = 0.0;
   double basic_traj_wave_len               = 10.0;
-  double trajecotry_cirled                 = true;
 
   // Vehicle mass
   double mass = 2.0;  // Vehicle mass in kg (default from tailsitter_df config)

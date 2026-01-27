@@ -23,7 +23,6 @@ toml_file_path = os.path.join(tailsitter_planning_dir, 'global.toml')
 
 with open(toml_file_path, 'r') as f:
     data = toml.load(f)
-    circled = data['setup']['circled']
 
 def generate_launch_description():
     gcopter_params = os.path.join(
@@ -37,19 +36,10 @@ def generate_launch_description():
             executable='trajectory_server_node',
             name='global_planning_node',
             parameters=[gcopter_params],
-            # remappings=[
-            #     ('/voxel_map', '/mock_map'),
-            #     ('/move_base_simple/goal', '/goal_pose')
-            # ]
         ),
         launch_ros.actions.Node(
             package='traj_buffer',
             executable='traj_buffer_node',
             name='traj_buffer_node',
-            parameters=[
-                {
-                    "circled": circled,
-                }
-            ]
         ),
     ])

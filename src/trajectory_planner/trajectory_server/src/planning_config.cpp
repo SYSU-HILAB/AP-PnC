@@ -44,8 +44,6 @@ Config::Config(rclcpp::Node* node) : cost_config(gcopter::CostConfig::getInstanc
       node->declare_parameter("BasicTrajectoryCurvatureFactor", 0.0);
   basic_traj_wave_len = node->declare_parameter("BasicTrajectoryWaveLen", 10.0);
 
-  trajecotry_cirled = node->declare_parameter("BasicTrajectoryCirled", true);
-
   // pub config
   traj_pub_rsl = node->declare_parameter("traj_pub_rsl", 0.02);
   trajTopic    = node->declare_parameter("trajTopic", "control_traj");
@@ -98,7 +96,6 @@ void Config::UpdateConfig(const rclcpp::Node* node)
   node->get_parameter("BasicTrajectoryCurvatureFactor",
                       basic_trajectory_curvature_factor);
   node->get_parameter("BasicTrajectoryWaveLen", basic_traj_wave_len);
-  node->get_parameter("TrajectoryCirled", trajecotry_cirled);
   // update cost_config
   node->get_parameter("v_max", cost_config.v_max);
   node->get_parameter("omg_x_max", cost_config.omg_x_max);
