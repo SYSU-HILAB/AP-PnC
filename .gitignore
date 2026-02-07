@@ -14,7 +14,8 @@ log/
 end.csv
 pre_state.csv
 __pycache__/
-acados_ocp*.json
+*acados*.json
+*solver*.json
 *.pyc
 *.png
 matlab_process/
