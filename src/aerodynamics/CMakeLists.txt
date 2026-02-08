@@ -81,6 +81,15 @@ target_link_libraries(aero_comparison
   ${PROJECT_NAME}_bspline
 )
 
+# Generate ML training data from all aerodynamic types
+ament_auto_add_executable(generate_aero_ml_data src/generate_aero_ml_data.cpp)
+target_link_libraries(generate_aero_ml_data
+  ${PROJECT_NAME}_phi
+  ${PROJECT_NAME}_lyu
+  ${PROJECT_NAME}_advanced_lift_drag
+  ${PROJECT_NAME}_bspline
+)
+
 # GTest for AeroAlphaSolver
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
