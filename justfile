@@ -334,7 +334,7 @@ test-nn-trim-type aero_type mass="2.0" v_max="13.0" num_points="130":
 plot-nn-trim mass="2.0":
     #!/usr/bin/env bash
     set -euo pipefail
-    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")")
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
     export JAX_PLATFORM_NAME=cpu
     ./pyp test/aerodynamics/test_nn_trim_analysis.py --mass {{mass}} --plot-only
 

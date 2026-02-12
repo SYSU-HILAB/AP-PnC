@@ -67,21 +67,163 @@ class TrimResults:
     mass: float
 
 
+def compute_trim_two_branches(
+    velocities: np.ndarray,
+    aero_type: str,
+    mass: float = 2.0,
+    g: float = 9.81,
+) -> TrimResults:
+    """Compute trim conditions capturing both solution branches with simple threshold merge.
+
+    Strategy:
+    1. Run descending (high→low velocity) to capture low-AoA branch
+    2. Run ascending (low→high velocity) to capture high-AoA branch
+    3. Merge using velocity threshold: high-AoA for V < 11, low-AoA for V >= 11
+
+    Args:
+        velocities: Array of velocities to solve for (m/s)
+        aero_type: Aerodynamic type ("lyu", "bspline", "phi", "advanced")
+        mass: Aircraft mass in kg (default: 2.0)
+        g: Gravity in m/s² (default: 9.81)
+
+    Returns:
+        TrimResults containing both solution branches merged at threshold.
+    """
+    # Pass 1: Descending (high→low) with low initial guess
+    print(f"  Pass 1: Descending velocity (low-AoA branch)...")
+    results_low = compute_trim_continuation(
+        velocities, aero_type, mass, g,
+        alpha_initial_guess_deg=10.0,
+        direction="descending",
+        max_delta_alpha_deg=5.0,
+    )
+
+    # Pass 2: Ascending (low→high) with high initial guess
+    print(f"  Pass 2: Ascending velocity (high-AoA branch)...")
+    results_high = compute_trim_continuation(
+        velocities, aero_type, mass, g,
+        alpha_initial_guess_deg=70.0,
+        direction="ascending",
+        max_delta_alpha_deg=5.0,
+    )
+
+    # Smart merge: start from low velocity and always pick closest to previous solution
+    n_points = len(velocities)
+    alphas_merged = np.full(n_points, np.nan)
+    cx_vals_merged = np.full(n_points, np.nan)
+    cz_vals_merged = np.full(n_points, np.nan)
+    fx_vals_merged = np.full(n_points, np.nan)
+    fz_vals_merged = np.full(n_points, np.nan)
+    dfx_dalpha_vals_merged = np.full(n_points, np.nan)
+    dfz_dalpha_vals_merged = np.full(n_points, np.nan)
+    residual_vals_merged = np.full(n_points, np.nan)
+
+    for i in range(n_points):
+        V = velocities[i]
+        has_low = not np.isnan(results_low.alphas[i])
+        has_high = not np.isnan(results_high.alphas[i])
+
+        if i == 0:
+            # First point: prefer high-AoA branch (low velocity regime)
+            if has_high:
+                alphas_merged[i] = results_high.alphas[i]
+                cx_vals_merged[i] = results_high.cx[i]
+                cz_vals_merged[i] = results_high.cz[i]
+                fx_vals_merged[i] = results_high.fx[i]
+                fz_vals_merged[i] = results_high.fz[i]
+                dfx_dalpha_vals_merged[i] = results_high.dfx_dalpha[i]
+                dfz_dalpha_vals_merged[i] = results_high.dfz_dalpha[i]
+                residual_vals_merged[i] = results_high.residuals[i]
+            elif has_low:
+                alphas_merged[i] = results_low.alphas[i]
+                cx_vals_merged[i] = results_low.cx[i]
+                cz_vals_merged[i] = results_low.cz[i]
+                fx_vals_merged[i] = results_low.fx[i]
+                fz_vals_merged[i] = results_low.fz[i]
+                dfx_dalpha_vals_merged[i] = results_low.dfx_dalpha[i]
+                dfz_dalpha_vals_merged[i] = results_low.dfz_dalpha[i]
+                residual_vals_merged[i] = results_low.residuals[i]
+        else:
+            # Subsequent points: choose solution closest to previous solution
+            prev_alpha = alphas_merged[i-1]
+
+            if has_low and has_high:
+                # Both branches available: choose closest to previous
+                delta_low = abs(results_low.alphas[i] - prev_alpha)
+                delta_high = abs(results_high.alphas[i] - prev_alpha)
+
+                if delta_low < delta_high:
+                    # Low-AoA branch maintains continuity
+                    alphas_merged[i] = results_low.alphas[i]
+                    cx_vals_merged[i] = results_low.cx[i]
+                    cz_vals_merged[i] = results_low.cz[i]
+                    fx_vals_merged[i] = results_low.fx[i]
+                    fz_vals_merged[i] = results_low.fz[i]
+                    dfx_dalpha_vals_merged[i] = results_low.dfx_dalpha[i]
+                    dfz_dalpha_vals_merged[i] = results_low.dfz_dalpha[i]
+                    residual_vals_merged[i] = results_low.residuals[i]
+                else:
+                    # High-AoA branch maintains continuity
+                    alphas_merged[i] = results_high.alphas[i]
+                    cx_vals_merged[i] = results_high.cx[i]
+                    cz_vals_merged[i] = results_high.cz[i]
+                    fx_vals_merged[i] = results_high.fx[i]
+                    fz_vals_merged[i] = results_high.fz[i]
+                    dfx_dalpha_vals_merged[i] = results_high.dfx_dalpha[i]
+                    dfz_dalpha_vals_merged[i] = results_high.dfz_dalpha[i]
+                    residual_vals_merged[i] = results_high.residuals[i]
+            elif has_low:
+                # Only low-AoA available
+                alphas_merged[i] = results_low.alphas[i]
+                cx_vals_merged[i] = results_low.cx[i]
+                cz_vals_merged[i] = results_low.cz[i]
+                fx_vals_merged[i] = results_low.fx[i]
+                fz_vals_merged[i] = results_low.fz[i]
+                dfx_dalpha_vals_merged[i] = results_low.dfx_dalpha[i]
+                dfz_dalpha_vals_merged[i] = results_low.dfz_dalpha[i]
+                residual_vals_merged[i] = results_low.residuals[i]
+            elif has_high:
+                # Only high-AoA available
+                alphas_merged[i] = results_high.alphas[i]
+                cx_vals_merged[i] = results_high.cx[i]
+                cz_vals_merged[i] = results_high.cz[i]
+                fx_vals_merged[i] = results_high.fx[i]
+                fz_vals_merged[i] = results_high.fz[i]
+                dfx_dalpha_vals_merged[i] = results_high.dfx_dalpha[i]
+                dfz_dalpha_vals_merged[i] = results_high.dfz_dalpha[i]
+                residual_vals_merged[i] = results_high.residuals[i]
+
+    return TrimResults(
+        velocities=velocities,
+        alphas=alphas_merged,
+        cx=cx_vals_merged,
+        cz=cz_vals_merged,
+        fx=fx_vals_merged,
+        fz=fz_vals_merged,
+        dfx_dalpha=dfx_dalpha_vals_merged,
+        dfz_dalpha=dfz_dalpha_vals_merged,
+        residuals=residual_vals_merged,
+        aero_type=aero_type,
+        mass=mass,
+    )
+
+
 def compute_trim_continuation(
     velocities: np.ndarray,
     aero_type: str,
     mass: float = 2.0,
     g: float = 9.81,
     alpha_initial_guess_deg: float = 50.0,
+    direction: str = "descending",  # "descending" or "ascending"
+    max_delta_alpha_deg: float = 5.0,
 ) -> TrimResults:
     """Compute trim conditions using brentq root-finding with continuation method.
 
-    For each velocity, solves the 1D root-finding problem:
-        cz(α) * V² / mass + g * cos(α) = 0
+    For each velocity, solves the 1D root-finding problem with penalty term:
+        cz(α) * V² / mass + g * cos(α) + λ * |α - α_mean|² = 0
 
-    Uses the continuation method: the solution from the previous velocity
-    is used as the initial guess for the next velocity. This ensures
-    tracking of the primary (physically meaningful) solution branch.
+    The penalty term λ * |α - α_mean|² naturally selects one solution branch
+    by penalizing deviations from the running mean of previous solutions.
 
     Args:
         velocities: Array of velocities to solve for (m/s)
@@ -89,6 +231,9 @@ def compute_trim_continuation(
         mass: Aircraft mass in kg (default: 2.0)
         g: Gravity in m/s² (default: 9.81)
         alpha_initial_guess_deg: Initial angle of attack guess in degrees (default: 50.0)
+        direction: Velocity traversal direction - "descending" (high→low) or "ascending" (low→high)
+        max_delta_alpha_deg: Maximum allowed alpha change between steps to stay on same branch (default: 5.0)
+        penalty_weight: Weight for penalty term (default: 10.0)
 
     Returns:
         TrimResults containing solutions for all velocities.
@@ -116,9 +261,21 @@ def compute_trim_continuation(
     alpha_min = 0.0
     alpha_max = np.deg2rad(90.0)
 
-    # Continuation loop: iterate from HIGH to LOW velocity
-    # This allows us to track the low-AoA branch at high speeds
-    indices = np.argsort(-velocities)  # Sort by descending velocity
+    # Penalty term parameters
+    penalty_weight = 0.5  # Weight for penalty term
+    alpha_history = []  # Track valid solutions for computing mean
+    alpha_mean = alpha_guess  # Running mean of valid solutions
+
+    # Track if we have found at least one valid solution
+    has_valid_solution = False
+
+    # Continuation loop: iterate through velocities in specified direction
+    if direction == "descending":
+        # HIGH to LOW velocity - good for finding low-AoA branch
+        indices = np.argsort(-velocities)  # Sort by descending velocity
+    else:  # ascending
+        # LOW to HIGH velocity - good for finding high-AoA branch
+        indices = np.argsort(velocities)  # Sort by ascending velocity
 
     for idx in indices:
         V = velocities[idx]
@@ -128,11 +285,13 @@ def compute_trim_continuation(
         if V < 0.1:
             continue
 
-        # Define residual function for this velocity
+        # Define residual function for this velocity with penalty term
         def residual(alpha: float) -> float:
             cx_jax, cz_jax = predictor.predict(alpha)  # Returns (cx, cz)
             cz_val = float(cz_jax.item() if hasattr(cz_jax, 'item') else cz_jax)
-            return cz_val * V**2 / mass + g * np.cos(alpha)
+            # Add penalty term to favor one branch
+            penalty = penalty_weight * (alpha - alpha_mean)**2
+            return cz_val * V**2 / mass + g * np.cos(alpha) + penalty
 
         # Try to solve using brentq in [0, 90 deg] ONLY
         try:
@@ -184,6 +343,11 @@ def compute_trim_continuation(
 
                 # Valid solution found in [0, 90 deg]
                 alphas[i] = alpha_sol
+                has_valid_solution = True
+
+                # Update running mean for penalty term
+                alpha_history.append(alpha_sol)
+                alpha_mean = np.mean(alpha_history)
 
                 # Compute all outputs at solution
                 cx_jax, cz_jax = predictor.predict(alpha_sol)
@@ -241,7 +405,7 @@ def run_trim_analysis_all_types(
     for aero_type in aero_types:
         print(f"Computing trim for {aero_type}...")
         try:
-            results[aero_type] = compute_trim_continuation(
+            results[aero_type] = compute_trim_two_branches(
                 velocities, aero_type, mass, g
             )
             n_valid = np.sum(~np.isnan(results[aero_type].alphas))
@@ -512,6 +676,7 @@ def plot_derivative_comparison_2x1(
     mpl.use("pgf")
     mpl.rcParams.update({
         "pgf.texsystem": "pdflatex",
+        "text.usetex": True,
         "font.family": "serif",
         "font.size": 8,
         "axes.labelsize": 8,
@@ -520,14 +685,15 @@ def plot_derivative_comparison_2x1(
         "ytick.labelsize": 8,
         "legend.fontsize": 8,
         "figure.titlesize": 8,
+        "pgf.preamble": r"\usepackage{amsmath}",
     })
 
     # Color and style mapping for each aero type
     styles = {
-        "lyu": {"color": "blue", "marker": "o", "linestyle": "-", "label": "Lyu"},
-        "bspline": {"color": "red", "marker": "s", "linestyle": "--", "label": "BSpline"},
-        "phi": {"color": "green", "marker": "^", "linestyle": "-.", "label": "Phi"},
-        "advanced": {"color": "purple", "marker": "d", "linestyle": ":", "label": "Advanced"},
+        "lyu": {"color": "blue", "marker": "o", "linestyle": "-", "label": r"Lyu \textit{et al.}"},
+        "bspline": {"color": "red", "marker": "s", "linestyle": ":", "label": r"Ma \textit{et al.}"},
+        "phi": {"color": "green", "marker": "^", "linestyle": "-", "label": r"$\phi$-theory"},
+        "advanced": {"color": "purple", "marker": "d", "linestyle": ":", "label": r"Gazebo"},
     }
 
     # Figure size: 3.5 inches width, 2.0 inches height
@@ -560,12 +726,14 @@ def plot_derivative_comparison_2x1(
                 markersize=2, markevery=max(1, len(alpha_deg) // 50),
                 label=style["label"], linewidth=1.0, alpha=0.8)
 
+        ax1.set_ylabel(r"$\frac{\partial\,^{\mathcal{B}}\!\boldsymbol{f}_{a_x}}{\partial \alpha} [mg]$")
         # Plot 2: ∂fz/mass w.r.t. alpha vs AoA (scaled)
         ax2 = axes[1]
         ax2.plot(alpha_deg, results.dfz_dalpha[valid_mask] * scale_factor, color=style["color"],
                 linestyle=style["linestyle"], marker=style["marker"],
                 markersize=2, markevery=max(1, len(alpha_deg) // 50),
                 label=style["label"], linewidth=1.0, alpha=0.8)
+        ax2.set_ylabel(r"$\frac{\partial\,^{\mathcal{B}}\!\boldsymbol{f}_{a_z}}{\partial \alpha} [mg]$")
 
     # Configure axes
     for ax in axes:
@@ -578,7 +746,7 @@ def plot_derivative_comparison_2x1(
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-    axes[1].set_xlabel("Angle of Attack (degrees)")
+    axes[1].set_xlabel(r"$\alpha$ [deg]")
     # Remove y-labels (keep ticks), legend: 2x2 layout with 6pt
     axes[1].legend(loc="best", fontsize=6, framealpha=0.8, ncol=2)
 
@@ -727,7 +895,7 @@ def main() -> None:
     for aero_type in aero_types:
         print(f"\nComputing trim for {aero_type}...")
         try:
-            results = compute_trim_continuation(
+            results = compute_trim_two_branches(
                 velocities, aero_type, args.mass
             )
             results_dict[aero_type] = results
