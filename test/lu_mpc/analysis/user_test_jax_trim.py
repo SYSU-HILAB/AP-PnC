@@ -86,6 +86,7 @@ init_moment_guess = jnp.zeros(num_points)
 init_params_batch = jnp.stack(
     [init_v_guess, init_alpha_guess, init_thrust_guess, init_moment_guess], axis=1
 )
+# from jaxopt import LevenbergMarquardt
 
 # 4. Instantiate Solver
 # We set implicit_diff=False generally for pure minimization,

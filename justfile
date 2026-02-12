@@ -312,6 +312,32 @@ jax-trim:
     export JAX_PLATFORM_NAME=cpu
     ./pyp test/lu_mpc/analysis/user_test_jax_trim.py
 
+# === NEURAL NETWORK TRIM ANALYSIS ===
+
+# Run NN-based trim analysis for all 4 aero types (lyu, bspline, phi, advanced)
+test-nn-trim mass="2.0" v_max="13.0" num_points="130":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")"
+    export JAX_PLATFORM_NAME=cpu
+    ./pyp test/aerodynamics/test_nn_trim_analysis.py --mass {{mass}} --v-max {{v_max}} --num-points {{num_points}}
+
+# Run NN-based trim analysis for a specific aero type
+test-nn-trim-type aero_type mass="2.0" v_max="13.0" num_points="130":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")")
+    export JAX_PLATFORM_NAME=cpu
+    ./pyp test/aerodynamics/test_nn_trim_analysis.py --aero-type {{aero_type}} --mass {{mass}} --v-max {{v_max}} --num-points {{num_points}}
+
+# Generate plots from existing NN trim CSV files
+plot-nn-trim mass="2.0":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")")")
+    export JAX_PLATFORM_NAME=cpu
+    ./pyp test/aerodynamics/test_nn_trim_analysis.py --mass {{mass}} --plot-only
+
 # === ROS2/C++ BUILD AND TEST ===
 
 build-aerodynamics:
@@ -425,6 +451,9 @@ alias bt := benchmark-torch
 alias tv := test-vmap
 alias jt := test-jax-trim
 alias jtrim := jax-trim
+alias nnt := test-nn-trim
+alias nntype := test-nn-trim-type
+alias pnnt := plot-nn-trim
 alias tsm := test-sim-model
 alias tsg := test-sim-gd-model
 alias tpn := test-proposed-nmpc
