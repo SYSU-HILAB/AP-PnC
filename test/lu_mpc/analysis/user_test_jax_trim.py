@@ -2,7 +2,17 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import pandas as pd
+from pathlib import Path
 from jaxopt import LevenbergMarquardt
+
+# Use pgf backend for publication-quality plots
+plt.rcParams.update({
+    "pgf.texsystem": "pdflatex",
+    "font.family": "serif",
+    "font.serif": [],
+    "text.usetex": True,
+    "pgf.preamble": r"\usepackage{amsmath}",
+})
 
 from feature.lu_mpc.model.sim.gd_model_jax import aerodynamics_B_vb
 
@@ -135,7 +145,9 @@ df = pd.DataFrame(
     }
 )
 
-csv_filename = "trim_results.csv"
+# Get git root for artifact paths
+git_root = Path(__file__).resolve().parent.parent.parent.parent
+csv_filename = git_root / "artifacts" / "visualization" / "figs" / "trim_results.csv"
 df.to_csv(csv_filename, index=False)
 print(f"Results saved to {csv_filename}")
 
@@ -143,29 +155,27 @@ print(f"Results saved to {csv_filename}")
 # Output 2: Plotting
 # ==========================================
 
-fig, axs = plt.subplots(1, 3, figsize=(18, 5))
-fig.suptitle(f"Trim Results (Mass={mass_val}kg)", fontsize=16)
+fig, ax1 = plt.subplots(1, 1, figsize=(10, 5))
 
-# Plot 1: Alpha vs V
-axs[0].plot(V_res, alpha_res_deg, "b.-", linewidth=2)
-axs[0].set_xlabel("Velocity (m/s)")
-axs[0].set_ylabel("Alpha (deg)")
-axs[0].set_title("Angle of Attack vs Velocity")
-axs[0].grid(True)
+# Plot 1: Velocity vs Alpha (left y-axis, blue solid)
+ax1.set_xlabel(r"$\alpha$ (deg)", fontsize=19)
+ax1.set_ylabel("Velocity (m/s)", color="blue", fontsize=12)
+line1 = ax1.plot(alpha_res_deg, V_res, "b-", linewidth=2, label="Velocity")
+ax1.tick_params(axis="y", labelcolor="blue")
+ax1.grid(True, alpha=0.3)
 
-# Plot 2: Thrust vs V
-axs[1].plot(V_res, thrust_res, "r.-", linewidth=2)
-axs[1].set_xlabel("Velocity (m/s)")
-axs[1].set_ylabel("Thrust (N)")
-axs[1].set_title("Thrust vs Velocity")
-axs[1].grid(True)
+# Plot 2: Thrust vs Alpha (right y-axis, dashed red)
+ax2 = ax1.twinx()
+ax2.set_ylabel("Thrust (N)", color="red", fontsize=12)
+line2 = ax2.plot(alpha_res_deg, thrust_res, "r--", linewidth=2, label="Thrust")
+ax2.tick_params(axis="y", labelcolor="red")
 
-# Plot 3: Moment vs V
-axs[2].plot(V_res, moment_res, "g.-", linewidth=2)
-axs[2].set_xlabel("Velocity (m/s)")
-axs[2].set_ylabel("Control Moment (Nm)")
-axs[2].set_title("Pitch Moment vs Velocity")
-axs[2].grid(True)
+# Combine legends
+lines = line1 + line2
+labels = [l.get_label() for l in lines]
+legend = ax1.legend(lines, labels, loc="upper center", bbox_to_anchor=(0.5, -0.15))
 
-plt.tight_layout()
+pdf_filename = git_root / "artifacts" / "visualization" / "figs" / "trim_results.pdf"
+plt.savefig(pdf_filename, backend="pgf", bbox_inches="tight")
+print(f"Plot saved to {pdf_filename}")
 plt.show()

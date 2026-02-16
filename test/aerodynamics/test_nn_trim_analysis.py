@@ -399,7 +399,7 @@ def run_trim_analysis_all_types(
     Returns:
         Dictionary mapping aero_type -> TrimResults
     """
-    aero_types = ["lyu", "bspline", "phi", "advanced"]
+    aero_types = ["lyu", "bspline", "phi"]
     results = {}
 
     for aero_type in aero_types:
@@ -642,7 +642,7 @@ def plot_trim_comparison_2x2(
         ax.set_title(title)
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, 90])
-        ax.legend(loc="best", fontsize=8)
+        ax.legend(loc="lower right", fontsize=8, ncol=3)
 
     plt.tight_layout()
 
@@ -699,8 +699,8 @@ def plot_derivative_comparison_2x1(
     # Figure size: 3.5 inches width, 2.0 inches height
     # Height ratio: axes[0] = 2/5, axes[1] = 3/5
     from matplotlib.gridspec import GridSpec
-    fig = plt.figure(figsize=(3.5, 2.0))
-    gs = GridSpec(2, 1, figure=fig, height_ratios=[2, 3], hspace=0.35)
+    fig = plt.figure(figsize=(3.5, 1.5))
+    gs = GridSpec(2, 1, figure=fig, height_ratios=[1, 1], hspace=0.5)
     axes = [fig.add_subplot(gs[0]), fig.add_subplot(gs[1])]
 
     # Plot each aero type
@@ -748,7 +748,7 @@ def plot_derivative_comparison_2x1(
 
     axes[1].set_xlabel(r"$\alpha$ [deg]")
     # Remove y-labels (keep ticks), legend: 2x2 layout with 6pt
-    axes[1].legend(loc="best", fontsize=6, framealpha=0.8, ncol=2)
+    axes[1].legend(loc="lower right", fontsize=6, framealpha=0.8, ncol=3, columnspacing=0.5, handletextpad=0.3)
 
     if output_path:
         output_path = Path(output_path)
@@ -831,7 +831,7 @@ def main() -> None:
     if args.plot_only:
         # Load existing CSV files and generate plots
         print("Generating plots from existing CSV files...")
-        aero_types = ["lyu", "bspline", "phi", "advanced"]
+        aero_types = ["lyu", "bspline", "phi"]
         results_dict = {}
 
         for aero_type in aero_types:
@@ -886,7 +886,7 @@ def main() -> None:
 
     # Determine which aero types to process
     if args.aero_type == "all":
-        aero_types = ["lyu", "bspline", "phi", "advanced"]
+        aero_types = ["lyu", "bspline", "phi"]
     else:
         aero_types = [args.aero_type]
 

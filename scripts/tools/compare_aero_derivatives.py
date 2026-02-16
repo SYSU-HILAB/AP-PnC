@@ -341,7 +341,7 @@ def main() -> None:
 
     # Determine which aero types to analyze
     if args.all:
-        aero_types = ["lyu", "bspline", "phi", "advanced"]
+        aero_types = ["lyu", "bspline", "phi"]
     elif args.aero_type:
         aero_types = [args.aero_type]
     else:

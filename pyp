@@ -178,6 +178,12 @@ def main() -> int:
     if acados_lib_path not in ld_library_path:
         env["LD_LIBRARY_PATH"] = f"{acados_lib_path}:{ld_library_path}"
 
+    # Add project root to PYTHONPATH so Python can find the 'feature' module
+    pythonpath = env.get("PYTHONPATH", "")
+    git_root_str = str(git_root)
+    if git_root_str not in pythonpath:
+        env["PYTHONPATH"] = f"{git_root_str}:{pythonpath}"
+
     try:
         os.execvpe(str(python_bin), [str(python_bin)] + args, env)
     except FileNotFoundError:
