@@ -3,21 +3,34 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "feature"
+name = "ap-pnc"
 version = "0.1.0"
-description = "A simple tool for testing editable mode"
+description = "AP-PnC tailsitter project CLI"
+requires-python = ">=3.10"
 dependencies = [
-    "numpy",    # 在这里列出你的 Dependency
+    "numpy",
+    "typer",
+    "rich",
 ]
 
+[project.scripts]
+ap-pnc = "ap_pnc.cli:main"
+
+[dependency-groups]
+dev = ["pytest", "ruff==0.5.4", "pandas"]
+
+[tool.uv]
+package = true
+
 [tool.setuptools.packages.find]
-where = ["."]  # Look for packages in the current directory
+where = ["."]
+include = ["feature*", "ap_pnc*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 required-version = "0.5.4"
-src = ["feature", "src", "tests"]
+src = ["feature", "ap_pnc", "src", "tests"]
 extend-exclude = [
     "artifacts",
     "docs",
@@ -37,7 +50,6 @@ select = [
     "RUF100",
 ]
 ignore = [
-    # Handled by the formatter and project layout
     "E203",
     "E266",
     "E501",
@@ -45,7 +57,7 @@ ignore = [
 fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["feature", "src"]
+known-first-party = ["feature", "ap_pnc", "src"]
 combine-as-imports = true
 
 [tool.ruff.format]

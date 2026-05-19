@@ -1,8 +1,0 @@
-#!/usr/bin/bash
-set -e
-
-PROJECT_ROOT=$(dirname $(dirname $(dirname $(realpath "$0"))))
-(
-    cd $PROJECT_ROOT
-    ./pyp src/c_nmpc/nmpc/create_ocp_or_sim.py
-)

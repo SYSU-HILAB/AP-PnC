@@ -16,6 +16,4 @@ restart_ros() {
 }
 
 
-vpython() {
-    source $AP_PNC_DIR/.acados_venv/bin/activate
-}
+

@@ -68,30 +68,29 @@ services:
               capabilities: [gpu, compute, graphics, utility, video]
     command: qgc
 
-  # ap-pnc:
-  #   build:
-  #     context: .
-  #     dockerfile: docker/ap-pnc.dockerfile
-  #     network: host
-  #   image: ap-pnc:latest
-  #   container_name: ap-pnc
-  #   privileged: true
-  #   network_mode: host
-  #   environment:
-  #     - DISPLAY=${DISPLAY}
-  #     - QT_X11_NO_MITSHM=1
-  #     - ACCEPT_EULA=Y
-  #     - PRIVACY_CONSENT=Y
-  #   volumes:
-  #     - ${HOME}/.Xauthority:/root/.Xauthority
-  #     - /tmp/.X11-unix:/tmp/.X11-unix
-  #     - ./src/tailsitter_df:/ap-pnc/src/tailsitter_df
-  #     - ./src/trajectory_server:/ap-pnc/src/trajectory_server
-  #     - ./scripts/tools:/ap-pnc/scripts/tools
-  #     - ./artifacts/simulations/temp_data:/ap-pnc/artifacts/simulations/temp_data
-  #   command: bash
-  #   stdin_open: true
-  #   tty: true
-  #   depends_on:
-  #     - qground_control
-  #     - px4-simulator
+  ap-pnc:
+    build:
+      context: ..
+      dockerfile: docker/ap-pnc.dockerfile
+    image: ap-pnc:latest
+    container_name: ap-pnc
+    privileged: true
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+      - LD_LIBRARY_PATH=/ap-pnc/mpc_framework/lib:${LD_LIBRARY_PATH:-}
+    volumes:
+      - ${HOME}/.Xauthority:/root/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./c_generated_code:/ap-pnc/c_generated_code
+      - ./mpc_framework/lib:/ap-pnc/mpc_framework/lib
+      - ./artifacts/simulations/temp_data:/ap-pnc/artifacts/simulations/temp_data
+    command: bash
+    stdin_open: true
+    tty: true
+    depends_on:
+      - qground_control
+      - px4-simulator

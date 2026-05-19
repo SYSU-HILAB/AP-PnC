@@ -1,102 +1,100 @@
 # AP-PnC
 
----
-
-## Python Wrapper (`pyp`)
-
-The `pyp` script provides a native Python wrapper that automatically locates and executes the project's Python interpreter from `.acados_venv`. It works both in the main repository and in git worktrees.
-
-### Usage
-
-```shell
-# Run Python interactively
-./pyp
-
-# Run a Python script
-./pyp script.py
-
-# Run a module
-./pyp -m module_name
-
-# Pass arguments to Python
-./pyp -c "print('hello')"
-```
-
-### How It Works
-
-1. **Git-aware**: Automatically detects the git repository root, handling both:
-   - Normal repositories (where `.git` is a directory)
-   - Git worktrees (where `.git` is a file pointing to the worktree metadata)
-
-2. **Virtual environment detection**: Searches for Python in this order:
-   - `.acados_venv/bin/python` (primary)
-   - `.venv/bin/python`
-   - `venv/bin/python`
-   - `env/bin/python`
-
-3. **Environment override**: You can override the git root detection:
-   ```shell
-   AP_PNC_DIR=/custom/path ./pyp
-   ```
-
-### When to Use `pyp`
-
-Use `pyp` when you need to run Python commands outside of the `justfile` recipes:
-
-- In CI/CD pipelines
-- From other scripts
-- When running Python interactively from the terminal
+Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
 ---
 
-# Building and Launching ROS2 Components
-
-**IMPORTANT**: Always use the wrapper scripts in `scripts/tools/` for building and launching ROS2 components. **DO NOT** use `colcon build` or `ros2 launch` directly.
-
-See [docs/build-and-launch.md](docs/build-and-launch.md) for detailed information.
-
-### Building and Running
-
-After modifying `global.toml`:
+## Install
 
 ```bash
-# Build the workspace
-scripts/tools/build
-
-# Launch trajectory server with new solver configuration
-scripts/tools/plan
+git clone https://github.com/WarriorHanamy/AP-PnC.git --recurse-submodules
 ```
 
-## Quick Reference
+```bash
+uv sync --group dev
+uv run ap-pnc install
+```
+
+`uv run ap-pnc install` handles:
+
+- acados C library build (cmake + make)
+- t_renderer download
+- acados_template Python interface (editable install)
+
+---
+
+## CLI Usage
+
+All project commands are accessed through the unified CLI:
 
 ```bash
-# Build the workspace (instead of colcon build)
+uv run ap-pnc --help
+```
+
+| Group      | Commands                         | Description                          |
+|------------|----------------------------------|--------------------------------------|
+| `install`  | (default)                        | Install everything (acados + deps)   |
+| `cocp`     | (default)                        | Generate acados OCP C code           |
+| `traj`     | `viz`, `viz-tracking`, `viz-elmpc`, `odom` | Trajectory visualization    |
+| `aerodyn`  | `gen`, `viz`, `ml train\|pipeline`, `show`, `direct-show`, `csv-vs-model` | Aerodynamics |
+| `benchmark`| `jax`, `torch`, `compare`        | Compute timing benchmarks            |
+| `test`     | `all`, `vmap`, `jax-trim`, `lmpc`, `nmpc`, `sim-model`, `sim-gd`, `casadi`, `frame-conversion`, `ros-viz` | Test runners |
+| `build`    | `aero`, `traj-server`, `all`     | C++ colcon builds                    |
+| `nn-trim`  | `run`, `plot`                    | Neural network trim analysis         |
+| `docker`   | `build`, `up`, `down`            | Docker compose commands              |
+| `lint`     | (default), `fmt`                 | Ruff linter and formatter            |
+
+### Examples
+
+```bash
+uv run cocp                    # Generate acados OCP solver C code
+uv run ap-pnc traj viz             # Launch reference trajectory + RViz2
+uv run ap-pnc aerodyn gen          # Generate coordinated aero data (JAX)
+uv run ap-pnc aerodyn viz          # Visualize aero data
+uv run ap-pnc benchmark compare    # Compare JAX/Torch/CasADi timing
+uv run ap-pnc test nmpc            # Run proposed NMPC test
+uv run ap-pnc build all            # Build all C++ packages
+uv run ap-pnc lint                 # Lint test files
+```
+
+---
+
+## Building and Launching ROS2 Components
+
+Always use the wrapper scripts in `scripts/tools/` for building and launching ROS2 components. Do not use `colcon build` or `ros2 launch` directly.
+
+See [docs/build-and-launch.md](docs/build-and-launch.md) for details.
+
+### Quick Reference
+
+```bash
 scripts/tools/build              # Regular build
 scripts/tools/build --clean      # Clean build
-
+scripts/tools/plan               # Launch trajectory server
 ```
 
-### User-Facing vs. Developer Scripts
-
-Only production-ready entry points belong under `scripts/tools`. Each file in that tree is treated as an operational wrapper that prepares the ROS2/colcon environment, so users expect to call it directly (without `./pyp`) on any workstation. Dropping ad-hoc experiments there—such as `scripts/tools/compare_solver_methods.py`, which is purely a solver comparison harness—avoids the `./pyp` bootstrap, mutates `sys.path` manually, and ships an undocumented interface next to our supported tooling. Keep developer utilities in `test/` (with pytest) or alongside the package they exercise inside `feature/`, and reserve `scripts/tools` for user-level launch/build wrappers only.
+---
 
 ## Workspace Behavior with Git Worktrees
 
-This project uses different workspace strategies for Python vs C++/ROS2 components:
+### Python Projects (via `uv run`)
 
-### Python Projects (via `./pyp`)
-- **Virtual Environment**: Shared across all worktrees
-- **Location**: Main repository root (e.g., `/home/rec/AP-PnC/.acados_venv`)
-- **Rationale**: Python packages are large; sharing prevents duplication across worktrees
+- **Virtual Environment**: `.venv` at the main repository root, shared across worktrees
+- **Location**: Main repository root (e.g., `/home/rec/AP-PnC/.venv`)
+- **Rationale**: Python packages are large; sharing prevents duplication
 
 ### C++/ROS2 Projects (via `scripts/tools/`)
+
 - **Workspace**: Current worktree (where you run the command)
 - **Build Artifacts**: Worktree-specific (`build/`, `install/`, `log/`)
 - **Rationale**: ROS2/colcon builds produce compiled artifacts that must be worktree-isolated
 
-**Example:**
-```bash
-# When in /home/rec/AP-PnC.worktree/proposed:
-./pyp script.py           # Uses /home/rec/AP-PnC/.acados_venv (shared)
-scripts/tools/build        # Builds in /home/rec/AP-PnC.worktree/proposed (worktree-specific)
-```
+---
+
+## Environment Variables
+
+| Variable           | Purpose                    | Default                      |
+|--------------------|----------------------------|------------------------------|
+| `AP_PNC_DIR`         | Override git root detection | auto-detected via `git rev-parse` |
+| `ACADOS_SOURCE_DIR`  | acados C source tree       | `$AP_PNC_DIR/mpc_framework`    |
+| `LD_LIBRARY_PATH`    | acados runtime libraries   | `$AP_PNC_DIR/mpc_framework/lib` |
