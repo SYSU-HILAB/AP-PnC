@@ -14,7 +14,7 @@ plt.rcParams.update({
     "pgf.preamble": r"\usepackage{amsmath}",
 })
 
-from feature.lu_mpc.model.sim.gd_model_jax import aerodynamics_B_vb
+from ap_pnc.lu_mpc.model.sim.gd_model_jax import aerodynamics_B_vb
 
 # -------------------------------------------------------------------------------
 # MOCK IMPORT: Replace this block with your actual import

@@ -12,7 +12,7 @@ app = typer.Typer()
 def jax() -> None:
     """Benchmark JAX compute timing."""
     setup_env()
-    code = "from feature.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()"
+    code = "from ap_pnc.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()"
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
@@ -20,19 +20,20 @@ def jax() -> None:
 def torch() -> None:
     """Benchmark Torch compute timing."""
     setup_env()
-    code = "from feature.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
+    code = "from ap_pnc.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 @app.command()
-def compare(
-    mesh_size: int = typer.Argument(361, help="Mesh size for timing comparison"),
-    num_runs: int = typer.Argument(10, help="Number of timing runs"),
-) -> None:
-    """Compare compute timing across JAX/Torch/CasADi."""
+def compare() -> None:
+    """Run timing benchmarks across all backends (JAX, Torch, CasADi)."""
     setup_env()
-    script = get_git_root() / "scripts" / "compare_timing.py"
-    subprocess.run([sys.executable, str(script), str(mesh_size), str(num_runs)], check=True)
+    codes = [
+        "from ap_pnc.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()",
+        "from ap_pnc.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()",
+    ]
+    for code in codes:
+        subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def get_git_root():

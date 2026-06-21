@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from feature.lu_mpc.model.sim.sim_gd_model import (
+from ap_pnc.lu_mpc.model.sim.sim_gd_model import (
     GdModelSimulator,
     GdSimConfig,
 )

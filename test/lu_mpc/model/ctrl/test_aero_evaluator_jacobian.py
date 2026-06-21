@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from feature.lu_mpc.model.ctrl.aero_evaluator import AeroForceEvaluator
+from ap_pnc.lu_mpc.model.ctrl.aero_evaluator import AeroForceEvaluator
 
 
 class TestAeroForceEvaluatorJacobian:

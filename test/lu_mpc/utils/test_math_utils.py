@@ -1,6 +1,6 @@
 import numpy as np
 
-from feature.utils.math_utils import extract_yb_from_quat, wing_frd_to_quad_flu
+from ap_pnc.utils.math_utils import extract_yb_from_quat, wing_frd_to_quad_flu
 
 
 def test_wing_frd_to_quad_flu_identity_transform():

@@ -17,8 +17,8 @@ import pandas as pd
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 jax.config.update("jax_platform_name", "cpu")
 
-from feature.aerodynamics.data.dataset import AeroMLDataset
-from feature.aerodynamics.inference.predictor import AerodynamicsMLPPredictor
+from ap_pnc.aerodynamics.data.dataset import AeroMLDataset
+from ap_pnc.aerodynamics.inference.predictor import AerodynamicsMLPPredictor
 
 # Aero type configuration
 AERO_TYPES = ["lyu", "bspline", "phi", "advanced"]

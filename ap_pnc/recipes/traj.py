@@ -12,7 +12,7 @@ app = typer.Typer()
 def viz(
     playback_dt: float = typer.Option(0.05, help="Playback delta time [s]"),
     rviz_config: str = typer.Option(
-        "feature/lu_mpc/ros/config/ref_trajs.rviz", help="RViz config file path"
+        "ap_pnc/lu_mpc/ros/config/ref_trajs.rviz", help="RViz config file path"
     ),
 ) -> None:
     """Launch reference trajectory publisher + RViz2."""
@@ -28,7 +28,7 @@ def viz(
 @app.command(name="viz-tracking")
 def viz_tracking(
     rviz_config: str = typer.Option(
-        "feature/lu_mpc/ros/config/nmpc_viz.rviz", help="RViz config file path"
+        "ap_pnc/lu_mpc/ros/config/nmpc_viz.rviz", help="RViz config file path"
     ),
 ) -> None:
     """Launch tracking visualization + RViz2."""
@@ -44,7 +44,7 @@ def viz_tracking(
 @app.command(name="viz-elmpc")
 def viz_elmpc(
     rviz_config: str = typer.Option(
-        "feature/lu_mpc/ros/config/nmpc_viz.rviz", help="RViz config file path"
+        "ap_pnc/lu_mpc/ros/config/nmpc_viz.rviz", help="RViz config file path"
     ),
 ) -> None:
     """Launch error-state MPC tracking visualization + RViz2."""
@@ -60,7 +60,7 @@ def viz_elmpc(
 @app.command()
 def odom(
     rviz_config: str = typer.Option(
-        "feature/lu_mpc/ros/config/plotjuggler_odometry_xyz.xml", help="PlotJuggler config file path"
+        "ap_pnc/lu_mpc/ros/config/plotjuggler_odometry_xyz.xml", help="PlotJuggler config file path"
     ),
 ) -> None:
     """Launch PlotJuggler for odometry XYZ."""

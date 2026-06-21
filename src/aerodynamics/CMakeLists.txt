@@ -107,30 +107,32 @@ endif()
 
 ament_auto_package()
 
-# # --------------------------------------------------------------------------- #
-# gazebo plugins
-find_package(gz-cmake3 REQUIRED)
-set(GZ_CMAKE_VER ${gz-cmake3_VERSION_MAJOR})
+option(BUILD_GAZEBO_PLUGINS "Build Gazebo plugins" ON)
 
-gz_find_package(gz-sim7 REQUIRED)
-set(GZ_SIM_VER ${gz-sim7_VERSION_MAJOR})
+if(BUILD_GAZEBO_PLUGINS)
+  find_package(gz-cmake3 REQUIRED)
+  set(GZ_CMAKE_VER ${gz-cmake3_VERSION_MAJOR})
 
-ament_auto_add_library(AerodynamicsPlugin
-  SHARED
-  src/gazebo_plugins/AerodynamicsPlugin.cc
-)
+  gz_find_package(gz-sim7 REQUIRED)
+  set(GZ_SIM_VER ${gz-sim7_VERSION_MAJOR})
 
-target_link_libraries(AerodynamicsPlugin
-  ${PROJECT_NAME}_phi
-  ${PROJECT_NAME}_lyu
-  ${PROJECT_NAME}_non
-  ${PROJECT_NAME}_advanced_lift_drag
-  ${PROJECT_NAME}_bspline
-  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
-)
-# install target *_gazebo to ~/.gz/sim/plugins
-install(
-  FILES ${CMAKE_BINARY_DIR}/libAerodynamicsPlugin.so
-  DESTINATION ~/.gz/sim/plugins/
-  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-)
+  ament_auto_add_library(AerodynamicsPlugin
+    SHARED
+    src/gazebo_plugins/AerodynamicsPlugin.cc
+  )
+
+  target_link_libraries(AerodynamicsPlugin
+    ${PROJECT_NAME}_phi
+    ${PROJECT_NAME}_lyu
+    ${PROJECT_NAME}_non
+    ${PROJECT_NAME}_advanced_lift_drag
+    ${PROJECT_NAME}_bspline
+    gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+  )
+
+  install(
+    FILES ${CMAKE_BINARY_DIR}/libAerodynamicsPlugin.so
+    DESTINATION ~/.gz/sim/plugins/
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+  )
+endif()

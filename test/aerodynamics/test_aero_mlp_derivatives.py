@@ -12,11 +12,11 @@ import numpy as np
 import pytest
 from pathlib import Path
 
-from feature.aerodynamics.inference.derivatives import (
+from ap_pnc.aerodynamics.inference.derivatives import (
     AerodynamicsMLPDerivatives,
     load_aero_derivatives,
 )
-from feature.aerodynamics.inference.predictor import AerodynamicsMLPPredictor
+from ap_pnc.aerodynamics.inference.predictor import AerodynamicsMLPPredictor
 
 
 # Fixture to skip tests if trained models don't exist

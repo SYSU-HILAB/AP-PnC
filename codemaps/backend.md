@@ -237,7 +237,7 @@ private:
 - `mpc_framework/acados/` (ACADOS library)
 - `src/tailsitter_df/` (Dynamics model)
 
-**Configuration**: `feature/lu_mpc/acados_ocp_nlp.json`
+**Configuration**: `ap_pnc/lu_mpc/acados_ocp_nlp.json`
 
 ### 5. Tailsitter Dynamics (`src/tailsitter_df/`)
 

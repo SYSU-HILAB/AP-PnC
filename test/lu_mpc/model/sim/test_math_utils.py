@@ -1,7 +1,7 @@
 import casadi as cs
 import numpy as np
 
-from feature.lu_mpc.model.sim.utils import math_utils
+from ap_pnc.lu_mpc.model.sim.utils import math_utils
 
 
 def _manual_quat_multiply(q1, q2):

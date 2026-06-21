@@ -1,2 +1,0 @@
-#!/bin/bash
-cloc .  --exclude-dir=c_generated_code,build,install,log,.vscode,output_csv,mpc_framework

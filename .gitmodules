@@ -7,7 +7,7 @@
 	url = https://github.com/acados/acados.git
 	branch = main
 [submodule "scripts/sciplots"]
-	path = scripts/sciplots
+	path = ap_pnc/sciplots
 	url = https://github.com/WarriorHanamy/sciplots.git
 [submodule "src/trajectory_planner/tailsitter_df/include/autodiff"]
 	path = src/trajectory_planner/tailsitter_df/include/autodiff

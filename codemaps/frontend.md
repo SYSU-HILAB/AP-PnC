@@ -9,7 +9,7 @@ The Python frontend provides a modern, flexible interface for model simulation, 
 ## Directory Structure
 
 ```
-feature/lu_mpc/
+ap_pnc/lu_mpc/
 ├── __init__.py
 │
 ├── model/                      # Model implementations
@@ -52,7 +52,7 @@ feature/lu_mpc/
 
 ## Core Components
 
-### 1. Simulation Models (`feature/lu_mpc/model/sim/`)
+### 1. Simulation Models (`ap_pnc/lu_mpc/model/sim/`)
 
 #### Unified Interface
 **File**: `sim_gd_model.py`
@@ -147,7 +147,7 @@ class GDModelCasadi:
 - `numpy`
 
 **Used By**:
-- `feature/lu_mpc/model/ctrl/proposed_model.py` (ACADOS integration)
+- `ap_pnc/lu_mpc/model/ctrl/proposed_model.py` (ACADOS integration)
 - ACADOS code generation
 
 #### JAX Backend
@@ -273,7 +273,7 @@ class GDModelTorch:
 - Deep reinforcement learning
 - GPU-accelerated batch processing
 
-### 2. Control Models (`feature/lu_mpc/model/ctrl/`)
+### 2. Control Models (`ap_pnc/lu_mpc/model/ctrl/`)
 
 #### Proposed Model
 **File**: `proposed_model.py`
@@ -296,7 +296,7 @@ model.set_constraints(
 )
 
 # Export to ACADOS
-model.export_acados_template("feature/lu_mpc/acados_ocp_nlp.json")
+model.export_acados_template("ap_pnc/lu_mpc/acados_ocp_nlp.json")
 ```
 
 **State Space** (18D):
@@ -341,7 +341,7 @@ class ProposedModel:
 ```
 
 **Dependencies**:
-- `feature/lu_mpc/model/sim/gd_model_casadi.py`
+- `ap_pnc/lu_mpc/model/sim/gd_model_casadi.py`
 - `casadi`
 
 #### Error-State Model
@@ -393,7 +393,7 @@ class ErrStateModel:
 ```
 
 **Dependencies**:
-- `feature/lu_mpc/model/sim/gd_model_jax.py` (or CasADi)
+- `ap_pnc/lu_mpc/model/sim/gd_model_jax.py` (or CasADi)
 - `scipy` (for LQR)
 
 #### Aerodynamic Evaluator
@@ -407,7 +407,7 @@ from feature.lu_mpc.model.ctrl.aero_evaluator import AeroEvaluator
 evaluator = AeroEvaluator(backend="jax")
 
 # Load cached mesh data
-evaluator.load_cache("feature/lu_mpc/.cache/mesh_aero_data_jax.npy")
+evaluator.load_cache("ap_pnc/lu_mpc/.cache/mesh_aero_data_jax.npy")
 
 # Evaluate at query point
 cz, cd, cy = evaluator.evaluate(alpha=0.1, beta=0.0, velocity=10.0)
@@ -427,7 +427,7 @@ class AeroEvaluator:
         """Trilinear interpolation on mesh data."""
 ```
 
-### 3. Controllers (`feature/lu_mpc/controller/`)
+### 3. Controllers (`ap_pnc/lu_mpc/controller/`)
 
 #### Proposed NMPC Controller
 **File**: `ctrl_proposed_nmpc.py`
@@ -438,7 +438,7 @@ Non-linear MPC controller using ACADOS solver.
 from feature.lu_mpc.controller.ctrl_proposed_nmpc import CtrlProposedNMPC
 
 controller = CtrlProposedNMPC(
-    config="feature/lu_mpc/acados_ocp_nlp.json",
+    config="ap_pnc/lu_mpc/acados_ocp_nlp.json",
     model=ProposedModel(backend="casadi")
 )
 
@@ -477,11 +477,11 @@ class CtrlProposedNMPC:
         """
 ```
 
-**Configuration**: `feature/lu_mpc/acados_ocp_nlp.json`
+**Configuration**: `ap_pnc/lu_mpc/acados_ocp_nlp.json`
 
 **Dependencies**:
 - `acados` (Python bindings)
-- `feature/lu_mpc/model/ctrl/proposed_model.py`
+- `ap_pnc/lu_mpc/model/ctrl/proposed_model.py`
 
 #### Error-State lMPC Controller
 **File**: `ctrl_err_state_lmpc.py`
@@ -520,9 +520,9 @@ class CtrlErrStateLMPC:
 
 **Dependencies**:
 - `cvxpy` or `osqp`
-- `feature/lu_mpc/model/ctrl/err_state_model.py`
+- `ap_pnc/lu_mpc/model/ctrl/err_state_model.py`
 
-### 4. Plotting (`feature/lu_mpc/plotting/`)
+### 4. Plotting (`ap_pnc/lu_mpc/plotting/`)
 
 #### Aerodynamic Coefficient Plotter
 **File**: `plot_aero_coefficients.py`
@@ -569,10 +569,10 @@ plot_mesh_aero(
 )
 ```
 
-### 5. ROS2 Integration (`feature/lu_mpc/ros/`)
+### 5. ROS2 Integration (`ap_pnc/lu_mpc/ros/`)
 
 #### NMPC Visualization Node
-**File**: `feature/lu_mpc/ros/nodes/test_proposed_nmpc_viz.py`
+**File**: `ap_pnc/lu_mpc/ros/nodes/test_proposed_nmpc_viz.py`
 
 ```python
 from feature.lu_mpc.ros.nodes.test_proposed_nmpc_viz import main
@@ -588,7 +588,7 @@ main(
 - Publishes: `/mpc_trajectory`, `/tracking_error`
 
 #### Launch Files
-**Directory**: `feature/lu_mpc/ros/launch/`
+**Directory**: `ap_pnc/lu_mpc/ros/launch/`
 
 - `test_proposed_nmpc_viz.launch.py`: Launch NMPC with visualization
 - `test_ref_trajectory_viz.launch.py`: Playback reference trajectory
@@ -651,11 +651,11 @@ solver_method = "auto"
 
 [cache]
 enabled = true
-path = "feature/lu_mpc/.cache"
+path = "ap_pnc/lu_mpc/.cache"
 ```
 
 ### ACADOS Configuration
-**File**: `feature/lu_mpc/acados_ocp_nlp.json`
+**File**: `ap_pnc/lu_mpc/acados_ocp_nlp.json`
 
 ACADOS solver configuration (NLP, QP solver, integrator).
 

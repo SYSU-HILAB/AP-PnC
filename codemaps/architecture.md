@@ -74,17 +74,17 @@ AP-PnC/
 │   ├── utils/                  # Utilities (config, CSV, profiling)
 │   └── external_libraries/     # Third-party dependencies
 │
-├── feature/lu_mpc/            # Python frontend package
-│   ├── model/sim/             # Simulation backends (CasADi, JAX, PyTorch)
-│   ├── model/ctrl/            # Control models (proposed, error-state)
-│   ├── controller/            # MPC controllers
-│   ├── plotting/              # Visualization tools
-│   └── ros/                   # ROS2 integration
+├── ap_pnc/                    # Main Python package (CLI + library)
+│   ├── aerodynamics/          # MLP models, data, training, inference
+│   ├── lu_mpc/                # MPC controller, model, plotting
+│   ├── utils/                 # utilities (color_print, math_utils, etc.)
+│   ├── sciplots/              # vendored scientific plotting library
+│   ├── paper_plots/           # paper figure generation scripts
+│   └── recipes/               # CLI command implementations
 │
 ├── mpc_framework/             # ACADOS framework
-├── scripts/tools/             # Production ROS2 wrappers
+├── scripts/tools/             # Shell wrappers for colcon build, launch, env setup
 ├── docs/                      # Documentation
-├── ap_pnc/                    # CLI package (uv entry point)
 ├── pyproject.toml             # uv project config
 └── .venv/                     # uv-managed virtual environment
 ```
@@ -105,11 +105,11 @@ Reference Trajectory → Global Planner → Local MPC → Motor Commands
 ```
 
 ### 3. Factory Pattern
-- `get_model()` in `feature/lu_mpc/model/sim/`: Backend-agnostic model creation
+- `get_model()` in `ap_pnc/lu_mpc/model/sim/`: Backend-agnostic model creation
 - `CzCalculate` in `src/aerodynamics/`: Adaptive solver selection
 
 ### 4. Cache Strategy
-- Aerodynamic data: `feature/lu_mpc/.cache/mesh_aero_data*.npy`
+- Aerodynamic data: `ap_pnc/lu_mpc/.cache/mesh_aero_data*.npy`
 - Lookup tables: `artifacts/simulations/aero_lookup_table.csv`
 
 ## State Space (18D)
@@ -179,7 +179,7 @@ scripts/tools/srunall     # Full system launch
 | File | Purpose |
 |------|---------|
 | `global.toml` | Global system parameters, solver method selection |
-| `feature/lu_mpc/acados_ocp_nlp.json` | ACADOS solver configuration |
+| `ap_pnc/lu_mpc/.cache/ocp_*.json` | ACADOS solver configurations |
 | `.clang-format` | C++ formatting rules |
 | `justfile` | All development tasks |
 

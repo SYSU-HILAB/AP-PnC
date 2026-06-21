@@ -258,5 +258,5 @@ END PROCEDURE
 ## References
 
 - **File**: `test/lu_mpc/analysis/user_test_jax_trim.py`
-- **Aerodynamics**: `feature/lu_mpc/model/sim/gd_model_jax.py`
+- **Aerodynamics**: `ap_pnc/lu_mpc/model/sim/gd_model_jax.py`
 - **Solver**: `jaxopt.LevenbergMarquardt`

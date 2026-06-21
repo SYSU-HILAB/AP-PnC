@@ -1,6 +1,6 @@
 import pytest
 
-from feature.lu_mpc.ros.reference_visualizer import advance_playback_time
+from ap_pnc.lu_mpc.ros.reference_visualizer import advance_playback_time
 
 
 def test_advance_without_loop_stops_at_end():

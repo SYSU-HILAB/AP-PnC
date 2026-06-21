@@ -81,12 +81,11 @@ services:
       - QT_X11_NO_MITSHM=1
       - ACCEPT_EULA=Y
       - PRIVACY_CONSENT=Y
-      - LD_LIBRARY_PATH=/ap-pnc/mpc_framework/lib:${LD_LIBRARY_PATH:-}
+      - AP_PNC_DIR=/ap-pnc
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./c_generated_code:/ap-pnc/c_generated_code
-      - ./mpc_framework/lib:/ap-pnc/mpc_framework/lib
+      - ../build/nmpc_wrapper/libnmpc_bundle.a:/ap-pnc/build/nmpc_wrapper/libnmpc_bundle.a
       - ./artifacts/simulations/temp_data:/ap-pnc/artifacts/simulations/temp_data
     command: bash
     stdin_open: true

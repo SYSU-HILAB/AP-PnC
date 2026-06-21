@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from feature.lu_mpc.model.sim.aero_coefficients import (
+from ap_pnc.lu_mpc.model.sim.aero_coefficients import (
     get_jax_coefficients,
     get_numpy_coefficients,
 )
-from feature.lu_mpc.model.sim.gd_model_casadi import SymbolicGdModel
+from ap_pnc.lu_mpc.model.sim.gd_model_casadi import SymbolicGdModel
 
 
 def test_numpy_and_jax_coefficients_match_values():

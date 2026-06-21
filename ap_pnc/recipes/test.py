@@ -54,7 +54,7 @@ def lmpc() -> None:
 def nmpc(simple: bool = typer.Option(False, "--simple", help="Use simple NMPC test")) -> None:
     """Run proposed NMPC controller test."""
     if simple:
-        _run_script("feature/lu_mpc/model/ctrl/test_proposed_nmpc_simple.py")
+        _run_script("ap_pnc/lu_mpc/model/ctrl/test_proposed_nmpc_simple.py")
     else:
         subprocess.run(
             [sys.executable, "-m", "feature.lu_mpc.model.ctrl.test_proposed_nmpc"],
@@ -71,20 +71,20 @@ def sim_model() -> None:
 @app.command(name="sim-gd")
 def sim_gd() -> None:
     """Run GD simulation model test."""
-    code = "from feature.lu_mpc.model.sim.sim_gd_model import test_gd_simulation; test_gd_simulation()"
+    code = "from ap_pnc.lu_mpc.model.sim.sim_gd_model import test_gd_simulation; test_gd_simulation()"
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 @app.command()
 def casadi() -> None:
     """Run CasADi symbolic model script."""
-    _run_script("feature/lu_mpc/model/sim/gd_model_casadi.py")
+    _run_script("ap_pnc/lu_mpc/model/sim/gd_model_casadi.py")
 
 
 @app.command(name="frame-conversion")
 def frame_conversion() -> None:
     """Run frame conversion test."""
-    code = "from feature.lu_mpc.model.sim.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
+    code = "from ap_pnc.lu_mpc.model.sim.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
     subprocess.run([sys.executable, "-c", code], check=True)
 
 

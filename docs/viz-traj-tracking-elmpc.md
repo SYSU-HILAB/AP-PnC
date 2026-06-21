@@ -45,7 +45,7 @@ just viz-traj-tracking-elmpc --rviz-config path/to/config.rviz
 | `--real-time-factor` | float | `1.0` | Speed multiplier (1.0 = real-time, 2.0 = 2x speed) |
 | `--hover` | flag | `true` (enabled by default) | Run in hover mode (fixed reference) vs tracking mode |
 | `--disable-aero` | flag | `false` | Skip publishing aerodynamic data |
-| `--rviz-config` | Path | `feature/lu_mpc/ros/config/nmpc_viz.rviz` | Custom RViz2 configuration |
+| `--rviz-config` | Path | `ap_pnc/lu_mpc/ros/config/nmpc_viz.rviz` | Custom RViz2 configuration |
 | `--no-rviz` | flag | `false` | Don't launch RViz2 (run simulation only) |
 
 ### Mode Selection
@@ -65,7 +65,7 @@ The `--hover` flag controls the controller behavior:
 To run in tracking mode, modify the justfile recipe to remove the `--hover` flag, or run the Python script directly:
 
 ```bash
-uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --rviz-config feature/lu_mpc/ros/config/nmpc_viz.rviz
+uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --rviz-config ap_pnc/lu_mpc/ros/config/nmpc_viz.rviz
 ```
 
 ## Architecture
@@ -111,7 +111,7 @@ user_test_traj_tracking_elmpc_viz.py
 
 The elMPC controller uses two configuration classes:
 
-### 1. ErrorStateLinearMpcConfig (`feature/lu_mpc/controller/config/ocp_err_state_cfg.py`)
+### 1. ErrorStateLinearMpcConfig (`ap_pnc/lu_mpc/controller/config/ocp_err_state_cfg.py`)
 
 Defines MPC solver parameters:
 
@@ -137,7 +137,7 @@ class ErrorStateLinearMpcConfig:
 - `create_default()`: Standard tracking weights
 - `create_high_gain()`: Higher gains for tighter tracking
 
-### 2. ErrStateLmpcAngVelActuatedCfg (`feature/lu_mpc/controller/config/ctrl_err_state_lmpc_cfg.py`)
+### 2. ErrStateLmpcAngVelActuatedCfg (`ap_pnc/lu_mpc/controller/config/ctrl_err_state_lmpc_cfg.py`)
 
 Combines MPC config with sub-controller configs:
 
@@ -167,7 +167,7 @@ Required columns:
 - `velocity_*`: Velocity in world frame (m/s)
 - `quat_quad_flu_*`: Quaternion in FLU frame [w, x, y, z]
 
-See `feature/lu_mpc/controller/trajectory_loader.py` for full format specification.
+See `ap_pnc/lu_mpc/controller/trajectory_loader.py` for full format specification.
 
 ## ROS Topics
 
@@ -236,7 +236,7 @@ just viz-traj-tracking-elmpc --trajectory /path/to/your/trajectory.csv
 
 ### Controller Gains
 
-Edit `feature/lu_mpc/controller/config/ocp_err_state_cfg.py:72`:
+Edit `ap_pnc/lu_mpc/controller/config/ocp_err_state_cfg.py:72`:
 
 ```python
 @classmethod
@@ -255,7 +255,7 @@ def create_high_gain(cls) -> "ErrorStateLinearMpcConfig":
 
 ### Horizon Length
 
-Edit `feature/lu_mpc/controller/config/ocp_err_state_cfg.py:55`:
+Edit `ap_pnc/lu_mpc/controller/config/ocp_err_state_cfg.py:55`:
 
 ```python
 ctrl_dt: float = 0.1   # Control timestep (smaller = more frequent updates)
@@ -271,4 +271,4 @@ nodes: int = 5         # Prediction nodes (larger = longer horizon, slower)
 - **[Quick Start Guide](quickstart.md)** - General installation and setup
 - **[Control Stack & Module Reference](control-stack.md)** - Full ROS2 architecture
 - **[ACADOS Documentation](https://github.com/acados/acados)** - Solver details
-- **`feature/lu_mpc/controller/ctrl_err_state_lmpc_ang_vel_actuated.py`** - Controller implementation
+- **`ap_pnc/lu_mpc/controller/ctrl_err_state_lmpc_ang_vel_actuated.py`** - Controller implementation

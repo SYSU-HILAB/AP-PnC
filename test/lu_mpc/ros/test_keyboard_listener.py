@@ -1,4 +1,4 @@
-from feature.lu_mpc.ros.keyboard_listener import is_space_keypress
+from ap_pnc.lu_mpc.ros.keyboard_listener import is_space_keypress
 
 
 def test_space_keypress_detects_space():

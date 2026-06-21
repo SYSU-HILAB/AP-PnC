@@ -12,13 +12,13 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_allclose
 
-from feature.lu_mpc.controller import ProposedNmpcAngVelActuatedController
-from feature.lu_mpc.controller.sub_controllers import (
+from ap_pnc.lu_mpc.controller import ProposedNmpcAngVelActuatedController
+from ap_pnc.lu_mpc.controller.sub_controllers import (
     PDController,
     PIDAntiWindupController,
     QpMixer,
 )
-from feature.lu_mpc.controller.config.sub_controllers import (
+from ap_pnc.lu_mpc.controller.config.sub_controllers import (
     PDControllerConfig,
     PIDAntiWindupConfig,
     QpMixerConfig,
@@ -181,7 +181,7 @@ class TestQpMixerIntegration:
 
     def test_allocation_with_simulator_params(self):
         """Test mixer allocation matches simulator parameters."""
-        from feature.lu_mpc.model.sim.sim_gd_model import DEFAULT_SIM_CONFIG
+        from ap_pnc.lu_mpc.model.sim.sim_gd_model import DEFAULT_SIM_CONFIG
 
         # Create mixer with simulator-matching parameters
         config = QpMixerConfig(
@@ -363,7 +363,7 @@ class TestProposedNmpcAngVelActuatedController:
 
     def test_factory_function(self):
         """Test factory function creates controller."""
-        from feature.lu_mpc.controller.trajectory_loader import load_trajectory_csv
+        from ap_pnc.lu_mpc.controller.trajectory_loader import load_trajectory_csv
         from pathlib import Path
 
         # Load test trajectory

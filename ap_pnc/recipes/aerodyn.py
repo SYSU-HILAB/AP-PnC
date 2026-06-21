@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 
@@ -29,20 +30,20 @@ def gen(
 
     if type_ == "coordinated":
         if engine == "jax":
-            code = "from feature.lu_mpc.model.sim.gd_model_jax import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
+            code = "from ap_pnc.lu_mpc.model.sim.gd_model_jax import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
         elif engine == "casadi":
-            code = "from feature.lu_mpc.model.sim.gd_model_casadi import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
+            code = "from ap_pnc.lu_mpc.model.sim.gd_model_casadi import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
         else:
-            code = "from feature.lu_mpc.model.sim.gd_model_torch import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
+            code = "from ap_pnc.lu_mpc.model.sim.gd_model_torch import generate_cl_cd_cm_coordinated_data; generate_cl_cd_cm_coordinated_data()"
     elif type_ == "mesh":
         if engine == "jax":
-            code = f"from feature.lu_mpc.model.sim.gd_model_jax import generate_mesh_data_jax; generate_mesh_data_jax(mesh_size={size})"
+            code = f"from ap_pnc.lu_mpc.model.sim.gd_model_jax import generate_mesh_data_jax; generate_mesh_data_jax(mesh_size={size})"
         elif engine == "casadi":
-            code = "from feature.lu_mpc.model.sim.gd_model_casadi import generate_mesh_data; generate_mesh_data()"
+            code = "from ap_pnc.lu_mpc.model.sim.gd_model_casadi import generate_mesh_data; generate_mesh_data()"
         else:
-            code = f"from feature.lu_mpc.model.sim.gd_model_torch import generate_mesh_data_torch; generate_mesh_data_torch(mesh_size={size})"
+            code = f"from ap_pnc.lu_mpc.model.sim.gd_model_torch import generate_mesh_data_torch; generate_mesh_data_torch(mesh_size={size})"
     else:
-        typer.echo(f"Error: type must be coordinated or mesh", err=True)
+        typer.echo("Error: type must be coordinated or mesh", err=True)
         raise typer.Exit(1)
 
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -61,16 +62,16 @@ def viz(
 
     if type_ == "all":
         data_file = (
-            git_root / "feature" / "lu_mpc" / ".cache" / "all_aero_coeffs_data.npy"
+            git_root / "ap_pnc" / "lu_mpc" / ".cache" / "all_aero_coeffs_data.npy"
         )
-        code = f"from feature.lu_mpc.plotting.aero_plots import plot_all_aerodynamic_coeffs; plot_all_aerodynamic_coeffs('{data_file}')"
+        code = f"from ap_pnc.lu_mpc.plotting.aero_plots import plot_all_aerodynamic_coeffs; plot_all_aerodynamic_coeffs('{data_file}')"
         subprocess.run([sys.executable, "-c", code], check=True)
     elif type_ == "mesh":
         if engine not in _ENGINES:
             typer.echo(f"Error: engine must be one of {_ENGINES}", err=True)
             raise typer.Exit(1)
         cache_name = f"mesh_aero_data{'_torch' if engine == 'torch' else '_jax' if engine == 'jax' else '_casadi'}.npy"
-        data_file = git_root / "feature" / "lu_mpc" / ".cache" / cache_name
+        data_file = git_root / "ap_pnc" / "lu_mpc" / ".cache" / cache_name
         func_map = {
             "jax": "plot_aerodynamic_mesh_jax",
             "torch": "plot_aerodynamic_mesh_torch",
@@ -78,26 +79,26 @@ def viz(
         }
         extra = ", show_plot=False" if no_show else ""
         code = (
-            f"from feature.lu_mpc.plotting.mesh_plots import {func_map[engine]}; "
+            f"from ap_pnc.lu_mpc.plotting.mesh_plots import {func_map[engine]}; "
             f"{func_map[engine]}('{data_file}', azimuth='{azimuth}'{extra})"
         )
         subprocess.run([sys.executable, "-c", code], check=True)
     elif type_ == "single":
         data_file = (
-            git_root / "feature" / "lu_mpc" / ".cache" / "coordinated_aero_data_jax.npy"
+            git_root / "ap_pnc" / "lu_mpc" / ".cache" / "coordinated_aero_data_jax.npy"
         )
         subprocess.run(
             [
                 sys.executable,
                 "-m",
-                "feature.lu_mpc.plotting.aero_plots",
+                "ap_pnc.lu_mpc.plotting.aero_plots",
                 str(data_file),
                 "--no-show",
             ],
             check=True,
         )
     else:
-        typer.echo(f"Error: type must be all, mesh, or single", err=True)
+        typer.echo("Error: type must be all, mesh, or single", err=True)
         raise typer.Exit(1)
 
 
@@ -107,7 +108,7 @@ def train(
 ) -> None:
     """Train MLP model for a specific aero type."""
     os.environ["JAX_PLATFORM_NAME"] = "cpu"
-    code = f"from feature.aerodynamics.training.trainer import train_single_aero_type; train_single_aero_type('{aero_type}')"
+    code = f"from ap_pnc.aerodynamics.training.trainer import train_single_aero_type; train_single_aero_type('{aero_type}')"
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
@@ -118,8 +119,8 @@ def pipeline() -> None:
     os.environ["JAX_PLATFORM_NAME"] = "cpu"
     git_root = get_git_root()
     code = (
-        "from feature.aerodynamics.data.dataset import assemble_parquet_dataset; "
-        "from feature.aerodynamics.training.trainer import train_all_aero_types; "
+        "from ap_pnc.aerodynamics.data.dataset import assemble_parquet_dataset; "
+        "from ap_pnc.aerodynamics.training.trainer import train_all_aero_types; "
         "import os; "
         f"csv_dir = '{git_root / 'artifacts' / 'simulations' / 'ml_aero_data'}'; "
         f"output = '{git_root / 'artifacts' / 'simulations' / 'aero_ml_dataset.parquet'}'; "
@@ -138,7 +139,7 @@ def show(
 ) -> None:
     """Compare derivatives across aero types."""
     setup_env()
-    script = get_git_root() / "scripts" / "tools" / "compare_aero_derivatives.py"
+    script = get_git_root() / "ap_pnc" / "tools" / "compare_aero_derivatives.py"
     args = [sys.executable, str(script)]
     if aero_type:
         args.extend(["--aero-type", aero_type])

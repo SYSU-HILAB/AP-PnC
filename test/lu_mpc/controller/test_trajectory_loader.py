@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from feature.lu_mpc.controller.trajectory_loader import (
+from ap_pnc.lu_mpc.controller.trajectory_loader import (
     TrajectoryReference,
     load_trajectory_csv,
 )

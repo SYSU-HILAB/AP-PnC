@@ -198,12 +198,12 @@ uv run python tests/lu_mpc/ros/user_test_ref_traj_viz.py
 
 Both visualizers use the **WXYZ** quaternion format `[w, x, y, z]` where w is the scalar part. This matches:
 - The CSV trajectory loader format
-- The mathematical convention in `feature/utils/math_utils.py`
+- The mathematical convention in `ap_pnc/utils/math_utils.py`
 - ROS2 standard Quaternion message ordering
 
 ### Architecture Notes
 
-The visualization nodes use shared utilities from `feature/utils/ros_visualizer` to avoid code duplication:
+The visualization nodes use shared utilities from `ap_pnc/utils/ros_visualizer` to avoid code duplication:
 - ROS message conversion helpers (NumPy → ROS messages)
 - Path creation and management utilities
 - QoS profile factory functions

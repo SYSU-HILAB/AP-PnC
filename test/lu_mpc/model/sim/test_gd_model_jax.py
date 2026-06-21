@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 
-from feature.lu_mpc.model.sim.gd_model_jax import (
+from ap_pnc.lu_mpc.model.sim.gd_model_jax import (
     compute_aerodynamic_coeffs_jax,
     compute_angles_batch,
     compute_angles_single,

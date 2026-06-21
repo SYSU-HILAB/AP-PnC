@@ -12,8 +12,8 @@ from pathlib import Path
 
 import rclpy
 
-from feature.lu_mpc.controller.trajectory_loader import get_trajectory_path
-from feature.lu_mpc.ros.nmpc_orchestrator import MpcOrchestrator
+from ap_pnc.lu_mpc.controller.trajectory_loader import get_trajectory_path
+from ap_pnc.lu_mpc.ros.nmpc_orchestrator import MpcOrchestrator
 
 
 def _resolve_rviz_config(user_path: str | None) -> Path:
@@ -92,7 +92,7 @@ def parse_args() -> argparse.Namespace:
         "--rviz-config",
         type=str,
         default=None,
-        help="Optional RViz2 config path. Defaults to feature/lu_mpc/ros/config/nmpc_viz.rviz.",
+        help="Optional RViz2 config path. Defaults to ap_pnc/lu_mpc/ros/config/nmpc_viz.rviz.",
     )
     parser.add_argument("--no-rviz", action="store_true", help="Do not launch RViz2 alongside the node.")
     return parser.parse_args()

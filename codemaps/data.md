@@ -307,7 +307,7 @@ enable_fallback = true
 [cache]
 # Cached aerodynamic data
 enabled = true
-path = "feature/lu_mpc/.cache"
+path = "ap_pnc/lu_mpc/.cache"
 mesh_size_alpha = 361    # Number of grid points in alpha
 mesh_size_beta = 361     # Number of grid points in beta
 mesh_size_velocity = 100 # Number of grid points in velocity

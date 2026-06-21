@@ -1,8 +1,8 @@
 """Test script for ErrStateLmpcAngVelActuatedController."""
 
 import numpy as np
-from feature.lu_mpc.controller import load_trajectory_csv, TrajectoryReference, ErrStateLmpcAngVelActuatedController
-from feature.lu_mpc.controller.config import ErrStateLmpcAngVelActuatedCfg
+from ap_pnc.lu_mpc.controller import load_trajectory_csv, TrajectoryReference, ErrStateLmpcAngVelActuatedController
+from ap_pnc.lu_mpc.controller.config import ErrStateLmpcAngVelActuatedCfg
 
 
 def test_err_state_lmpc():

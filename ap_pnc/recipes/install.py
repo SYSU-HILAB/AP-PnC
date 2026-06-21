@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 import typer
 
@@ -50,6 +49,22 @@ def _download_t_renderer() -> None:
     renderer.chmod(0o755)
 
 
+def _build_acados_static() -> None:
+    git_root = get_git_root()
+    build_dir = git_root / "build" / "acados_static"
+    src = git_root / "mpc_framework"
+    if (build_dir / "acados" / "libacados.a").exists():
+        return
+    build_dir.mkdir(parents=True, exist_ok=True)
+    nproc = os.cpu_count() or 4
+    subprocess.run(
+        ["cmake", "-S", str(src), "-B", str(build_dir),
+         "-DBUILD_SHARED_LIBS=OFF"],
+        check=True,
+    )
+    subprocess.run(["make", "-j", str(nproc), "-C", str(build_dir)], check=True)
+
+
 def _install_acados_template() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "pip", "show", "acados-template"],
@@ -68,12 +83,13 @@ def _install_acados_template() -> None:
 
 @app.callback(invoke_without_command=True)
 def install() -> None:
-    """Install everything: venv, acados C libs, t_renderer, acados_template, dev deps."""
+    """Install everything: venv, acados C libs (shared + static), t_renderer, acados_template."""
     git_root = get_git_root()
     subprocess.run(["uv", "sync", "--group", "dev"], cwd=git_root, check=True)
     _ensure_submodule()
     setup_env()
     _build_acados_c()
+    _build_acados_static()
     _download_t_renderer()
     _install_acados_template()
     typer.echo("Installation complete.")

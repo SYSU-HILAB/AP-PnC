@@ -18,19 +18,29 @@ ap-pnc = "ap_pnc.cli:main"
 
 [dependency-groups]
 dev = ["pytest", "ruff==0.5.4", "pandas"]
+extra = [
+    "jax[cpu]",
+    "torch",
+    "casadi",
+    "matplotlib",
+    "optax",
+    "flax",
+    "safetensors",
+    "seaborn",
+]
 
 [tool.uv]
 package = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["feature*", "ap_pnc*"]
+include = ["ap_pnc*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 required-version = "0.5.4"
-src = ["feature", "ap_pnc", "src", "tests"]
+src = ["ap_pnc", "src", "tests"]
 extend-exclude = [
     "artifacts",
     "docs",
@@ -57,7 +67,7 @@ ignore = [
 fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["feature", "ap_pnc", "src"]
+known-first-party = ["ap_pnc", "src"]
 combine-as-imports = true
 
 [tool.ruff.format]

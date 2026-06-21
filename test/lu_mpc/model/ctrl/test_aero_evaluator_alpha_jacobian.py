@@ -10,8 +10,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from feature.lu_mpc.model.ctrl.aero_evaluator import AeroForceEvaluator
-from feature.lu_mpc.controller.trajectory_loader import TrajectoryReference, find_planning_csv, load_trajectory_csv
+from ap_pnc.lu_mpc.model.ctrl.aero_evaluator import AeroForceEvaluator
+from ap_pnc.lu_mpc.controller.trajectory_loader import TrajectoryReference, find_planning_csv, load_trajectory_csv
 
 
 class TestAeroForceEvaluatorAlphaJacobian:
