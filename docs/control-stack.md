@@ -57,7 +57,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 * `model.py` defines `tailsitter_flu()` with augmented states `[p,v,r,q,u,cz_state]`, aerodynamic forces, and quaternion kinematics.
 * `config.py` (`ControlConfig`, `ProposedMpcConfig`) centralizes horizon length, weight matrices, state bounds, and regularization terms.
 * `create_ocp_or_sim.py` builds the `AcadosOcp`, sets cost expressions (`NONLINEAR_LS`), enforces actuator/state bounds, and emits JSON/c_generated code via `AcadosOcpSolver`.
-* Run with `./pyp src/c_nmpc/nmpc/create_ocp_or_sim.py` after changing dynamics or weights; `c_generated_code/` is what the C++ node links against.
+* Run with `uv run python src/c_nmpc/nmpc/create_ocp_or_sim.py` after changing dynamics or weights; `c_generated_code/` is what the C++ node links against.
 
 ### PX4 bridge (`src/px4_interface/src/px4_interface.cpp`)
 * Node name `px4_interface`.
@@ -127,7 +127,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 
 ## Extending or Modifying the Stack
 
-* **Changing dynamics/weights** – update `src/c_nmpc/nmpc/model.py` or `src/c_nmpc/nmpc/config.py`, re-run `./pyp src/c_nmpc/nmpc/create_ocp_or_sim.py`, then rebuild the ROS 2 workspace so `c_nmpc` links against the refreshed `c_generated_code`.
+* **Changing dynamics/weights** – update `src/c_nmpc/nmpc/model.py` or `src/c_nmpc/nmpc/config.py`, re-run `uv run python src/c_nmpc/nmpc/create_ocp_or_sim.py`, then rebuild the ROS 2 workspace so `c_nmpc` links against the refreshed `c_generated_code`.
 * **Adding new trajectories** – implement the shape inside `src/basic_trajectories` (follow `Circle` or `Lemniscate`), expose it in `GlobalPlanner::init_basic_trajectory_type`, and add parameters in `global.toml` or the relevant ROS 2 launch file.
 * **Integrating new sensors** – publish your measurement on a fresh topic and tap into `px4_interface` or `trajectory_buffer` as needed. Both nodes rely on `interface/msg/*.msg`, so reuse or extend those definitions.
 * **Tuning aerodynamic logic** – edit `global.toml` (mass, `phi`) and the filters inside `src/tailsitter_df` or `src/c_nmpc`. Re-run the NMPC builder after large changes so solver bounds stay consistent.

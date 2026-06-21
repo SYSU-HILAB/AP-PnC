@@ -14,13 +14,13 @@ Output:
 
 Usage:
     # Run with default parameters
-    ./pyp test/aerodynamics/test_nn_trim_analysis.py
+    uv run python test/aerodynamics/test_nn_trim_analysis.py
 
     # Run with custom parameters
-    ./pyp test/aerodynamics/test_nn_trim_analysis.py --mass 2.5 --v-max 15.0 --num-points 150
+    uv run python test/aerodynamics/test_nn_trim_analysis.py --mass 2.5 --v-max 15.0 --num-points 150
 
     # Generate plots only
-    ./pyp test/aerodynamics/test_nn_trim_analysis.py --plot-only
+    uv run python test/aerodynamics/test_nn_trim_analysis.py --plot-only
 """
 
 from dataclasses import dataclass

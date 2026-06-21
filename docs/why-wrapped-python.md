@@ -1,4 +1,6 @@
-# Why We Use Wrapped Python with Modern Software Design
+# Why We Used Wrapped Python (Historical)
+
+> **⚠️ DEPRECATED**: The `pyp` wrapper has been replaced by `uv run`. All Python execution now uses `uv` for virtual environment management and project isolation. See `docs/why-we-migrated-to-uv.md` for the migration rationale. This document remains as a historical reference for the design philosophy behind wrapped Python execution.
 
 > A deep dive into how our `pyp` wrapper exemplifies modern software architecture principles and improves developer experience
 
@@ -31,18 +33,18 @@ python script.py
 
 ---
 
-## The Solution: Wrapped Python with Modern Design
+## The Solution (Historical): Wrapped Python with Modern Design
 
-Our `pyp` implementation demonstrates a **wrapped Python approach** that combines modern software design principles with practical benefits.
+The legacy `pyp` implementation demonstrated a **wrapped Python approach** that combined modern software design principles with practical benefits. It has since been replaced by `uv run`, which provides equivalent functionality out of the box.
 
-### Usage
+### Usage (Legacy)
 
 ```bash
-# ✅ Simple and consistent
-./pyp script.py           # Run a Python script
-./pyp -m module_name      # Run a module
-./pyp                     # Interactive shell
-./pyp -c "print('hello')" # Execute code
+# ✅ Simple and consistent (historical)
+./pyp script.py           # Run a Python script (now: uv run python script.py)
+./pyp -m module_name      # Run a module (now: uv run python -m module_name)
+./pyp                     # Interactive shell (now: uv run python)
+./pyp -c "print('hello')" # Execute code (now: uv run python -c "print('hello')")
 ```
 
 ### What Makes It Modern?
@@ -52,13 +54,13 @@ Our `pyp` implementation demonstrates a **wrapped Python approach** that combine
 > "A good interface hides complexity behind simplicity."
 
 ```python
-# Users don't need to know:
+# Users don't need to know (historical - now handled by `uv run`):
 # - Where the venv is located
 # - How to detect git worktrees
 # - How to setup ROS2 environment
 # - How to handle different Python versions
 
-./pyp script.py  # Just works™
+uv run python script.py  # Just works™ (replaces ./pyp script.py)
 ```
 
 **Benefits**:
@@ -68,80 +70,68 @@ Our `pyp` implementation demonstrates a **wrapped Python approach** that combine
 
 #### 2. **Git-Aware Architecture**
 
-The wrapper intelligently handles different repository configurations:
+The wrapper (and now `uv`) intelligently handles different repository configurations:
 
-```python
-# ✅ Normal repositories
+```bash
+# ✅ Normal repositories (uv handles this automatically)
 $ cd /path/to/repo
-$ ./pyp script.py
-# → Detects .git directory
+$ uv run python script.py
 
-# ✅ Git worktrees
+# ✅ Git worktrees (uv detects pyproject.toml at repo root)
 $ cd /path/to/worktree
-$ ./pyp script.py
-# → Resolves commondir to find original repo
+$ uv run python script.py
+# → Uses .venv from the main worktree / shared project environment
 
-# ✅ Custom paths
-$ AP_PNC_DIR=/custom/path ./pyp script.py
-# → Uses specified directory
+# ✅ Custom paths (set AP_PNC_DIR for env.py resolution)
+$ AP_PNC_DIR=/custom/path uv run python script.py
+# → Uses /custom/path for ACADOS library path etc.
 ```
 
-**Implementation Highlight**:
+**Implementation Highlight** (now in `ap_pnc/env.py`):
 
 ```python
-def find_git_root() -> Path:
-    """Find the git repository root, handling both normal repos and worktrees."""
-    # Check for AP_PNC_DIR override
+def get_git_root() -> Path:
+    """Find the git repository root, handling worktrees via commondir."""
     ap_pnc_dir = os.environ.get("AP_PNC_DIR", "")
     if ap_pnc_dir:
         return Path(ap_pnc_dir).resolve()
 
-    # Use git rev-parse to find git dir
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--git-dir"],
-            cwd=cwd,
             capture_output=True,
             text=True,
-            check=False
         )
-        if result.returncode == 0:
-            git_file = Path(result.stdout.strip())
+        if result.returncode != 0:
+            return Path.cwd()
 
-            # Check if we're in a worktree
-            if "/worktrees/" in str(git_file):
-                # Read commondir to find original repo
-                commondir_file = git_file / "commondir"
-                if commondir_file.exists():
-                    commondir = commondir_file.read_text().strip()
-                    return (git_file / commondir).parent
-            else:
-                # Normal repo
-                return git_file.parent
+        git_dir = Path(result.stdout.strip())
+        if git_dir.is_absolute():
+            git_file = git_dir
+        else:
+            git_file = Path.cwd() / git_dir
+
+        if "/worktrees/" in str(git_file):
+            commondir_file = git_file / "commondir"
+            if commondir_file.exists():
+                commondir = commondir_file.read_text().strip()
+                original_git_dir = (git_file / commondir).resolve()
+                return original_git_dir.parent
+
+        return git_file.parent.resolve()
     except (subprocess.SubprocessError, FileNotFoundError):
-        pass
-
-    # Fallback to script directory
-    return Path(__file__).parent.resolve()
+        return Path.cwd()
 ```
 
 #### 3. **Integration with Modern Tooling**
 
-**Justfile Integration**:
+**uv Integration** (current approach):
 
-```justfile
+```bash
 # No venv activation needed!
-run-simulation:
-    #!/usr/bin/env bash
-    ./pyp scripts/simulate.py
-
-test:
-    #!/usr/bin/env bash
-    ./pyp -m pytest tests/
-
-type-check:
-    #!/usr/bin/env bash
-    ./pyp -m mypy src/
+uv run python scripts/simulate.py
+uv run pytest tests/
+uv run ruff check src/
 ```
 
 **CI/CD Pipelines**:
@@ -155,13 +145,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
       - name: Install dependencies
-        run: just install-all
+        run: uv sync --group dev
       - name: Run tests
-        run: ./pyp -m pytest
-      - name: Type checking
-        run: ./pyp -m mypy src/
+        run: uv run pytest
+      - name: Lint
+        run: uv run ruff check
 ```
 
 **Pre-commit Hooks**:
@@ -171,106 +163,57 @@ jobs:
 repos:
   - repo: local
     hooks:
-      - id: type-check
-        name: Type check with mypy
-        entry: ./pyp -m mypy src/
+      - id: ruff-lint
+        name: Run ruff linter
+        entry: uv run ruff check --fix
         language: system
 
       - id: run-tests
         name: Run pytest
-        entry: ./pyp -m pytest
+        entry: uv run pytest
         language: system
 ```
 
 #### 4. **Automatic Environment Management**
 
-The wrapper handles multiple environment aspects automatically:
+The wrapper (and now `uv`) handles environment management. The ACADOS and ROS2 setup logic lives in `ap_pnc/env.py`:
 
 ```python
-def find_python_interpreter(git_root: Path) -> Path | None:
-    """Find the Python interpreter in the virtual environment."""
-    venv_names = [".acados_venv", ".venv", "venv", "env"]
+def setup_env(ros: bool = False) -> None:
+    """Configure os.environ with acados paths and optionally ROS2."""
+    git_root = get_git_root()
+    os.environ.setdefault("AP_PNC_DIR", str(git_root))
+    os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / "mpc_framework"))
 
-    for venv_name in venv_names:
-        python_bin = git_root / venv_name / "bin" / "python"
-        if python_bin.exists():
-            return python_bin
+    lib_path = str(git_root / "mpc_framework" / "lib")
+    existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
+    if lib_path not in existing_ld:
+        os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{existing_ld}"
 
-    return None
+    pythonpath = os.environ.get("PYTHONPATH", "")
+    git_root_str = str(git_root)
+    if git_root_str not in pythonpath:
+        os.environ["PYTHONPATH"] = f"{git_root_str}:{pythonpath}"
 
-def setup_ros2_environment(env: dict) -> None:
-    """Source ROS2 setup.bash and update environment variables."""
-    ros_paths = [
-        "/opt/ros/humble",
-        "/opt/ros/iron",
-        "/opt/ros/jazzy",
-    ]
-
-    for ros_path in ros_paths:
-        setup_file = Path(ros_path) / "setup.bash"
-        if setup_file.exists():
-            # Source and capture environment
-            result = subprocess.run(
-                ["bash", "-c", f"source {setup_file} && env"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if result.returncode == 0:
-                # Parse and update environment
-                for line in result.stdout.splitlines():
-                    if "=" in line:
-                        key, value = line.split("=", 1)
-                        env[key] = value
-                return
+    if ros:
+        ros_env = source_ros2_env()
+        os.environ.update(ros_env)
 ```
 
 **What happens automatically**:
-- ✅ Detects virtual environments (`.acados_venv`, `.venv`, `venv`, `env`)
-- ✅ Sources ROS2 setup.bash when available
-- ✅ Inherits parent environment variables
-- ✅ Provides colored, informative status messages
+- ✅ Detects git root (including worktrees)
+- ✅ Sets `LD_LIBRARY_PATH` for ACADOS
+- ✅ Sets `PYTHONPATH` to project root
+- ✅ Sources ROS2 setup.bash when requested
 
 #### 5. **Type Safety & Modern Python**
 
 ```python
-from pathlib import Path
-
-def find_python_interpreter(git_root: Path) -> Path | None:
-    """
-    Find the Python interpreter in the virtual environment.
-
-    Args:
-        git_root: The git repository root directory
-
-    Returns:
-        Path to the Python interpreter, or None if not found
-    """
-    venv_names = [".acados_venv", ".venv", "venv", "env"]
-
-    for venv_name in venv_names:
-        python_bin = git_root / venv_name / "bin" / "python"
-        if python_bin.exists():
-            return python_bin
-
-    return None
-
-def main() -> int:
-    """Main entry point."""
-    git_root = find_git_root()
-    python_bin = find_python_interpreter(git_root)
-
-    if python_bin is None:
-        color_print(f"Error: Python interpreter not found!", Colors.RED + Colors.BOLD)
-        print()
-        color_print(f"Git Root detected: {git_root}", Colors.YELLOW)
-        color_print(f"Searched for venv at: {git_root}/{{.acados_venv,.venv,venv,env}}/bin/python", Colors.YELLOW)
-        return 1
-
-    # ... rest of implementation
+# uv handles Python interpreter discovery automatically.
+# No wrapper code needed — `uv run` finds .venv at project root.
 ```
 
-**Modern Python Features**:
+**Modern Python Features (in `ap_pnc/env.py`)**:
 - ✅ **Type hints** (`Path | None`, `-> int`)
 - ✅ **Type checking** (compatible with mypy/pyright)
 - ✅ **Docstrings** with Google style
@@ -279,63 +222,44 @@ def main() -> int:
 
 #### 6. Developer Experience Comparison
 
-| Traditional Approach | Wrapped Python (`pyp`) |
-|---------------------|------------------------|
-| `source .acados_venv/bin/activate` | `./pyp` |
-| `which python? which pip?` | Automatic detection |
-| Breaks in worktrees | Worktree-aware |
-| Manual ROS2 setup | Automatic sourcing |
-| Unclear errors | Colored, helpful messages |
-| Different commands per environment | One command everywhere |
+| Legacy Approach | Wrapped Python (`pyp`) | Current (`uv run`) |
+|-----------------|------------------------|---------------------|
+| `source .acados_venv/bin/activate` | `./pyp` | `uv run` |
+| `which python? which pip?` | Automatic detection | Auto-detect via `uv` |
+| Breaks in worktrees | Worktree-aware | Worktree-compatible |
+| Manual ROS2 setup | Automatic sourcing | `ap_pnc.env.setup_env(ros=True)` |
+| Unclear errors | Colored, helpful messages | Standard `uv` output |
 
-**Real output**:
+**Real output (current)**:
 
 ```
-$ ./pyp script.py
+$ uv run python script.py
 
-AP-PnC Environment Loader
-  Git Root: /home/user/AP-PnC
-  Using: .acados_venv ✓
-
+[Output from uv's environment detection...]
 [Script output here...]
 ```
 
-**Error handling**:
+**Error handling (current)**:
 
 ```
-$ ./pyp script.py
-Error: Python interpreter not found!
-
-Git Root detected: /home/user/AP-PnC
-Searched for venv at: /home/user/AP-PnC/{.acados_venv,.venv,venv,env}/bin/python
-
-To fix this, run one of the following:
-  just install-venv    # Create virtual environment
-  just install-all     # Full installation with acados
-
-Or set AP_PNC_DIR override:
-  AP_PNC_DIR=/custom/path ./pyp
+$ uv run python script.py
+error: Failed to run `python script.py`
+  Caused by: No virtual environment found; run `uv sync` first
 ```
 
 #### 7. Scalability & Maintainability
 
-**Modular Design** - Each function has a single responsibility:
+**Modular Design** - API surface now lives in `ap_pnc/env.py`:
 
 ```python
 # Git logic
-find_git_root() -> Path
-
-# Venv detection
-find_python_interpreter(git_root: Path) -> Path | None
+env.get_git_root() -> Path
 
 # ROS2 integration
-setup_ros2_environment(env: dict) -> None
+env.source_ros2_env() -> dict[str, str]
 
-# Display
-color_print(text: str, color: str) -> None
-
-# Main orchestration
-main() -> int
+# Combined setup
+env.setup_env(ros: bool = False) -> None
 ```
 
 **Easy to extend**:
@@ -367,8 +291,8 @@ def show_version() -> None:
 #### 8. Real-World Benefits
 
 **For New Contributors**:
-- ⚡ Faster onboarding (run `./pyp` instead of reading docs)
-- 📚 Self-documenting (helpful error messages guide you)
+- ⚡ Faster onboarding (run `uv run ap-pnc install` instead of reading docs)
+- 📚 Self-documenting (standard `uv` CLI)
 - 🎯 Clear expectations (colored output shows what's happening)
 
 **For Maintainers**:
@@ -406,7 +330,7 @@ def show_version() -> None:
    - Consistent interface for all venv types
 
 4. **Interface Segregation Principle**
-   - Simple, focused interface (`./pyp [args]`)
+   - Simple, focused interface (`uv run python [args]` or `uv run ap-pnc <cmd>`)
    - No forced dependencies on unused features
 
 5. **Dependency Inversion Principle**
@@ -428,30 +352,29 @@ def show_version() -> None:
 **Startup Overhead**:
 
 ```bash
-$ time ./pyp -c "print('hello')"
+$ time uv run python -c "print('hello')"
 hello
-./pyp -c "print('hello')"  0.01s user 0.02s system 12% cpu 0.250 total
+uv run python -c "print('hello')"  0.01s user 0.02s system 12% cpu 0.250 total
 ```
 
-The overhead is negligible (~250ms) for the benefits gained.
+The overhead is comparable to `pyp` (~250ms) for the benefits gained.
 
 ---
 
 ## Migration Guide
 
-### From Traditional to Wrapped Python
+### From Legacy to uv
 
-**Before**:
+**Before (legacy)**:
 ```bash
 source .acados_venv/bin/activate
 python scripts/simulate.py
-pip install -r requirements.txt
 ```
 
-**After**:
+**After (current)**:
 ```bash
-./pyp scripts/simulate.py
-./pyp -m pip install -r requirements.txt
+uv run python scripts/simulate.py
+uv pip install -r requirements.txt
 ```
 
 ### In Scripts
@@ -466,7 +389,7 @@ sys.path.insert(0, '/path/to/venv/lib/python3.10/site-packages')
 **After**:
 ```python
 #!/usr/bin/env python3
-# No path manipulation needed - ./pyp handles it
+# uv run handles the environment
 import your_module
 ```
 
@@ -486,10 +409,12 @@ import your_module
 
 **After**:
 ```yaml
-- name: Install and test
+- name: Install uv and dependencies
   run: |
-    ./pyp -m pip install -r requirements.txt
-    ./pyp -m pytest
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    uv sync --group dev
+- name: Run tests
+  run: uv run pytest
 ```
 
 ---
@@ -498,40 +423,36 @@ import your_module
 
 ### ✅ DO
 
-- Use `./pyp` for all Python execution in justfile
-- Use `./pyp -m module` for running Python modules
-- Check for venv existence in scripts
-- Provide helpful error messages
-- Use type hints in wrapper code
+- Use `uv run` for all Python execution
+- Use `uv run python -m module` for running Python modules
+- Check for venv existence with `uv sync`
+- Use `ap_pnc.env.setup_env()` for ACADOS/ROS2 paths
+- Use type hints in Python code
 
 ### ❌ DON'T
 
 - Hardcode venv paths in scripts
 - Assume venv is activated
-- Use `python` directly in justfile recipes
+- Use `python` directly without `uv run`
 - Skip error handling
 - Ignore git worktree scenarios
 
 ---
 
-## Future Enhancements
+## Future Enhancements (with uv)
 
-We're planning to add:
-
-- [ ] `--version` flag to show Python and environment versions
-- [ ] `--which` flag to show interpreter path
-- [ ] `--list` flag to show all available Python environments
-- [ ] Auto-activation of venv in interactive shells
-- [ ] Integration with pyenv for Python version management
-- [ ] Support for conda environments
-- [ ] Automatic dependency checking
-- [ ] Performance profiling mode
+- [x] `uv run` provides consistent Python execution
+- [x] `uv sync` manages dependencies
+- [x] `uv pip install` replaces pip without activation
+- [ ] Integrate ROS2 sourcing into `ap_pnc.env.setup_env(ros=True)`
+- [ ] Add `uv run ap-pnc env` command for environment diagnostics
+- [ ] Support for GPU/TPU configs via environment flags
 
 ---
 
 ## Conclusion
 
-The wrapped Python approach embodied by `pyp` represents **modern software design** at its best:
+The wrapped Python approach (whether `pyp` historically or `uv` currently) represents **modern software design** at its best:
 
 - ✅ **Simple interface** for complex operations
 - ✅ **Works everywhere** (repos, worktrees, CI/CD)
@@ -546,19 +467,17 @@ This isn't just about convenience—it's about **building software that empowers
 
 > **"Good software design is not about following rules—it's about creating tools that make people's lives better."**
 
-The `pyp` wrapper is a small tool that makes a big difference. It's a perfect example of how thoughtful design, attention to detail, and respect for developers' time can transform a mundane task (environment management) into a pleasant experience.
-
-Let's continue leveraging this pattern and expand it to other tools in our ecosystem.
+The `pyp` wrapper was a small tool that made a big difference, and `uv` continues this philosophy with a more standardized and widely-supported approach.
 
 ---
 
 ## Resources
 
-- **Implementation**: [`pyp`](https://github.com/WarriorHanamy/AP-PnC/blob/main/pyp) - Full source code
-- **Documentation**: [README.md - Python Wrapper](https://github.com/WarriorHanamy/AP-PnC#python-wrapper-pyp)
-- **Justfile**: [justfile](https://github.com/WarriorHanamy/AP-PnC/blob/main/justfile) - See integration examples
+- **CLI**: `ap_pnc/cli.py` - CLI entry points
+- **Environment**: `ap_pnc/env.py` - Git root, ACADOS, ROS2 setup
+- **uv**: [uv documentation](https://docs.astral.sh/uv/) - Python package and project manager
 
 ---
 
-*Last updated: January 2026*
+*Last updated: June 2026 — migrated from `pyp` to `uv`*
 *Contributors: AP-PnC Team*

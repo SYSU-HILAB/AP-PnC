@@ -7,7 +7,7 @@ Welcome to the AP-PnC (Aerodynamic Prior-Free Trajectory Planning and Tracking C
 ## Quick Links
 
 ### User Guide
-- [Why We Use Wrapped Python](why-wrapped-python.md) - Deep dive into our `pyp` wrapper and modern software design
+- [Why We Use Wrapped Python](why-wrapped-python.md) - Deep dive into our `pyp` wrapper (legacy) and modern software design
 
 ### Developer Resources
 - [Quick Start Guide](quickstart.md) - Get AP-PnC running in minutes
@@ -50,27 +50,25 @@ just viz-traj-tracking
 
 ## Key Features
 
-### The `pyp` Python Wrapper
+### Unified Python Execution via `uv run`
 
-Our custom Python wrapper provides:
+The project uses `uv` as the unified Python runner, replacing the legacy `pyp` wrapper:
 
-- ✅ Automatic virtual environment detection
+- ✅ Automatic virtual environment detection (`.venv`)
 - ✅ Git worktree support
-- ✅ ROS2 environment setup
-- ✅ Colored, helpful error messages
-- ✅ Works everywhere (local, CI/CD, worktrees)
+- ✅ ACADOS library path setup via `ap_pnc.env.setup_env()`
+- ✅ Consistent environment across local, CI/CD, and worktrees
 
 **Read more:** [Why We Use Wrapped Python](why-wrapped-python.md)
 
 ### Modern Development Workflow
 
 ```bash
-# Justfile recipes
-just run-simulation    # Run simulation
-just test              # Run tests
-just type-check        # Type checking with mypy
-
-# Everything uses ./pyp under the hood
+# uv-based recipes
+uv run ap-pnc <group> <command>   # Run CLI commands
+uv run python script.py           # Run Python scripts
+uv run pytest tests/              # Run tests
+uv run ruff check                 # Lint
 ```
 
 ## Documentation Index
@@ -80,7 +78,7 @@ just type-check        # Type checking with mypy
 | [Quick Start Guide](quickstart.md) | Get AP-PnC running in minutes |
 | [Build and Launch Commands](build-and-launch.md) | Correct way to build and launch ROS2 components |
 | [Control Stack & Module Reference](control-stack.md) | Architecture, calling procedures, ROS topics |
-| [Why Wrapped Python](why-wrapped-python.md) | Software design philosophy behind our approach |
+| [Why Wrapped Python](why-wrapped-python.md) | Software design philosophy (historical perspective) |
 
 ## Contributing
 

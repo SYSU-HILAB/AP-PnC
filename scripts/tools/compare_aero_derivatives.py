@@ -11,9 +11,9 @@ Generates plots with 4 subplots:
 Default granularity is 1° (361 points from -π to +π).
 
 Usage:
-    ./pyp scripts/tools/compare_aero_derivatives.py --all
-    ./pyp scripts/tools/compare_aero_derivatives.py --aero-type lyu
-    ./pyp scripts/tools/compare_aero_derivatives.py --all --num-points 181 --alpha-min -0.5 --alpha-max 0.5
+    uv run python scripts/tools/compare_aero_derivatives.py --all
+    uv run python scripts/tools/compare_aero_derivatives.py --aero-type lyu
+    uv run python scripts/tools/compare_aero_derivatives.py --all --num-points 181 --alpha-min -0.5 --alpha-max 0.5
 
 Note: Uses CPU by default for stability. Set JAX_PLATFORMS=gpu environment variable to use GPU.
 """

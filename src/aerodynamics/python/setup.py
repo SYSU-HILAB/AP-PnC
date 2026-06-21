@@ -1,7 +1,7 @@
 """
 Setup script for aerodynamics Python bindings.
 
-Build with: ./pyp -m pip install -e --no-build-isolation src/aerodynamics/python/
+Build with: uv pip install -e --no-build-isolation src/aerodynamics/python/
 """
 
 from pathlib import Path

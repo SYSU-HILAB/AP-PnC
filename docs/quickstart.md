@@ -91,7 +91,7 @@ sudo pacman -S just
 just --version
 ```
 
-**Alternative**: If you prefer not to install `just`, all commands can be run directly (e.g., `./installations/install-all.sh` instead of `just install-all`).
+**Alternative**: If you prefer not to install `just`, all commands can be run via `uv run ap-pnc install`.
 
 ## Installation
 
@@ -104,34 +104,23 @@ cd AP-PnC
 
 ### 2. Install Dependencies
 
-The project uses ACADOS (a C++ optimization framework) and Python packages. The `just install-all` command handles everything:
+The project uses ACADOS (a C++ optimization framework) and Python packages. Installation is handled via `uv`:
 
 ```bash
-just install-all
+uv run ap-pnc install
 ```
 
 This will:
-- Create a virtual environment at `.acados_venv/`
+- Sync the virtual environment at `.venv/`
 - Build ACADOS from source in `mpc_framework/`
-- Install Python dependencies (numpy, pandas, acados_template)
-
-**Note**: If you don't have `just` installed, run the installation script directly:
-```bash
-./installations/install-all.sh
-```
+- Install Python dependencies (numpy, typer, rich, acados_template)
 
 ### 3. Verify Installation
 
 Check that everything is set up correctly:
 
 ```bash
-just status
-```
-
-Expected output:
-```
-Git repository root: /path/to/AP-PnC
-Python environment: .acados_venv
+uv run ap-pnc install  # (re-runs if any deps are missing)
 ```
 
 ## Build the ROS2 Workspace
@@ -270,15 +259,9 @@ If you have a different number of cores, you can edit the script or launch compo
 ## Common Commands Reference
 
 ```bash
-# Prerequisites Installation
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh   # Install Rust (for just)
-source $HOME/.cargo/env                                        # Load Rust environment
-cargo install just                                              # Install just command runner
-
 # Installation
-just install-all          # Install everything
-just install-venv          # Create virtual environment only
-just status                # Check environment status
+uv run ap-pnc install     # Install everything (venv, acados, deps)
+uv sync --group dev        # Sync dev dependencies
 
 # Building
 ./scripts/tools/build      # Build ROS2 workspace
@@ -288,10 +271,9 @@ just status                # Check environment status
 ./scripts/tools/srunall     # Launch complete system
 
 # Visualization
-just viz-traj-tracking      # Visualize the sim-and-ctrl playground
-./pyp -m feature.lu_mpc.ros.simulation_visualizer    # Direct Python launch
+uv run python -m feature.lu_mpc.ros.simulation_visualizer    # Direct Python launch
 
 # Python execution
-./pyp script.py            # Run Python script with correct env
-./pyp -m module_name       # Run Python module
+uv run python script.py            # Run Python script with correct env
+uv run python -m module_name       # Run Python module
 ```

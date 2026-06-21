@@ -595,23 +595,21 @@ main(
 
 ## Execution
 
-### Python Wrapper
-**File**: `pyp` (project root)
+### Python Execution with uv
 
-Git-aware Python wrapper for correct environment detection.
+All Python commands use `uv run` to ensure correct environment detection.
 
 ```bash
-# Run Python with auto-detected environment
-./pyp script.py
-./pyp -m module_name
-./pyp -c "print('hello')"
+# Run Python with uv-managed environment
+uv run python script.py
+uv run python -m module_name
+uv run python -c "print('hello')"
 ```
 
 **Features**:
-- Detects git root (including worktrees)
-- Uses `.acados_venv` virtual environment
-- Sets `LD_LIBRARY_PATH` for ACADOS
-- No manual environment sourcing needed
+- `uv` manages the project virtual environment
+- `ap_pnc.env.setup_env()` handles ACADOS `LD_LIBRARY_PATH`
+- ROS2 environment sourced when needed via `setup_env(ros=True)`
 
 ### Justfile Commands
 

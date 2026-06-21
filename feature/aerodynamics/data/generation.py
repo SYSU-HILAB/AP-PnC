@@ -20,7 +20,7 @@ def _get_aerodynamics_bindings():
     Import the aerodynamics_bindings pybind11 module.
 
     The module should be installed via:
-        ./pyp -m pip install -e src/aerodynamics/python/
+        uv pip install -e src/aerodynamics/python/
     """
     try:
         import aerodynamics_bindings
@@ -29,7 +29,7 @@ def _get_aerodynamics_bindings():
     except ImportError as e:
         raise ImportError(
             f"Failed to import aerodynamics_bindings. "
-            f"Make sure you've installed it with: ./pyp -m pip install -e src/aerodynamics/python/ "
+            f"Make sure you've installed it with: uv pip install -e src/aerodynamics/python/ "
             f"Original error: {e}"
         ) from e
 

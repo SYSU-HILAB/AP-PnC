@@ -65,7 +65,7 @@ The `--hover` flag controls the controller behavior:
 To run in tracking mode, modify the justfile recipe to remove the `--hover` flag, or run the Python script directly:
 
 ```bash
-./pyp test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --rviz-config feature/lu_mpc/ros/config/nmpc_viz.rviz
+uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --rviz-config feature/lu_mpc/ros/config/nmpc_viz.rviz
 ```
 
 ## Architecture
@@ -188,7 +188,7 @@ The `just viz-traj-tracking-elmpc` recipe automatically sets `LD_LIBRARY_PATH`. 
 
 ```bash
 export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
-./pyp test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py
+uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py
 ```
 
 ### "Solver failed with status X"

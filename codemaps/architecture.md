@@ -81,11 +81,12 @@ AP-PnC/
 │   ├── plotting/              # Visualization tools
 │   └── ros/                   # ROS2 integration
 │
-├── mpc_framework/             # ACADOS v2023.2.1 framework
+├── mpc_framework/             # ACADOS framework
 ├── scripts/tools/             # Production ROS2 wrappers
-├── docs/                      # Jekyll documentation
-├── pyp                        # Git-aware Python wrapper
-└── justfile                   # Task automation (primary build system)
+├── docs/                      # Documentation
+├── ap_pnc/                    # CLI package (uv entry point)
+├── pyproject.toml             # uv project config
+└── .venv/                     # uv-managed virtual environment
 ```
 
 ## Key Architectural Patterns
@@ -150,19 +151,20 @@ State Vector: [x, y, z, vx, vy, vz, phi, theta, psi,
 
 ## Build System
 
-### Primary: Justfile
+### Primary: uv CLI
 ```bash
-just install-all          # Complete setup
-just generate-*           # Data generation
-just plot-*               # Visualization
-just test-*               # Testing
-just compare-timing       # Benchmarks
+uv run ap-pnc install     # Complete setup
+uv run ap-pnc traj        # Trajectory tools
+uv run ap-pnc aerodyn     # Aerodynamics
+uv run ap-pnc benchmark   # Timing benchmarks
+uv run ap-pnc test        # Testing
 ```
 
 ### Python Execution
 ```bash
-./pyp                     # Git-aware Python wrapper
-./pyp script.py           # Auto-detects venv and git root
+uv run python             # uv-managed Python execution
+uv run python script.py   # Auto-detects .venv and project root
+uv run ap-pnc <cmd>       # Run project CLI commands
 ```
 
 ### ROS2 Build

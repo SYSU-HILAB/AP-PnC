@@ -2,9 +2,9 @@
 
 This document explains the correct way to build and launch ROS2 components in AP-PnC.
 
-## Important: Use Wrapped Commands
+## Build Commands
 
-**DO NOT** use `colcon build` or `ros2 launch` directly. Always use the wrapper scripts in `scripts/tools/`.
+Use `uv run ap-pnc build` for Python-managed builds, or `scripts/tools/build` directly for manual colcon invocation.
 
 ## Why Wrappers Are Needed
 
@@ -21,9 +21,8 @@ The wrapper scripts source `.env_setup.sh` which:
 
 This project uses different workspace strategies for Python and C++/ROS2 development:
 
-### Python Development (`./pyp`)
-- **Virtual Environment**: Shared across all worktrees
-- **Location**: Main repository root (e.g., `/home/rec/AP-PnC/.acados_venv`)
+### Python Development (`uv run`)
+- **Virtual Environment**: Shared across worktrees (via `UV_PROJECT_ENVIRONMENT` or symlinked `.venv`)
 - **Why**: Python packages are large (GBs) and branch-independent; sharing prevents duplication
 
 ### C++/ROS2 Development (`scripts/tools/`)
@@ -37,8 +36,8 @@ This project uses different workspace strategies for Python and C++/ROS2 develop
 git worktree add ../AP-PnC.worktree/proposed proposed
 cd ../AP-PnC.worktree/proposed
 
-# Python: Uses main repo's virtual environment (shared)
-./pyp -m pytest tests/
+# Python: Uses project's virtual environment (shared)
+uv run pytest tests/
 
 # C++/ROS2: Uses current worktree as workspace (isolated)
 scripts/tools/build              # Builds in the worktree
@@ -55,28 +54,20 @@ This design ensures efficient resource usage while maintaining proper build isol
 
 ## Building
 
-### Correct Way
+### Via CLI (recommended)
+```bash
+uv run ap-pnc build              # Build all packages
+uv run ap-pnc build aero         # Build aerodynamics only
+uv run ap-pnc build traj-server  # Build trajectory_server only
+uv run ap-pnc build --clean      # Clean all build artifacts first
+```
+
+### Using Shell Scripts Directly
 ```bash
 scripts/tools/build
-```
-
-### With Clean Build
-```bash
 scripts/tools/build --clean
-```
-
-### Build Specific Packages
-```bash
 scripts/tools/build --packages-select px4_interface
 ```
-
-The wrapper builds only the necessary packages by default:
-- `trajectory_server`
-- `px4_interface`
-- `c_nmpc`
-- `nmpc`
-- `tailsitter_df`
-- `utils`
 
 ## Launching ROS2 Nodes
 
@@ -132,13 +123,17 @@ The `.env_setup.sh` script:
 
 ### Build Fails with "package not found"
 ```bash
-# Make sure you're using the wrapper, not colcon directly
+# Try clean build via CLI or scripts
+uv run ap-pnc build --clean
+# or
 ./scripts/tools/build --clean
 ```
 
 ### Launch Fails with "node not found"
 ```bash
 # First build the workspace
+uv run ap-pnc build --clean
+# or
 ./scripts/tools/build
 
 # Use runall for the full system
@@ -162,13 +157,13 @@ Runs the full NMPC controller and CasADi simulator for closed-loop visualization
 
 ```bash
 # Using Python directly
-./pyp -m feature.lu_mpc.ros.simulation_visualizer
+uv run python -m feature.lu_mpc.ros.simulation_visualizer
 
 # Using the helper
-./pyp -m feature.utils.ros_visualizer
+uv run python -m feature.utils.ros_visualizer
 
 # Using the user-facing launcher
-./pyp tests/lu_mpc/ros/user_test_traj_tracking_viz.py
+uv run python tests/lu_mpc/ros/user_test_traj_tracking_viz.py
 ```
 
 **Topics Published:**
@@ -186,10 +181,10 @@ Lightweight CSV replay without controller/simulator:
 
 ```bash
 # Using Python directly
-./pyp -m feature.lu_mpc.ros.reference_visualizer
+uv run python -m feature.lu_mpc.ros.reference_visualizer
 
 # Using the user-facing launcher
-./pyp tests/lu_mpc/ros/user_test_ref_traj_viz.py
+uv run python tests/lu_mpc/ros/user_test_ref_traj_viz.py
 ```
 
 **Topics Published:**
