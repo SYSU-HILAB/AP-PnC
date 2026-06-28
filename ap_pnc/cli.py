@@ -6,6 +6,7 @@ from ap_pnc.recipes import (
     build,
     cocp,
     docker,
+    experiments,
     install,
     lint,
     nn_trim,
@@ -24,6 +25,7 @@ app.add_typer(test.app, name="test", help="Test runners")
 app.add_typer(build.app, name="build", help="C++ colcon builds")
 app.add_typer(nn_trim.app, name="nn-trim", help="Neural network trim analysis")
 app.add_typer(docker.app, name="docker", help="Docker compose commands")
+app.add_typer(experiments.app, name="experiments", help="Run performance experiments (wind, etc.)")
 app.add_typer(lint.app, name="lint", help="Lint and format")
 
 

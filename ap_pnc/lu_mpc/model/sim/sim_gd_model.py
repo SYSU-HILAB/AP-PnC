@@ -54,6 +54,9 @@ class GdSimConfig:
     # Aerodynamic model configuration
     aero_config: GdModelConfig = DEFAULT_CONFIG
 
+    # Wind configuration (in world frame)
+    wind_world: np.ndarray = np.array([0.0, 0.0, 0.0], dtype=np.float64)  # Wind velocity in world frame [wx, wy, wz]
+
 
 # Default configuration instance
 DEFAULT_SIM_CONFIG = GdSimConfig()
@@ -107,15 +110,29 @@ class GdModelSimulator:
         U = motor_thrusts[0] + motor_thrusts[1] + motor_thrusts[2] + motor_thrusts[3]
         thrust_quad_flu = cs.vertcat(0.0, 0.0, U)
 
-        vel_b_wing_frd = quat_apply_inverse(quat_wing_frd, v)
-
         # Get velocity in body frame for aerodynamics
-        vel_b_wing_frd = quat_apply_inverse(quat_wing_frd, v)
+        v_vehicle_body = quat_apply_inverse(quat_wing_frd, v)
+
+        # Get wind velocity in body frame (rotate world wind to body frame)
+        v_wind_world = cs.SX(self._config.wind_world)
+        v_wind_body = quat_apply_inverse(quat_wing_frd, v_wind_world)
+
+        # Relative air velocity (vehicle velocity relative to air mass)
+        v_air_body = v_vehicle_body - v_wind_body
 
         # Get aerodynamic forces and moments from GD model
         # The GD model expects body-frame velocity in FRD
-        aero_result = self._aero_model.func(vel_b_wing_frd)
-        aero_forces_moments = aero_result[0]  # First element is forces_moments vector
+        aero_result = self._aero_model.func(v_air_body)
+        aero_forces_moments_base = aero_result[0]  # type: ignore  # First element is forces_moments vector
+
+        # Apply dead-zone: zero aero forces when airspeed squared < 36.0 (|v| < 6.0 m/s)
+        v_air_body_sq_norm = cs.dot(v_air_body, v_air_body)
+        zero_vec = cs.vertcat(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        aero_forces_moments = cs.if_else(
+            v_air_body_sq_norm < 36.0,
+            zero_vec,
+            aero_forces_moments_base
+        )
         aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
         # Transform aerodynamic forces back to FLU frame, then to body frame
         # Use inverse transformation to go from wing FRD to quad FLU
@@ -198,12 +215,28 @@ class GdModelSimulator:
         )
 
         # Get velocity in body frame for aerodynamics
-        vel_b_wing_frd = quat_apply_inverse(quat_wing_frd, v)
+        v_vehicle_body = quat_apply_inverse(quat_wing_frd, v)
+
+        # Get wind velocity in body frame (rotate world wind to body frame)
+        v_wind_world = cs.SX(self._config.wind_world)
+        v_wind_body = quat_apply_inverse(quat_wing_frd, v_wind_world)
+
+        # Relative air velocity (vehicle velocity relative to air mass)
+        v_air_body = v_vehicle_body - v_wind_body
 
         # Get aerodynamic forces and moments from GD model
         # The GD model expects body-frame velocity in FRD
-        aero_result = self._aero_model.func(vel_b_wing_frd)
-        aero_forces_moments = aero_result[0]  # First element is forces_moments vector
+        aero_result = self._aero_model.func(v_air_body)
+        aero_forces_moments_base = aero_result[0]  # type: ignore  # First element is forces_moments vector
+
+        # Apply dead-zone: zero aero forces when airspeed squared < 36.0 (|v| < 6.0 m/s)
+        v_air_body_sq_norm = cs.dot(v_air_body, v_air_body)
+        zero_vec = cs.vertcat(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        aero_forces_moments = cs.if_else(
+            v_air_body_sq_norm < 36.0,
+            zero_vec,
+            aero_forces_moments_base
+        )
         aero_forces_wing_frd = aero_forces_moments[:3]  # First 3 elements are forces
         aero_moments_wing_frd = aero_forces_moments[3:6]  # Next 3 elements are moments
         aero_moments_wing_frd[0] = 0.0  # REC: zeroing roll moment for stability
@@ -272,7 +305,7 @@ class GdModelSimulator:
         self._acados_sim.parameter_values = np.array([])  # No parameters
 
         # Create solver
-        self._acados_solver = AcadosSimSolver(self._acados_sim)
+        self._acados_solver = AcadosSimSolver(self._acados_sim, json_file=f"acados_{self._acados_model.name}_sim.json")
 
 
     @classmethod

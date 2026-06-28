@@ -1,0 +1,14 @@
+dt = 0.02
+a_max = 15.0
+output_dir = "artifacts/simulations/temp_data"
+filename = "minimal_jerk_trajectory.csv"
+
+waypoints = [
+  [0.0, 0.0, 2.0],
+  [21.2, 21.2, 2.0],
+  [0.0, 42.4, 2.0],
+  [-21.2, 21.2, 2.0],
+  [0.0, 0.0, 2.0],
+]
+
+segment_durations = [2.0, 2.0, 2.0, 2.0]
