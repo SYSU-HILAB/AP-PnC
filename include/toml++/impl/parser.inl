@@ -1686,6 +1686,9 @@ TOML_IMPL_NAMESPACE_START
 			TOML_ASSERT_ASSUME(is_string_delimiter(*cp));
 			push_parse_scope("string"sv);
 
+			// snapshot length so the recording buffer can be rewound alongside go_back(2u) below
+			const auto recording_buffer_rollback_size = recording_buffer.length();
+
 			// get the first three characters to determine the string type
 			const auto first = cp->value;
 			advance_and_return_if_error_or_eof({});
@@ -1716,6 +1719,8 @@ TOML_IMPL_NAMESPACE_START
 				// step back two characters so that the current
 				// character is the string delimiter
 				go_back(2u);
+				if (recording)
+					recording_buffer.resize(recording_buffer_rollback_size);
 
 				return { first == U'\'' ? parse_literal_string(false) : parse_basic_string(false), false };
 			}
@@ -3156,6 +3161,11 @@ TOML_IMPL_NAMESPACE_START
 				// check for a premature closing ']'
 				if (*cp == U']')
 					set_error_and_return_default("tables with blank bare keys are explicitly prohibited"sv);
+
+				if (!is_bare_key_character(*cp) && !is_string_delimiter(*cp))
+					set_error_and_return_default("expected bare key starting character or string delimiter, saw '"sv,
+												 to_sv(*cp),
+												 "'"sv);
 
 				// get the actual key
 				start_recording();
