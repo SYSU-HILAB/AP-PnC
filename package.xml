@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+    <name>utils</name>
+    <version>0.0.0</version>
+    <description>
+        One of principles of this package is to provide a simple and
+        easy-to-use interface for the consuming packages to leverage.
+        This package should not depend on ROS2 libraries except for the 
+        ament_cmake build system.
+    </description>
+    <maintainer email="rongerch@outlook.com">WarriorHanamy</maintainer>
+    <license>TODO: License declaration</license>
+
+    <buildtool_depend>ament_cmake</buildtool_depend>
+
+    <depend>Eigen3</depend>
+    <depend>SQLite3</depend>
+    <depend>spdlog</depend>
+    <depend>fmt</depend>
+    <test_depend>ament_lint_auto</test_depend>
+    <test_depend>ament_lint_common</test_depend>
+
+    <export>
+        <build_type>ament_cmake</build_type>
+    </export>
+</package>
