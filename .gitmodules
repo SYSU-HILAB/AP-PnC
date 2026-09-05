@@ -12,7 +12,3 @@
 [submodule "src/utils/external_libraries/yamlcpp"]
 	path = src/utils/external_libraries/yamlcpp
 	url = https://github.com/jbeder/yaml-cpp.git
-[submodule "src/utils/external_libraries/BSplinebasis"]
-	path = src/utils/external_libraries/BSplinebasis
-	url = https://github.com/WarriorHanamy/BSplinebasis.git
-	branch = main
