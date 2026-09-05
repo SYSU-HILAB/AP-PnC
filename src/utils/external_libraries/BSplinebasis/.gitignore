@@ -1,0 +1,10 @@
+*.depend
+*.layout
+*.kate-swp
+*~
+**/bin/**
+**/obj/**
+**/test/**
+**/html/**
+.project
+.metadata/**
