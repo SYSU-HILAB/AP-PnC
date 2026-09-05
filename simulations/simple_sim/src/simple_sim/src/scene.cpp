@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 namespace simple_sim
 {
@@ -210,19 +211,42 @@ namespace simple_sim
   {
     Scene scene;
 
-    // Two straight rows of identical upright pillars, symmetric about y=0,
-    // evenly spaced along the corridor. No randomness.
-    const int    N    = std::max(cfg.pillar_count, 0);
-    const double x_lo = -cfg.length / 2.0 + cfg.edge_margin;
-    const double x_hi = cfg.length / 2.0 - cfg.edge_margin;
+    // Two rows of upright pillars along a nominal pair of rows: x is
+    // jittered around an even grid, each pillar gets an independent y
+    // offset and radius. Pillar surfaces are pushed outside the flight
+    // channel (|y| >= corridor_half_width + r), keeping the straight
+    // task feasible. Seeded RNG -> same seed, same world.
+    std::mt19937                           rng(cfg.seed);
+    std::uniform_real_distribution<double> unit(0.0, 1.0);
+
+    const int    N      = std::max(cfg.pillar_count, 0);
+    const double x_lo   = -cfg.length / 2.0 + cfg.edge_margin;
+    const double x_hi   = cfg.length / 2.0 - cfg.edge_margin;
+    const double span   = N > 1 ? (x_hi - x_lo) / (N - 1) : 0.0;
+    const double y_lim  = cfg.width / 2.0 - 0.5;  // inner wall face margin
     for (int i = 0; i < N; ++i)
     {
-      const double x = N == 1 ? 0.0 : x_lo + (x_hi - x_lo) * i / (N - 1);
       for (const double side : {1.0, -1.0})
       {
+        // Independent per-pillar jitter in both axes: rows never line up
+        // into visible columns.
+        const double x = std::clamp(
+            x_lo + span * i + (unit(rng) * 2.0 - 1.0) * 0.3 * span, x_lo, x_hi);
+        const double r = cfg.radius_min +
+                         unit(rng) * (cfg.radius_max - cfg.radius_min);
+        // Nominal row offset plus per-pillar lateral jitter.
+        double y = cfg.pillar_offset * side +
+                   (unit(rng) * 2.0 - 1.0) * 1.5;
+        // Keep the pillar surface out of the flight channel and inside
+        // the walls.
+        const double y_min = cfg.corridor_half_width + r;
+        const double y_abs =
+            std::clamp(std::abs(y), y_min, std::max(y_lim - r, y_min));
+        y = side * y_abs;
+
         Cylinder cyl;
-        cyl.center_xy << x, side * cfg.pillar_offset;
-        cyl.radius = cfg.pillar_radius;
+        cyl.center_xy << x, y;
+        cyl.radius = r;
         cyl.height = cfg.height;
         scene.cylinders.push_back(cyl);
       }

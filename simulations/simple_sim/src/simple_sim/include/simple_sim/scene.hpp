@@ -43,25 +43,30 @@ namespace simple_sim
 
   /**
    * Parameters of the pillar-course world generator: a closed box
-   * (floor, ceiling, four walls) with two straight rows of identical
-   * upright pillars, symmetric about the y=0 flight line.
+   * (floor, ceiling, four walls) with two rows of upright pillars at
+   * randomized offsets along a nominal pair of rows.
    *
-   * @param[in] pillar_count   Number of x positions per row (density) [-]
-   * @param[in] pillar_radius  Uniform pillar radius [m]
-   * @param[in] pillar_offset  Pillar-row distance from the y=0 line [m]
-   * @param[in] edge_margin    Clearance of the first/last pillar from the
-   *                           end walls [m]
+   * @param[in] pillar_count         Number of x positions per row (density)
+   * @param[in] radius_min/max       Pillar radius range [m]
+   * @param[in] pillar_offset        Nominal row distance from y=0 [m]
+   * @param[in] corridor_half_width  Keep-out: pillar surfaces never enter
+   *                                 |y| < this value [m]
+   * @param[in] edge_margin          Clearance from the end walls [m]
+   * @param[in] seed                 RNG seed; same seed, same layout
    */
   struct PillarCourseConfig
   {
-    double length        = 100.0;
-    double width         = 20.0;
-    double height        = 20.0;
-    int    pillar_count  = 8;
-    double pillar_radius = 0.8;
-    double pillar_offset = 5.0;
-    double edge_margin   = 5.0;
-    bool   build_shell   = true;
+    double   length              = 100.0;
+    double   width               = 20.0;
+    double   height              = 20.0;
+    int      pillar_count        = 8;
+    double   radius_min          = 0.6;
+    double   radius_max          = 1.2;
+    double   pillar_offset       = 5.0;
+    double   corridor_half_width = 3.0;
+    double   edge_margin         = 5.0;
+    unsigned seed                = 42;
+    bool     build_shell         = true;
   };
 
   /**
@@ -89,8 +94,10 @@ namespace simple_sim
 
   /**
    * Build the pillar-course world: floor and ceiling planes, four boundary
-   * walls and two straight rows of identical upright pillars (full height,
-   * symmetric about y=0). Layout is fully deterministic - no randomness.
+   * walls and two rows of full-height upright pillars at jittered x/y and
+   * random radii (seeded, reproducible). Pillar surfaces are pushed outside
+   * the |y| < corridor_half_width flight channel, so the straight task
+   * stays feasible.
    *
    * @param[in] cfg  World size, density and layout parameters
    * @return Generated scene

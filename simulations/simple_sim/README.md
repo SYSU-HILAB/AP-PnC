@@ -79,16 +79,19 @@ The world is configured through `config/simple_sim.yaml`:
 
 - `map.length/width/height` + `build_walls`: walled world bounds [m].
 - `waypoints`: `[x0,y0,z0, x1,y1,z1, ...]` — the vehicle tracks them in a loop.
-- `scene.pillar_count`: pillar positions per row (density) - total pillars
-  = 2 x count (two rows).
-- `scene.pillar_radius`: uniform pillar radius [m].
-- `scene.pillar_offset`: row distance from the y=0 flight line [m].
-- `scene.edge_margin`: first/last pillar clearance from the end walls [m].
+- `scene.pillar_count`: nominal positions per row (density) - total pillars
+  = 2 x count.
+- `scene.radius_min/max`: random pillar radius range [m].
+- `scene.pillar_offset`: nominal row distance from the flight line [m];
+  each pillar gets an independent x/y jitter, so nothing lines up.
+- `scene.corridor_half_width`: keep-out around the flight line - pillar
+  surfaces never enter it, so the straight task stays feasible.
+- `scene.seed`: change for a different reproducible layout.
 - `build_shell`: floor + ceiling + four walls (ceiling at `map.height`).
 
-Layout is fully deterministic (no randomness): two straight rows of
-identical full-height upright pillars, symmetric about the flight line.
-Generation lives in `Scene::makePillarCourse`.
+All pillars are full-height upright cylinders; positions and radii are
+seeded-random (same seed, same world). Generation lives in
+`Scene::makePillarCourse`.
 
 For custom layouts beyond the procedural field, extend
 `makePillarCourse` in `scene.cpp`. This is the extension point for

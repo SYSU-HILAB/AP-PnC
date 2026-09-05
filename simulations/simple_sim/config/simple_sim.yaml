@@ -16,13 +16,17 @@
       height: 20.0
     build_shell: true
 
-    # Regular pillar course: two straight rows of identical upright pillars
-    # (full height), symmetric about the y=0 flight line. No randomness.
+    # Pillar course: two rows of upright pillars with jittered positions and
+    # random radii (seeded -> reproducible). Pillar surfaces stay outside
+    # |y| < corridor_half_width, keeping the straight flight line feasible.
     scene:
-      pillar_count: 8      # x positions per row -> 16 pillars total
-      pillar_radius: 0.8   # [m]
-      pillar_offset: 5.0   # row distance from the flight line [m]
-      edge_margin: 5.0     # first/last pillar clearance from end walls [m]
+      pillar_count: 8           # x positions per row -> 16 pillars total
+      radius_min: 0.6           # [m]
+      radius_max: 1.2           # [m]
+      pillar_offset: 5.0        # nominal row distance from the flight line [m]
+      corridor_half_width: 3.0  # keep-out around the flight line [m]
+      edge_margin: 5.0          # clearance from end walls [m]
+      seed: 42                  # change for a different layout
 
     # Pillar run: fly from one end of the map to the other along y=0.
     start_pos: [-45.0, 0.0, 2.0]
