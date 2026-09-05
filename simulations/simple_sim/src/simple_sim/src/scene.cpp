@@ -153,26 +153,6 @@ namespace simple_sim
     double best = max_range;
     bool   hit  = false;
 
-    if (dir.z() < -1e-9)
-    {
-      const double t = (ground_z - origin.z()) / dir.z();
-      if (t > 1e-4 && t < best)
-      {
-        best = t;
-        hit  = true;
-      }
-    }
-
-    if (ceiling_z > 0.0 && dir.z() > 1e-9)
-    {
-      const double t = (ceiling_z - origin.z()) / dir.z();
-      if (t > 1e-4 && t < best)
-      {
-        best = t;
-        hit  = true;
-      }
-    }
-
     for (const auto &sphere : spheres)
     {
       double t = 0.0;
@@ -260,19 +240,30 @@ namespace simple_sim
 
     if (cfg.build_shell)
     {
-      const double t    = 0.2;  // wall thickness [m]
-      const auto   wall = [&](double cx, double cy, double hx, double hy)
+      const double t = 0.2;  // wall thickness [m]
+      const double s = 1.0;  // floor/ceiling slab thickness [m]
+      const auto   box = [&](double cx, double cy, double cz, double hx,
+                            double hy, double hz)
       {
         Box b;
-        b.center << cx, cy, cfg.height / 2.0;
-        b.half_extent << hx, hy, cfg.height / 2.0;
+        b.center << cx, cy, cz;
+        b.half_extent << hx, hy, hz;
         scene.boxes.push_back(b);
       };
-      wall(0.0, cfg.width / 2.0 + t, cfg.length / 2.0 + t, t);
-      wall(0.0, -cfg.width / 2.0 - t, cfg.length / 2.0 + t, t);
-      wall(cfg.length / 2.0 + t, 0.0, t, cfg.width / 2.0 + t);
-      wall(-cfg.length / 2.0 - t, 0.0, t, cfg.width / 2.0 + t);
-      scene.ceiling_z = cfg.height;
+      box(0.0, cfg.width / 2.0 + t, cfg.height / 2.0,
+          cfg.length / 2.0 + t, t, cfg.height / 2.0);
+      box(0.0, -cfg.width / 2.0 - t, cfg.height / 2.0,
+          cfg.length / 2.0 + t, t, cfg.height / 2.0);
+      box(cfg.length / 2.0 + t, 0.0, cfg.height / 2.0,
+          t, cfg.width / 2.0 + t, cfg.height / 2.0);
+      box(-cfg.length / 2.0 - t, 0.0, cfg.height / 2.0,
+          t, cfg.width / 2.0 + t, cfg.height / 2.0);
+      // Floor slab (top face at z=0) and ceiling slab (bottom face at
+      // z=height), 1 m thick, spanning the full map footprint.
+      box(0.0, 0.0, -s / 2.0, cfg.length / 2.0 + t, cfg.width / 2.0 + t,
+          s / 2.0);
+      box(0.0, 0.0, cfg.height + s / 2.0, cfg.length / 2.0 + t,
+          cfg.width / 2.0 + t, s / 2.0);
     }
     return scene;
   }

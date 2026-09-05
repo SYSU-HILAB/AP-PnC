@@ -21,10 +21,10 @@
     # stay outside |y| < corridor_half_width, so the straight flight line
     # remains feasible.
     scene:
-      pillar_count: 16          # total number of pillars (density)
+      pillar_count: 36          # total number of pillars (density)
       radius_min: 0.6           # [m]
       radius_max: 1.2           # [m]
-      corridor_half_width: 3.0  # keep-out around the flight line [m]
+      corridor_half_width: 2.0  # keep-out around the flight line [m]
       edge_margin: 5.0          # clearance from end walls [m]
       seed: 42                  # change for a different layout
 

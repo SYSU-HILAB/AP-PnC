@@ -139,10 +139,10 @@ namespace simple_sim
       declare_parameter("dump_pcd_frames", 30);
       // Pillar course: pillar_count upright pillars scattered at random
       // (seeded, reproducible), no rows and no mirroring.
-      declare_parameter("scene.pillar_count", 16);
+      declare_parameter("scene.pillar_count", 36);
       declare_parameter("scene.radius_min", 0.6);
       declare_parameter("scene.radius_max", 1.2);
-      declare_parameter("scene.corridor_half_width", 3.0);
+      declare_parameter("scene.corridor_half_width", 2.0);
       declare_parameter("scene.edge_margin", 5.0);
       declare_parameter("scene.seed", 42);
     }

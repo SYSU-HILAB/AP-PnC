@@ -6,10 +6,10 @@ a simplified rigid-body dynamics model is integrated directly, with a
 Livox Mid-360 style synthetic LiDAR (non-repetitive Lissajous scan, ray
 casting against a hand-built scene).
 
-Default scenario: a closed 100 m x 20 m x 20 m shell (floor, ceiling, four
-walls) with a regular course of upright pillars; the vehicle flies from one
-end (`-45, 0, 2`) to the other (`45, 0, 2`). Density is configurable via
-`scene.*` parameters.
+Default scenario: a closed 100 m x 20 m x 20 m shell (1 m thick floor and
+ceiling slabs, four walls) with randomly scattered upright pillars; the
+vehicle flies from one end (`-45, 0, 2`) to the other (`45, 0, 2`).
+Density is configurable via `scene.*` parameters.
 
 ## Layout
 
@@ -79,13 +79,15 @@ The world is configured through `config/simple_sim.yaml`:
 
 - `map.length/width/height` + `build_walls`: walled world bounds [m].
 - `waypoints`: `[x0,y0,z0, x1,y1,z1, ...]` — the vehicle tracks them in a loop.
-- `scene.pillar_count`: total number of pillars (density).
+- `scene.pillar_count`: total number of pillars (density), scattered along
+  the whole corridor (not rows).
 - `scene.radius_min/max`: random pillar radius range [m].
 - `scene.corridor_half_width`: keep-out around the flight line - pillar
   surfaces never enter it, so the straight task stays feasible.
 - `scene.edge_margin`: clearance from the end walls [m].
 - `scene.seed`: change for a different reproducible layout.
-- `build_shell`: floor + ceiling + four walls (ceiling at `map.height`).
+- `build_shell`: closed shell - 1 m thick floor slab (top at z=0) and
+  ceiling slab (bottom at `map.height`) plus four 0.2 m walls.
 
 All pillars are full-height upright cylinders scattered completely at
 random by seeded rejection sampling - no rows, no mirroring, minimum

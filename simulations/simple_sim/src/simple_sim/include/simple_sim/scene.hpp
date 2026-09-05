@@ -58,18 +58,18 @@ namespace simple_sim
     double   length              = 100.0;
     double   width               = 20.0;
     double   height              = 20.0;
-    int      pillar_count        = 16;
+    int      pillar_count        = 36;
     double   radius_min          = 0.6;
     double   radius_max          = 1.2;
-    double   corridor_half_width = 3.0;
+    double   corridor_half_width = 2.0;
     double   edge_margin         = 5.0;
     unsigned seed                = 42;
     bool     build_shell         = true;
   };
 
   /**
-   * Static world composed of floor/ceiling planes, wall boxes and upright
-   * cylinder obstacles (pillar-course layout).
+   * Static world composed of a closed shell (1 m thick floor/ceiling slabs
+   * plus wall boxes) and upright cylinder obstacles.
    *
    * @param[in]  origin     Ray origin in world frame [m]
    * @param[in]  dir        Unit ray direction in world frame [-]
@@ -80,8 +80,6 @@ namespace simple_sim
   class Scene
   {
    public:
-    double                ground_z  = 0.0;
-    double                ceiling_z = -1.0;  // <= 0 disables the ceiling
     std::vector<Sphere>   spheres;
     std::vector<Box>      boxes;
     std::vector<Cylinder> cylinders;
