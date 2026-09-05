@@ -2,9 +2,12 @@
 
 Light-weight, principle-verification simulator for the AP-PnC tail-sitter UAV,
 inspired by [MARSIM](https://github.com/hku-mars/MARSIM). No Gazebo physics —
-a simplified rigid-body dynamics model is integrated directly, with synthetic
-LiDAR sensing (ray casting against a hand-built scene) for future obstacle
-avoidance experiments.
+a simplified rigid-body dynamics model is integrated directly, with a
+Livox Mid-360 style synthetic LiDAR (non-repetitive Lissajous scan, ray
+casting against a hand-built scene).
+
+Default scenario: a 100 m x 20 m x 20 m walled corridor with four pillars;
+the vehicle flies from one end (`-45, 0, 2`) to the other (`45, 0, 2`).
 
 ## Layout
 
@@ -55,10 +58,12 @@ ros2 launch simple_sim simple_sim.launch.py
 
 The world is configured through `config/simple_sim.yaml`:
 
+- `map.length/width/height` + `build_walls`: walled world bounds [m].
 - `waypoints`: `[x0,y0,z0, x1,y1,z1, ...]` — the vehicle tracks them in a loop.
+- `obstacle_cylinders`: `[cx,cy, r, h, ...]` — vertical pillars.
 - `obstacle_boxes`: `[cx,cy,cz, hx,hy,hz, ...]` — axis-aligned boxes.
 - `obstacle_spheres`: `[cx,cy,cz, r, ...]` — spheres.
 
-This is the extension point for simple obstacle-avoidance scenarios: publish the
-point cloud to a planner, feed avoidance commands back as new waypoints, or swap
-the controller in `controller.hpp`.
+This is the extension point for obstacle-avoidance scenarios: feed the point
+cloud to a planner, push avoidance commands back as new waypoints, or swap the
+controller in `controller.hpp`.

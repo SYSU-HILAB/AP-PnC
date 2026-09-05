@@ -53,12 +53,12 @@ namespace simple_sim
       gains.kp_att = vectorParam("kp_att");
 
       LidarConfig lidar;
-      lidar.rings           = get_parameter("lidar.rings").as_int();
-      lidar.points_per_ring = get_parameter("lidar.points_per_ring").as_int();
-      lidar.fov_h_deg       = get_parameter("lidar.fov_h_deg").as_double();
-      lidar.fov_v_deg       = get_parameter("lidar.fov_v_deg").as_double();
-      lidar.max_range       = get_parameter("lidar.max_range").as_double();
-      lidar.min_range       = get_parameter("lidar.min_range").as_double();
+      lidar.points_per_frame = get_parameter("lidar.points_per_frame").as_int();
+      lidar.fov_h_deg        = get_parameter("lidar.fov_h_deg").as_double();
+      lidar.fov_v_min_deg    = get_parameter("lidar.fov_v_min_deg").as_double();
+      lidar.fov_v_max_deg    = get_parameter("lidar.fov_v_max_deg").as_double();
+      lidar.max_range        = get_parameter("lidar.max_range").as_double();
+      lidar.min_range        = get_parameter("lidar.min_range").as_double();
 
       dynamics_   = std::make_unique<Dynamics>(mass, inertia, gravity);
       controller_ = std::make_unique<Controller>(gains, mass, gravity);
@@ -107,22 +107,28 @@ namespace simple_sim
       declare_parameter("inertia_zz", 0.03);
       declare_parameter("sim_rate", 200.0);
       declare_parameter("publish_rate", 10.0);
-      declare_parameter("start_pos", std::vector<double>{0.0, 0.0, 5.0});
+      declare_parameter("start_pos", std::vector<double>{-45.0, 0.0, 2.0});
+      declare_parameter("map.length", 100.0);
+      declare_parameter("map.width", 20.0);
+      declare_parameter("map.height", 20.0);
       declare_parameter("waypoint_tolerance", 0.3);
       declare_parameter("kp_pos", std::vector<double>{12.0, 12.0, 12.0});
       declare_parameter("kd_vel", std::vector<double>{3.0, 3.0, 3.0});
       declare_parameter("ki_pos", std::vector<double>{0.5, 0.5, 0.5});
       declare_parameter("kp_att", std::vector<double>{8.0, 8.0, 8.0});
-      declare_parameter("lidar.rings", 16);
-      declare_parameter("lidar.points_per_ring", 360);
+      declare_parameter("lidar.points_per_frame", 4000);
       declare_parameter("lidar.fov_h_deg", 360.0);
-      declare_parameter("lidar.fov_v_deg", 30.0);
-      declare_parameter("lidar.max_range", 30.0);
-      declare_parameter("lidar.min_range", 0.2);
+      declare_parameter("lidar.fov_v_min_deg", -7.0);
+      declare_parameter("lidar.fov_v_max_deg", 52.0);
+      declare_parameter("lidar.max_range", 40.0);
+      declare_parameter("lidar.min_range", 0.1);
       declare_parameter("waypoints",
-                        std::vector<double>{5.0, 0.0, 5.0, 0.0, 5.0, 5.0});
+                        std::vector<double>{-45.0, 0.0, 2.0, 45.0, 0.0, 2.0});
       declare_parameter("obstacle_boxes", std::vector<double>{});
       declare_parameter("obstacle_spheres", std::vector<double>{});
+      // cx, cy, radius, height per pillar
+      declare_parameter("obstacle_cylinders", std::vector<double>{});
+      declare_parameter("build_walls", true);
     }
 
     Eigen::Vector3d vectorParam(const std::string &name) const
@@ -157,6 +163,34 @@ namespace simple_sim
         sphere.radius = spheres[i + 3];
         scene.spheres.push_back(sphere);
       }
+      const std::vector<double> cyls =
+          get_parameter("obstacle_cylinders").as_double_array();
+      for (std::size_t i = 0; i + 3 < cyls.size(); i += 4)
+      {
+        Cylinder cyl;
+        cyl.center_xy << cyls[i], cyls[i + 1];
+        cyl.radius = cyls[i + 2];
+        cyl.height = cyls[i + 3];
+        scene.cylinders.push_back(cyl);
+      }
+      if (get_parameter("build_walls").as_bool())
+      {
+        const double L   = get_parameter("map.length").as_double();
+        const double W   = get_parameter("map.width").as_double();
+        const double H   = get_parameter("map.height").as_double();
+        const double t   = 0.2;  // wall thickness [m]
+        const auto   wall = [&](double cx, double cy, double hx, double hy)
+        {
+          Box b;
+          b.center << cx, cy, H / 2.0;
+          b.half_extent << hx, hy, H / 2.0;
+          scene.boxes.push_back(b);
+        };
+        wall(0.0, W / 2.0 + t, L / 2.0 + t, t);
+        wall(0.0, -W / 2.0 - t, L / 2.0 + t, t);
+        wall(L / 2.0 + t, 0.0, t, W / 2.0 + t);
+        wall(-L / 2.0 - t, 0.0, t, W / 2.0 + t);
+      }
       return scene;
     }
 
@@ -177,10 +211,12 @@ namespace simple_sim
       }
     }
 
-    sensor_msgs::msg::PointCloud2 buildCloudMsg() const
+    sensor_msgs::msg::PointCloud2 buildCloudMsg()
     {
       std::vector<LidarPoint> points;
-      lidar_->scan(*scene_, state_.position, state_.attitude, &points);
+      lidar_->scan(*scene_, state_.position, state_.attitude, frame_index_,
+                   &points);
+      ++frame_index_;
 
       sensor_msgs::msg::PointCloud2 msg;
       msg.header.frame_id = "world";
@@ -330,6 +366,25 @@ namespace simple_sim
         m.color              = color;
         arr.markers.push_back(m);
       }
+      for (const auto &cyl : scene_->cylinders)
+      {
+        visualization_msgs::msg::Marker m;
+        fill_base(&m, id++);
+        m.type               = visualization_msgs::msg::Marker::CYLINDER;
+        m.pose.position.x    = cyl.center_xy.x();
+        m.pose.position.y    = cyl.center_xy.y();
+        m.pose.position.z    = cyl.height / 2.0;
+        m.pose.orientation.w = 1.0;
+        m.scale.x            = 2.0 * cyl.radius;
+        m.scale.y            = 2.0 * cyl.radius;
+        m.scale.z            = cyl.height;
+        color.r              = 0.2;
+        color.g              = 0.7;
+        color.b              = 0.9;
+        color.a              = 0.7;
+        m.color              = color;
+        arr.markers.push_back(m);
+      }
       return arr;
     }
 
@@ -355,6 +410,7 @@ namespace simple_sim
     SimState                     state_;
     std::vector<Eigen::Vector3d> waypoints_;
     std::size_t                  waypoint_index_ = 0;
+    std::size_t                  frame_index_    = 0;
     double                       sim_dt_         = 0.005;
 
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr points_pub_;

@@ -91,6 +91,59 @@ namespace simple_sim
       return true;
     }
 
+    // Ray/vertical-cylinder intersection: circle solve in the xy-plane,
+    // then keep roots whose hit z lies within [0, height].
+    bool RayCylinder(const Eigen::Vector3d &origin, const Eigen::Vector3d &dir,
+                     const Cylinder &cyl, double t_max, double *t_out)
+    {
+      const double ox = origin.x() - cyl.center_xy.x();
+      const double oy = origin.y() - cyl.center_xy.y();
+      const double a  = dir.x() * dir.x() + dir.y() * dir.y();
+      if (a < 1e-12)
+      {
+        // Vertical ray: only the flat caps can be hit.
+        if (ox * ox + oy * oy > cyl.radius * cyl.radius)
+        {
+          return false;
+        }
+        const double cap_z = dir.z() > 0.0 ? cyl.height : 0.0;
+        if (std::abs(dir.z()) < 1e-12)
+        {
+          return false;
+        }
+        const double t = (cap_z - origin.z()) / dir.z();
+        if (t < 1e-4 || t > t_max)
+        {
+          return false;
+        }
+        *t_out = t;
+        return true;
+      }
+
+      const double b    = 2.0 * (ox * dir.x() + oy * dir.y());
+      const double c    = ox * ox + oy * oy - cyl.radius * cyl.radius;
+      const double disc = b * b - 4.0 * a * c;
+      if (disc < 0.0)
+      {
+        return false;
+      }
+      const double sq = std::sqrt(disc);
+      for (double t : {(-b - sq) / (2.0 * a), (-b + sq) / (2.0 * a)})
+      {
+        if (t < 1e-4 || t > t_max)
+        {
+          continue;
+        }
+        const double z = origin.z() + t * dir.z();
+        if (z >= 0.0 && z <= cyl.height)
+        {
+          *t_out = t;
+          return true;
+        }
+      }
+      return false;
+    }
+
   }  // namespace
 
   bool Scene::raycast(const Eigen::Vector3d &origin, const Eigen::Vector3d &dir,
@@ -123,6 +176,16 @@ namespace simple_sim
     {
       double t = 0.0;
       if (RayBox(origin, dir, box, best, &t) && t < best)
+      {
+        best = t;
+        hit  = true;
+      }
+    }
+
+    for (const auto &cyl : cylinders)
+    {
+      double t = 0.0;
+      if (RayCylinder(origin, dir, cyl, best, &t) && t < best)
       {
         best = t;
         hit  = true;

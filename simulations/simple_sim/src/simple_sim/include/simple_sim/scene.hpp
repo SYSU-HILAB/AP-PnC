@@ -33,8 +33,17 @@ namespace simple_sim
     Eigen::Vector3d half_extent;
   };
 
+  // Vertical cylinder: circle (center_xy, radius) extruded from z=0 to height.
+  struct Cylinder
+  {
+    Eigen::Vector2d center_xy;
+    double          radius;
+    double          height;
+  };
+
   /**
-   * Static world composed of a ground plane plus box/sphere obstacles.
+   * Static world composed of a ground plane plus box/cylinder/sphere
+   * obstacles (pillar-course layout).
    *
    * @param[in]  origin     Ray origin in world frame [m]
    * @param[in]  dir        Unit ray direction in world frame [-]
@@ -45,9 +54,10 @@ namespace simple_sim
   class Scene
   {
    public:
-    double              ground_z = 0.0;
-    std::vector<Sphere> spheres;
-    std::vector<Box>    boxes;
+    double                ground_z = 0.0;
+    std::vector<Sphere>   spheres;
+    std::vector<Box>      boxes;
+    std::vector<Cylinder> cylinders;
 
     bool raycast(const Eigen::Vector3d &origin, const Eigen::Vector3d &dir,
                  double max_range, double *distance) const;
