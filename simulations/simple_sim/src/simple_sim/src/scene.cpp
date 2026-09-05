@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <random>
 
 namespace simple_sim
 {
@@ -163,6 +162,16 @@ namespace simple_sim
       }
     }
 
+    if (ceiling_z > 0.0 && dir.z() > 1e-9)
+    {
+      const double t = (ceiling_z - origin.z()) / dir.z();
+      if (t > 1e-4 && t < best)
+      {
+        best = t;
+        hit  = true;
+      }
+    }
+
     for (const auto &sphere : spheres)
     {
       double t = 0.0;
@@ -201,40 +210,27 @@ namespace simple_sim
   {
     Scene scene;
 
-    // Deterministic pillar field: pillars evenly spread along the corridor
-    // with jittered x, random side and offset; pillar surfaces never intrude
-    // into the |y| < corridor flight channel.
-    std::mt19937                           rng(cfg.seed);
-    std::uniform_real_distribution<double> jitter(-0.2, 0.2);
-    std::uniform_real_distribution<double> radius(cfg.radius_min, cfg.radius_max);
-    std::uniform_real_distribution<double> side(0.0, 1.0);
-
-    const int    N      = std::max(cfg.pillar_count, 0);
-    const double x_lo   = -cfg.length / 2.0 + cfg.edge_margin;
-    const double x_hi   = cfg.length / 2.0 - cfg.edge_margin;
-    const double y_lim  = cfg.width / 2.0 - cfg.edge_margin;
-    const double span   = (x_hi - x_lo) / std::max(N, 1);
+    // Two straight rows of identical upright pillars, symmetric about y=0,
+    // evenly spaced along the corridor. No randomness.
+    const int    N    = std::max(cfg.pillar_count, 0);
+    const double x_lo = -cfg.length / 2.0 + cfg.edge_margin;
+    const double x_hi = cfg.length / 2.0 - cfg.edge_margin;
     for (int i = 0; i < N; ++i)
     {
-      const double u = (static_cast<double>(i) + 0.5) / N;
-      const double x =
-          std::clamp(x_lo + (x_hi - x_lo) * u + jitter(rng) * span, x_lo, x_hi);
-      const double r = radius(rng);
-      // Offset from the corridor edge by the pillar radius + 0.5 m.
-      const double y_min = cfg.corridor_half_width + r + 0.5;
-      std::uniform_real_distribution<double> y_dist(y_min, std::max(y_lim, y_min));
-      const double y = (side(rng) < 0.5 ? -1.0 : 1.0) * y_dist(rng);
-
-      Cylinder cyl;
-      cyl.center_xy << x, y;
-      cyl.radius = r;
-      cyl.height = cfg.height;
-      scene.cylinders.push_back(cyl);
+      const double x = N == 1 ? 0.0 : x_lo + (x_hi - x_lo) * i / (N - 1);
+      for (const double side : {1.0, -1.0})
+      {
+        Cylinder cyl;
+        cyl.center_xy << x, side * cfg.pillar_offset;
+        cyl.radius = cfg.pillar_radius;
+        cyl.height = cfg.height;
+        scene.cylinders.push_back(cyl);
+      }
     }
 
-    if (cfg.build_walls)
+    if (cfg.build_shell)
     {
-      const double t = 0.2;  // wall thickness [m]
+      const double t    = 0.2;  // wall thickness [m]
       const auto   wall = [&](double cx, double cy, double hx, double hy)
       {
         Box b;
@@ -246,6 +242,7 @@ namespace simple_sim
       wall(0.0, -cfg.width / 2.0 - t, cfg.length / 2.0 + t, t);
       wall(cfg.length / 2.0 + t, 0.0, t, cfg.width / 2.0 + t);
       wall(-cfg.length / 2.0 - t, 0.0, t, cfg.width / 2.0 + t);
+      scene.ceiling_z = cfg.height;
     }
     return scene;
   }
