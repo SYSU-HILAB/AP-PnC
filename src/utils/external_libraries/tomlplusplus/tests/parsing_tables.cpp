@@ -20,6 +20,11 @@ TEST_CASE("parsing - tables")
 						   });
 	parsing_should_fail(FILE_LINE_ARGS, "[]"sv);
 
+	parsing_should_fail(FILE_LINE_ARGS, "[[[1]]]"sv);
+	parsing_should_fail(FILE_LINE_ARGS, "[[[a]]]"sv);
+	parsing_should_fail(FILE_LINE_ARGS, "[[[]]"sv);
+	parsing_should_fail(FILE_LINE_ARGS, "[[="sv);
+
 	// "Under that, and until the next header or EOF, are the key/values of that table.
 	//  Key/value pairs within tables are not guaranteed to be in any specific order."
 	parsing_should_succeed(FILE_LINE_ARGS,
@@ -294,6 +299,34 @@ TEST_CASE("parsing - tables")
 							   CHECK(tbl["fruit"]["apple"]["texture"]["smooth"].as_boolean());
 							   CHECK(*tbl["fruit"]["apple"]["texture"]["smooth"].as_boolean() == true);
 						   });
+}
+
+TEST_CASE("parsing - redefinition error messages preserve quoted keys")
+{
+	// https://github.com/marzer/tomlplusplus/issues/300
+	static constexpr auto src = "[\"foo\"]\nx = 1\n[\"foo\"]\ny = 2\n"sv;
+#if TOML_EXCEPTIONS
+	std::string desc;
+	bool threw = false;
+	try
+	{
+		[[maybe_unused]] auto res = toml::parse(src);
+	}
+	catch (const toml::parse_error& err)
+	{
+		threw = true;
+		desc.assign(err.description());
+	}
+	REQUIRE(threw);
+	CHECK(desc.find("\"foo\"") != std::string::npos);
+	CHECK(desc.find("fofoo") == std::string::npos);
+#else
+	auto result = toml::parse(src);
+	REQUIRE(!result);
+	const std::string desc{ result.error().description() };
+	CHECK(desc.find("\"foo\"") != std::string::npos);
+	CHECK(desc.find("fofoo") == std::string::npos);
+#endif
 }
 
 TEST_CASE("parsing - inline tables")

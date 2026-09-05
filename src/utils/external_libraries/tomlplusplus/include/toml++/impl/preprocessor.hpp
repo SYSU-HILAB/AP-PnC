@@ -750,7 +750,6 @@
 	__pragma(warning(disable : 4710)) /* function not inlined */                                                       \
 	__pragma(warning(disable : 4711)) /* function selected for automatic expansion */                                  \
 	__pragma(warning(disable : 4820)) /* N bytes padding added */                                                      \
-	__pragma(warning(disable : 4946)) /* reinterpret_cast used between related classes */                              \
 	__pragma(warning(disable : 5026)) /* move constructor was implicitly defined as deleted	*/                         \
 	__pragma(warning(disable : 5027)) /* move assignment operator was implicitly defined as deleted	*/                 \
 	__pragma(warning(disable : 5039)) /* potentially throwing function passed to 'extern "C"' function */              \
@@ -1177,9 +1176,11 @@
 #endif
 
 #ifndef TOML_MAX_NESTED_VALUES
-#define TOML_MAX_NESTED_VALUES 256
+#define TOML_MAX_NESTED_VALUES 128
 // this refers to the depth of nested values, e.g. inline tables and arrays.
-// 256 is crazy high! if you're hitting this limit with real input, TOML is probably the wrong tool for the job...
+// 128 is very generous; real TOML files rarely exceed single-digit nesting.
+// keep this value low enough to avoid stack overflows in sanitizer-instrumented builds
+// where each recursion cycle may consume ~3KB of stack.
 #endif
 
 #ifndef TOML_MAX_DOTTED_KEYS_DEPTH
