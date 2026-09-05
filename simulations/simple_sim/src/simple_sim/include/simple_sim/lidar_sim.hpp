@@ -25,8 +25,10 @@ namespace simple_sim
 {
 
   /**
-   * Livox Mid-360 style sensor: 360 deg horizontal, -7..+52 deg vertical,
-   * emulated with a Lissajous non-repetitive scan pattern (MARSIM-style).
+   * Livox Mid-360 style sensor geometry: 360 deg horizontal, -7..+52 deg
+   * vertical. Samples are drawn from a deterministic low-discrepancy
+   * (Kronecker) sequence so each frame evenly covers the FOV and consecutive
+   * frames interleave - no scan-curve artifacts.
    */
   struct LidarConfig
   {
@@ -45,9 +47,10 @@ namespace simple_sim
   };
 
   /**
-   * Synthetic Mid-360 LiDAR using ray casting against the scene. Consecutive
-   * frames use golden-ratio phase offsets so their samples interleave instead
-   * of repeating.
+   * Synthetic Mid-360 LiDAR using ray casting against the scene. Beam
+   * directions come from a 2D Kronecker sequence (irrational additive
+   * recurrences) shifted per frame, giving uniform, curve-free coverage of
+   * the FOV that densifies as frames accumulate.
    *
    * @param[in]  config    Sensor geometry (points per frame, FOV, range)
    */
