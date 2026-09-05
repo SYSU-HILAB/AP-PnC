@@ -6,10 +6,6 @@
 	path = mpc_framework
 	url = https://github.com/acados/acados.git
 	branch = main
-[submodule "src/utils/ROS2-Utils"]
-	path = src/utils/ROS2-Utils
-	url = https://github.com/WarriorHanamy/ROS2-Utils.git
-	branch = main
 [submodule "src/utils/external_libraries/tomlplusplus"]
 	path = src/utils/external_libraries/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
