@@ -6,9 +6,6 @@
 	path = mpc_framework
 	url = https://github.com/acados/acados.git
 	branch = main
-[submodule "src/utils/external_libraries/tomlplusplus"]
-	path = src/utils/external_libraries/tomlplusplus
-	url = https://github.com/marzer/tomlplusplus.git
 [submodule "src/utils/external_libraries/yamlcpp"]
 	path = src/utils/external_libraries/yamlcpp
 	url = https://github.com/jbeder/yaml-cpp.git
