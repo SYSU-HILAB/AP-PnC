@@ -9,9 +9,18 @@ Usage:
 """
 
 import argparse
+import os
 
 import numpy as np
 import open3d as o3d
+
+
+def force_x11_if_available() -> None:
+    """Open3D's GLEW backend is GLX-only; on Wayland sessions GLFW picks the
+    Wayland platform and GLEW init fails. Prefer XWayland when present."""
+    if os.environ.get("WAYLAND_DISPLAY") and os.environ.get("DISPLAY"):
+        del os.environ["WAYLAND_DISPLAY"]
+        print("Wayland session detected: forcing XWayland (open3d GLEW is GLX-only)")
 
 
 def load_ascii_pcd(path: str) -> np.ndarray:
@@ -74,6 +83,7 @@ def main() -> None:
 
     if args.info:
         return
+    force_x11_if_available()
     o3d.visualization.draw_geometries(
         [cloud],
         window_name=f"simple_sim: {args.pcd}",
