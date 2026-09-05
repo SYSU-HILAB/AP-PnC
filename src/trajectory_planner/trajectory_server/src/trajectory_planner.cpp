@@ -19,7 +19,7 @@
 #include <trajectory_server/planning_utils.hpp>
 
 #include <tailsitter_df/tailsitter_df.hpp>
-#include <toml++/toml.hpp>
+#include <yaml-cpp/yaml.h>
 
 using std::chrono_literals::operator""s;
 
@@ -205,26 +205,25 @@ void GlobalPlanner::plan()
     tailsitter_data.reset();
 
     // Reset Newton-Raphson solver for new trajectory
-    // Note: Solver configuration is already read from global.toml in constructor
+    // Note: Solver configuration is already read from the yaml config in constructor
     // We just need to reset the temporal coherence state here
     const char* env_p = std::getenv("AP_PNC_DIR");
     if (env_p != nullptr)
     {
-      std::string toml_path = std::string(env_p) + "/global.toml";
+      std::string yaml_path = std::string(env_p) + "/config/aero_alpha_solver.yaml";
       try
       {
-        toml::table tbl = toml::parse_file(toml_path);
-        auto aero_alpha_config = tbl["aero_alpha_solver"];
-        double initial_alpha_deg = aero_alpha_config["initial_alpha_deg"].value_or(90.0);
+        YAML::Node config = YAML::LoadFile(yaml_path);
+        double initial_alpha_deg = config["initial_alpha_deg"].as<double>(90.0);
         g_alpha_solver.resetAlpha(initial_alpha_deg);
         RCLCPP_INFO(this->get_logger(),
-                    "AeroAlphaSolver reset with initial alpha: %.6f degrees from global.toml",
+                    "AeroAlphaSolver reset with initial alpha: %.6f degrees from config/aero_alpha_solver.yaml",
                     initial_alpha_deg);
       }
-      catch (const toml::parse_error& e)
+      catch (const YAML::Exception& e)
       {
         RCLCPP_WARN(this->get_logger(),
-                    "Failed to parse global.toml: %s. Using default initial_alpha_deg = 90.0",
+                    "Failed to parse config/aero_alpha_solver.yaml: %s. Using default initial_alpha_deg = 90.0",
                     e.what());
         g_alpha_solver.resetAlpha(90.0);
       }

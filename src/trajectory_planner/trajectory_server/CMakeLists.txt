@@ -38,6 +38,7 @@ ament_auto_add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_SRCS}) # Add ot
 target_link_libraries(
         ${PROJECT_NAME}_node
         Eigen3::Eigen  # Eigen support namespace CMake
+        yaml-cpp
 )
 
 # Link against aerodynamics library for AeroAlphaSolver

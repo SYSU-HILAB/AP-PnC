@@ -9,20 +9,12 @@
 # Paper:
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
+import os
+
 import launch
 import launch_ros.actions
-import os
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions  import LaunchConfiguration
-import toml
-import os
 
-tailsitter_planning_dir = os.environ.get('AP_PNC_DIR')
-toml_file_path = os.path.join(tailsitter_planning_dir, 'global.toml')
-
-with open(toml_file_path, 'r') as f:
-    data = toml.load(f)
 
 def generate_launch_description():
     gcopter_params = os.path.join(

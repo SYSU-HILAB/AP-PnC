@@ -6,7 +6,7 @@ RUN apt update && apt install -y \
 WORKDIR /ap-pnc
 
 COPY src/ src/
-COPY global.toml ./
+COPY config/ ./config/
 
 ENV AP_PNC_DIR=/ap-pnc
 ENV NMPC_BUNDLE_PATH=/ap-pnc/build/nmpc_wrapper/libnmpc_bundle.a

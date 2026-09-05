@@ -283,31 +283,19 @@ alpha_deg,cz,cd,cy
 ### Global Configuration (TOML)
 
 ```toml
-# global.toml
+# config/*.yaml
 
-[backend]
-# Default symbolic computation backend
-default = "jax"  # Options: casadi, jax, torch
+Per-module configuration lives in the repo `config/` directory:
+- `config/tailsitter_df.yaml` — aerodynamic model parameters (mass, phi)
+- `config/aero_alpha_solver.yaml` — Newton-Raphson force-balance solver:
 
-[cz_calculate]
-# Solver method for inverse aerodynamic lookup
-solver_method = "auto"  # Options: lookup_table, newton_raphson, auto
-
-[cz_calculate.lookup_table]
-path = "artifacts/simulations/aero_lookup_table.csv"
-interpolation_method = "linear"
-
-[cz_calculate.newton_raphson]
-max_iterations = 50
-tolerance = 1e-8
-damping_factor = 1.0
-derivative_epsilon = 1e-6
-enable_fallback = true
-
-[cache]
-# Cached aerodynamic data
-enabled = true
-path = "ap_pnc/lu_mpc/.cache"
+```yaml
+max_iterations: 1000
+tolerance: 1e-6
+damping_factor: 0.5
+derivative_epsilon: 1e-3
+initial_alpha_deg: 90.0
+```
 mesh_size_alpha = 361    # Number of grid points in alpha
 mesh_size_beta = 361     # Number of grid points in beta
 mesh_size_velocity = 100 # Number of grid points in velocity
@@ -459,7 +447,7 @@ Current State + Reference Trajectory
 
 | File | Format | Description |
 |------|--------|-------------|
-| `global.toml` | TOML | Global configuration |
+| `config/*.yaml` | YAML | Per-module configuration |
 | `acados_ocp_nlp.json` | JSON | ACADOS solver config |
 | `launch_*.py` | Python | ROS2 launch files |
 

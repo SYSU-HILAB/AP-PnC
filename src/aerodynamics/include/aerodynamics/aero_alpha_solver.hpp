@@ -56,7 +56,7 @@ struct AlphaSolverResult
  * This is a direct aerodynamic force balance approach without lookup tables.
  * The solver uses Newton-Raphson iteration with temporal coherence for fast convergence.
  *
- * Configuration is read directly from global.toml under the [aero_alpha_solver] section:
+ * Configuration is read directly from $AP_PNC_DIR/config/aero_alpha_solver.yaml:
  * - max_iterations: Maximum Newton-Raphson iterations (default: 50)
  * - tolerance: Convergence tolerance for |f(alpha)| (default: 1e-8)
  * - damping_factor: Damping factor (0 < d <= 1) for stability (default: 1.0)
@@ -71,13 +71,13 @@ class AeroAlphaSolver
 {
  public:
   /**
-   * @brief Constructor - reads configuration from global.toml
+   * @brief Constructor - reads configuration from config/aero_alpha_solver.yaml
    *
-   * Reads configuration from $AP_PNC_DIR/global.toml under [aero_alpha_solver] section.
+   * Reads configuration from $AP_PNC_DIR/config/aero_alpha_solver.yaml.
    * If AP_PNC_DIR is not set or the file cannot be parsed, uses default values.
    *
    * @param aero_interface Aerodynamics model for computing forces
-   * @param toml_path Optional custom path to TOML configuration file
+   * @param toml_path Optional custom path to YAML configuration file
    */
   explicit AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_interface,
                            const std::string& toml_path = "");
@@ -155,7 +155,7 @@ class AeroAlphaSolver
   /// Aerodynamics model for computing forces
   std::shared_ptr<AerodynamicsInterface> aero_interface_;
 
-  /// Solver configuration parameters (read from global.toml)
+  /// Solver configuration parameters (read from config/aero_alpha_solver.yaml)
   int max_iterations_;              ///< Maximum Newton-Raphson iterations
   double tolerance_;                ///< Convergence tolerance for |f(alpha)|
   double damping_factor_;           ///< Damping factor (0 < d <= 1) for stability

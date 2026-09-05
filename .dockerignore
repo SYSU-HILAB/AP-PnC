@@ -1,6 +1,6 @@
 *
 !src/
+!config/
 !simulations/
 !simulations/simple_sim/
-!global.toml
 !build/nmpc_wrapper/libnmpc_bundle.a

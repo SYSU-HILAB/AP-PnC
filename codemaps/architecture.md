@@ -125,7 +125,7 @@ State Vector: [x, y, z, vx, vy, vz, phi, theta, psi,
 
 ### Trajectory Planning Flow
 ```
-1. global.toml → Trajectory Server configuration
+1. config/global_planning.yaml → Trajectory Server configuration
 2. Trajectory Server → MINCO/LBFGS trajectory generation
 3. CzCalculate → Angle of attack from lift coefficient
 4. Output → Reference trajectory for MPC
@@ -178,7 +178,7 @@ scripts/tools/srunall     # Full system launch
 
 | File | Purpose |
 |------|---------|
-| `global.toml` | Global system parameters, solver method selection |
+| `config/*.yaml` | Per-module system parameters |
 | `ap_pnc/lu_mpc/.cache/ocp_*.json` | ACADOS solver configurations |
 | `.clang-format` | C++ formatting rules |
 | `justfile` | All development tasks |

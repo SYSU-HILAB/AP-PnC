@@ -182,18 +182,14 @@ double alpha = solver.solve(V, S_ap_x, S_ap_z, mass);
 
 ### Configuration
 
-The solver supports configuration via `global.toml`:
+The solver supports configuration via `config/aero_alpha_solver.yaml`:
 
-```toml
-[cz_calculate]
-solver_method = "auto"  # Options: "lookup_table", "newton_raphson", "auto"
-
-[cz_calculate.newton_raphson]
-max_iterations = 50
-tolerance = 1e-8
-damping_factor = 1.0
-derivative_epsilon = 1e-6
-enable_fallback = true
+```yaml
+max_iterations: 1000
+tolerance: 1e-6
+damping_factor: 0.5
+derivative_epsilon: 1e-3
+initial_alpha_deg: 90.0
 ```
 
 ### Solver Methods

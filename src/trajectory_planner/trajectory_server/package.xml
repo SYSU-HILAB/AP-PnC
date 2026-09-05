@@ -22,6 +22,7 @@
     <depend>utils</depend>
     <depend>interface</depend>
     <depend>aerodynamics</depend>
+    <depend>external_libraries</depend>
     <exec_depend>ros2launch</exec_depend>
 
     <export>

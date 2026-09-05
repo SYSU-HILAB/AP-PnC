@@ -285,7 +285,6 @@ from feature.lu_mpc.model.ctrl.proposed_model import ProposedModel
 
 model = ProposedModel(
     backend="casadi",  # Required for ACADOS
-    config="global.toml"
 )
 
 # Define OCP constraints
@@ -578,7 +577,6 @@ plot_mesh_aero(
 from feature.lu_mpc.ros.nodes.test_proposed_nmpc_viz import main
 
 main(
-    config="global.toml",
     acados_config="acados_ocp_nlp.json"
 )
 ```
@@ -640,18 +638,14 @@ just benchmark-torch                  # PyTorch performance
 ## Configuration
 
 ### Global Configuration
-**File**: `global.toml`
+**File**: `config/aero_alpha_solver.yaml`
 
-```toml
-[backend]
-default = "jax"  # casadi, jax, torch
-
-[cz_calculate]
-solver_method = "auto"
-
-[cache]
-enabled = true
-path = "ap_pnc/lu_mpc/.cache"
+```yaml
+max_iterations: 1000
+tolerance: 1e-6
+damping_factor: 0.5
+derivative_epsilon: 1e-3
+initial_alpha_deg: 90.0
 ```
 
 ### ACADOS Configuration

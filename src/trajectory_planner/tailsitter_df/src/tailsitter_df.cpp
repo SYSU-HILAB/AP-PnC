@@ -19,7 +19,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <tailsitter_df/tailsitter_df.hpp>
-#include <toml++/toml.hpp>
+#include <vector>
 
 constexpr auto &out = std::cout;
 
@@ -93,18 +93,16 @@ namespace tailsitter_df
     // Update staitc parameter;
     const char *env_p = std::getenv("AP_PNC_DIR");
     std::string sv(env_p);
-    sv += "/global.toml";
-    toml::table tbl    = toml::parse_file(sv);
-    auto        config = tbl["tailsitter_df"];
+    sv += "/config/tailsitter_df.yaml";
+    YAML::Node config = YAML::LoadFile(sv);
 
-    auto phi = config["phi"].as_array();
-    for (int i = 0; i < phi->size(); i++)
+    const auto phi = config["phi"].as<std::vector<double>>();
+    for (int i = 0; i < static_cast<int>(phi.size()); i++)
     {
-      double val  = phi->get(i)->as_floating_point()->get();
-      getPhi()(i) = val;
+      getPhi()(i) = phi[i];
     }
 
-    mass_ = config["mass"].as_floating_point()->get();
+    mass_ = config["mass"].as<double>();
   }
 
   realM3 &Model::getPhi()

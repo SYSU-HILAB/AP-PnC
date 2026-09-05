@@ -20,7 +20,7 @@
 #include <stdexcept>
 #include <sstream>
 
-#include <toml++/toml.hpp>
+#include <yaml-cpp/yaml.h>
 
 namespace aerodynamics
 {
@@ -47,14 +47,14 @@ AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_int
     throw std::invalid_argument("AeroAlphaSolver: aerodynamics interface cannot be null");
   }
 
-  // Load configuration from TOML
+  // Load configuration from YAML
   std::string config_path = toml_path;
   if (config_path.empty())
   {
     const char* env_p = std::getenv("AP_PNC_DIR");
     if (env_p != nullptr)
     {
-      config_path = std::string(env_p) + "/global.toml";
+      config_path = std::string(env_p) + "/config/aero_alpha_solver.yaml";
     }
   }
 
@@ -62,22 +62,21 @@ AeroAlphaSolver::AeroAlphaSolver(std::shared_ptr<AerodynamicsInterface> aero_int
   {
     try
     {
-      toml::table tbl = toml::parse_file(config_path);
-      auto solver_config = tbl["aero_alpha_solver"];
+      YAML::Node config = YAML::LoadFile(config_path);
 
-      if (solver_config)
+      if (config)
       {
-        max_iterations_ = solver_config["max_iterations"].value_or(50);
-        tolerance_ = solver_config["tolerance"].value_or(1e-8);
-        damping_factor_ = solver_config["damping_factor"].value_or(1.0);
-        derivative_epsilon_ = solver_config["derivative_epsilon"].value_or(1e-6);
-        initial_alpha_deg_ = solver_config["initial_alpha_deg"].value_or(90.0);
+        max_iterations_ = config["max_iterations"].as<int>(50);
+        tolerance_ = config["tolerance"].as<double>(1e-8);
+        damping_factor_ = config["damping_factor"].as<double>(1.0);
+        derivative_epsilon_ = config["derivative_epsilon"].as<double>(1e-6);
+        initial_alpha_deg_ = config["initial_alpha_deg"].as<double>(90.0);
 
         // Update prev_alpha_rad_ to match loaded config
         prev_alpha_rad_ = initial_alpha_deg_ * DEG_TO_RAD;
       }
     }
-    catch (const toml::parse_error& e)
+    catch (const YAML::Exception& e)
     {
       std::cerr << "Warning: Failed to parse " << config_path << ": " << e.what()
                 << ". Using default values." << std::endl;

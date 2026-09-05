@@ -285,7 +285,7 @@ void NMPC::stateCallback(const StateMsg &msg)
 NMPC::NMPC() : Node("NMPC")
 {
   this->declare_parameter("mass", 1.0);
-  this->declare_parameter("cz_rate", 0.02);
+  this->declare_parameter("cz_rate", 0.10);
   this->get_parameter("mass", mass_);
   this->get_parameter("cz_rate", cz_rate_);
   RCLCPP_INFO(this->get_logger(), "mass: %f", mass_);

@@ -50,7 +50,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 * The `stateCallback()` copies `[x,u,cz]` into `x_cur_`, updates both `lbx`/`ubx` for stage 0, estimates the velocity norm, and raises the `ref_can_set` flag.
 * `referenceCallback()` packages the incoming bullet: `TrackingInfo` is populated with ref/actual values and derived angles of attack/sideslip (`alpha`, `beta`). Aerodynamic parameters (`cz`, `alpha`, `cz_rate`) are fed into acados via `setReference(..., p, i)`. After loading stages `0..N`, `solve()` runs, checks `status`, copies the predicted control `u_next`, and publishes `Controls` with solver latency.
 * `accCallback()` filters PX4 accelerometer data to update `cz_filtered_`, enforcing a ±0.4 bound.
-* Parameters `mass` and `cz_rate` come from ROS parameters (defaults in `global.toml` under `[c_nmpc]`).
+* Parameters `mass` and `cz_rate` come from ROS parameters (`cz_rate` defaults to `0.10` in `src/c_nmpc`).
 
 ### NMPC model builder (`src/c_nmpc/nmpc`)
 * Python tooling used offline/CI to regenerate the solver artifacts.
@@ -74,7 +74,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 * Tunable parameters: `time_unit`, `alpha`, `beta`, and bias window size.
 
 ### Differential-flatness & aerodynamics (`src/tailsitter_df`, `src/aerodynamics`, `src/utils`)
-* `src/tailsitter_df/src/tailsitter_df.cpp` implements lift/drag modeling with autodiff. It loads aerodynamic matrices (`phi`) and mass from `global.toml`, computes body-frame bases `(xb,yb,zb)`, and exports helpers such as `df_forward`, `df_backward`, and aerodynamic Jacobians.
+* `src/tailsitter_df/src/tailsitter_df.cpp` implements lift/drag modeling with autodiff. It loads aerodynamic matrices (`phi`) and mass from `config/tailsitter_df.yaml`, computes body-frame bases `(xb,yb,zb)`, and exports helpers such as `df_forward`, `df_backward`, and aerodynamic Jacobians.
 * `src/aerodynamics` contains various aerodynamic models (bspline fits, lookup tables) that can be swapped for benchmarking.
 * `src/utils` provides config readers for spline/phi files (`phi_aero_config_reader.cpp`, `bspline_aero_config_reader.cpp`, etc.).
 
@@ -113,7 +113,7 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
    * Start `mocap_to_visual_odometry` (if using mocap) so PX4 receives `/fmu/in/vehicle_visual_odometry`.
 
 2. **Planning**
-   * Launch `global_planning_node`. It continuously publishes `control_traj`. Parameters for curvature, radius, and safe corridor lengths live in `src/trajectory_server/config` and `global.toml`.
+   * Launch `global_planning_node`. It continuously publishes `control_traj`. Parameters for curvature, radius, and safe corridor lengths live in `src/trajectory_server/config/global_planning.yaml`.
 
 3. **Buffering**
    * Start `trajectory_buffer`. Once `NMPC` raises `/ref_can_set`, it converts the RefTrajectory stream into bullets and optionally locks onto the last point when the planner stops publishing.
@@ -128,6 +128,6 @@ This document summarizes how the AP-PnC repository hangs together at runtime. It
 ## Extending or Modifying the Stack
 
 * **Changing dynamics/weights** – update `src/c_nmpc/nmpc/model.py` or `src/c_nmpc/nmpc/config.py`, re-run `uv run python src/c_nmpc/nmpc/create_ocp_or_sim.py`, then rebuild the ROS 2 workspace so `c_nmpc` links against the refreshed `c_generated_code`.
-* **Adding new trajectories** – implement the shape inside `src/basic_trajectories` (follow `Circle` or `Lemniscate`), expose it in `GlobalPlanner::init_basic_trajectory_type`, and add parameters in `global.toml` or the relevant ROS 2 launch file.
+* **Adding new trajectories** – implement the shape inside `src/basic_trajectories` (follow `Circle` or `Lemniscate`), expose it in `GlobalPlanner::init_basic_trajectory_type`, and add parameters in the relevant `config/` or ROS 2 launch file.
 * **Integrating new sensors** – publish your measurement on a fresh topic and tap into `px4_interface` or `trajectory_buffer` as needed. Both nodes rely on `interface/msg/*.msg`, so reuse or extend those definitions.
-* **Tuning aerodynamic logic** – edit `global.toml` (mass, `phi`) and the filters inside `src/tailsitter_df` or `src/c_nmpc`. Re-run the NMPC builder after large changes so solver bounds stay consistent.
+* **Tuning aerodynamic logic** – edit `config/tailsitter_df.yaml` (mass, `phi`) and the filters inside `src/tailsitter_df` or `src/c_nmpc`. Re-run the NMPC builder after large changes so solver bounds stay consistent.

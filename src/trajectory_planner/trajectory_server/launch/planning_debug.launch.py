@@ -1,20 +1,12 @@
 # Debug launch file with gdbserver support
 # Run with VSCode "cpp: plan (gdbserver)" configuration
 
+import os
+
 import launch
 import launch_ros.actions
-import os
 from ament_index_python.packages import get_package_share_directory
-import toml
 
-# Get AP_PNC_DIR from environment or derive from script location
-tailsitter_planning_dir = os.environ.get('AP_PNC_DIR')
-if not tailsitter_planning_dir:
-    # Fallback: derive from package share directory
-    trajectory_server_share = get_package_share_directory('trajectory_server')
-    tailsitter_planning_dir = os.path.abspath(os.path.join(trajectory_server_share, '..', '..', '..', '..'))
-
-toml_file_path = os.path.join(tailsitter_planning_dir, 'global.toml')
 
 def generate_launch_description():
     gcopter_params = os.path.join(

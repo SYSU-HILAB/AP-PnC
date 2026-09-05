@@ -96,15 +96,13 @@ private:
 };
 ```
 
-**Configuration** (`global.toml`):
-```toml
-[cz_calculate]
-solver_method = "auto"
-
-[cz_calculate.newton_raphson]
-max_iterations = 50
-tolerance = 1e-8
-damping_factor = 1.0
+**Configuration** (`config/aero_alpha_solver.yaml`):
+```yaml
+max_iterations: 1000
+tolerance: 1e-6
+damping_factor: 0.5
+derivative_epsilon: 1e-3
+initial_alpha_deg: 90.0
 ```
 
 **Dependencies**: None (self-contained)
