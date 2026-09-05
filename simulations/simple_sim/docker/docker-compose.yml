@@ -1,0 +1,24 @@
+services:
+  simple-sim:
+    build:
+      context: ../../..
+      dockerfile: simulations/simple_sim/docker/simple-sim.dockerfile
+      network: host
+    image: simple-sim:latest
+    container_name: simple-sim
+    privileged: true
+    network_mode: host
+    ipc: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+      - XDG_RUNTIME_DIR=/tmp/runtime-sim
+    volumes:
+      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ../../.artifacts/simple-sim:/workspace/.artifacts
+    command: bash
+    stdin_open: true
+    tty: true

@@ -1,0 +1,33 @@
+/simple_sim:
+  ros__parameters:
+    mass: 2.0
+    gravity: 9.81
+    inertia_xx: 0.02
+    inertia_yy: 0.02
+    inertia_zz: 0.03
+
+    sim_rate: 200.0
+    publish_rate: 10.0
+
+    start_pos: [0.0, 0.0, 5.0]
+    waypoint_tolerance: 0.3
+
+    kp_pos: [12.0, 12.0, 12.0]
+    kd_vel: [3.0, 3.0, 3.0]
+    ki_pos: [0.5, 0.5, 0.5]
+    kp_att: [8.0, 8.0, 8.0]
+
+    lidar:
+      rings: 16
+      points_per_ring: 360
+      fov_h_deg: 360.0
+      fov_v_deg: 30.0
+      max_range: 30.0
+      min_range: 0.2
+
+    waypoints: [5.0, 0.0, 5.0, 0.0, 5.0, 5.0]
+
+    # cx, cy, cz, half_x, half_y, half_z
+    obstacle_boxes: [5.0, 0.0, 0.5, 0.4, 0.4, 0.5]
+    # cx, cy, cz, radius
+    obstacle_spheres: [0.0, 4.0, 1.0, 1.2]

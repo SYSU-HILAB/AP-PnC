@@ -32,8 +32,11 @@ COPY installations/install-dds-agent.sh /tmp/agent_src/install-dds-agent.sh
 RUN /tmp/agent_src/install-dds-agent.sh
 
 ARG CACHE_BUSTER="rebuild"
+# Pin the fork commit so every image build produces the same firmware.
+ARG PX4_VTOL_COMMIT=b947a314dbc6ac6957247c2428f441af0a4e56c2
 RUN echo "Cache buster: $CACHE_BUSTER" && \
-    git clone https://github.com/WarriorHanamy/px4-vtol.git --recursive /home/px4/px4-vtol
+    git clone https://github.com/WarriorHanamy/px4-vtol.git --recursive /home/px4/px4-vtol && \
+    git -C /home/px4/px4-vtol checkout "$PX4_VTOL_COMMIT"
 WORKDIR /home/px4/px4-vtol
 
 ENV PATH="/home/px4/px4-vtol/Tools:$PATH"

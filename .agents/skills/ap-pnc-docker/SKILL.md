@@ -23,7 +23,7 @@ Or manually:
 
 ```bash
 uv run ap-pnc cocp
-docker compose -f docker/docker-compose.yml build ap-pnc
+docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc
 ```
 
 ## Run
@@ -31,13 +31,13 @@ docker compose -f docker/docker-compose.yml build ap-pnc
 Start all services (px4-simulator, qgroundcontrol, ap-pnc):
 
 ```bash
-docker compose -f docker/docker-compose.yml up
+docker compose -f simulations/gazebo/docker/docker-compose.yml up
 ```
 
 Start ap-pnc only (if other services are already running):
 
 ```bash
-docker compose -f docker/docker-compose.yml up ap-pnc
+docker compose -f simulations/gazebo/docker/docker-compose.yml up ap-pnc
 ```
 
 ## Hot Update
@@ -46,7 +46,7 @@ When the OCP model/weights change:
 
 ```bash
 uv run ap-pnc cocp              # regenerate bundle
-docker compose -f docker/docker-compose.yml build ap-pnc  # rebuild image
+docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc  # rebuild image
 docker compose up ap-pnc       # restart container
 ```
 

@@ -5,4 +5,4 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 uv run ap-pnc cocp
-docker compose -f docker/docker-compose.yml build ap-pnc
+docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc

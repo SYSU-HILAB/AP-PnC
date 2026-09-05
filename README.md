@@ -75,6 +75,27 @@ scripts/tools/plan               # Launch trajectory server
 
 ---
 
+## Simulation Layers
+
+Two stacked simulation setups live under `simulations/`, each opened with Docker:
+
+| Layer | Directory | What it runs |
+|-------|-----------|--------------|
+| Gazebo | `simulations/gazebo/` | Full-fidelity PX4-VTOL SITL under Gazebo Garden, bridged to ROS2 and the AP-PnC NMPC stack (`px4-simulator` + `qground_control` + `ap-pnc`) |
+| Simple sim | `simulations/simple_sim/` | Lightweight C++ simulator (MARSIM-style) with synthetic LiDAR sensing, for obstacle-avoidance principle verification |
+
+```bash
+make sim-gazebo-up      # Gazebo layer: docker compose up (3 services)
+make sim-simple-up      # simple_sim layer: docker compose up
+```
+
+The `px4-vtol` firmware fork is a build-time dependency cloned inside the
+Gazebo image and pinned to a fixed commit via `ARG PX4_VTOL_COMMIT` — it is not
+vendored into this repository. See `simulations/gazebo/README.md` and
+`simulations/simple_sim/README.md` for details.
+
+---
+
 ## Workspace Behavior with Git Worktrees
 
 ### Python Projects (via `uv run`)
