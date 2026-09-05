@@ -58,7 +58,11 @@ uv run scripts/tools/viz_pcd.py .artifacts/simple-sim/frame.pcd
 ```
 
 The viewer colors points by intensity (distance). Use `--info` for
-statistics only, or set `dump_pcd_path` manually on the node.
+statistics only, or tune the dump on the node:
+- `dump_pcd_path`: where to write the cloud (default: off)
+- `dump_pcd_frames`: frames accumulated before writing (default 30) — a
+  single Lissajous frame is a sparse curve; accumulation fills surfaces
+  so pillars show up as solid vertical slabs.
 
 ## Topics
 

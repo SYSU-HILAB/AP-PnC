@@ -62,7 +62,9 @@ namespace simple_sim
       lidar.max_range        = get_parameter("lidar.max_range").as_double();
       lidar.min_range        = get_parameter("lidar.min_range").as_double();
 
-      dump_pcd_path_ = get_parameter("dump_pcd_path").as_string();
+      dump_pcd_path_  = get_parameter("dump_pcd_path").as_string();
+      dump_pcd_frames_ =
+          static_cast<int>(get_parameter("dump_pcd_frames").as_int());
 
       dynamics_   = std::make_unique<Dynamics>(mass, inertia, gravity);
       controller_ = std::make_unique<Controller>(gains, mass, gravity);
@@ -129,9 +131,12 @@ namespace simple_sim
       declare_parameter("waypoints",
                         std::vector<double>{-45.0, 0.0, 2.0, 45.0, 0.0, 2.0});
       declare_parameter("build_walls", true);
-      // When set, every published frame is overwritten here as ASCII PCD
-      // (x y z intensity) for offline inspection.
+      // When set, the first dump_pcd_frames frames are accumulated and
+      // written once as ASCII PCD (x y z intensity). A single Lissajous
+      // frame is a sparse curve; accumulating frames fills surfaces and
+      // makes pillars visible.
       declare_parameter("dump_pcd_path", "");
+      declare_parameter("dump_pcd_frames", 30);
       // Procedural pillar field: density = pillar_count along map length.
       declare_parameter("scene.pillar_count", 8);
       declare_parameter("scene.radius_min", 0.6);
@@ -227,14 +232,29 @@ namespace simple_sim
         std::memcpy(msg.data.data() + i * msg.point_step, pt.data(),
                     msg.point_step);
       }
-      if (!dump_pcd_path_.empty())
-      {
-        writeAsciiPcd(dump_pcd_path_, points);
-      }
+      handlePcdDump(points);
       return msg;
     }
 
-    // Dump one frame as ASCII PCD (x y z intensity), overwritten each frame.
+    // Accumulate frames and write the cloud once the buffer is full.
+    void handlePcdDump(const std::vector<LidarPoint> &points)
+    {
+      if (dump_pcd_path_.empty() || dump_done_)
+      {
+        return;
+      }
+      dump_accum_.insert(dump_accum_.end(), points.begin(), points.end());
+      if (++dump_frames_collected_ >= dump_pcd_frames_)
+      {
+        writeAsciiPcd(dump_pcd_path_, dump_accum_);
+        dump_done_ = true;
+        RCLCPP_INFO(get_logger(),
+                    "PCD dump complete: %zu points from %d frames -> %s",
+                    dump_accum_.size(), dump_frames_collected_,
+                    dump_pcd_path_.c_str());
+      }
+    }
+
     void writeAsciiPcd(const std::string &path,
                        const std::vector<LidarPoint> &points)
     {
@@ -423,6 +443,10 @@ namespace simple_sim
     std::size_t                  frame_index_    = 0;
     double                       sim_dt_         = 0.005;
     std::string                  dump_pcd_path_;
+    int                          dump_pcd_frames_      = 30;
+    int                          dump_frames_collected_ = 0;
+    bool                         dump_done_            = false;
+    std::vector<LidarPoint>      dump_accum_;
 
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr points_pub_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr       odom_pub_;
