@@ -42,6 +42,29 @@ namespace simple_sim
   };
 
   /**
+   * Parameters of the procedural pillar-course world generator.
+   *
+   * @param[in] pillar_count         Number of pillars (scene density) [-]
+   * @param[in] radius_min/max       Pillar radius range [m]
+   * @param[in] corridor_half_width  Keep-out half width around y=0 [m]
+   * @param[in] edge_margin          Clearance from the end walls [m]
+   * @param[in] seed                 RNG seed; same seed, same layout [-]
+   */
+  struct PillarCourseConfig
+  {
+    double   length              = 100.0;
+    double   width               = 20.0;
+    double   height              = 20.0;
+    int      pillar_count        = 8;
+    double   radius_min          = 0.6;
+    double   radius_max          = 1.2;
+    double   corridor_half_width = 3.0;
+    double   edge_margin         = 2.0;
+    unsigned seed                = 42;
+    bool     build_walls         = true;
+  };
+
+  /**
    * Static world composed of a ground plane plus box/cylinder/sphere
    * obstacles (pillar-course layout).
    *
@@ -62,6 +85,16 @@ namespace simple_sim
     bool raycast(const Eigen::Vector3d &origin, const Eigen::Vector3d &dir,
                  double max_range, double *distance) const;
   };
+
+  /**
+   * Build the walled pillar-course world: ground plane, boundary walls and a
+   * deterministic (seeded) field of full-height pillars. Pillar surfaces stay
+   * outside the |y| < corridor_half_width flight channel.
+   *
+   * @param[in] cfg  World size, density and layout parameters
+   * @return Generated scene
+   */
+  Scene makePillarCourse(const PillarCourseConfig &cfg);
 
 }  // namespace simple_sim
 

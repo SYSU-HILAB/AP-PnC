@@ -124,11 +124,14 @@ namespace simple_sim
       declare_parameter("lidar.min_range", 0.1);
       declare_parameter("waypoints",
                         std::vector<double>{-45.0, 0.0, 2.0, 45.0, 0.0, 2.0});
-      declare_parameter("obstacle_boxes", std::vector<double>{});
-      declare_parameter("obstacle_spheres", std::vector<double>{});
-      // cx, cy, radius, height per pillar
-      declare_parameter("obstacle_cylinders", std::vector<double>{});
       declare_parameter("build_walls", true);
+      // Procedural pillar field: density = pillar_count along map length.
+      declare_parameter("scene.pillar_count", 8);
+      declare_parameter("scene.radius_min", 0.6);
+      declare_parameter("scene.radius_max", 1.2);
+      declare_parameter("scene.corridor_half_width", 3.0);
+      declare_parameter("scene.edge_margin", 2.0);
+      declare_parameter("scene.seed", 42);
     }
 
     Eigen::Vector3d vectorParam(const std::string &name) const
@@ -144,54 +147,20 @@ namespace simple_sim
 
     Scene buildScene() const
     {
-      Scene                     scene;
-      const std::vector<double> boxes =
-          get_parameter("obstacle_boxes").as_double_array();
-      for (std::size_t i = 0; i + 5 < boxes.size(); i += 6)
-      {
-        Box box;
-        box.center << boxes[i], boxes[i + 1], boxes[i + 2];
-        box.half_extent << boxes[i + 3], boxes[i + 4], boxes[i + 5];
-        scene.boxes.push_back(box);
-      }
-      const std::vector<double> spheres =
-          get_parameter("obstacle_spheres").as_double_array();
-      for (std::size_t i = 0; i + 3 < spheres.size(); i += 4)
-      {
-        Sphere sphere;
-        sphere.center << spheres[i], spheres[i + 1], spheres[i + 2];
-        sphere.radius = spheres[i + 3];
-        scene.spheres.push_back(sphere);
-      }
-      const std::vector<double> cyls =
-          get_parameter("obstacle_cylinders").as_double_array();
-      for (std::size_t i = 0; i + 3 < cyls.size(); i += 4)
-      {
-        Cylinder cyl;
-        cyl.center_xy << cyls[i], cyls[i + 1];
-        cyl.radius = cyls[i + 2];
-        cyl.height = cyls[i + 3];
-        scene.cylinders.push_back(cyl);
-      }
-      if (get_parameter("build_walls").as_bool())
-      {
-        const double L   = get_parameter("map.length").as_double();
-        const double W   = get_parameter("map.width").as_double();
-        const double H   = get_parameter("map.height").as_double();
-        const double t   = 0.2;  // wall thickness [m]
-        const auto   wall = [&](double cx, double cy, double hx, double hy)
-        {
-          Box b;
-          b.center << cx, cy, H / 2.0;
-          b.half_extent << hx, hy, H / 2.0;
-          scene.boxes.push_back(b);
-        };
-        wall(0.0, W / 2.0 + t, L / 2.0 + t, t);
-        wall(0.0, -W / 2.0 - t, L / 2.0 + t, t);
-        wall(L / 2.0 + t, 0.0, t, W / 2.0 + t);
-        wall(-L / 2.0 - t, 0.0, t, W / 2.0 + t);
-      }
-      return scene;
+      PillarCourseConfig cfg;
+      cfg.length              = get_parameter("map.length").as_double();
+      cfg.width               = get_parameter("map.width").as_double();
+      cfg.height              = get_parameter("map.height").as_double();
+      cfg.pillar_count        = get_parameter("scene.pillar_count").as_int();
+      cfg.radius_min          = get_parameter("scene.radius_min").as_double();
+      cfg.radius_max          = get_parameter("scene.radius_max").as_double();
+      cfg.corridor_half_width =
+          get_parameter("scene.corridor_half_width").as_double();
+      cfg.edge_margin         = get_parameter("scene.edge_margin").as_double();
+      cfg.seed                =
+          static_cast<unsigned>(get_parameter("scene.seed").as_int());
+      cfg.build_walls         = get_parameter("build_walls").as_bool();
+      return makePillarCourse(cfg);
     }
 
     void simulate()

@@ -16,6 +16,17 @@
       height: 20.0
     build_walls: true
 
+    # Procedural pillar field: density is controlled by pillar_count.
+    # Pillars never intrude into |y| < corridor_half_width (+ radius),
+    # so the straight flight line stays feasible.
+    scene:
+      pillar_count: 8        # number of pillars along the corridor (density)
+      radius_min: 0.6        # [m]
+      radius_max: 1.2        # [m]
+      corridor_half_width: 3.0  # keep-out half width around the flight line [m]
+      edge_margin: 2.0       # keep pillars away from end walls [m]
+      seed: 42               # change for a different reproducible layout
+
     # Pillar run: fly from one end of the map to the other along y=0.
     start_pos: [-45.0, 0.0, 2.0]
     waypoint_tolerance: 0.3
@@ -34,6 +45,3 @@
       fov_v_max_deg: 52.0
       max_range: 40.0
       min_range: 0.1
-
-    # Pillars alternating along the corridor (cx, cy, radius, height).
-    obstacle_cylinders: [-30.0, 4.0, 0.8, 20.0, -10.0, -4.0, 0.8, 20.0, 10.0, 4.0, 1.0, 20.0, 30.0, -4.0, 1.0, 20.0]
