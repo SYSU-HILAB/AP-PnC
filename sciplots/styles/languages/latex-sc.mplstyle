@@ -1,0 +1,7 @@
+# simplified chinse setting
+font.family: serif
+
+text.usetex: True
+pgf.rcfonts: False
+pgf.texsystem: xelatex
+pgf.preamble: \usepackage{amsmath,amssymb,mathtools} \usepackage{xeCJK} \usepackage{fontspec}  \setmainfont{Times New Roman} \setCJKmainfont{SimSun}
