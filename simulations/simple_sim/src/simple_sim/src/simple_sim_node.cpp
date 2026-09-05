@@ -137,12 +137,11 @@ namespace simple_sim
       // makes pillars visible.
       declare_parameter("dump_pcd_path", "");
       declare_parameter("dump_pcd_frames", 30);
-      // Pillar course: two rows of upright pillars with jittered positions
-      // and random radii (seeded, reproducible).
-      declare_parameter("scene.pillar_count", 8);
+      // Pillar course: pillar_count upright pillars scattered at random
+      // (seeded, reproducible), no rows and no mirroring.
+      declare_parameter("scene.pillar_count", 16);
       declare_parameter("scene.radius_min", 0.6);
       declare_parameter("scene.radius_max", 1.2);
-      declare_parameter("scene.pillar_offset", 5.0);
       declare_parameter("scene.corridor_half_width", 3.0);
       declare_parameter("scene.edge_margin", 5.0);
       declare_parameter("scene.seed", 42);
@@ -168,7 +167,6 @@ namespace simple_sim
       cfg.pillar_count        = get_parameter("scene.pillar_count").as_int();
       cfg.radius_min          = get_parameter("scene.radius_min").as_double();
       cfg.radius_max          = get_parameter("scene.radius_max").as_double();
-      cfg.pillar_offset       = get_parameter("scene.pillar_offset").as_double();
       cfg.corridor_half_width =
           get_parameter("scene.corridor_half_width").as_double();
       cfg.edge_margin         = get_parameter("scene.edge_margin").as_double();

@@ -43,12 +43,11 @@ namespace simple_sim
 
   /**
    * Parameters of the pillar-course world generator: a closed box
-   * (floor, ceiling, four walls) with two rows of upright pillars at
-   * randomized offsets along a nominal pair of rows.
+   * (floor, ceiling, four walls) with pillar_count upright pillars
+   * scattered completely at random (no rows, no mirroring).
    *
-   * @param[in] pillar_count         Number of x positions per row (density)
+   * @param[in] pillar_count         Total number of pillars (density)
    * @param[in] radius_min/max       Pillar radius range [m]
-   * @param[in] pillar_offset        Nominal row distance from y=0 [m]
    * @param[in] corridor_half_width  Keep-out: pillar surfaces never enter
    *                                 |y| < this value [m]
    * @param[in] edge_margin          Clearance from the end walls [m]
@@ -59,10 +58,9 @@ namespace simple_sim
     double   length              = 100.0;
     double   width               = 20.0;
     double   height              = 20.0;
-    int      pillar_count        = 8;
+    int      pillar_count        = 16;
     double   radius_min          = 0.6;
     double   radius_max          = 1.2;
-    double   pillar_offset       = 5.0;
     double   corridor_half_width = 3.0;
     double   edge_margin         = 5.0;
     unsigned seed                = 42;
@@ -94,10 +92,10 @@ namespace simple_sim
 
   /**
    * Build the pillar-course world: floor and ceiling planes, four boundary
-   * walls and two rows of full-height upright pillars at jittered x/y and
-   * random radii (seeded, reproducible). Pillar surfaces are pushed outside
-   * the |y| < corridor_half_width flight channel, so the straight task
-   * stays feasible.
+   * walls and pillar_count full-height upright pillars placed by seeded
+   * rejection sampling - independent x, side, offset and radius, with a
+   * minimum center spacing so pillars never overlap. Pillar surfaces stay
+   * outside the |y| < corridor_half_width flight channel.
    *
    * @param[in] cfg  World size, density and layout parameters
    * @return Generated scene

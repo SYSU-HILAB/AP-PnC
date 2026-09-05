@@ -211,45 +211,51 @@ namespace simple_sim
   {
     Scene scene;
 
-    // Two rows of upright pillars along a nominal pair of rows: x is
-    // jittered around an even grid, each pillar gets an independent y
-    // offset and radius. Pillar surfaces are pushed outside the flight
-    // channel (|y| >= corridor_half_width + r), keeping the straight
-    // task feasible. Seeded RNG -> same seed, same world.
+    // Seeded rejection sampling: every pillar gets an independent x, side,
+    // lateral offset and radius - no rows, no mirroring, no grid. Pillars
+    // keep a minimum center spacing and stay outside the flight channel
+    // (|y| >= corridor_half_width + r) and inside the side walls.
     std::mt19937                           rng(cfg.seed);
     std::uniform_real_distribution<double> unit(0.0, 1.0);
 
-    const int    N      = std::max(cfg.pillar_count, 0);
-    const double x_lo   = -cfg.length / 2.0 + cfg.edge_margin;
-    const double x_hi   = cfg.length / 2.0 - cfg.edge_margin;
-    const double span   = N > 1 ? (x_hi - x_lo) / (N - 1) : 0.0;
-    const double y_lim  = cfg.width / 2.0 - 0.5;  // inner wall face margin
-    for (int i = 0; i < N; ++i)
-    {
-      for (const double side : {1.0, -1.0})
-      {
-        // Independent per-pillar jitter in both axes: rows never line up
-        // into visible columns.
-        const double x = std::clamp(
-            x_lo + span * i + (unit(rng) * 2.0 - 1.0) * 0.3 * span, x_lo, x_hi);
-        const double r = cfg.radius_min +
-                         unit(rng) * (cfg.radius_max - cfg.radius_min);
-        // Nominal row offset plus per-pillar lateral jitter.
-        double y = cfg.pillar_offset * side +
-                   (unit(rng) * 2.0 - 1.0) * 1.5;
-        // Keep the pillar surface out of the flight channel and inside
-        // the walls.
-        const double y_min = cfg.corridor_half_width + r;
-        const double y_abs =
-            std::clamp(std::abs(y), y_min, std::max(y_lim - r, y_min));
-        y = side * y_abs;
+    const int    N         = std::max(cfg.pillar_count, 0);
+    const double x_lo      = -cfg.length / 2.0 + cfg.edge_margin;
+    const double x_hi      = cfg.length / 2.0 - cfg.edge_margin;
+    const double y_lim     = cfg.width / 2.0 - 0.5;  // inner wall face margin
+    const double min_space = 2.0;  // min center-to-center clearance [m]
 
-        Cylinder cyl;
-        cyl.center_xy << x, y;
-        cyl.radius = r;
-        cyl.height = cfg.height;
-        scene.cylinders.push_back(cyl);
+    int  guard = 0;
+    while (static_cast<int>(scene.cylinders.size()) < N &&
+           guard++ < 200 * N)
+    {
+      const double r = cfg.radius_min +
+                       unit(rng) * (cfg.radius_max - cfg.radius_min);
+      const double x = x_lo + unit(rng) * (x_hi - x_lo);
+      const double side = unit(rng) < 0.5 ? -1.0 : 1.0;
+      const double y_lo = cfg.corridor_half_width + r;
+      const double y_abs = y_lo + unit(rng) * std::max(y_lim - r - y_lo, 0.0);
+      const Eigen::Vector2d center(x, side * y_abs);
+
+      bool too_close = false;
+      for (const auto &c : scene.cylinders)
+      {
+        if ((c.center_xy - center).norm() <
+            min_space + c.radius + r)
+        {
+          too_close = true;
+          break;
+        }
       }
+      if (too_close)
+      {
+        continue;
+      }
+
+      Cylinder cyl;
+      cyl.center_xy = center;
+      cyl.radius    = r;
+      cyl.height    = cfg.height;
+      scene.cylinders.push_back(cyl);
     }
 
     if (cfg.build_shell)
