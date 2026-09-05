@@ -10,6 +10,11 @@ Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sit
 git clone https://github.com/WarriorHanamy/AP-PnC.git --recurse-submodules
 ```
 
+> The remaining submodules are `mpc_framework/` (acados) and
+> `src/interface_msgs/px4_msgs/msg`. The vendored dependencies
+> (`ap_pnc/sciplots`, `autodiff`, `ROS2-Utils`, `tomlplusplus`, `yamlcpp`,
+> `BSplinebasis`) are managed as git subtrees and live directly in the repo.
+
 ```bash
 uv sync --group dev
 uv run ap-pnc install
