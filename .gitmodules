@@ -6,10 +6,6 @@
 	path = mpc_framework
 	url = https://github.com/acados/acados.git
 	branch = main
-[submodule "src/trajectory_planner/tailsitter_df/include/autodiff"]
-	path = src/trajectory_planner/tailsitter_df/include/autodiff
-	url = https://github.com/WarriorHanamy/autodiff.git
-	branch = main
 [submodule "src/utils/ROS2-Utils"]
 	path = src/utils/ROS2-Utils
 	url = https://github.com/WarriorHanamy/ROS2-Utils.git
