@@ -6,6 +6,3 @@
 	path = mpc_framework
 	url = https://github.com/acados/acados.git
 	branch = main
-[submodule "src/utils/external_libraries/yamlcpp"]
-	path = src/utils/external_libraries/yamlcpp
-	url = https://github.com/jbeder/yaml-cpp.git
