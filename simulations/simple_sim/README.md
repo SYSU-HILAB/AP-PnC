@@ -47,6 +47,19 @@ make sim-simple-up          # build + start container (interactive bash)
 ros2 launch simple_sim simple_sim.launch.py
 ```
 
+## Inspect a LiDAR Frame (PCD)
+
+Dump one frame as ASCII PCD and view it on the host with open3d (via `uv`):
+
+```bash
+make sim-simple-pcd
+# equivalent to: dump 3 s of frames into .artifacts/simple-sim/frame.pcd, then
+uv run scripts/tools/viz_pcd.py .artifacts/simple-sim/frame.pcd
+```
+
+The viewer colors points by intensity (distance). Use `--info` for
+statistics only, or set `dump_pcd_path` manually on the node.
+
 ## Topics
 
 | Topic                  | Type                           | Description                    |

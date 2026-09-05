@@ -67,3 +67,6 @@ Claude.md
 CLAUDE.md
 AGENTS.md
 .claude/
+
+# docker build/run artifacts (host-side mounts)
+.artifacts/

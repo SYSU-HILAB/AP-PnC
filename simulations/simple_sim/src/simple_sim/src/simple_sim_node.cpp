@@ -15,7 +15,9 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <geometry_msgs/msg/point.hpp>
+#include <iomanip>
 #include <memory>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -59,6 +61,8 @@ namespace simple_sim
       lidar.fov_v_max_deg    = get_parameter("lidar.fov_v_max_deg").as_double();
       lidar.max_range        = get_parameter("lidar.max_range").as_double();
       lidar.min_range        = get_parameter("lidar.min_range").as_double();
+
+      dump_pcd_path_ = get_parameter("dump_pcd_path").as_string();
 
       dynamics_   = std::make_unique<Dynamics>(mass, inertia, gravity);
       controller_ = std::make_unique<Controller>(gains, mass, gravity);
@@ -125,6 +129,9 @@ namespace simple_sim
       declare_parameter("waypoints",
                         std::vector<double>{-45.0, 0.0, 2.0, 45.0, 0.0, 2.0});
       declare_parameter("build_walls", true);
+      // When set, every published frame is overwritten here as ASCII PCD
+      // (x y z intensity) for offline inspection.
+      declare_parameter("dump_pcd_path", "");
       // Procedural pillar field: density = pillar_count along map length.
       declare_parameter("scene.pillar_count", 8);
       declare_parameter("scene.radius_min", 0.6);
@@ -220,7 +227,41 @@ namespace simple_sim
         std::memcpy(msg.data.data() + i * msg.point_step, pt.data(),
                     msg.point_step);
       }
+      if (!dump_pcd_path_.empty())
+      {
+        writeAsciiPcd(dump_pcd_path_, points);
+      }
       return msg;
+    }
+
+    // Dump one frame as ASCII PCD (x y z intensity), overwritten each frame.
+    void writeAsciiPcd(const std::string &path,
+                       const std::vector<LidarPoint> &points)
+    {
+      std::ofstream out(path, std::ios::trunc);
+      if (!out)
+      {
+        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+                             "cannot open %s for PCD dump", path.c_str());
+        return;
+      }
+      out << "# .PCD v0.7 - Point Cloud Data file format\n"
+             "VERSION 0.7\n"
+             "FIELDS x y z intensity\n"
+             "SIZE 4 4 4 4\n"
+             "TYPE F F F F\n"
+             "COUNT 1 1 1 1\n"
+             "WIDTH " << points.size() << "\n"
+             "HEIGHT 1\n"
+             "VIEWPOINT 0 0 0 1 0 0 0\n"
+             "POINTS " << points.size() << "\n"
+             "DATA ascii\n";
+      out << std::fixed << std::setprecision(4);
+      for (const auto &p : points)
+      {
+        out << p.point.x() << ' ' << p.point.y() << ' ' << p.point.z() << ' '
+            << p.intensity << '\n';
+      }
     }
 
     nav_msgs::msg::Odometry buildOdomMsg() const
@@ -381,6 +422,7 @@ namespace simple_sim
     std::size_t                  waypoint_index_ = 0;
     std::size_t                  frame_index_    = 0;
     double                       sim_dt_         = 0.005;
+    std::string                  dump_pcd_path_;
 
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr points_pub_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr       odom_pub_;
