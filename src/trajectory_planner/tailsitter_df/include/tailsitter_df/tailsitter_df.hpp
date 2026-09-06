@@ -28,6 +28,9 @@ namespace tailsitter_df
   using realM3              = autodiff::Matrix3real;
   const realV3   g          = (realV3() << 0, 0, -9.8).finished();
   constexpr real vThreshold = 0.5;
+  // Minimum norm of the projected proper acceleration
+  // (I - vv^T/V^2)(a - g) for the nominal flatness map to be well-defined.
+  constexpr real apThreshold = 0.05;
 
   class Data
   {
@@ -79,6 +82,9 @@ namespace tailsitter_df
     friend VectorXreal df_forward_singularity_vel(const Vector3real &v,
                                                   const Vector3real &a,
                                                   const Vector3real &j);
+    friend VectorXreal df_forward_singularity_proj_acc(const Vector3real &v,
+                                                       const Vector3real &a,
+                                                       const Vector3real &j);
 
 
     void reset()

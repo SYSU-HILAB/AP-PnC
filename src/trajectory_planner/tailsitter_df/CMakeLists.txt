@@ -29,7 +29,18 @@ if(BUILD_TESTING)
   # comment the line when this package is in a git repo and when
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
+  # uncrustify is skipped too: the package follows the repo .clang-format
+  # style, and the vendored autodiff headers are not ament-uncrustify clean.
+  set(ament_cmake_uncrustify_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_tailsitter_df
+    test/test_tailsitter_df.cpp
+  )
+  target_link_libraries(test_tailsitter_df
+    tailsitter_df
+  )
 endif()
 
 # install(DIRECTORY

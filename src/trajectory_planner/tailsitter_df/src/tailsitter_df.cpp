@@ -51,6 +51,9 @@ namespace tailsitter_df
   VectorXreal     df_forward_singularity_vel(const Vector3real &v,
                                              const Vector3real &a,
                                              const Vector3real &j);
+  VectorXreal     df_forward_singularity_proj_acc(const Vector3real &v,
+                                                  const Vector3real &a,
+                                                  const Vector3real &j);
   VectorXreal     df_forward(const VectorXreal &z);
   Eigen::MatrixXd df_backward(autodiff::VectorXreal &P);
 
@@ -163,8 +166,15 @@ namespace tailsitter_df
     real   &S_ap_x_dot    = data.S_ap_x_dot;
     real   &S_ap_z_dot    = data.S_ap_z_dot;
 
-    realV3 x_s    = v / v.norm();
-    realV3 temp   = -(realM3::Identity() - x_s * x_s.transpose()) * (a - g);
+    realV3 x_s  = v / v.norm();
+    realV3 temp = -(realM3::Identity() - x_s * x_s.transpose()) * (a - g);
+    // Differential-flatness domain: the projected proper acceleration
+    // (I - vv^T/V^2)(a - g) must not vanish, otherwise z_s is undefined and
+    // S_ap_z becomes a zero denominator for omega_sx.
+    if (temp.norm() < apThreshold)
+    {
+      return df_forward_singularity_proj_acc(v, a, j);
+    }
     realV3 z_s    = temp / temp.norm();
     realV3 y_s    = z_s.cross(x_s);
     real   temp_x = x_s.transpose() * (a - g);
@@ -302,6 +312,61 @@ namespace tailsitter_df
     q          = Eigen::Quaternion<real>(rot);
 
     return Eigen::Vector4<real>::Zero();
+  }
+
+  VectorXreal df_forward_singularity_proj_acc(const Vector3real &v,
+                                              const Vector3real &a,
+                                              const Vector3real &)
+  {
+    realV3 &eta = data.eta;
+    realV3 &xb  = data.xb;
+    realV3 &yb  = data.yb;
+    realV3 &zb  = data.zb;
+    auto   &q   = data.q;
+    auto   &at  = data.at;
+
+    // Velocity direction is well defined in this branch (V >= vThreshold).
+    realV3 x_s = v / v.norm();
+    eta        = a - g;
+    at         = eta;
+
+    // xb follows the proper-acceleration (thrust) direction; when the proper
+    // acceleration is itself degenerate (free fall) the velocity direction is
+    // used instead. The branch guard keeps both directions away from zero.
+    xb = (eta.norm() > apThreshold) ? eta : x_s;
+    xb.normalize();
+
+    // Deterministic perpendicular yb about xb: prefer the fixed world-axis
+    // reference, switching to the world-y axis when they are aligned.
+    realV3 yb_candidate = data.zb_fixed.cross(xb);
+    if (yb_candidate.norm() < apThreshold)
+    {
+      realV3 world_y = (realV3() << 0, 1, 0).finished();
+      yb_candidate   = world_y - xb * (world_y.dot(xb));
+    }
+    yb = yb_candidate.normalized();
+    zb = xb.cross(yb);
+    zb.normalize();
+
+    realM3 rot = (realM3() << xb, yb, zb).finished();
+    q          = Eigen::Quaternion<real>(rot);
+
+    // Out-of-domain policy: keep the well-defined tangent acceleration along
+    // x_s and set the undefined angular rates and S_ap_z derivatives to zero.
+    data.S_ap_x      = x_s.transpose() * (a - g);
+    data.S_ap_z      = 0;
+    data.S_ap_x_dot  = 0;
+    data.S_ap_z_dot  = 0;
+    data.alpha       = 0;
+    data.alpha_dot   = 0;
+    data.S_Omega_x   = 0;
+    data.S_Omega_y   = 0;
+    data.S_Omega_z   = 0;
+    data.B_Omega_b_y = 0;
+
+    Eigen::Vector4<real> out = Eigen::Vector4<real>::Zero();
+    out(0)                   = x_s.transpose() * a;
+    return out;
   }
 
   VectorXreal df_forward(const VectorXreal &z)
