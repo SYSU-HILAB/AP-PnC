@@ -33,10 +33,23 @@ namespace simple_sim
     const Eigen::Vector3d gravity_vec(0.0, 0.0, -gravity_);
     const Eigen::Matrix3d R = state.attitude.toRotationMatrix();
 
-    // Position error and integrator (anti-windup: clamp the integral
-    // contribution to +/-max_ia [m/s^2] so it can only cancel residual error).
+    // Position error to desired velocity with saturation
     const Eigen::Vector3d err_pos = pos_des - state.position;
-    const Eigen::Vector3d err_vel = vel_des - state.velocity;
+    Eigen::Vector3d vel_target = gains_.kp_pos.cwiseProduct(err_pos);
+    if (vel_target.norm() > gains_.max_speed)
+    {
+      vel_target = vel_target.normalized() * gains_.max_speed;
+    }
+    if (vel_des.norm() > 1e-3)
+    {
+      vel_target += vel_des;
+      if (vel_target.norm() > gains_.max_speed)
+      {
+        vel_target = vel_target.normalized() * gains_.max_speed;
+      }
+    }
+
+    const Eigen::Vector3d err_vel = vel_target - state.velocity;
     integral_ += err_pos * dt;
     const double max_ia    = 5.0;
     const double ki_max    = std::max(gains_.ki_pos.maxCoeff(), 1e-9);
@@ -46,32 +59,19 @@ namespace simple_sim
       integral_[axis] = std::clamp(integral_[axis], -int_limit, int_limit);
     }
 
-    // Desired total force in world frame: thrust must produce the PD
-    // acceleration on top of counteracting gravity (a_des = kp*e + kd*e_dot
-    // + ki*int, force = m*(a_des - g_vec)). Hovering gives force = +mg.
-    Eigen::Vector3d force_des =
-        mass_ * (gains_.kp_pos.cwiseProduct(err_pos) +
-                 gains_.kd_vel.cwiseProduct(err_vel) +
-                 gains_.ki_pos.cwiseProduct(integral_) - gravity_vec);
-
-    // Single-sided thrust: the body z-axis can only push. A downward demand
-    // reduces to free-fall rather than flipping the vehicle upside-down.
-    if (force_des.z() < 0.0)
-    {
-      force_des.z() = 0.0;
-    }
-
-    // Map the force to body frame; the body z-axis is the thrust direction.
-    *thrust_body = R.transpose() * force_des;
+    // Desired acceleration and total force in world frame
+    const Eigen::Vector3d a_des = gains_.kd_vel.cwiseProduct(err_vel) +
+                                  gains_.ki_pos.cwiseProduct(integral_);
+    Eigen::Vector3d force_des = mass_ * (a_des - gravity_vec);
 
     // Desired attitude: align body z with the desired force direction.
     Eigen::Matrix3d R_des  = R;
     const double    f_norm = force_des.norm();
-    if (f_norm > 1e-6)
+    if (f_norm > 1e-3)
     {
       const Eigen::Vector3d z_des = force_des / f_norm;
       Eigen::Vector3d x_des = Eigen::Vector3d::UnitX() - z_des * z_des.x();
-      if (x_des.norm() < 1e-6)
+      if (x_des.norm() < 1e-3)
       {
         x_des = Eigen::Vector3d::UnitY() - z_des * z_des.y();
       }
@@ -82,11 +82,17 @@ namespace simple_sim
       R_des.col(2)                = z_des;
     }
 
-    // Proportional attitude loop: rotation error expressed in body frame.
+    // Thrust along body z: project desired force onto actual body z, clamped to [0, max_thrust]
+    double thrust_z = force_des.dot(R.col(2));
+    thrust_z = std::clamp(thrust_z, 0.0, gains_.max_thrust);
+    *thrust_body = Eigen::Vector3d(0.0, 0.0, thrust_z);
+
+    // Attitude loop: proportional error with angular rate damping.
     const Eigen::Matrix3d   R_err = R_des * R.transpose();
     const Eigen::AngleAxisd aa(R_err);
     const Eigen::Vector3d error_body = R.transpose() * (aa.axis() * aa.angle());
-    *moment_body                     = gains_.kp_att.cwiseProduct(error_body);
+    *moment_body = gains_.kp_att.cwiseProduct(error_body) -
+                   gains_.kd_att.cwiseProduct(state.angular_velocity);
   }
 
 }  // namespace simple_sim

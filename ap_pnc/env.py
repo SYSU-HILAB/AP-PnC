@@ -58,21 +58,53 @@ def source_ros2_env() -> dict[str, str]:
     return env
 
 
+def source_ros2_workspace() -> dict[str, str]:
+    """Source ROS2 plus the colcon workspace install (.artifacts/colcon/install)."""
+    git_root = get_git_root()
+    env = source_ros2_env()
+    workspace_setup = git_root / ".artifacts" / "colcon" / "install" / "setup.bash"
+    if workspace_setup.exists():
+        result = subprocess.run(
+            ["bash", "-c", f"source {workspace_setup} && env"],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                if "=" in line:
+                    key, _, value = line.partition("=")
+                    env[key] = value
+    return env
+
+
 def setup_env(ros: bool = False) -> None:
-    """Configure os.environ with acados paths and optionally ROS2."""
+    """Configure os.environ with acados paths and optionally ROS2.
+
+    ACADOS_SOURCE_DIR points at the staged install tree (.artifacts/acados),
+    which provides include/, lib/, bin/t_renderer for acados_template codegen.
+    ACADOS_PYTHON_INTERFACE_PATH falls back to the source submodule for the
+    Python interface, so mpc_framework stays a pure source checkout.
+    """
     git_root = get_git_root()
     os.environ.setdefault("AP_PNC_DIR", str(git_root))
-    os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / "mpc_framework"))
+    os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / ".artifacts" / "acados"))
+    os.environ.setdefault(
+        "ACADOS_PYTHON_INTERFACE_PATH",
+        str(git_root / "mpc_framework" / "interfaces" / "acados_template" / "acados_template"),
+    )
 
-    lib_path = str(git_root / "mpc_framework" / "lib")
+    lib_path = str(git_root / ".artifacts" / "acados" / "lib")
     existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
     if lib_path not in existing_ld:
         os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{existing_ld}"
 
     pythonpath = os.environ.get("PYTHONPATH", "")
     git_root_str = str(git_root)
-    if git_root_str not in pythonpath:
-        os.environ["PYTHONPATH"] = f"{git_root_str}:{pythonpath}"
+    bindings_dir = str(git_root / ".artifacts" / "bindings")
+    parts = [p for p in (git_root_str, bindings_dir) if p not in pythonpath]
+    if parts:
+        os.environ["PYTHONPATH"] = ":".join(parts) + (f":{pythonpath}" if pythonpath else "")
 
     if ros:
         ros_env = source_ros2_env()

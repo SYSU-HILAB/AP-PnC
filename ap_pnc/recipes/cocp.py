@@ -12,9 +12,9 @@ app = typer.Typer()
 
 
 def _build_acados_static(git_root: Path) -> None:
-    """Build acados as static libs into build/acados_static."""
+    """Build acados as static libs into .artifacts/acados_static."""
     src = git_root / "mpc_framework"
-    build_dir = git_root / "build" / "acados_static"
+    build_dir = git_root / ".artifacts" / "acados_static"
     if not (build_dir / "acados" / "libacados.a").exists():
         typer.echo("Building acados static libs...")
         subprocess.run(
@@ -32,8 +32,8 @@ def _build_acados_static(git_root: Path) -> None:
 
 def _build_wrapper_and_bundle(git_root: Path) -> None:
     """Build libnmpc_solver.a, then merge with static acados into libnmpc_bundle.a."""
-    wrapper_src = git_root / "src" / "c_nmpc" / "nmpc_wrapper"
-    build_dir = git_root / "build" / "nmpc_wrapper"
+    wrapper_src = git_root / "ros_packages" / "c_nmpc" / "nmpc_wrapper"
+    build_dir = git_root / ".artifacts" / "nmpc_wrapper"
     bundle = build_dir / "libnmpc_bundle.a"
 
     if bundle.exists():
@@ -44,7 +44,7 @@ def _build_wrapper_and_bundle(git_root: Path) -> None:
     subprocess.run(
         ["cmake", "-S", str(wrapper_src), "-B", str(build_dir),
          "-DAP_PNC_DIR=" + str(git_root),
-         "-DACADOS_ROOT=" + str(git_root / "mpc_framework")],
+         "-DACADOS_ROOT=" + str(git_root / ".artifacts" / "acados")],
         check=True,
     )
     subprocess.run(
@@ -54,7 +54,7 @@ def _build_wrapper_and_bundle(git_root: Path) -> None:
 
     # Merge: extract .o from wrapper.a + acados .a files, combine into bundle.a
     typer.echo("Merging into libnmpc_bundle.a...")
-    static_dir = git_root / "build" / "acados_static"
+    static_dir = git_root / ".artifacts" / "acados_static"
 
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp)
@@ -94,9 +94,12 @@ def cocp() -> None:
     """
     setup_env()
     git_root = get_git_root()
-    script = git_root / "src" / "c_nmpc" / "nmpc" / "create_ocp_or_sim.py"
+    script = git_root / "ros_packages" / "c_nmpc" / "nmpc" / "create_ocp_or_sim.py"
+    gen_dir = git_root / ".artifacts" / "c_generated_code"
+    gen_dir.mkdir(parents=True, exist_ok=True)
     typer.echo(f"Running: {script}")
-    subprocess.run([sys.executable, str(script)], cwd=git_root, check=True)
+    # json_file is relative to cwd: codegen C code + JSON land in .artifacts/c_generated_code
+    subprocess.run([sys.executable, str(script)], cwd=gen_dir, check=True)
 
     _build_acados_static(git_root)
     _build_wrapper_and_bundle(git_root)

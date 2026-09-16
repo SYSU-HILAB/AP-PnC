@@ -41,4 +41,4 @@ sim-simple-pcd:
 		ros2 run simple_sim simple_sim_node --ros-args \
 		-p dump_pcd_path:=/workspace/.artifacts/frame.pcd & \
 		NODE_PID=$$!; sleep 5; kill $$NODE_PID 2>/dev/null; wait 2>/dev/null; true'
-	uv run scripts/tools/viz_pcd.py .artifacts/simple-sim/frame.pcd
+	uv run --script ap_pnc/tools/viz_pcd.py .artifacts/simple-sim/frame.pcd

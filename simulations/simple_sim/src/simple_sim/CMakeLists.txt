@@ -18,7 +18,10 @@ ament_auto_add_executable(simple_sim_node
   src/controller.cpp
 )
 
-target_link_libraries(simple_sim_node Eigen3::Eigen)
+target_link_libraries(simple_sim_node
+  Eigen3::Eigen
+  ${aerodynamics_LIBRARIES}
+)
 
 target_compile_features(simple_sim_node PUBLIC cxx_std_17)
 

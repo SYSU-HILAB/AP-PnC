@@ -16,82 +16,31 @@ Before starting, ensure you have:
   - `git`
   - Python 3.10+
 
-## Installing Rust (for `just` command runner)
+## Installing `uv` (Fast Python Package and Project Manager)
 
-`just` is built with Rust and requires Cargo to install. If you already have Rust and Cargo installed, skip to the next section.
+This project uses `uv` for managing dependencies, Python environments, and running CLI commands.
 
-### Install Rust via rustup (Recommended)
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-This will:
-- Install Rust toolchain (rustc, cargo)
-- Configure your PATH environment variable
-- Add Rust to your shell profile
-
-After installation, restart your terminal or run:
-```bash
-source $HOME/.cargo/env
-```
-
-### Verify Installation
+### Install `uv`
 
 ```bash
-cargo --version
-rustc --version
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Expected output: version numbers for both tools.
-
-## Installing `just` (Command Runner)
-
-The `just` command runner is used throughout this project for task automation. It's optional but highly recommended.
-
-### Option 1: Install via Cargo (Recommended)
-
-If you have Rust and Cargo installed:
+Or via package manager:
 
 ```bash
-cargo install just
+# macOS / Linux (Homebrew)
+brew install uv
+
+# Arch Linux
+sudo pacman -S uv
 ```
 
-### Option 2: Install from Pre-built Binary
-
-Download and install the latest release:
+Verify installation:
 
 ```bash
-# Download latest binary (adjust version if needed)
-curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+uv --version
 ```
-
-### Option 3: Install via Package Manager
-
-**Ubuntu/Debian:**
-```bash
-# Add just's PPA (if available) or use cargo
-sudo apt install cargo  # if not already installed
-cargo install just
-```
-
-**Fedora:**
-```bash
-sudo dnf install just
-```
-
-**Arch Linux:**
-```bash
-sudo pacman -S just
-```
-
-### Verify Installation
-
-```bash
-just --version
-```
-
-**Alternative**: If you prefer not to install `just`, all commands can be run via `uv run ap-pnc install`.
 
 ## Installation
 
@@ -166,7 +115,7 @@ Now open a new terminal (keep `srunall` running) and launch the visualization:
 source /opt/ros/humble/setup.bash
 
 # Launch trajectory tracking visualization
-just viz-traj-tracking
+uv run ap-pnc traj viz-tracking
 ```
 
 ### What You'll See
@@ -187,7 +136,9 @@ just viz-traj-tracking
 
 ```bash
 # 1. Install (one-time setup)
-just install-all
+uv sync --group dev
+uv run ap-pnc install
+uv run ap-pnc cocp
 
 # 2. Build (after code changes)
 ./scripts/tools/build
@@ -197,7 +148,7 @@ just install-all
 
 # 4. Visualize (in new terminal)
 source /opt/ros/humble/setup.bash
-just viz-traj-tracking
+uv run ap-pnc traj viz-tracking
 ```
 
 ## Troubleshooting
@@ -209,15 +160,11 @@ Install ROS2 build tools:
 sudo apt install python3-colcon-common-extensions
 ```
 
-### `just: command not found`
+### `uv: command not found`
 
-Either install `just` or run scripts directly:
+Install `uv`:
 ```bash
-# Install just (recommended)
-cargo install just
-
-# Or run directly
-./installations/install-all.sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 ### Build fails with "package not found"

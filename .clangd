@@ -1,6 +1,0 @@
-CompileFlags:
-  Add:
-    - "--include-directory=/opt/ros/humble/include"
-Diagnostics:
-  MissingIncludes: Strict
-  UnusedIncludes: Strict

@@ -9,25 +9,58 @@
     sim_rate: 200.0
     publish_rate: 10.0
 
-    start_pos: [0.0, 0.0, 5.0]
-    waypoint_tolerance: 0.3
+    # Closed world: floor + ceiling at map.height + four walls.
+    map:
+      length: 100.0
+      width: 20.0
+      height: 20.0
+    build_shell: true
 
-    kp_pos: [12.0, 12.0, 12.0]
+    # Pillar course: pillar_count upright pillars scattered completely at
+    # random (seeded -> reproducible, no rows/mirroring). Pillar surfaces
+    # stay outside |y| < corridor_half_width, so the straight flight line
+    # remains feasible.
+    scene:
+      pillar_count: 36          # total number of pillars (density)
+      radius_min: 0.6           # [m]
+      radius_max: 1.2           # [m]
+      corridor_half_width: 2.0  # keep-out around the flight line [m]
+      edge_margin: 5.0          # clearance from end walls [m]
+      seed: 42                  # change for a different layout
+
+    # Pillar run: fly from one end of the map to the other along y=0.
+    start_pos: [-45.0, 0.0, 2.0]
+    waypoint_tolerance: 1.0
+    waypoints: [-45.0, 0.0, 2.0, 45.0, 0.0, 2.0]
+
+    max_speed: 15.0
+    max_thrust: 50.0
+    kp_pos: [2.0, 2.0, 2.0]
     kd_vel: [3.0, 3.0, 3.0]
-    ki_pos: [0.5, 0.5, 0.5]
+    ki_pos: [0.2, 0.2, 0.2]
     kp_att: [8.0, 8.0, 8.0]
+    kd_att: [1.5, 1.5, 1.5]
 
+    # Livox Mid-360 style: 360 deg horizontal, -7..+52 deg vertical.
     lidar:
-      rings: 16
-      points_per_ring: 360
+      points_per_frame: 4000
       fov_h_deg: 360.0
-      fov_v_deg: 30.0
-      max_range: 30.0
-      min_range: 0.2
+      fov_v_min_deg: -7.0
+      fov_v_max_deg: 52.0
+      max_range: 40.0
+      min_range: 0.1
 
-    waypoints: [5.0, 0.0, 5.0, 0.0, 5.0, 5.0]
+    # Dump: accumulate frames then write once (single Lissajous frame is a
+    # sparse curve; accumulation fills surfaces).
+    # dump_pcd_path: ""
+    dump_pcd_frames: 30
 
-    # cx, cy, cz, half_x, half_y, half_z
-    obstacle_boxes: [5.0, 0.0, 0.5, 0.4, 0.4, 0.5]
-    # cx, cy, cz, radius
-    obstacle_spheres: [0.0, 4.0, 1.0, 1.2]
+    # Aerodynamics
+    aero:
+      enable: true
+      type: "lyu"               # "lyu", "none"
+      frame_convention: "tailsitter"  # "tailsitter" (chord along body Z) or "standard"
+      scale: 1.0
+      omit_moment: false
+      omit_force: false
+      wind: [0.0, 0.0, 0.0]     # world-frame wind velocity [wx, wy, wz]

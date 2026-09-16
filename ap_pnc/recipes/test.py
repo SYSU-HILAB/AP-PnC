@@ -92,3 +92,59 @@ def frame_conversion() -> None:
 def ros_viz() -> None:
     """Run ROS2 visualization node tests."""
     _pytest("test/lu_mpc/ros")
+
+
+@app.command(name="timing-jax")
+def timing_jax() -> None:
+    """Benchmark JAX compute timing."""
+    setup_env()
+    code = "from ap_pnc.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()"
+    subprocess.run([sys.executable, "-c", code], check=True)
+
+
+@app.command(name="timing-torch")
+def timing_torch() -> None:
+    """Benchmark Torch compute timing."""
+    setup_env()
+    code = "from ap_pnc.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
+    subprocess.run([sys.executable, "-c", code], check=True)
+
+
+@app.command(name="timing-compare")
+def timing_compare() -> None:
+    """Run timing benchmarks across all backends (JAX, Torch, CasADi)."""
+    setup_env()
+    codes = [
+        "from ap_pnc.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()",
+        "from ap_pnc.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()",
+    ]
+    for code in codes:
+        subprocess.run([sys.executable, "-c", code], check=True)
+
+
+@app.command(name="colcon")
+def colcon() -> None:
+    """Run colcon test for the ROS2 workspace."""
+    setup_env(ros=True)
+    git_root = get_git_root()
+    base = git_root / ".artifacts" / "colcon"
+    subprocess.run(
+        ["colcon", "test", "--merge-install",
+         "--build-base", str(base / "build"),
+         "--install-base", str(base / "install")],
+        cwd=git_root,
+        check=True,
+    )
+
+
+@app.command(name="colcon-result")
+def colcon_result() -> None:
+    """Show colcon test results."""
+    setup_env(ros=True)
+    git_root = get_git_root()
+    base = git_root / ".artifacts" / "colcon"
+    subprocess.run(
+        ["colcon", "test-result", "--test-result-base", str(base / "build")],
+        cwd=git_root,
+        check=True,
+    )

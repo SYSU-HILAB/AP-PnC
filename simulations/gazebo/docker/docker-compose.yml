@@ -81,12 +81,15 @@ services:
       - QT_X11_NO_MITSHM=1
       - ACCEPT_EULA=Y
       - PRIVACY_CONSENT=Y
-      - AP_PNC_DIR=/ap-pnc
+      - AP_PNC_DIR=/workspace
+      - NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ../../build/nmpc_wrapper/libnmpc_bundle.a:/ap-pnc/build/nmpc_wrapper/libnmpc_bundle.a
-      - ../../artifacts/simulations/temp_data:/ap-pnc/artifacts/simulations/temp_data
+      - ../../.artifacts/nmpc_wrapper/libnmpc_bundle.a:/workspace/artifacts/libnmpc_bundle.a
+      - ../../ros_packages:/workspace/src
+      - ../../bringup:/workspace/bringup
+      - ../../artifacts/simulations/temp_data:/workspace/artifacts/simulations/temp_data
     command: bash
     stdin_open: true
     tty: true

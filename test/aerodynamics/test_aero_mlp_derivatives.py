@@ -29,7 +29,7 @@ def _model_exists(aero_type: str) -> bool:
 def _skip_if_no_model(aero_type: str):
     """Skip test if model doesn't exist."""
     if not _model_exists(aero_type):
-        pytest.skip(f"Trained model not found for {aero_type}. Run 'just aero-ml-pipeline' first.")
+        pytest.skip(f"Trained model not found for {aero_type}. Run 'uv run ap-pnc aerodyn pipeline' first.")
 
 
 @pytest.fixture

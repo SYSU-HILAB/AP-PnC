@@ -1,72 +1,52 @@
+# editor / IDE
 .vscode/
-plot_scripts/*
-*.csv
-.xmake/
-log*
-src/ompl
 .idea/
 compile_commands.json
-build/
-install/
-acados*
-c_generated_code/
-log/
-end.csv
-pre_state.csv
-__pycache__/
-*acados*.json
-*solver*.json
-*.pyc
-*.png
-matlab_process/
-**.svg
-bags/
-*rosbag*
-*pyc
-*.ulg
-*.pcap
+.xmake/
 
-colcon*
-*warm_start*
-
-src/spdlog/
-
-#clangd
-.cache/
-
-# bags
-bags/
-output_csv/
-
-*.csv
-env/
-
-
-# intermediate plots
-*.eps
-*.pdf
-
-
-# intermediate mesh files
-*.stl
-*.STL
-*.pdf
-*.py.bak
-output_csv/*
-
-
-# virtual envs
-.*venv/
-
-
-# python
-*egg-info/
-*.npy
+# AI assistant local files
 claude_temp/
 Claude.md
 CLAUDE.md
 AGENTS.md
 .claude/
 
-# docker build/run artifacts (host-side mounts)
+# build / codegen / colcon outputs (canonical location, see AGENTS.md artifacts convention)
 .artifacts/
+
+# datasets (untracked pending keep/delete decision)
+/artifacts/
+
+# python
+__pycache__/
+*.pyc
+*egg-info/
+*.npy
+.env/
+.*venv/
+
+# clangd
+.cache/
+
+# experiment / sim outputs
+*.csv
+*.png
+*.eps
+*.pdf
+*.stl
+*.STL
+*.ulg
+*.pcap
+*.py.bak
+*warm_start*
+output_csv/
+plot_scripts/
+matlab_process/
+bags/
+*rosbag*
+
+# legacy source-tree ignores (no longer at these paths, kept for stray files)
+src/ompl
+src/spdlog
+log*
+log/

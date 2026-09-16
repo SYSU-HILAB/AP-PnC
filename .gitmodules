@@ -1,5 +1,5 @@
-[submodule "src/interface_msgs/px4_msgs/msg"]
-	path = src/interface_msgs/px4_msgs/msg
+[submodule "ros_packages/interface_msgs/px4_msgs/msg"]
+	path = ros_packages/interface_msgs/px4_msgs/msg
 	url = https://github.com/WarriorHanamy/vtol-px4-msgs.git
 	branch = main
 [submodule "mpc_framework"]

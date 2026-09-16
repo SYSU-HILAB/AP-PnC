@@ -17,6 +17,7 @@
 #include <cstring>
 #include <fstream>
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <iomanip>
 #include <memory>
 #include <nav_msgs/msg/odometry.hpp>
@@ -27,6 +28,8 @@
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include "aerodynamics/non_aerodynamics.hpp"
+#include "aerodynamics/zhang_lyu_aerodynamics.hpp"
 #include "simple_sim/controller.hpp"
 #include "simple_sim/dynamics.hpp"
 #include "simple_sim/lidar_sim.hpp"
@@ -50,9 +53,13 @@ namespace simple_sim
           get_parameter("inertia_zz").as_double();
 
       ControlGains gains;
-      gains.kp_pos = vectorParam("kp_pos");
-      gains.kd_vel = vectorParam("kd_vel");
-      gains.kp_att = vectorParam("kp_att");
+      gains.kp_pos     = vectorParam("kp_pos");
+      gains.kd_vel     = vectorParam("kd_vel");
+      gains.ki_pos     = vectorParam("ki_pos");
+      gains.kp_att     = vectorParam("kp_att");
+      gains.kd_att     = vectorParam("kd_att");
+      gains.max_speed  = get_parameter("max_speed").as_double();
+      gains.max_thrust = get_parameter("max_thrust").as_double();
 
       LidarConfig lidar;
       lidar.points_per_frame = get_parameter("lidar.points_per_frame").as_int();
@@ -66,7 +73,40 @@ namespace simple_sim
       dump_pcd_frames_ =
           static_cast<int>(get_parameter("dump_pcd_frames").as_int());
 
-      dynamics_   = std::make_unique<Dynamics>(mass, inertia, gravity);
+      AeroConfig aero_cfg;
+      aero_cfg.enable           = get_parameter("aero.enable").as_bool();
+      aero_cfg.model            = get_parameter("aero.type").as_string();
+      aero_cfg.frame_convention = get_parameter("aero.frame_convention").as_string();
+      aero_cfg.scale            = get_parameter("aero.scale").as_double();
+      aero_cfg.omit_moment      = get_parameter("aero.omit_moment").as_bool();
+      aero_cfg.omit_force       = get_parameter("aero.omit_force").as_bool();
+      aero_cfg.wind_world       = vectorParam("aero.wind");
+
+      std::shared_ptr<aerodynamics::AerodynamicsInterface> aero_model;
+      if (aero_cfg.enable && aero_cfg.model != "none")
+      {
+        if (aero_cfg.model == "lyu")
+        {
+          aero_model = std::make_shared<aerodynamics::LyuAerodynamics>();
+          RCLCPP_INFO(get_logger(),
+                      "Aerodynamics enabled: Zhang-Lyu model (%s convention, scale=%.2f)",
+                      aero_cfg.frame_convention.c_str(), aero_cfg.scale);
+        }
+        else
+        {
+          aero_model = std::make_shared<aerodynamics::NonAerodynamics>();
+          RCLCPP_WARN(get_logger(),
+                      "Unsupported aero model '%s', using non-aerodynamics",
+                      aero_cfg.model.c_str());
+        }
+      }
+      else
+      {
+        aero_model = std::make_shared<aerodynamics::NonAerodynamics>();
+        RCLCPP_INFO(get_logger(), "Aerodynamics disabled");
+      }
+
+      dynamics_   = std::make_unique<Dynamics>(mass, inertia, gravity, aero_model, aero_cfg);
       controller_ = std::make_unique<Controller>(gains, mass, gravity);
       lidar_      = std::make_unique<LidarSim>(lidar);
       scene_      = std::make_unique<Scene>(buildScene());
@@ -92,6 +132,8 @@ namespace simple_sim
       odom_pub_    = create_publisher<nav_msgs::msg::Odometry>("~/odom", 2);
       markers_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
           "~/markers", 2);
+      aero_wrench_pub_ =
+          create_publisher<geometry_msgs::msg::WrenchStamped>("~/aero_wrench", 2);
 
       const double sim_rate     = get_parameter("sim_rate").as_double();
       const double publish_rate = get_parameter("publish_rate").as_double();
@@ -117,11 +159,14 @@ namespace simple_sim
       declare_parameter("map.length", 100.0);
       declare_parameter("map.width", 20.0);
       declare_parameter("map.height", 20.0);
-      declare_parameter("waypoint_tolerance", 0.3);
-      declare_parameter("kp_pos", std::vector<double>{12.0, 12.0, 12.0});
+      declare_parameter("max_speed", 15.0);
+      declare_parameter("max_thrust", 50.0);
+      declare_parameter("waypoint_tolerance", 1.0);
+      declare_parameter("kp_pos", std::vector<double>{2.0, 2.0, 2.0});
       declare_parameter("kd_vel", std::vector<double>{3.0, 3.0, 3.0});
-      declare_parameter("ki_pos", std::vector<double>{0.5, 0.5, 0.5});
+      declare_parameter("ki_pos", std::vector<double>{0.2, 0.2, 0.2});
       declare_parameter("kp_att", std::vector<double>{8.0, 8.0, 8.0});
+      declare_parameter("kd_att", std::vector<double>{1.5, 1.5, 1.5});
       declare_parameter("lidar.points_per_frame", 4000);
       declare_parameter("lidar.fov_h_deg", 360.0);
       declare_parameter("lidar.fov_v_min_deg", -7.0);
@@ -145,6 +190,15 @@ namespace simple_sim
       declare_parameter("scene.corridor_half_width", 2.0);
       declare_parameter("scene.edge_margin", 5.0);
       declare_parameter("scene.seed", 42);
+
+      // Aerodynamics parameters
+      declare_parameter("aero.enable", true);
+      declare_parameter("aero.type", "lyu");
+      declare_parameter("aero.frame_convention", "tailsitter");
+      declare_parameter("aero.scale", 1.0);
+      declare_parameter("aero.omit_moment", false);
+      declare_parameter("aero.omit_force", false);
+      declare_parameter("aero.wind", std::vector<double>{0.0, 0.0, 0.0});
     }
 
     Eigen::Vector3d vectorParam(const std::string &name) const
@@ -416,6 +470,37 @@ namespace simple_sim
         m.color              = color;
         arr.markers.push_back(m);
       }
+      // Aerodynamic force arrow visualization in world frame
+      const Eigen::Vector3d aero_f_world =
+          state_.attitude.toRotationMatrix() * state_.aero_force_flu;
+      if (aero_f_world.norm() > 1e-3)
+      {
+        visualization_msgs::msg::Marker aero_arrow;
+        fill_base(&aero_arrow, id++);
+        aero_arrow.type = visualization_msgs::msg::Marker::ARROW;
+        geometry_msgs::msg::Point p_start;
+        p_start.x = state_.position.x();
+        p_start.y = state_.position.y();
+        p_start.z = state_.position.z();
+        geometry_msgs::msg::Point p_end;
+        // Visualize with 0.1 m per Newton scale
+        const double force_scale = 0.1;
+        p_end.x                  = p_start.x + aero_f_world.x() * force_scale;
+        p_end.y                  = p_start.y + aero_f_world.y() * force_scale;
+        p_end.z                  = p_start.z + aero_f_world.z() * force_scale;
+        aero_arrow.points.push_back(p_start);
+        aero_arrow.points.push_back(p_end);
+        aero_arrow.scale.x = 0.05;  // shaft diameter
+        aero_arrow.scale.y = 0.10;  // head diameter
+        aero_arrow.scale.z = 0.15;  // head length
+        color.r            = 1.0;
+        color.g            = 0.8;
+        color.b            = 0.0;
+        color.a            = 0.9;
+        aero_arrow.color   = color;
+        arr.markers.push_back(aero_arrow);
+      }
+
       return arr;
     }
 
@@ -431,6 +516,17 @@ namespace simple_sim
 
       visualization_msgs::msg::MarkerArray markers = buildMarkerMsg();
       markers_pub_->publish(markers);
+
+      geometry_msgs::msg::WrenchStamped wrench;
+      wrench.header.stamp    = now();
+      wrench.header.frame_id = "base_link";
+      wrench.wrench.force.x  = state_.aero_force_flu.x();
+      wrench.wrench.force.y  = state_.aero_force_flu.y();
+      wrench.wrench.force.z  = state_.aero_force_flu.z();
+      wrench.wrench.torque.x = state_.aero_moment_flu.x();
+      wrench.wrench.torque.y = state_.aero_moment_flu.y();
+      wrench.wrench.torque.z = state_.aero_moment_flu.z();
+      aero_wrench_pub_->publish(wrench);
     }
 
     std::unique_ptr<Dynamics>   dynamics_;
@@ -452,7 +548,9 @@ namespace simple_sim
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr points_pub_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr       odom_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
-                                 markers_pub_;
+                                                                markers_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr
+                                 aero_wrench_pub_;
     rclcpp::TimerBase::SharedPtr sim_timer_;
     rclcpp::TimerBase::SharedPtr publish_timer_;
   };

@@ -35,7 +35,7 @@ Quick reference:
 # Clone and install
 git clone https://github.com/WarriorHanamy/AP-PnC.git
 cd AP-PnC
-just install-all
+uv run ap-pnc install
 
 # Build ROS2 workspace
 ./scripts/tools/build
@@ -45,7 +45,7 @@ just install-all
 
 # Visualize (in new terminal)
 source /opt/ros/humble/setup.bash
-just viz-traj-tracking
+uv run ap-pnc traj viz-tracking
 ```
 
 ## Key Features

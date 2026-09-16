@@ -1,6 +1,6 @@
 *
-!src/
-!config/
+!docker/
+!ros_packages/
+!bringup/
 !simulations/
-!simulations/simple_sim/
-!build/nmpc_wrapper/libnmpc_bundle.a
+!.artifacts/nmpc_wrapper/libnmpc_bundle.a

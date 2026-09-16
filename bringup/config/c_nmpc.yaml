@@ -1,0 +1,4 @@
+c_nmpc_node:
+  ros__parameters:
+    mass: 1.0
+    cz_rate: 0.10

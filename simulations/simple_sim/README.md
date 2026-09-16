@@ -27,23 +27,31 @@ rviz/simple_sim.rviz          #   visualization preset
 docker/                       #   container build + compose
 ```
 
-## Run (host)
+## Run (via uv)
+
+```bash
+uv run ap-pnc sim simple        # build & start simple-sim via Docker
+# or
+uv run ap-pnc start --target simple
+```
+
+## Run (host ROS2)
 
 ```bash
 # from repo root
 source /opt/ros/humble/setup.bash
-colcon build --paths src simulations/simple_sim/src --symlink-install
+uv run ap-pnc build simple-sim
 source install/setup.bash
 ros2 launch simple_sim simple_sim.launch.py
 ```
 
 RViz2 shows the synthetic point cloud (`/simple_sim/points`), vehicle odometry
-(`/simple_sim/odom`) and scene markers (`/simple_sim/markers`).
+(`/simple_sim/odom`), aerodynamic wrench (`/simple_sim/aero_wrench`), and scene markers (`/simple_sim/markers`).
 
-## Run (docker)
+## Run (docker direct)
 
 ```bash
-make sim-simple-up          # build + start container (interactive bash)
+make sim-simple-up          # or: uv run ap-pnc sim simple
 # inside the container:
 ros2 launch simple_sim simple_sim.launch.py
 ```
@@ -53,9 +61,8 @@ ros2 launch simple_sim simple_sim.launch.py
 Dump one frame as ASCII PCD and view it on the host with open3d (via `uv`):
 
 ```bash
-make sim-simple-pcd
-# equivalent to: dump 3 s of frames into .artifacts/simple-sim/frame.pcd, then
-uv run scripts/tools/viz_pcd.py .artifacts/simple-sim/frame.pcd
+uv run ap-pnc sim pcd
+# equivalent to: make sim-simple-pcd
 ```
 
 The viewer colors points by intensity (distance). Use `--info` for

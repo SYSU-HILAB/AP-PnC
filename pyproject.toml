@@ -11,13 +11,14 @@ dependencies = [
     "numpy",
     "typer",
     "rich",
+    "pyyaml",
 ]
 
 [project.scripts]
 ap-pnc = "ap_pnc.cli:main"
 
 [dependency-groups]
-dev = ["pytest", "ruff==0.5.4", "pandas"]
+dev = ["pytest", "ruff==0.5.4", "pandas", "pybind11"]
 extra = [
     "jax[cpu]",
     "torch",
@@ -40,12 +41,12 @@ include = ["ap_pnc*"]
 line-length = 100
 target-version = "py310"
 required-version = "0.5.4"
-src = ["ap_pnc", "src", "tests"]
+src = ["ap_pnc", "ros_packages", "tests"]
 extend-exclude = [
     "artifacts",
     "docs",
     "mpc_framework",
-    "installations",
+    "benchmark",
 ]
 
 [tool.ruff.lint]
@@ -67,7 +68,7 @@ ignore = [
 fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["ap_pnc", "src"]
+known-first-party = ["ap_pnc", "ros_packages"]
 combine-as-imports = true
 
 [tool.ruff.format]

@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sim-config
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-config
+    app.kubernetes.io/part-of: ap-pnc
+data:
+  # =========================================================================
+  # SIM_TYPE: 仿真模式选择器
+  # 可选值:
+  #   - "simple-sim" (或 "simple"): 启动轻量级 C++ LiDAR + 气动力学仿真器
+  #   - "gazebo": 启动 PX4-VTOL SITL + Gazebo Garden 仿真栈
+  #   - "stop" (或 "none"): 停止所有仿真实例 (缩容为 0)
+  # =========================================================================
+  SIM_TYPE: "simple-sim"
+
+  # 运行环境变量
+  HEADLESS: "true"
+  DISPLAY: ":0"
+
+  # simple_sim ROS2 参数配置 (支持挂载并在运行时直接调整)
+  simple_sim.yaml: |
+    /simple_sim:
+      ros__parameters:
+        mass: 2.0
+        gravity: 9.81
+        inertia_xx: 0.02
+        inertia_yy: 0.02
+        inertia_zz: 0.03
+        sim_rate: 200.0
+        publish_rate: 10.0
+        start_pos: [-45.0, 0.0, 2.0]
+        waypoint_tolerance: 1.0
+        waypoints: [-45.0, 0.0, 2.0, 45.0, 0.0, 2.0]
+        max_speed: 15.0
+        max_thrust: 50.0
+        kp_pos: [2.0, 2.0, 2.0]
+        kd_vel: [3.0, 3.0, 3.0]
+        ki_pos: [0.2, 0.2, 0.2]
+        kp_att: [8.0, 8.0, 8.0]
+        kd_att: [1.5, 1.5, 1.5]
+        lidar:
+          points_per_frame: 4000
+          fov_h_deg: 360.0
+          fov_v_min_deg: -7.0
+          fov_v_max_deg: 52.0
+          max_range: 40.0
+          min_range: 0.1
+        aero:
+          enable: true
+          type: "lyu"
+          frame_convention: "tailsitter"
+          scale: 1.0
+          omit_moment: false
+          omit_force: false
+          wind: [0.0, 0.0, 0.0]

@@ -24,10 +24,13 @@ namespace simple_sim
 
   struct ControlGains
   {
-    Eigen::Vector3d kp_pos = Eigen::Vector3d::Constant(12.0);
-    Eigen::Vector3d kd_vel = Eigen::Vector3d::Constant(3.0);
-    Eigen::Vector3d ki_pos = Eigen::Vector3d::Constant(0.5);
-    Eigen::Vector3d kp_att = Eigen::Vector3d::Constant(8.0);
+    Eigen::Vector3d kp_pos     = Eigen::Vector3d::Constant(2.0);
+    Eigen::Vector3d kd_vel     = Eigen::Vector3d::Constant(3.0);
+    Eigen::Vector3d ki_pos     = Eigen::Vector3d::Constant(0.2);
+    Eigen::Vector3d kp_att     = Eigen::Vector3d::Constant(8.0);
+    Eigen::Vector3d kd_att     = Eigen::Vector3d::Constant(1.5);
+    double          max_speed  = 15.0;
+    double          max_thrust = 50.0;
   };
 
   /**

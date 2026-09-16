@@ -28,13 +28,13 @@ Error-State MPC (elMPC) is a linear Model Predictive Control approach that:
 source /opt/ros/humble/setup.bash
 
 # Run with default settings (hover mode)
-just viz-traj-tracking-elmpc
+uv run ap-pnc traj viz-elmpc
 
 # Run with custom trajectory
-just viz-traj-tracking-elmpc --trajectory /path/to/trajectory.csv
+uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --trajectory /path/to/trajectory.csv
 
 # Run with custom RViz config
-just viz-traj-tracking-elmpc --rviz-config path/to/config.rviz
+uv run ap-pnc traj viz-elmpc --rviz-config path/to/config.rviz
 ```
 
 ## Command Options
@@ -62,7 +62,7 @@ The `--hover` flag controls the controller behavior:
 - Reference advances at each control step
 - Useful for evaluating trajectory tracking performance
 
-To run in tracking mode, modify the justfile recipe to remove the `--hover` flag, or run the Python script directly:
+To run in tracking mode, omit the `--hover` flag when running the script directly:
 
 ```bash
 uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --rviz-config ap_pnc/lu_mpc/ros/config/nmpc_viz.rviz
@@ -184,7 +184,7 @@ See `ap_pnc/lu_mpc/controller/trajectory_loader.py` for full format specificatio
 
 ### "ACADOS library not found"
 
-The `just viz-traj-tracking-elmpc` recipe automatically sets `LD_LIBRARY_PATH`. If running the Python script directly:
+The `uv run ap-pnc traj viz-elmpc` command automatically sets `LD_LIBRARY_PATH`. If running the Python script directly:
 
 ```bash
 export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
@@ -229,7 +229,7 @@ The default trajectory is `artifacts/simulations/temp_data.csv`. Generate one wi
 Or specify a custom path:
 
 ```bash
-just viz-traj-tracking-elmpc --trajectory /path/to/your/trajectory.csv
+uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py --trajectory /path/to/your/trajectory.csv
 ```
 
 ## Performance Tuning

@@ -267,7 +267,7 @@ def compare_aero_types(
 
         except FileNotFoundError as e:
             print(f"✗ ({e})")
-            print("  Run 'just aero-ml-pipeline' first to train models.")
+            print("  Run 'uv run ap-pnc aerodyn pipeline' first to train models.")
             continue
         except Exception as e:
             print(f"✗ ({e})")

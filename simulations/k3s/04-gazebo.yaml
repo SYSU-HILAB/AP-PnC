@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ap-pnc-gazebo
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: ap-pnc-gazebo
+    app.kubernetes.io/part-of: ap-pnc
+    app.kubernetes.io/component: simulator
+    sim.ap-pnc/type: gazebo
+spec:
+  replicas: 0 # 由 sim-dispatcher 根据 sim-config 动态控制
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ap-pnc-gazebo
+  template:
+    metadata:
+      labels:
+        app: ap-pnc-gazebo
+        app.kubernetes.io/name: ap-pnc-gazebo
+        app.kubernetes.io/part-of: ap-pnc
+        sim.ap-pnc/type: gazebo
+    spec:
+      hostNetwork: true
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        # Container 1: PX4 Autopilot + Gazebo Garden SITL
+        - name: px4-simulator
+          image: px4-simulator:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: DISPLAY
+                  optional: true
+            - name: QT_X11_NO_MITSHM
+              value: "1"
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "all"
+            - name: XDG_RUNTIME_DIR
+              value: "/tmp/runtime-px4"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[px4-simulator] Starting PX4 Gazebo Garden SITL..."
+              # Wait or start the headless/GUI simulation entry point
+              exec bash
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "8"
+              memory: 16Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix
+              name: x11-unix
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+
+        # Container 2: AP-PnC ROS2 NMPC & Planning Node
+        - name: ap-pnc
+          image: ap-pnc:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: DISPLAY
+                  optional: true
+            - name: QT_X11_NO_MITSHM
+              value: "1"
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+            - name: AP_PNC_DIR
+              value: "/ap-pnc"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[ap-pnc] Starting AP-PnC Planning & Control stack..."
+              exec bash
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+            requests:
+              cpu: "500m"
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix
+              name: x11-unix
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+      volumes:
+        - name: x11-unix
+          hostPath:
+            path: /tmp/.X11-unix
+            type: DirectoryOrCreate
+        - name: host-localtime
+          hostPath:
+            path: /etc/localtime
+            type: File

@@ -28,7 +28,7 @@ RUN set -ex && \
     git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git /tmp/agent_src \
     && cd /tmp/agent_src \
     && git checkout 7362281
-COPY installations/install-dds-agent.sh /tmp/agent_src/install-dds-agent.sh
+COPY simulations/gazebo/installations/install-dds-agent.sh /tmp/agent_src/install-dds-agent.sh
 RUN /tmp/agent_src/install-dds-agent.sh
 
 ARG CACHE_BUSTER="rebuild"
@@ -42,9 +42,8 @@ WORKDIR /home/px4/px4-vtol
 ENV PATH="/home/px4/px4-vtol/Tools:$PATH"
 RUN make px4_sitl_default
 
-COPY ./src/aerodynamics /plugins/aerodynamics
-COPY ./src/utils /plugins/utils
-COPY ./src/external_libraries /plugins/external_libraries
+COPY ./simulations/aerodynamics /plugins/aerodynamics
+COPY ./ros_packages/utils /plugins/utils
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /home/px4/.bashrc
 ENV AERO_SIM_DATA_DIR=/plugins/aerodynamics/data

@@ -45,7 +45,7 @@ def plot_csv_vs_model_comparison(git_root: Path | None = None, show_plot: bool =
     # Load dataset
     dataset_path = git_root / "artifacts/simulations/aero_ml_dataset.parquet"
     if not dataset_path.exists():
-        raise FileNotFoundError(f"Dataset not found: {dataset_path}. Run 'just assemble-aero-ml-dataset' first.")
+        raise FileNotFoundError(f"Dataset not found: {dataset_path}. Run 'uv run ap-pnc aerodyn assemble' first.")
 
     dataset = AeroMLDataset.from_parquet(dataset_path)
 
@@ -55,7 +55,7 @@ def plot_csv_vs_model_comparison(git_root: Path | None = None, show_plot: bool =
         weight_path = git_root / f"artifacts/simulations/aero_ml_weights/{aero_type}_mlp_weights.safetensors"
         if not weight_path.exists():
             print(f"Warning: Model weights not found for {aero_type}: {weight_path}")
-            print(f"  Run 'just train-aero-ml-type {aero_type}' first.")
+            print(f"  Run 'uv run ap-pnc aerodyn train-type {aero_type}' first.")
             continue
 
         # Load predictor from checkpoint

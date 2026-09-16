@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 
@@ -21,25 +22,36 @@ def _ensure_submodule() -> None:
 
 
 def _build_acados_c() -> None:
+    """Build acados shared libs out-of-tree and stage into .artifacts/acados."""
     git_root = get_git_root()
-    lib_acados = git_root / "mpc_framework" / "lib" / "libacados.so"
+    install_prefix = git_root / ".artifacts" / "acados"
+    lib_acados = install_prefix / "lib" / "libacados.so"
     if lib_acados.exists():
         return
     acados_src = git_root / "mpc_framework"
-    build_dir = git_root / "mpc_framework" / "build"
+    build_dir = install_prefix / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        ["cmake", str(acados_src)],
+        ["cmake", str(acados_src),
+         "-DCMAKE_INSTALL_PREFIX=" + str(install_prefix)],
         cwd=build_dir,
         check=True,
     )
     subprocess.run(["make", "-j4"], cwd=build_dir, check=True)
     subprocess.run(["make", "install"], cwd=build_dir, check=True)
 
+    # acados CMake writes these metadata files into the source tree only;
+    # acados_template reads them from ACADOS_SOURCE_DIR/lib, so stage copies.
+    staged_lib = install_prefix / "lib"
+    for meta in ("link_libs.json", "git_commit_hash"):
+        src_meta = acados_src / "lib" / meta
+        if src_meta.exists() and not (staged_lib / meta).exists():
+            shutil.copy2(src_meta, staged_lib / meta)
+
 
 def _download_t_renderer() -> None:
     git_root = get_git_root()
-    bin_dir = git_root / "mpc_framework" / "bin"
+    bin_dir = git_root / ".artifacts" / "acados" / "bin"
     renderer = bin_dir / "t_renderer"
     if renderer.exists():
         return
@@ -51,7 +63,7 @@ def _download_t_renderer() -> None:
 
 def _build_acados_static() -> None:
     git_root = get_git_root()
-    build_dir = git_root / "build" / "acados_static"
+    build_dir = git_root / ".artifacts" / "acados_static"
     src = git_root / "mpc_framework"
     if (build_dir / "acados" / "libacados.a").exists():
         return
