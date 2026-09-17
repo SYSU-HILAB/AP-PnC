@@ -37,7 +37,7 @@ def _colcon_build(
         shutil.rmtree(base, ignore_errors=True)
     env["COLCON_LOG_PATH"] = str(base / "log")
     cmd = [
-        "colcon", "build", "--symlink-install", "--merge-install",
+        "colcon", "build", "--merge-install",
         "--build-base", str(base / "build"),
         "--install-base", str(base / "install"),
     ]

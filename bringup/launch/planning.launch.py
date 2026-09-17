@@ -12,9 +12,9 @@
 
 """Planning stack launch (trajectory_server + traj_buffer).
 
-Nodes read their configuration directly from bringup/config/planning.yaml
-($AP_PNC_PLANNING_YAML override, cwd-relative fallback); no ROS parameters
-are passed here. Use `debug:=true` to run the planner under gdbserver :7777.
+Nodes read their configuration from the conventional cwd-relative
+bringup/config/planning.yaml; no ROS parameters are passed here.
+Use `debug:=true` to run the planner under gdbserver :7777.
 """
 
 import launch

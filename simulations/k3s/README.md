@@ -123,6 +123,6 @@ volumes:
       name: sim-config
 ```
 
-Nodes resolve the file via `$AP_PNC_PLANNING_YAML` / `$AP_PNC_NMPC_YAML`
-(or the cwd-relative default `bringup/config/*.yaml`, which matches the
-`/workspace` workdir). ConfigMap updates take effect on rollout restart.
+Nodes read the conventional cwd-relative path `bringup/config/*.yaml`,
+which matches the `/workspace` workdir — no environment variables needed.
+ConfigMap updates take effect on rollout restart.

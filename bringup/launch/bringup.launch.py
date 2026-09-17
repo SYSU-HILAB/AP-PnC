@@ -1,8 +1,7 @@
 """Control stack launch (c_nmpc + px4_interface).
 
-Nodes read their configuration directly from bringup/config yaml files
-($AP_PNC_NMPC_YAML override, cwd-relative fallback); no ROS parameters are
-passed here.
+Nodes read their configuration from the conventional cwd-relative
+bringup/config yaml files; no ROS parameters are passed here.
 """
 
 import os

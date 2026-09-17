@@ -7,19 +7,12 @@ Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sit
 ## Install
 
 ```bash
-git clone https://github.com/WarriorHanamy/AP-PnC.git --recurse-submodules
-```
-
-> The only submodule is `ros_packages/interface_msgs/px4_msgs/msg`.
-> acados is fetched on demand into `.artifacts/acados_src` by
-> `uv run ap-pnc install`, locked to a pinned commit (no submodule). The vendored dependencies
-> (`ap_pnc/sciplots`, `autodiff`, `ROS2-Utils`, `tomlplusplus`, `yamlcpp`,
-> `BSplinebasis`) are managed as git subtrees and live directly in the repo.
-
-```bash
+git clone https://github.com/WarriorHanamy/AP-PnC.git
 uv sync --group dev --group extra
 uv run ap-pnc install
 ```
+
+No recursive clone needed: `ap-pnc install` fetches acados automatically.
 
 `uv run ap-pnc install` handles:
 
@@ -27,6 +20,13 @@ uv run ap-pnc install
 - acados C library build, staged into `.artifacts/acados` (shared + static)
 - t_renderer download
 - acados_template Python interface (editable install)
+
+For C++ message builds, init the only remaining submodule when needed:
+`git submodule update --init ros_packages/interface_msgs/px4_msgs/msg`.
+The vendored dependencies (`ap_pnc/sciplots`, `autodiff`, `ROS2-Utils`,
+`tomlplusplus`, `yamlcpp`, `BSplinebasis`) are git subtrees and live directly
+in the repo. `uv run ap-pnc gen-nmpc-lib` runs all of the above on demand
+when prerequisites are missing.
 
 ---
 
@@ -93,9 +93,9 @@ No ROS parameters. Nodes read sectioned yaml directly from `bringup/config/`:
   MINCO, prior-free phi-theory flatness) + `io` (topics, dump dirs)
 - `c_nmpc.yaml` — `nmpc: {mass, cz_rate}`
 
-Paths resolve via `$AP_PNC_PLANNING_YAML` / `$AP_PNC_NMPC_YAML`, or the
-cwd-relative default `bringup/config/*.yaml` (matches the container
-`/workspace` mount). See [docs/build-and-launch.md](docs/build-and-launch.md).
+Nodes read the conventional cwd-relative `bringup/config/*.yaml` (matches
+the container `/workspace` mount). See
+[docs/build-and-launch.md](docs/build-and-launch.md).
 
 ---
 
@@ -128,8 +128,5 @@ staging, codegen output, `libnmpc_bundle.a`, pybind11 bindings, colcon
 build/install/log). Python `.venv` is shared across worktrees; `.artifacts/`
 (including colcon output) is worktree-local.
 
-| Variable              | Purpose                    | Default                      |
-|-----------------------|----------------------------|------------------------------|
-| `AP_PNC_DIR`          | Override git root detection | auto-detected via `git rev-parse` |
-| `ACADOS_SOURCE_DIR`   | acados staged install tree  | `$AP_PNC_DIR/.artifacts/acados` |
-| `AP_PNC_PLANNING_YAML`/`AP_PNC_NMPC_YAML` | Runtime config override | cwd-relative `bringup/config/*.yaml` |
+Zero environment variables are required — the CLI sets up every path it
+needs internally.

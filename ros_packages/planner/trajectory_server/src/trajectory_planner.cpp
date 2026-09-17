@@ -35,19 +35,18 @@ namespace trajectory_server
   GlobalPlanner::GlobalPlanner() : Node("global_planning_node")
   {
     // Prior-free planning config: direct yaml read (bringup), no ROS params.
-    // Path: $AP_PNC_PLANNING_YAML override, else cwd-relative bringup config.
-    const char *env_p = std::getenv("AP_PNC_PLANNING_YAML");
-    config.load(env_p != nullptr ? env_p : "bringup/config/planning.yaml");
-    tailsitter_df::Model::getInstance().setParameters(config.problem.flatness.phi,
-                                                      config.problem.flatness.mass);
+    // Conventional cwd-relative path; containers run from /workspace.
+    config.load("bringup/config/planning.yaml");
+    tailsitter_df::Model::getInstance().setParameters(
+        config.problem.flatness.phi, config.problem.flatness.mass);
 
     auto reliable_qos =
         rclcpp::QoS(10).transient_local().reliable().keep_last(1);
     trajVizPub = this->create_publisher<geometry_msgs::msg::PoseArray>(
         "traj_viz", reliable_qos);
 
-    trajPub = this->create_publisher<RefTrajectory>(
-        config.io.traj_topic, reliable_qos);
+    trajPub = this->create_publisher<RefTrajectory>(config.io.traj_topic,
+                                                    reliable_qos);
 
     init_basic_trajectory_type(config.problem.basic_traj.type);
     timer = this->create_wall_timer(2s, std::bind(&GlobalPlanner::plan, this));
@@ -183,7 +182,8 @@ namespace trajectory_server
 
       if (!gcopter.setup_basic_trajectory(
               iniState, finState, initTime, initPointsPos, hPolys,
-              config.problem.minco.smoothing_eps, config.problem.minco.integral_intervs))
+              config.problem.minco.smoothing_eps,
+              config.problem.minco.integral_intervs))
       {
         return;
       }
@@ -267,8 +267,8 @@ namespace trajectory_server
         {
           // Create trajectory sample using factory method
           TrajectorySampleData sample = TrajectorySampleData::from_trajectory(
-              traj, t, tailsitter_data, config.problem.flatness.mass, g_alpha_solver,
-              prev_df_lyu_quat, df_lyu_quat_initialized);
+              traj, t, tailsitter_data, config.problem.flatness.mass,
+              g_alpha_solver, prev_df_lyu_quat, df_lyu_quat_initialized);
 
           // Update continuity state
           if (!df_lyu_quat_initialized)
