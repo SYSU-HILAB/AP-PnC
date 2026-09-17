@@ -6,7 +6,13 @@ The modules in this package are intentionally lightweight to keep the
 feature prototypes and the production `src/` packages.
 """
 
-from . import math_utils, ros_viz_utils, traj_utils
+from . import math_utils, traj_utils
+
+try:
+    from . import ros_viz_utils
+except ImportError:
+    ros_viz_utils = None  # ROS2 packages not available on host
+
 from .color_print import Colors, color_print
 
 __all__ = ["math_utils", "ros_viz_utils", "traj_utils", "Colors", "color_print"]

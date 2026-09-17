@@ -4,36 +4,32 @@
 #   $AP_PNC_PLANNING_YAML, or "bringup/config/planning.yaml" relative to cwd.
 # Container: mounted at /workspace/bringup/config/planning.yaml via ConfigMap.
 
-problem_formulation:        # the optimization problem itself
+problem_formulation:
   frame: world
   uav_scale: 1.0
   piece_n: 10
-
-  box:                      # safe flight corridor dimensions [m]
+  box:
     side_inside: 0.3
     side_outside: 0.3
     up: 0.1
     down: 0.1
     front: 0.5
     back: 0.5
-
-  basic_traj:               # reference curve seeding the optimizer
-    type: 1                 # 1 Lemniscate / 2 Circle / 3 Sinusoidal / 4 Line
-    radius: 4.0
+  basic_traj:
+    type: 2
+    radius: 15.0
     height: 0.0
     rate: 0.1
     curvature_factor: 0.8
     wave_len: 50.0
-
-  cost:                     # gcopter limits and weights
-    v_max: 5.0
+  cost:
+    v_max: 12.0
     omg_x_max: 0.8
     omg_y_max: 2.5
     omg_z_max: 0.8
     acc_max: 12.0
     thrust_min: -2.5
     thrust_max: 4.5
-
     vel_weight: 10000.0
     acc_weight: 0.0
     omg_x_weight: 20000.0
@@ -42,17 +38,22 @@ problem_formulation:        # the optimization problem itself
     thrust_weight: 10000.0
     time_weight: 10000.0
     omg_consistent_weight: 0.0
-
-  minco:                    # MINCO trajectory optimization
+  minco:
     smoothing_eps: 0.01
     integral_intervs: 30
     rel_cost_tol: 1.0e-05
-
-  flatness:                 # prior-free phi-theory DF model (tailsitter_df)
-    phi: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09408]
+  flatness:
+    phi:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -0.09408
     mass: 2.0
-
-io:                         # inbound/outbound
+io:
   traj_topic: /control_traj
   traj_pub_rsl: 0.02
   temp_data_dir: artifacts/simulations/temp_data

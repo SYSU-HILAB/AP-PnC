@@ -71,8 +71,7 @@ def sim_model() -> None:
 @app.command(name="sim-gd")
 def sim_gd() -> None:
     """Run GD simulation model test."""
-    code = "from ap_pnc.lu_mpc.model.sim.sim_gd_model import test_gd_simulation; test_gd_simulation()"
-    subprocess.run([sys.executable, "-c", code], check=True)
+    _pytest("test/lu_mpc/model/sim/test_sim_gd_model.py")
 
 
 @app.command()

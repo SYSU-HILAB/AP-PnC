@@ -12,13 +12,22 @@ dependencies = [
     "typer",
     "rich",
     "pyyaml",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.53.0",
+    "websockets>=16.1.1",
 ]
 
 [project.scripts]
 ap-pnc = "ap_pnc.cli:main"
 
 [dependency-groups]
-dev = ["pytest", "ruff==0.5.4", "pandas", "pybind11"]
+dev = [
+    "pytest",
+    "ruff==0.5.4",
+    "pandas",
+    "pybind11",
+    "httpx>=0.28.1",
+]
 extra = [
     "jax[cpu]",
     "torch",

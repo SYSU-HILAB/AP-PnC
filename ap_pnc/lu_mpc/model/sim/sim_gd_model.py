@@ -8,6 +8,7 @@
 #
 
 import dataclasses
+from pathlib import Path
 
 import casadi as cs
 import numpy as np
@@ -41,21 +42,25 @@ class GdSimConfig:
 
     # Aircraft physical parameters (from tailsitter_flu)
     mass: float = 2.0  # kg
-    J: np.ndarray = np.array([0.04361, 0.04513, 0.08322])  # Inertia matrix
+    J: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.array([0.04361, 0.04513, 0.08322])
+    )  # Inertia matrix
     c_tau: float = 0.032  # Torque coefficient
     dx: float = 0.32  # Arm length x
     dy: float = 0.32  # Arm length y
     motor_tau: float = 0.01
     # FLU to FRD transformation
-    trans_wing_frd_quad_flu: np.ndarray = np.array(
-        [0.0, 0.7071, 0.0, 0.7071]
+    trans_wing_frd_quad_flu: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.array([0.0, 0.7071, 0.0, 0.7071])
     )  # NED to world transformation
 
     # Aerodynamic model configuration
-    aero_config: GdModelConfig = DEFAULT_CONFIG
+    aero_config: GdModelConfig = dataclasses.field(default_factory=GdModelConfig)
 
     # Wind configuration (in world frame)
-    wind_world: np.ndarray = np.array([0.0, 0.0, 0.0], dtype=np.float64)  # Wind velocity in world frame [wx, wy, wz]
+    wind_world: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.array([0.0, 0.0, 0.0], dtype=np.float64)
+    )  # Wind velocity in world frame [wx, wy, wz]
 
 
 # Default configuration instance
@@ -304,8 +309,16 @@ class GdModelSimulator:
         # Set parameter values (none needed for pure GD model)
         self._acados_sim.parameter_values = np.array([])  # No parameters
 
-        # Create solver
-        self._acados_solver = AcadosSimSolver(self._acados_sim, json_file=f"acados_{self._acados_model.name}_sim.json")
+        # Create solver in .cache directory
+        cache_dir = Path(__file__).resolve().parent.parent.parent / ".cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        json_file = str(cache_dir / f"acados_{self._acados_model.name}_sim.json")
+        export_dir = str(cache_dir / f"c_generated_code_{self._acados_model.name}_sim")
+        if hasattr(self._acados_sim, "code_gen_opts"):
+            self._acados_sim.code_gen_opts.code_export_directory = export_dir
+        else:
+            self._acados_sim.code_export_directory = export_dir
+        self._acados_solver = AcadosSimSolver(self._acados_sim, json_file=json_file)
 
 
     @classmethod

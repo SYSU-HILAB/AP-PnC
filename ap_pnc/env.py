@@ -110,13 +110,33 @@ def setup_env(ros: bool = False) -> None:
     os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / ".artifacts" / "acados"))
     os.environ.setdefault(
         "ACADOS_PYTHON_INTERFACE_PATH",
-        str(git_root / ".artifacts" / "acados_src" / "interfaces" / "acados_template" / "acados_template"),
+        str(
+            git_root
+            / ".artifacts"
+            / "acados_src"
+            / "interfaces"
+            / "acados_template"
+            / "acados_template"
+        ),
     )
 
     lib_path = str(git_root / ".artifacts" / "acados" / "lib")
     existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
     if lib_path not in existing_ld:
         os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{existing_ld}"
+
+    # Preload acados shared libraries globally so dynamically loaded solvers locate them
+    lib_dir = git_root / ".artifacts" / "acados" / "lib"
+    if lib_dir.exists():
+        import ctypes
+
+        for libname in ("libblasfeo.so", "libhpipm.so", "libacados.so"):
+            target = lib_dir / libname
+            if target.exists():
+                try:
+                    ctypes.CDLL(str(target), mode=ctypes.RTLD_GLOBAL)
+                except OSError:
+                    pass
 
     ensure_t_renderer()
 

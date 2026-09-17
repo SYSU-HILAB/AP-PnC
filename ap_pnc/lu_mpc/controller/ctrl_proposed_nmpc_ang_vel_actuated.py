@@ -70,7 +70,12 @@ class ProposedNmpcAngVelActuatedController:
         # Create OCP and solver
         ocp_cfg = ocp_proposed_mpc_cfg(mpc_config)
         json_path = config.json_path
-        json_path.parent.mkdir(exist_ok=True)
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        export_dir = str(json_path.parent / f"c_generated_code_{ocp_cfg.model.name}")
+        if hasattr(ocp_cfg, "code_gen_opts"):
+            ocp_cfg.code_gen_opts.code_export_directory = export_dir
+        else:
+            ocp_cfg.code_export_directory = export_dir
         self._solver = AcadosOcpSolver(ocp_cfg, json_file=str(json_path))
 
         # Solver dimensions
@@ -157,9 +162,10 @@ class ProposedNmpcAngVelActuatedController:
         proposed_solver: AcadosOcpSolver = self.solver
 
         if status != 0:
-            print(f"Warning: NMPC solver failed with status {status}")
-            sys.exit(1)
-            return np.zeros(self._nu)
+            print(f"Warning: NMPC solver status {status}")
+            if hasattr(self, "_u_prev") and self._u_prev is not None:
+                return self._u_prev.copy()
+            return np.full(self._nu, 4.9)
 
         # 5. Extract desired values from predicted state x[1]
         x_next = self._solver.get(1, "x")
@@ -182,13 +188,38 @@ class ProposedNmpcAngVelActuatedController:
 
         # Update previous command
         self._u_prev = motor_thrusts.copy()
-
+        self._pred_trajectory = np.array([self._solver.get(i, "x")[:3] for i in range(self._N + 1)])
+        self._last_control_info = {
+            "motors": motor_thrusts.copy(),
+            "total_thrust": float(tot_thrust_cmd),
+            "rates_des": ang_vel_des.copy(),
+            "torque_cmd": torque_cmd.copy(),
+            "pitch_des": float(np.arctan2(x_next[9] * x_next[10] + x_next[11] * x_next[12], 0.5 - x_next[10]**2 - x_next[11]**2)),
+        }
 
         # Increment reference index after solving (only in tracking mode)
         if not self._is_hover_task:
             self._cur_idx_ref += 1
 
         return motor_thrusts
+
+    def get_predicted_trajectory(self) -> np.ndarray:
+        """Return NMPC predicted position trajectory over prediction horizon (N+1, 3)."""
+        if hasattr(self, "_pred_trajectory"):
+            return self._pred_trajectory.copy()
+        return np.array([self._solver.get(i, "x")[:3] for i in range(self._N + 1)])
+
+    def get_latest_control_info(self) -> dict:
+        """Return latest control commands and solver stats."""
+        if hasattr(self, "_last_control_info"):
+            return self._last_control_info
+        return {
+            "motors": self._u_prev.copy(),
+            "total_thrust": float(np.sum(self._u_prev)),
+            "rates_des": np.zeros(3),
+            "torque_cmd": np.zeros(3),
+            "pitch_des": 0.0,
+        }
 
     @property
     def is_trajectory_complete(self) -> bool:

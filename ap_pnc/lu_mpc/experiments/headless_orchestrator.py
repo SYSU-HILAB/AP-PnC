@@ -53,6 +53,56 @@ class MetricsResult:
     trajectory_duration: float
 
 
+@dataclass
+class OrchestratorSnapshot:
+    """Real-time telemetry and state snapshot for TUI / monitoring."""
+    step_idx: int
+    sim_time: float
+    current_pos: np.ndarray       # (3,) [x, y, z]
+    current_vel: np.ndarray       # (3,) [vx, vy, vz]
+    current_quat: np.ndarray      # (4,) [qw, qx, qy, qz]
+    current_rpy: np.ndarray       # (3,) [roll, pitch, yaw] deg
+    body_rates: np.ndarray        # (3,) [p, q, r] rad/s
+    motor_thrusts: np.ndarray     # (4,) [u0, u1, u2, u3] N
+    total_thrust: float           # N
+    rates_des: np.ndarray         # (3,) [p, q, r] rad/s
+    pitch_des: float              # deg
+    ref_pos: np.ndarray           # (3,) [x, y, z]
+    ref_vel: np.ndarray           # (3,) [vx, vy, vz]
+    pos_error: float              # m
+    rms_error: float              # m
+    max_error: float              # m
+    pred_trajectory: np.ndarray   # (N+1, 3)
+    ref_trajectory: np.ndarray    # (M, 3)
+    is_complete: bool
+    status_ok: bool
+
+    def to_dict(self) -> dict:
+        """Convert snapshot to JSON-serializable dictionary."""
+        return {
+            "step_idx": int(self.step_idx),
+            "sim_time": round(float(self.sim_time), 3),
+            "current_pos": [round(float(v), 3) for v in self.current_pos],
+            "current_vel": [round(float(v), 3) for v in self.current_vel],
+            "current_quat": [round(float(v), 4) for v in self.current_quat],
+            "current_rpy": [round(float(v), 2) for v in self.current_rpy],
+            "body_rates": [round(float(v), 3) for v in self.body_rates],
+            "motor_thrusts": [round(float(v), 2) for v in self.motor_thrusts],
+            "total_thrust": round(float(self.total_thrust), 2),
+            "rates_des": [round(float(v), 3) for v in self.rates_des],
+            "pitch_des": round(float(self.pitch_des), 2),
+            "ref_pos": [round(float(v), 3) for v in self.ref_pos],
+            "ref_vel": [round(float(v), 3) for v in self.ref_vel],
+            "pos_error": round(float(self.pos_error), 4),
+            "rms_error": round(float(self.rms_error), 4),
+            "max_error": round(float(self.max_error), 4),
+            "pred_trajectory": [[round(float(coord), 3) for coord in pt] for pt in self.pred_trajectory],
+            "ref_trajectory": [[round(float(coord), 3) for coord in pt] for pt in self.ref_trajectory[::2]],
+            "is_complete": bool(self.is_complete),
+            "status_ok": bool(self.status_ok),
+        }
+
+
 class MetricsCollector:
     """Collects and computes tracking error metrics."""
 
@@ -384,3 +434,67 @@ class HeadlessOrchestrator:
             num_steps=len(self.metrics.position_errors),
             trajectory_duration=self._current_time,
         )
+
+    def get_snapshot(self) -> OrchestratorSnapshot:
+        """Capture comprehensive snapshot for TUI / telemetry."""
+        state = self.simulator.get_state()
+        pos = state[0:3]
+        vel = state[3:6]
+        rates = state[6:9]
+        quat = state[9:13]  # WXYZ
+
+        # Euler angles from quaternion [w, x, y, z]
+        qw, qx, qy, qz = quat[0], quat[1], quat[2], quat[3]
+        roll = np.arctan2(2 * (qw * qx + qy * qz), 1 - 2 * (qx**2 + qy**2)) * 180.0 / np.pi
+        pitch = np.arcsin(np.clip(2 * (qw * qy - qz * qx), -1.0, 1.0)) * 180.0 / np.pi
+        yaw = np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy**2 + qz**2)) * 180.0 / np.pi
+        rpy = np.array([roll, pitch, yaw])
+
+        ctrl_info = self.controller.get_latest_control_info()
+        motors = ctrl_info.get("motors", np.zeros(4))
+        total_thrust = ctrl_info.get("total_thrust", float(np.sum(motors)))
+        rates_des = ctrl_info.get("rates_des", np.zeros(3))
+        pitch_des = ctrl_info.get("pitch_des", 0.0) * 180.0 / np.pi
+
+        ref_idx = min(self._ref_idx, len(self.trajectory.position) - 1)
+        ref_pos = self.trajectory.position[ref_idx]
+        ref_vel = self.trajectory.velocity[ref_idx]
+
+        pos_err = float(np.linalg.norm(pos - ref_pos))
+        metrics = self.metrics.compute_metrics()
+
+        pred_traj = self.controller.get_predicted_trajectory()
+
+        return OrchestratorSnapshot(
+            step_idx=self._ref_idx,
+            sim_time=self._current_time,
+            current_pos=pos.copy(),
+            current_vel=vel.copy(),
+            current_quat=quat.copy(),
+            current_rpy=rpy,
+            body_rates=rates.copy(),
+            motor_thrusts=motors.copy(),
+            total_thrust=total_thrust,
+            rates_des=rates_des.copy(),
+            pitch_des=pitch_des,
+            ref_pos=ref_pos.copy(),
+            ref_vel=ref_vel.copy(),
+            pos_error=pos_err,
+            rms_error=metrics.get("rms_error", 0.0),
+            max_error=metrics.get("max_error", 0.0),
+            pred_trajectory=pred_traj,
+            ref_trajectory=self.trajectory.position,
+            is_complete=self.controller.is_trajectory_complete,
+            status_ok=not bool(self.failure_reason),
+        )
+
+    def reset(self, trajectory_csv: str | None = None) -> None:
+        """Reset the orchestrator to initial state."""
+        self.metrics = MetricsCollector()
+        self.success = False
+        self.failure_reason = ""
+        csv_file = trajectory_csv or str(self.trajectory.file_path if hasattr(self.trajectory, "file_path") else "")
+        if not csv_file:
+            # Reconstruct from initial trajectory
+            csv_file = self.trajectory.filename
+        self._setup_simulation(csv_file)
