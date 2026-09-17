@@ -13,7 +13,7 @@ app = typer.Typer()
 
 def _build_acados_static(git_root: Path) -> None:
     """Build acados as static libs into .artifacts/acados_static."""
-    src = git_root / "mpc_framework"
+    src = git_root / ".artifacts" / "acados_src"
     build_dir = git_root / ".artifacts" / "acados_static"
     if not (build_dir / "acados" / "libacados.a").exists():
         typer.echo("Building acados static libs...")
@@ -85,13 +85,37 @@ def _build_wrapper_and_bundle(git_root: Path) -> None:
     typer.echo(f"Bundle: {bundle} ({size // 1024} KB)")
 
 
+def _ensure_prerequisites() -> None:
+    """Run install automatically when acados prerequisites are missing."""
+    git_root = get_git_root()
+    staged_lib = git_root / ".artifacts" / "acados" / "lib" / "libacados.so"
+    renderer = git_root / ".artifacts" / "acados" / "bin" / "t_renderer"
+    source = git_root / ".artifacts" / "acados_src" / "CMakeLists.txt"
+    try:
+        import acados_template  # noqa: F401
+        have_template = True
+    except ImportError:
+        have_template = False
+
+    if staged_lib.exists() and renderer.exists() and source.exists() and have_template:
+        return
+
+    typer.echo("acados prerequisites missing, running install...")
+    from ap_pnc.recipes import install
+
+    install.install()
+
+
 @app.callback(invoke_without_command=True)
 def cocp() -> None:
     """Generate acados OCP C code and build libnmpc_bundle.a for ROS2 linking.
 
     libnmpc_bundle.a is a single static archive containing the wrapper,
     generated solver, and statically-linked acados/hpipm/blasfeo.
+    Prerequisites (acados source, staged libs, t_renderer, acados_template)
+    are installed automatically on first use.
     """
+    _ensure_prerequisites()
     setup_env()
     git_root = get_git_root()
     script = git_root / "ap_pnc" / "nmpc" / "create_ocp.py"

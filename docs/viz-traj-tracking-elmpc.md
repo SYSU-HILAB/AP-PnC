@@ -187,7 +187,7 @@ See `ap_pnc/lu_mpc/controller/trajectory_loader.py` for full format specificatio
 The `uv run ap-pnc traj viz-elmpc` command automatically sets `LD_LIBRARY_PATH`. If running the Python script directly:
 
 ```bash
-export LD_LIBRARY_PATH=/home/rec/AP-PnC/mpc_framework/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/home/rec/AP-PnC/.artifacts/acados/lib:$LD_LIBRARY_PATH
 uv run python test/lu_mpc/ros/user_test_traj_tracking_elmpc_viz.py
 ```
 

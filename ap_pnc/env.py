@@ -2,6 +2,25 @@ import os
 import subprocess
 from pathlib import Path
 
+T_RENDERER_URL = (
+    "https://github.com/acados/tera_renderer/releases/download/"
+    "v0.2.0/t_renderer-v0.2.0-linux-amd64"
+)
+
+
+def ensure_t_renderer() -> Path:
+    """Make sure t_renderer exists; acados_template would otherwise ask
+    interactively whether to download it (hangs in non-tty subprocesses)."""
+    git_root = get_git_root()
+    bin_dir = git_root / ".artifacts" / "acados" / "bin"
+    renderer = bin_dir / "t_renderer"
+    if renderer.exists():
+        return renderer
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["curl", "-L", T_RENDERER_URL, "-o", str(renderer)], check=True)
+    renderer.chmod(0o755)
+    return renderer
+
 
 def get_git_root() -> Path:
     """Find the git repository root, handling worktrees via commondir."""
@@ -83,21 +102,23 @@ def setup_env(ros: bool = False) -> None:
 
     ACADOS_SOURCE_DIR points at the staged install tree (.artifacts/acados),
     which provides include/, lib/, bin/t_renderer for acados_template codegen.
-    ACADOS_PYTHON_INTERFACE_PATH falls back to the source submodule for the
-    Python interface, so mpc_framework stays a pure source checkout.
+    ACADOS_PYTHON_INTERFACE_PATH falls back to the fetched source checkout
+    (.artifacts/acados_src) for the Python interface.
     """
     git_root = get_git_root()
     os.environ.setdefault("AP_PNC_DIR", str(git_root))
     os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / ".artifacts" / "acados"))
     os.environ.setdefault(
         "ACADOS_PYTHON_INTERFACE_PATH",
-        str(git_root / "mpc_framework" / "interfaces" / "acados_template" / "acados_template"),
+        str(git_root / ".artifacts" / "acados_src" / "interfaces" / "acados_template" / "acados_template"),
     )
 
     lib_path = str(git_root / ".artifacts" / "acados" / "lib")
     existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
     if lib_path not in existing_ld:
         os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{existing_ld}"
+
+    ensure_t_renderer()
 
     pythonpath = os.environ.get("PYTHONPATH", "")
     git_root_str = str(git_root)

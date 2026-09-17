@@ -5,18 +5,54 @@ import sys
 
 import typer
 
-from ap_pnc.env import get_git_root, setup_env
+from ap_pnc.env import ensure_t_renderer, get_git_root, setup_env
 
 app = typer.Typer()
 
+# acados is fetched on demand into .artifacts/acados_src and locked to a pinned
+# commit (no submodule, nothing tracked at the repo top level).
+ACADOS_REPO = "https://github.com/acados/acados.git"
+ACADOS_COMMIT = "2b28dc320a7d17d9f9b6ffefb59ee022d63bab83"  # v0.5.3-35
 
-def _ensure_submodule() -> None:
+
+def _fetch_acados_source() -> None:
+    """Clone or sync the locked acados source into .artifacts/acados_src."""
     git_root = get_git_root()
-    acados_dir = git_root / "mpc_framework"
-    if not (acados_dir / "CMakeLists.txt").exists():
+    acados_src = git_root / ".artifacts" / "acados_src"
+    if not (acados_src / ".git").exists():
+        typer.echo(f"Cloning acados at {ACADOS_COMMIT[:10]}...")
         subprocess.run(
-            ["git", "submodule", "update", "--init", "--recursive", "mpc_framework"],
+            ["git", "clone", ACADOS_REPO, str(acados_src)],
             cwd=git_root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "checkout", ACADOS_COMMIT],
+            cwd=acados_src,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "submodule", "update", "--init", "--recursive"],
+            cwd=acados_src,
+            check=True,
+        )
+        return
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=acados_src,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    if head != ACADOS_COMMIT:
+        typer.echo(f"Syncing acados {head[:10]} -> {ACADOS_COMMIT[:10]}...")
+        subprocess.run(["git", "fetch", "origin"], cwd=acados_src, check=True)
+        subprocess.run(
+            ["git", "checkout", ACADOS_COMMIT], cwd=acados_src, check=True
+        )
+        subprocess.run(
+            ["git", "submodule", "update", "--init", "--recursive"],
+            cwd=acados_src,
             check=True,
         )
 
@@ -28,7 +64,7 @@ def _build_acados_c() -> None:
     lib_acados = install_prefix / "lib" / "libacados.so"
     if lib_acados.exists():
         return
-    acados_src = git_root / "mpc_framework"
+    acados_src = git_root / ".artifacts" / "acados_src"
     build_dir = install_prefix / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
@@ -50,21 +86,13 @@ def _build_acados_c() -> None:
 
 
 def _download_t_renderer() -> None:
-    git_root = get_git_root()
-    bin_dir = git_root / ".artifacts" / "acados" / "bin"
-    renderer = bin_dir / "t_renderer"
-    if renderer.exists():
-        return
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    url = "https://github.com/acados/tera_renderer/releases/download/v0.2.0/t_renderer-v0.2.0-linux-amd64"
-    subprocess.run(["curl", "-L", url, "-o", str(renderer)], check=True)
-    renderer.chmod(0o755)
+    ensure_t_renderer()
 
 
 def _build_acados_static() -> None:
     git_root = get_git_root()
     build_dir = git_root / ".artifacts" / "acados_static"
-    src = git_root / "mpc_framework"
+    src = git_root / ".artifacts" / "acados_src"
     if (build_dir / "acados" / "libacados.a").exists():
         return
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -87,7 +115,7 @@ def _install_acados_template() -> None:
         subprocess.run(
             [
                 "uv", "pip", "install", "-e",
-                str(git_root / "mpc_framework" / "interfaces" / "acados_template"),
+                str(git_root / ".artifacts" / "acados_src" / "interfaces" / "acados_template"),
             ],
             check=True,
         )
@@ -98,7 +126,7 @@ def install() -> None:
     """Install everything: venv, acados C libs (shared + static), t_renderer, acados_template."""
     git_root = get_git_root()
     subprocess.run(["uv", "sync", "--group", "dev"], cwd=git_root, check=True)
-    _ensure_submodule()
+    _fetch_acados_source()
     setup_env()
     _build_acados_c()
     _build_acados_static()

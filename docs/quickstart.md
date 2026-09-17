@@ -61,7 +61,7 @@ uv run ap-pnc install
 
 This will:
 - Sync the virtual environment at `.venv/`
-- Build ACADOS from source in `mpc_framework/`
+- Fetch acados into `.artifacts/acados_src` (commit-locked) and build from source
 - Install Python dependencies (numpy, typer, rich, acados_template)
 
 ### 3. Verify Installation
@@ -178,7 +178,7 @@ Ensure you're using the wrapper script (not `colcon` directly):
 
 The wrapper scripts automatically configure `LD_LIBRARY_PATH`. If issues persist:
 ```bash
-echo $LD_LIBRARY_PATH | grep mpc_framework
+echo $LD_LIBRARY_PATH | grep artifacts/acados
 # Should display the ACADOS library path
 ```
 

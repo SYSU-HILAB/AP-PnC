@@ -183,9 +183,9 @@ def setup_env(ros: bool = False) -> None:
     """Configure os.environ with acados paths and optionally ROS2."""
     git_root = get_git_root()
     os.environ.setdefault("AP_PNC_DIR", str(git_root))
-    os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / "mpc_framework"))
+    os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / ".artifacts" / "acados"))
 
-    lib_path = str(git_root / "mpc_framework" / "lib")
+    lib_path = str(git_root / ".artifacts" / "acados" / "lib")
     existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
     if lib_path not in existing_ld:
         os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{existing_ld}"

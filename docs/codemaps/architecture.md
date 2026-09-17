@@ -82,7 +82,7 @@ AP-PnC/
 │   ├── paper_plots/           # paper figure generation scripts
 │   └── recipes/               # CLI command implementations
 │
-├── mpc_framework/             # ACADOS framework
+├── .artifacts/acados_src/     # ACADOS framework (fetched, commit-locked, untracked)
 ├── scripts/tools/             # Shell wrappers for colcon build, launch, env setup
 ├── docs/                      # Documentation
 ├── pyproject.toml             # uv project config

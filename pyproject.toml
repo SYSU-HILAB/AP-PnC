@@ -45,7 +45,6 @@ src = ["ap_pnc", "ros_packages", "tests"]
 extend-exclude = [
     "artifacts",
     "docs",
-    "mpc_framework",
 ]
 
 [tool.ruff.lint]

@@ -7,7 +7,7 @@ All commands go through the single `uv run ap-pnc` CLI entry point — the legac
 ## Build
 
 ```bash
-uv run ap-pnc build all          # whole workspace (all discovered packages, skip mpc_framework)
+uv run ap-pnc build all          # whole workspace (all discovered packages)
 uv run ap-pnc build cnmpc        # c_nmpc + px4_interface only
 uv run ap-pnc build aero         # aerodynamics only
 uv run ap-pnc build simple-sim   # simple_sim only

@@ -232,7 +232,7 @@ private:
 ```
 
 **Dependencies**:
-- `mpc_framework/acados/` (ACADOS library)
+- `.artifacts/acados_src/acados/` (ACADOS library, fetched by `ap-pnc install`)
 - `src/tailsitter_df/` (Dynamics model)
 
 **Configuration**: `ap_pnc/lu_mpc/acados_ocp_nlp.json`

@@ -2,7 +2,3 @@
 	path = ros_packages/interface_msgs/px4_msgs/msg
 	url = https://github.com/WarriorHanamy/vtol-px4-msgs.git
 	branch = main
-[submodule "mpc_framework"]
-	path = mpc_framework
-	url = https://github.com/acados/acados.git
-	branch = main

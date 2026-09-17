@@ -46,9 +46,6 @@ def _colcon_build(
     if packages:
         for pkg in packages:
             cmd.extend(["--packages-select", pkg, "--allow-overriding", pkg])
-    else:
-        # whole-workspace build: discover everything except the acados submodule
-        cmd.extend(["--packages-skip", "mpc_framework"])
     # --cmake-args is greedy and must stay last
     cmd.extend(["--cmake-args", f"-DCMAKE_PREFIX_PATH={base / 'install'}"])
     subprocess.run(cmd, cwd=git_root, env=env, check=True)
@@ -106,7 +103,7 @@ def cnmpc(
 def all_(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
 ) -> None:
-    """Build the whole workspace (all discovered packages except mpc_framework)."""
+    """Build the whole workspace (all discovered packages)."""
     _colcon_build(
         [],
         paths=["ros_packages", "bringup", "simulations/aerodynamics",

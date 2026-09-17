@@ -10,8 +10,9 @@ Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sit
 git clone https://github.com/WarriorHanamy/AP-PnC.git --recurse-submodules
 ```
 
-> The remaining submodules are `mpc_framework/` (acados) and
-> `ros_packages/interface_msgs/px4_msgs/msg`. The vendored dependencies
+> The only submodule is `ros_packages/interface_msgs/px4_msgs/msg`.
+> acados is fetched on demand into `.artifacts/acados_src` by
+> `uv run ap-pnc install`, locked to a pinned commit (no submodule). The vendored dependencies
 > (`ap_pnc/sciplots`, `autodiff`, `ROS2-Utils`, `tomlplusplus`, `yamlcpp`,
 > `BSplinebasis`) are managed as git subtrees and live directly in the repo.
 
@@ -22,6 +23,7 @@ uv run ap-pnc install
 
 `uv run ap-pnc install` handles:
 
+- acados source fetch into `.artifacts/acados_src` (commit-locked)
 - acados C library build, staged into `.artifacts/acados` (shared + static)
 - t_renderer download
 - acados_template Python interface (editable install)
