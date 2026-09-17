@@ -17,7 +17,6 @@
     <depend>builtin_interfaces</depend>
     <depend>geometry_msgs</depend>
     <depend>std_msgs</depend>
-    <depend>px4_msgs</depend>
     <depend>rclcpp</depend>
 
     <test_depend>ament_lint_auto</test_depend>

@@ -201,7 +201,6 @@ private:
 - Publishes: `/motor_commands`, `/px4/mocap/odometry`
 
 **Dependencies**:
-- `px4_msgs` (PX4 message definitions)
 - `rclcpp` (ROS2 C++ client library)
 - `mavsdk` (MAVLink bridge)
 
@@ -345,7 +344,6 @@ scripts/tools/build
 | ACADOS | v2023.2.1 | MPC optimization framework |
 | ROS2 | Humble | Robotics middleware |
 | Eigen3 | 3.4+ | Linear algebra |
-| px4_msgs | latest | PX4 message definitions |
 
 ### Internal Dependencies
 ```

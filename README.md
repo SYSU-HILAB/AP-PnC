@@ -22,7 +22,6 @@ No recursive clone needed: `ap-pnc install` fetches acados automatically.
 - acados_template Python interface (editable install)
 
 For C++ message builds, init the only remaining submodule when needed:
-`git submodule update --init ros_packages/interface_msgs/px4_msgs/msg`.
 The vendored dependencies (`ap_pnc/sciplots`, `autodiff`, `ROS2-Utils`,
 `tomlplusplus`, `yamlcpp`, `BSplinebasis`) are git subtrees and live directly
 in the repo. `uv run ap-pnc gen-nmpc-lib` runs all of the above on demand
@@ -76,7 +75,7 @@ ros_packages/        # Core ROS2 C++ stack
                      #   kernel), basic_trajectories, trajectory_server, traj_buffer
   c_nmpc/            #   NMPC tracking node + nmpc_wrapper
   px4_interface/     #   PX4 bridge
-  interface_msgs/    #   ros2_msgs + px4_msgs
+  interface_msgs/    #   ros2_msgs (interface package)
   utils/             #   ROS2-Utils + vendored libraries
 bringup/             # Top-layer package: config/ + launch/ (single entry)
 ap_pnc/              # Python package: CLI, nmpc/ codegen toolchain, lu_mpc, aerodynamics
@@ -105,19 +104,20 @@ Two stacked simulation setups live under `simulations/`:
 
 | Layer | Directory | What it runs |
 |-------|-----------|--------------|
-| Gazebo | `simulations/gazebo/` | Full-fidelity PX4-VTOL SITL under Gazebo Garden, bridged to ROS2 and the AP-PnC NMPC stack (`px4-simulator` + `qground_control` + `ap-pnc`) |
+| Gazebo | `simulations/gazebo/` | Generic-interface SITL: stock PX4 v1.17.0 under Gazebo Jetty (`gz_x500`), bridged by mavros2 to the AP-PnC NMPC stack (`px4-simulator` + `nav-sidecar` + `qground_control` + `ap-pnc`) |
 | Simple sim | `simulations/simple_sim/` | Lightweight C++ simulator (MARSIM-style) with synthetic LiDAR sensing, for obstacle-avoidance principle verification |
 
 ```bash
-uv run ap-pnc sim gazebo     # Gazebo layer (PX4-VTOL SITL + Gazebo Garden)
+uv run ap-pnc sim gazebo     # Gazebo layer (stock PX4 v1.17.0 + Gazebo Jetty + mavros2)
 uv run ap-pnc sim simple     # simple_sim layer (lightweight LiDAR sim)
 uv run ap-pnc sim stop       # scale everything down
 ```
 
-The `px4-vtol` firmware fork is a build-time dependency cloned inside the
-Gazebo image and pinned to a fixed commit via `ARG PX4_VTOL_COMMIT` — it is not
-vendored into this repository. See `simulations/gazebo/README.md` and
-`simulations/simple_sim/README.md` for details.
+The gazebo layer runs stock upstream PX4 (no fork), pinned to a release tag
+via `ARG PX4_VERSION` in the image. The single `nav-sidecar` container is the
+navigation gateway (mavros2 in simulation; livox + fast_lio + ekf_quat on the
+real machine — same image, different bringup profile). See
+`simulations/gazebo/README.md` and `simulations/simple_sim/README.md`.
 
 ---
 

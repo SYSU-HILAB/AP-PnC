@@ -1,7 +1,7 @@
 services:
   px4-simulator:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: simulations/gazebo/docker/px4-simulator.dockerfile
       network: host
     image: px4-simulator:latest
@@ -39,7 +39,7 @@ services:
 
   qground_control:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: simulations/gazebo/docker/qgc.dockerfile
       network: host
     image: qground_control:latest
@@ -68,9 +68,26 @@ services:
               capabilities: [gpu, compute, graphics, utility, video]
     command: qgc
 
+  # Single navigation gateway: mavros2 (sim profile) — livox + fast_lio +
+  # ekf_quat ship in the same image for the real-machine profile.
+  nav-sidecar:
+    build:
+      context: ../../..
+      dockerfile: simulations/gazebo/docker/nav-sidecar.dockerfile
+    image: nav-sidecar:latest
+    container_name: nav-sidecar
+    network_mode: host
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    command: ros2 launch bringup nav_sidecar.launch.py profile:=sim
+    stdin_open: true
+    tty: true
+    depends_on:
+      - px4-simulator
+
   ap-pnc:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: simulations/gazebo/docker/ap-pnc.dockerfile
     image: ap-pnc:latest
     container_name: ap-pnc
@@ -96,3 +113,4 @@ services:
     depends_on:
       - qground_control
       - px4-simulator
+      - nav-sidecar

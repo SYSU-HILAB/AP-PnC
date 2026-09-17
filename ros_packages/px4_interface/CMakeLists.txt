@@ -8,17 +8,22 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(px4_msgs REQUIRED)
-find_package(Ceres REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_executable(px4_interface src/px4_interface.cpp)
-target_link_libraries(
-  px4_interface
-  Ceres::ceres
-  Eigen3::Eigen
-)
+ament_auto_add_executable(nmpc_bridge src/nmpc_bridge.cpp)
+target_link_libraries(nmpc_bridge yaml-cpp Eigen3::Eigen)
+
+ament_auto_add_executable(flight_mux src/flight_mux.cpp)
+target_link_libraries(flight_mux yaml-cpp Eigen3::Eigen)
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_px4_interface test/test_px4_interface.cpp)
+  target_include_directories(test_px4_interface PRIVATE include)
+  target_link_libraries(test_px4_interface yaml-cpp)
+endif()
 
 # launch files live in the bringup package
-
 ament_auto_package()

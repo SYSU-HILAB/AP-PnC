@@ -27,7 +27,7 @@ spec:
       hostIPC: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:
-        # Container 1: PX4 Autopilot + Gazebo Garden SITL
+        # Container 1: stock PX4 v1.17.0 + Gazebo Jetty SITL (gz_x500)
         - name: px4-simulator
           image: px4-simulator:latest
           imagePullPolicy: IfNotPresent
@@ -55,8 +55,8 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              echo "[px4-simulator] Starting PX4 Gazebo Garden SITL..."
-              # Wait or start the headless/GUI simulation entry point
+              echo "[px4-simulator] Starting stock PX4 v1.17.0 Gazebo Jetty SITL..."
+              cd /home/px4/PX4-Autopilot && make px4_sitl gz_x500
               exec bash
           stdin: true
           tty: true
@@ -74,7 +74,37 @@ spec:
               name: host-localtime
               readOnly: true
 
-        # Container 2: AP-PnC ROS2 NMPC & Planning Node
+        # Container 2: nav-sidecar — single navigation gateway (mavros2 in
+        # the sim profile; livox + fast_lio + ekf_quat for the real one).
+        # NAV_PROFILE selects the bringup profile (sim | real) via ConfigMap.
+        - name: nav-sidecar
+          image: nav-sidecar:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RMW_IMPLEMENTATION
+              value: rmw_fastrtps_cpp
+            - name: NAV_PROFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: NAV_PROFILE
+                  optional: true
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[nav-sidecar] Starting navigation gateway (profile: ${NAV_PROFILE:-sim})..."
+              exec ros2 launch bringup nav_sidecar.launch.py profile:=${NAV_PROFILE:-sim}
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "4"
+              memory: 4Gi
+            requests:
+              cpu: "500m"
+              memory: 512Mi
+
+        # Container 3: AP-PnC ROS2 NMPC & Planning Node
         - name: ap-pnc
           image: ap-pnc:latest
           imagePullPolicy: IfNotPresent

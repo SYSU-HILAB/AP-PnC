@@ -27,7 +27,7 @@
 #include <interface/msg/state.hpp>
 #include <interface/msg/tracking_info.hpp>
 #include <interface/msg/trajectory_point.hpp>
-#include <px4_msgs/msg/vehicle_acceleration.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <vector>
@@ -39,7 +39,7 @@ using ReferenceBullet = interface::msg::RefTrajectoryBullet;
 using ControlMsg      = interface::msg::Controls;
 using TrajecotryPoint = interface::msg::TrajectoryPoint;
 using TrackingInfoMsg = interface::msg::TrackingInfo;
-using AccelerationMsg = px4_msgs::msg::VehicleAcceleration;
+using AccelerationMsg = sensor_msgs::msg::Imu;
 
 class NmpcCallbacks
 {
@@ -113,7 +113,7 @@ void NMPC::initSubsPubs()
       std::bind(&NMPC::referenceCallback, this, std::placeholders::_1));
 
   acc_sub_ = this->create_subscription<AccelerationMsg>(
-      "/fmu/out/vehicle_acceleration", rclcpp::SensorDataQoS(),
+      "/mavros/imu/data_raw", rclcpp::SensorDataQoS(),
       [this](const AccelerationMsg &msg) { accCallback(msg); });
 
   ctrl_pub_ = this->create_publisher<ControlMsg>("/mpc_controls",
@@ -170,7 +170,9 @@ void NMPC::solve()
 
 void NMPC::accCallback(const AccelerationMsg &msg)
 {
-  cz_filtered_ = -msg.xyz[0] / (cur_vel_norm * cur_vel_norm + 0.1) * 1.0;
+  // mavros HIGHRES_IMU is FLU (body x forward); the legacy px4_msgs input
+  // was FRD, hence the flipped sign of the drag-axis acceleration.
+  cz_filtered_ = msg.linear_acceleration.x / (cur_vel_norm * cur_vel_norm + 0.1) * 1.0;
   if (cz_filtered_ > 0.4)
     cz_filtered_ = 0.4;
   if (cz_filtered_ < -0.4)

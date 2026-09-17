@@ -15,7 +15,7 @@ ros_packages/
 │   └── traj_buffer/          #   reference conditioning + bullet republisher
 ├── c_nmpc/                   # NMPC tracking node + nmpc_wrapper (bundle C API)
 ├── px4_interface/            # PX4 bridge node
-├── interface_msgs/           # ros2_msgs + px4_msgs (submodule)
+├── interface_msgs/           # ros2_msgs (interface package)
 └── utils/                    # ROS2-Utils + external libraries (subtrees)
 ```
 

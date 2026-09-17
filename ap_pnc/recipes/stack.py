@@ -16,7 +16,7 @@ def _cleanup(*_: int) -> None:
     for pid in PIDS:
         if pid > 0:
             subprocess.run(["kill", str(pid)], stderr=subprocess.DEVNULL)
-    for name in ("c_nmpc", "px4_interface", "trajectory_server"):
+    for name in ("c_nmpc", "px4_interface", "trajectory_server", "px4ctrl"):
         subprocess.run(["pkill", "-f", name], stderr=subprocess.DEVNULL)
     for pid in PIDS:
         if pid > 0:

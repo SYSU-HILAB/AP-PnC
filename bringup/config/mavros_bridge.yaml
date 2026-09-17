@@ -1,0 +1,59 @@
+# nmpc_bridge + flight_mux configuration (read cwd-relative by the nodes,
+# container working directory /workspace matches the bringup mount).
+#
+# Conventions: ROS-FLU positive domain — throttle u in [0,1], thrust-axis
+# specific force positive up (hover ~ +9.81 m/s^2 on /mavros/imu/data_raw).
+
+nmpc_bridge:
+  rls:
+    # Forgetting factor of the scalar RLS throttle model.
+    lambda: 0.999
+    # Admissible throttle effectiveness bounds [m/s^2 per throttle unit];
+    # eta_min is clamped to at least 1 g inside the estimator.
+    eta_min: 9.81
+    eta_max: 40.0
+    # eta_init defaults to g / hover_throttle when eta_init is 0.
+    eta_init: 0.0
+    hover_throttle: 0.5
+    # Throttle below which the RLS does not update (low SNR).
+    u_min: 0.10
+    # Initial estimator variance and the validity threshold.
+    p_init: 10.0
+    var_valid_thr: 0.01
+    # Innovation test ratio gate (updates above are rejected).
+    innovation_gate: 5.0
+  indi:
+    # Specific-force feedback gain of the incremental thrust law [1/s].
+    specific_force_p: 2.0
+    throttle_min: 0.05
+    throttle_max: 1.0
+    # LPF cutoffs [Hz], applied to commanded throttle, thrust-accel
+    # setpoint, and measured specific force respectively.
+    throttle_lpf_cutoff_hz: 20.0
+    setpoint_lpf_cutoff_hz: 20.0
+    meas_lpf_cutoff_hz: 20.0
+  io:
+    # Odometry source: mavros EKF2 in simulation, /ekf_quat/ekf_odom on the
+    # real machine (nav_sidecar profile switch, code unchanged).
+    odom_topic: /mavros/local_position/odom
+    imu_topic: /mavros/imu/data_raw
+    controls_topic: /mpc_controls
+    state_topic: /cur_state
+    state_odom_topic: /cur_state_odom
+    # World-frame twist odometry republished for px4ctrl (mavros odom twist
+    # is body-frame; converted using the odom orientation).
+    odom_world_topic: /nmpc_bridge/odom_world
+    bridge_setpoint_topic: /nmpc_bridge/setpoint_raw/attitude
+    status_topic: /nmpc_bridge/throttle_model_status
+    state_rate_hz: 50.0
+
+flight_mux:
+  handover:
+    # NMPC stream staleness before falling back to the px4ctrl stream [s].
+    stream_timeout: 0.2
+  io:
+    px4ctrl_topic: /px4ctrl/setpoint_raw/attitude
+    bridge_topic: /nmpc_bridge/setpoint_raw/attitude
+    output_topic: /mavros/setpoint_raw/attitude
+    mode_topic: /mode
+    reset_topic: /mux_reset

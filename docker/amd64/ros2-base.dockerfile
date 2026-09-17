@@ -20,6 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-std-msgs \
     ros-humble-rclcpp \
     ros-humble-rclcpp-components \
+    ros-humble-sensor-msgs \
+    ros-humble-geometry-msgs \
+    ros-humble-std-srvs \
+    ros-humble-tf2 \
+    ros-humble-mavros-msgs \
+    ros-humble-pcl-ros \
+    ros-humble-pcl-conversions \
+    libpcl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup decoupled workspace layout

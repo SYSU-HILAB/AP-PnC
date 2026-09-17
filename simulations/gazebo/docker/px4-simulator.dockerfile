@@ -1,64 +1,83 @@
-FROM px4io/px4-dev-simulation-jammy
+# PX4 SITL simulator container — stock upstream firmware (no forks).
+#
+# Mirrors the upstream v1.17 container recipe (ubuntu:24.04 +
+# Tools/setup/ubuntu.sh) but selects Gazebo Jetty (gz-sim9) instead of the
+# script default Harmonic — v1.17 adds Jetty support. PX4 itself is pinned
+# to a release tag (ARG PX4_VERSION).
+#
+# Run the SITL inside with:  cd /home/px4/PX4-Autopilot && make px4_sitl gz_x500
+# MAVLink: TCP server on 4560 (nav-sidecar mavros fcu_url) plus the default
+# UDP broadcasters for QGC.
+FROM ubuntu:24.04
 
-RUN apt update && apt install -y software-properties-common \
-    && add-apt-repository universe
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt install -y \
+RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache_pxsitl,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    wget \
+    curl \
+    sudo \
+    lsb-release \
+    gnupg \
     vim \
-    python3-pip python3-venv \
-    curl lsb-release gnupg wget
-
-RUN apt install -y locales \
+    file \
+    xz-utils \
+    locales \
+    python3-pip \
+    python3-venv \
     && locale-gen en_US.UTF-8 \
-    &&  locale-gen zh_CN.UTF-8 \
-    &&  update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 
-# Create px4 user with UID 1002 (1000=qgc, 1001=user in base image)
-RUN groupadd -r px4 && useradd -m -g px4 -u 1002 -s /bin/bash px4
+# Create px4 user with UID 1002; ubuntu.sh is invoked through sudo.
+RUN groupadd -r px4 && useradd -m -g px4 -u 1002 -s /bin/bash px4 \
+    && echo "px4 ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/px4
 
-RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}') \
-    && curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb" \
-    && dpkg -i /tmp/ros2-apt-source.deb
-
-RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache,sharing=locked \
-    apt update && \
-    apt install -y ros-humble-ros-base ros-dev-tools
-
-RUN set -ex && \
-    git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git /tmp/agent_src \
-    && cd /tmp/agent_src \
-    && git checkout 7362281
-COPY simulations/gazebo/installations/install-dds-agent.sh /tmp/agent_src/install-dds-agent.sh
-RUN /tmp/agent_src/install-dds-agent.sh
-
-ARG CACHE_BUSTER="rebuild"
-# Pin the fork commit so every image build produces the same firmware.
-ARG PX4_VTOL_COMMIT=b947a314dbc6ac6957247c2428f441af0a4e56c2
-RUN echo "Cache buster: $CACHE_BUSTER" && \
-    git clone https://github.com/WarriorHanamy/px4-vtol.git --recursive /home/px4/px4-vtol && \
-    git -C /home/px4/px4-vtol checkout "$PX4_VTOL_COMMIT"
-WORKDIR /home/px4/px4-vtol
-
-ENV PATH="/home/px4/px4-vtol/Tools:$PATH"
-RUN make px4_sitl_default
-
-COPY ./simulations/aerodynamics /plugins/aerodynamics
-COPY ./ros_packages/utils /plugins/utils
-
-RUN echo "source /opt/ros/humble/setup.bash" >> /home/px4/.bashrc
-ENV AERO_SIM_DATA_DIR=/plugins/aerodynamics/data
-
-# Give px4 user ownership of their home directory and installed files
-RUN chown -R px4:px4 /home/px4 /opt/ros /plugins
-
-# Switch to px4 user
 USER px4
 WORKDIR /home/px4
 
+# Pin the upstream release so every image build produces the same firmware.
+# Shallow clone keeps the layer small; HTTP/1.1 avoids stream resets through
+# corporate/campus proxies (http_proxy build args are honored by git).
+ARG PX4_VERSION=v1.17.0
+RUN git -c http.version=HTTP/1.1 clone --depth 1 --branch "$PX4_VERSION" \
+        --recursive --shallow-submodules \
+        https://github.com/PX4/PX4-Autopilot.git /home/px4/PX4-Autopilot
+WORKDIR /home/px4/PX4-Autopilot
 
-#WORKDIR /plugins
-#RUN . /opt/ros/humble/setup.sh \
-#    && colcon build --symlink-install
+RUN sudo bash Tools/setup/ubuntu.sh --no-sim-tools
 
-#WORKDIR /px4-vtol
-ENTRYPOINT ["runpx4", "1"]
+# Simulation dependencies: the v1.17 script block, with gz-jetty replacing
+# the default gz-harmonic (both supported by this firmware version).
+RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache_pxsitl,sharing=locked \
+    sudo wget -q https://packages.osrfoundation.org/gazebo.gpg \
+        -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
+        | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null \
+    && sudo apt-get update -y \
+    && sudo apt-get install -y --no-install-recommends \
+        gz-jetty \
+        libunwind-dev \
+        cppzmq-dev \
+        dmidecode \
+        gstreamer1.0-plugins-bad \
+        gstreamer1.0-plugins-base \
+        gstreamer1.0-plugins-good \
+        gstreamer1.0-plugins-ugly \
+        gstreamer1.0-libav \
+        libeigen3-dev \
+        libgstreamer-plugins-base1.0-dev \
+        libimage-exiftool-perl \
+        libopencv-dev \
+        libxml2-utils \
+        pkg-config \
+        protobuf-compiler
+
+ENV PATH="/home/px4/PX4-Autopilot/Tools:$PATH"
+RUN make px4_sitl_default
+
+RUN echo "export GZ_SIM_RESOURCE_PATH=/home/px4/PX4-Autopilot/Tools/simulation/gz/models:/home/px4/PX4-Autopilot/Tools/simulation/gz/worlds" \
+        >> /home/px4/.bashrc
+
+CMD ["bash"]

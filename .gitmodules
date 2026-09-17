@@ -1,4 +1,0 @@
-[submodule "ros_packages/interface_msgs/px4_msgs/msg"]
-	path = ros_packages/interface_msgs/px4_msgs/msg
-	url = https://github.com/WarriorHanamy/vtol-px4-msgs.git
-	branch = main

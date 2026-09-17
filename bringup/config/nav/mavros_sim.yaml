@@ -1,0 +1,35 @@
+# MAVROS configuration — gazebo simulation profile (nav-sidecar).
+# FCU endpoint: PX4 SITL gz TCP server on host network port 4560.
+mavros:
+  ros__parameters:
+    fcu_url: "tcp://localhost:4560"
+    gcs_url: ""
+    target_system_id: 1
+    target_component_id: 1
+    fcu_protocol: "v2.0"
+
+    conn:
+      heartbeat_rate: 1.0
+      timeout: 10.0
+      timesync_rate: 10.0
+
+    stream_rates:
+      raw_sens: 200.0
+      extended_sys_state: 5.0
+      position: 50.0
+      extra1: 100.0
+      extra2: 20.0
+      extra3: 10.0
+
+    plugin_allowlist:
+      - sys_status
+      - sys_time
+      - imu
+      - setpoint_raw
+      - local_position
+      - command
+      - rc
+
+    time:
+      time_ref_source: "fcu"
+      timesync_mode: "MAVLINK"

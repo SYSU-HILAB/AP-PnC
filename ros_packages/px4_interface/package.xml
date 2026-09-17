@@ -3,19 +3,20 @@
 <package format="3">
   <name>px4_interface</name>
   <version>0.0.0</version>
-  <description>PX4 interface node for AP-PnC - bridges MPC control with PX4 firmware</description>
+  <description>mavros bridge for AP-PnC: NMPC controls to body-rate thrust setpoints with an RLS throttle model</description>
   <maintainer email="rongerch@outlook.com">root</maintainer>
   <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>px4_msgs</depend>
   <depend>interface</depend>
   <depend>nav_msgs</depend>
-  <depend>Eigen3</depend>
-  <depend>Ceres</depend>
-  <depend>visualization_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>mavros_msgs</depend>
+  <depend>yaml-cpp</depend>
+  <depend>eigen</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

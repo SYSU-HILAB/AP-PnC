@@ -1,16 +1,12 @@
-# =========================================================================
-# AP-PnC Simulation Stack for K3s (All-in-One Manifest)
-# 
-# 包含组件:
-# 1. ConfigMap: sim-config (集中配置 SIM_TYPE: simple-sim / gazebo)
-# 2. RBAC: sim-dispatcher-sa, Role, RoleBinding
-# 3. Controller: sim-dispatcher (自动监听 ConfigMap 并按需缩放副本)
-# 4. Deployment: ap-pnc-simple-sim (轻量级 LiDAR + 气动仿真)
-# 5. Deployment: ap-pnc-gazebo (PX4-VTOL SITL + Gazebo 仿真)
-# =========================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sim-config
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-config
+    app.kubernetes.io/part-of: ap-pnc
 
----
-# 1. ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -20,9 +16,20 @@ metadata:
     app.kubernetes.io/name: sim-config
     app.kubernetes.io/part-of: ap-pnc
 data:
-  SIM_TYPE: "simple-sim"  # "simple-sim" | "gazebo" | "stop"
+  # =========================================================================
+  # SIM_TYPE: 仿真模式选择器
+  # 可选值:
+  #   - "simple-sim" (或 "simple"): 启动轻量级 C++ LiDAR + 气动力学仿真器
+  #   - "gazebo": 启动 PX4-VTOL SITL + Gazebo Garden 仿真栈
+  #   - "stop" (或 "none"): 停止所有仿真实例 (缩容为 0)
+  # =========================================================================
+  SIM_TYPE: "simple-sim"
+
+  # 运行环境变量
   HEADLESS: "true"
   DISPLAY: ":0"
+
+  # simple_sim ROS2 参数配置 (支持挂载并在运行时直接调整)
   simple_sim.yaml: |
     /simple_sim:
       ros__parameters:
@@ -58,9 +65,7 @@ data:
           omit_moment: false
           omit_force: false
           wind: [0.0, 0.0, 0.0]
-
 ---
-# 2. RBAC
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -102,9 +107,7 @@ roleRef:
   kind: Role
   name: sim-dispatcher-role
   apiGroup: rbac.authorization.k8s.io
-
 ---
-# 3. Controller Dispatcher
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -145,6 +148,7 @@ spec:
             - |
               set -e
               echo "[sim-dispatcher] Starting AP-PnC Simulation Dispatcher in namespace '$NAMESPACE'..."
+
               LAST_APPLIED=""
               while true; do
                 TARGET=$(kubectl get cm sim-config -n "$NAMESPACE" -o jsonpath='{.data.SIM_TYPE}' 2>/dev/null || true)
@@ -213,9 +217,7 @@ spec:
           hostPath:
             path: /etc/localtime
             type: File
-
 ---
-# 4. Simple-Sim Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -227,7 +229,7 @@ metadata:
     app.kubernetes.io/component: simulator
     sim.ap-pnc/type: simple-sim
 spec:
-  replicas: 0 # 由 sim-dispatcher 动态管理
+  replicas: 0 # 由 sim-dispatcher 根据 sim-config 动态控制
   strategy:
     type: Recreate
   selector:
@@ -298,9 +300,7 @@ spec:
           hostPath:
             path: /etc/localtime
             type: File
-
 ---
-# 5. Gazebo Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -312,7 +312,7 @@ metadata:
     app.kubernetes.io/component: simulator
     sim.ap-pnc/type: gazebo
 spec:
-  replicas: 0 # 由 sim-dispatcher 动态管理
+  replicas: 0 # 由 sim-dispatcher 根据 sim-config 动态控制
   strategy:
     type: Recreate
   selector:
@@ -330,6 +330,7 @@ spec:
       hostIPC: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:
+        # Container 1: stock PX4 v1.17.0 + Gazebo Jetty SITL (gz_x500)
         - name: px4-simulator
           image: px4-simulator:latest
           imagePullPolicy: IfNotPresent
@@ -357,7 +358,8 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              echo "[px4-simulator] Starting PX4 Gazebo Garden SITL..."
+              echo "[px4-simulator] Starting stock PX4 v1.17.0 Gazebo Jetty SITL..."
+              cd /home/px4/PX4-Autopilot && make px4_sitl gz_x500
               exec bash
           stdin: true
           tty: true
@@ -374,6 +376,38 @@ spec:
             - mountPath: /etc/localtime
               name: host-localtime
               readOnly: true
+
+        # Container 2: nav-sidecar — single navigation gateway (mavros2 in
+        # the sim profile; livox + fast_lio + ekf_quat for the real one).
+        # NAV_PROFILE selects the bringup profile (sim | real) via ConfigMap.
+        - name: nav-sidecar
+          image: nav-sidecar:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RMW_IMPLEMENTATION
+              value: rmw_fastrtps_cpp
+            - name: NAV_PROFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: NAV_PROFILE
+                  optional: true
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[nav-sidecar] Starting navigation gateway (profile: ${NAV_PROFILE:-sim})..."
+              exec ros2 launch bringup nav_sidecar.launch.py profile:=${NAV_PROFILE:-sim}
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "4"
+              memory: 4Gi
+            requests:
+              cpu: "500m"
+              memory: 512Mi
+
+        # Container 3: AP-PnC ROS2 NMPC & Planning Node
         - name: ap-pnc
           image: ap-pnc:latest
           imagePullPolicy: IfNotPresent
@@ -423,3 +457,4 @@ spec:
           hostPath:
             path: /etc/localtime
             type: File
+---
