@@ -17,6 +17,7 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 ament_auto_find_build_dependencies()
 
@@ -30,6 +31,7 @@ target_link_libraries(${PROJECT_NAME}_node
   ${NMPC_BUNDLE_PATH}
   Eigen3::Eigen
   fmt::fmt
+  yaml-cpp
 )
 
 if(BUILD_TESTING)
@@ -39,9 +41,6 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-install(DIRECTORY
-        launch
-        DESTINATION share/${PROJECT_NAME}
-)
+# launch files live in the bringup package
 
 ament_auto_package()

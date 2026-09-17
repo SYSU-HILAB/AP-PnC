@@ -25,9 +25,6 @@ target_link_libraries(
   Eigen3::Eigen
 )
 
-install(DIRECTORY
-        launch
-        DESTINATION share/${PROJECT_NAME}
-)
+# launch files live in the bringup package
 
 ament_auto_package()

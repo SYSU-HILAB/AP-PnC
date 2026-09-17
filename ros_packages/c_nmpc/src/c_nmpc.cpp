@@ -29,6 +29,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <vector>
+#include <yaml-cpp/yaml.h>
 
 #include "nmpc_solver.h"
 
@@ -284,10 +285,14 @@ void NMPC::stateCallback(const StateMsg &msg)
 
 NMPC::NMPC() : Node("NMPC")
 {
-  this->declare_parameter("mass", 1.0);
-  this->declare_parameter("cz_rate", 0.10);
-  this->get_parameter("mass", mass_);
-  this->get_parameter("cz_rate", cz_rate_);
+  // Config: direct yaml read (bringup), no ROS params.
+  // Path: $AP_PNC_NMPC_YAML override, else cwd-relative bringup config.
+  const char       *env_p = std::getenv("AP_PNC_NMPC_YAML");
+  const std::string yaml_path =
+      env_p != nullptr ? env_p : "bringup/config/c_nmpc.yaml";
+  YAML::Node config = YAML::LoadFile(yaml_path);
+  mass_             = config["nmpc"]["mass"].as<double>(2.0);
+  cz_rate_          = config["nmpc"]["cz_rate"].as<double>(0.10);
   RCLCPP_INFO(this->get_logger(), "mass: %f", mass_);
   initSubsPubs();
   u_.fill(9.8 / 4 * mass_);

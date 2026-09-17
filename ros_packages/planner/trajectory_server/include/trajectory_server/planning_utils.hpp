@@ -151,7 +151,7 @@ void write_route_sample(std::ofstream& csv_file, const RouteSampleData& data);
  *
  * @return Path to artifacts/simulations/temp_data directory
  */
-std::filesystem::path get_artifacts_temp_dir();
+std::filesystem::path get_artifacts_temp_dir(const Config& config);
 
 /**
  * @brief Format a float value with 1 decimal place

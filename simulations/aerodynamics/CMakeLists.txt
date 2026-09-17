@@ -98,4 +98,10 @@ if(BUILD_TESTING)
   )
 endif()
 
+# Plain targets without the ${PROJECT_NAME}_ prefix are not auto-installed;
+# export them so consumers link against the install tree only.
+install(TARGETS rt_nonfinite_matlab ${PROJECT_NAME}_aerodynamics_lib
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib)
+
 ament_auto_package()

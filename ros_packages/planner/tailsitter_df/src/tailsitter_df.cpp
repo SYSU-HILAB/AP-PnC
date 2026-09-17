@@ -13,7 +13,6 @@
  */
 
 // C++ includes
-#include <yaml-cpp/yaml.h>
 
 #include <Eigen/Geometry>
 #include <cassert>
@@ -59,26 +58,7 @@ namespace tailsitter_df
 
   void df_test();
 
-  class Model
-  {
-   private:
-    realM3 phi_;
-    double mass_ = 2;
 
-    Model();
-    Model(const Model &)            = delete;
-    Model &operator=(const Model &) = delete;
-
-   public:
-    static Model    &getInstance();
-    realM3          &getPhi();
-    Eigen::Vector3d &Phi_z();
-
-    double aeroForceZ(const Eigen::Vector3d &vb);
-    realV3 getBAeroForce(const realV3 &vb);
-    realM3 getPartialDerivativeOfFbOverVb(const realV3 &vb);
-    realV3 getAeroForceAccB(const realV3 &vb);
-  };
 
   tailsitter_df::Model &tailsitter_model = Model::getInstance();
   Data                 &data             = Data::getInstance();
@@ -93,19 +73,20 @@ namespace tailsitter_df
 
   Model::Model()
   {
-    // Update staitc parameter;
-    const char *env_p = std::getenv("AP_PNC_DIR");
-    std::string sv(env_p);
-    sv += "/config/tailsitter_df.yaml";
-    YAML::Node config = YAML::LoadFile(sv);
+    // Defaults mirror the calibrated prior-free parameters; override at node
+    // startup via setParameters (ROS parameters injected from bringup).
+    static const std::vector<double> default_phi = {0.0, 0.0, 0.0, 0.0,
+                                                    0.0, 0.0, 0.0, -0.09408};
+    setParameters(default_phi, 2.0);
+  }
 
-    const auto phi = config["phi"].as<std::vector<double>>();
+  void Model::setParameters(const std::vector<double> &phi, double mass)
+  {
     for (int i = 0; i < static_cast<int>(phi.size()); i++)
     {
       getPhi()(i) = phi[i];
     }
-
-    mass_ = config["mass"].as<double>();
+    mass_ = mass;
   }
 
   realM3 &Model::getPhi()
@@ -150,21 +131,21 @@ namespace tailsitter_df
     realV3 &yb = data.yb;
     realV3 &zb = data.zb;
 
-    auto   &attitude        = data.attitude;
-    auto   &q               = data.q;
-    auto   &alpha           = data.alpha;
-    auto   &at              = data.at;
-    realV3 &B_aero_force    = data.B_aero_force;
-    real   &B_aero_force_z  = data.B_aero_force_z;
-    real   &S_ap_x        = data.S_ap_x;
-    real   &S_ap_z        = data.S_ap_z;
-    real   &B_Omega_b_y   = data.B_Omega_b_y;
-    real   &alpha_dot     = data.alpha_dot;
-    real   &S_Omega_x     = data.S_Omega_x;
-    real   &S_Omega_y     = data.S_Omega_y;
-    real   &S_Omega_z     = data.S_Omega_z;
-    real   &S_ap_x_dot    = data.S_ap_x_dot;
-    real   &S_ap_z_dot    = data.S_ap_z_dot;
+    auto   &attitude       = data.attitude;
+    auto   &q              = data.q;
+    auto   &alpha          = data.alpha;
+    auto   &at             = data.at;
+    realV3 &B_aero_force   = data.B_aero_force;
+    real   &B_aero_force_z = data.B_aero_force_z;
+    real   &S_ap_x         = data.S_ap_x;
+    real   &S_ap_z         = data.S_ap_z;
+    real   &B_Omega_b_y    = data.B_Omega_b_y;
+    real   &alpha_dot      = data.alpha_dot;
+    real   &S_Omega_x      = data.S_Omega_x;
+    real   &S_Omega_y      = data.S_Omega_y;
+    real   &S_Omega_z      = data.S_Omega_z;
+    real   &S_ap_x_dot     = data.S_ap_x_dot;
+    real   &S_ap_z_dot     = data.S_ap_z_dot;
 
     realV3 x_s  = v / v.norm();
     realV3 temp = -(realM3::Identity() - x_s * x_s.transpose()) * (a - g);
@@ -207,13 +188,13 @@ namespace tailsitter_df
     zb    = cos(alpha) * z_s + sin(alpha) * x_s;
     at(0) = S_ap_x * cos(alpha) - S_ap_z * sin(alpha);
     attitude << xb, yb, zb;
-    q               = Eigen::Quaternion<real>(attitude);
+    q = Eigen::Quaternion<real>(attitude);
 
-    S_ap_z_dot      = z_s.transpose() * j;
-    S_ap_z_dot      = S_ap_z_dot + omega_sy * S_ap_x;
+    S_ap_z_dot = z_s.transpose() * j;
+    S_ap_z_dot = S_ap_z_dot + omega_sy * S_ap_x;
 
-    S_ap_x_dot      = x_s.transpose() * j;
-    S_ap_x_dot      = S_ap_x_dot - omega_sy * S_ap_z;
+    S_ap_x_dot = x_s.transpose() * j;
+    S_ap_x_dot = S_ap_x_dot - omega_sy * S_ap_z;
 
     realV3 vb = attitude.transpose() * v;
 
@@ -303,7 +284,7 @@ namespace tailsitter_df
     yb_from_v.normalize();
     realV3 yb_from_fixed_frame = zb_fixed.cross(xb);
     yb_from_fixed_frame.normalize();
-    yb = (1 - scaling) * yb_from_fixed_frame +  scaling * yb_from_v;
+    yb = (1 - scaling) * yb_from_fixed_frame + scaling * yb_from_v;
     yb.normalize();
     zb = xb.cross(yb);
     zb.normalize();

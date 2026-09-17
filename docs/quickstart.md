@@ -138,7 +138,7 @@ uv run ap-pnc traj viz-tracking
 # 1. Install (one-time setup)
 uv sync --group dev
 uv run ap-pnc install
-uv run ap-pnc cocp
+uv run ap-pnc gen-nmpc-lib
 
 # 2. Build (after code changes)
 ./scripts/tools/build

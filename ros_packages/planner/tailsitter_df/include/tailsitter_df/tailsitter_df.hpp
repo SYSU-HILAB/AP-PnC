@@ -179,4 +179,33 @@ namespace tailsitter_df
     double getSApZDot() const { return S_ap_z_dot.val(); }
     double getBAeroForceZ() const { return B_aero_force_z.val(); }
   };
+  class Model
+  {
+   private:
+    realM3 phi_;
+    double mass_ = 2;
+
+    Model();
+    Model(const Model &)            = delete;
+    Model &operator=(const Model &) = delete;
+
+   public:
+    static Model    &getInstance();
+    realM3          &getPhi();
+    Eigen::Vector3d &Phi_z();
+
+    /**
+     * Override the default phi-matrix and mass at node startup.
+     *
+     * @param[in] phi  Row-major phi matrix coefficients [-]
+     * @param[in] mass Vehicle mass [kg]
+     */
+    void setParameters(const std::vector<double> &phi, double mass);
+
+    double aeroForceZ(const Eigen::Vector3d &vb);
+    realV3 getBAeroForce(const realV3 &vb);
+    realM3 getPartialDerivativeOfFbOverVb(const realV3 &vb);
+    realV3 getAeroForceAccB(const realV3 &vb);
+  };
+
 }  // namespace tailsitter_df

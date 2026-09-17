@@ -103,3 +103,26 @@ uv run ap-pnc k3s logs
 ```bash
 uv run ap-pnc k3s delete
 ```
+
+## Bringup config mounting (core stack)
+
+Core ROS2 nodes read their configuration directly from sectioned yaml files
+(`bringup/config/planning.yaml`, `bringup/config/c_nmpc.yaml`) — no ROS
+parameters. When the core stack is deployed into k3s, mount these via the
+same `sim-config` ConfigMap pattern:
+
+```yaml
+volumeMounts:
+  - mountPath: /workspace/bringup/config/planning.yaml
+    name: bringup-config
+    subPath: planning.yaml
+    readOnly: true
+volumes:
+  - name: bringup-config
+    configMap:
+      name: sim-config
+```
+
+Nodes resolve the file via `$AP_PNC_PLANNING_YAML` / `$AP_PNC_NMPC_YAML`
+(or the cwd-relative default `bringup/config/*.yaml`, which matches the
+`/workspace` workdir). ConfigMap updates take effect on rollout restart.

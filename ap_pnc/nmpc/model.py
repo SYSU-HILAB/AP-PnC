@@ -15,11 +15,11 @@
 # Copyright (c) 2023 SYSU
 # author: WarriorHanamy ; email: rongerch@outlook.com
 #
+import casadi as cs
+import numpy as np
 from acados_template import AcadosModel
 from casadi import SX, vertcat
-import numpy as np
-import casadi as cs
-from config import MpcConfig
+
 # import torch
 # import l4casadi as l4c
 
@@ -126,7 +126,7 @@ def tailsitter_flu():
         c_tau * (-u[0] + u[1] - u[2] + u[3])
     )
     vv_dot = q_oproduct_vec(tb/mass, q)  + g + q_oproduct_vec(F_aero_b_flu_quad_frame / mass, q)
-    vb_dot = -skew(r)*vb + q_inv_oproduct_vec(vv_dot, q)
+    vb_dot = -skew(r)*vb + q_inv_oproduct_vec(vv_dot, q)  # noqa: F841 (model derivation reference)
 
 
     acc_b = q_inv_oproduct_vec(q_oproduct_vec(tb/mass, q)  + g + q_oproduct_vec(F_aero_b_flu_quad_frame / mass, q), q)

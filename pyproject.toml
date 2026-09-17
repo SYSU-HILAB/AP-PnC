@@ -46,7 +46,6 @@ extend-exclude = [
     "artifacts",
     "docs",
     "mpc_framework",
-    "benchmark",
 ]
 
 [tool.ruff.lint]

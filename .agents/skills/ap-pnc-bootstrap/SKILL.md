@@ -70,7 +70,7 @@ uv pip install -e mpc_framework/interfaces/acados_template
 ### 6. Generate OCP solver code + bundle
 
 ```bash
-uv run ap-pnc cocp
+uv run ap-pnc gen-nmpc-lib
 ```
 
 Output:
@@ -150,7 +150,7 @@ uv run ap-pnc aerodyn show --aero-type lyu  # specific type
 
 Or manually:
 ```bash
-uv run ap-pnc cocp
+uv run ap-pnc gen-nmpc-lib
 docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc
 ```
 

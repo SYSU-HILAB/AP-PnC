@@ -94,7 +94,7 @@ def cocp() -> None:
     """
     setup_env()
     git_root = get_git_root()
-    script = git_root / "ros_packages" / "c_nmpc" / "nmpc" / "create_ocp_or_sim.py"
+    script = git_root / "ap_pnc" / "nmpc" / "create_ocp.py"
     gen_dir = git_root / ".artifacts" / "c_generated_code"
     gen_dir.mkdir(parents=True, exist_ok=True)
     typer.echo(f"Running: {script}")

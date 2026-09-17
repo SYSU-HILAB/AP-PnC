@@ -9,7 +9,7 @@ description: Build and run the AP-PnC ROS2 execution environment in Docker. Cove
 
 - Host bootstrap must be done: `uv run ap-pnc install`
 - OCP bundle must exist: `ls build/nmpc_wrapper/libnmpc_bundle.a`
-  If not, run `uv run ap-pnc cocp` first.
+  If not, run `uv run ap-pnc gen-nmpc-lib` first.
 
 ## Build
 
@@ -22,7 +22,7 @@ One command from repo root:
 Or manually:
 
 ```bash
-uv run ap-pnc cocp
+uv run ap-pnc gen-nmpc-lib
 docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc
 ```
 
@@ -45,7 +45,7 @@ docker compose -f simulations/gazebo/docker/docker-compose.yml up ap-pnc
 When the OCP model/weights change:
 
 ```bash
-uv run ap-pnc cocp              # regenerate bundle
+uv run ap-pnc gen-nmpc-lib              # regenerate bundle
 docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc  # rebuild image
 docker compose up ap-pnc       # restart container
 ```

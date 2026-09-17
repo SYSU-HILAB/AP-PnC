@@ -4,12 +4,12 @@ from ap_pnc.recipes import (
     aerodyn,
     benchmark,
     build,
-    cocp,
     debug,
     docker,
     experiments,
     install,
     lint,
+    gen_nmpc_lib,
     nn_trim,
     sim,
     stack,
@@ -20,7 +20,7 @@ from ap_pnc.recipes import (
 app = typer.Typer(no_args_is_help=True, help="AP-PnC tailsitter project CLI.")
 
 app.add_typer(install.app, name="install", help="Install everything (venv, acados, deps)")
-app.add_typer(cocp.app, name="cocp", help="Generate acados OCP C code")
+app.add_typer(gen_nmpc_lib.app, name="gen-nmpc-lib", help="Generate acados NMPC code and bundle lib")
 app.add_typer(traj.app, name="traj", help="Trajectory visualization and tools")
 app.add_typer(aerodyn.app, name="aerodyn", help="Aerodynamics data generation, viz, ML")
 app.add_typer(benchmark.app, name="benchmark", help="Planning benchmark experiments")

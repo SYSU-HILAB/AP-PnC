@@ -39,19 +39,16 @@ def start() -> None:
     env = source_ros2_workspace()
 
     ncpu = os.cpu_count() or 0
-    if ncpu not in (4, 8, 16):
-        typer.echo(
-            f"Unsupported CPU count {ncpu}; legacy runall supported 4/8/16 cores.", err=True
-        )
+    if ncpu < 2:
+        typer.echo("At least 2 CPU cores are required to pin the stack.", err=True)
         raise typer.Exit(1)
 
     signal.signal(signal.SIGINT, _cleanup)
     signal.signal(signal.SIGTERM, _cleanup)
-    typer.echo(f"Detected {ncpu} CPU cores, pinning stack to cores {ncpu - 3}-{ncpu - 1}")
+    typer.echo(f"Detected {ncpu} CPU cores, pinning stack to cores {ncpu - 2}-{ncpu - 1}")
 
-    _launch(env, ncpu - 3, "trajectory_server", "planning.launch.py")
-    _launch(env, ncpu - 2, "px4_interface", "px4_interface.launch.py")
-    _launch(env, ncpu - 1, "c_nmpc", "cnmpc.launch.py")
+    _launch(env, ncpu - 2, "bringup", "planning.launch.py")
+    _launch(env, ncpu - 1, "bringup", "bringup.launch.py")
 
     typer.echo(f"All processes started (PIDs: {PIDS}). Press CTRL-C to stop.")
     try:

@@ -90,8 +90,9 @@ Two stacked simulation setups live under `simulations/`, each opened with Docker
 | Simple sim | `simulations/simple_sim/` | Lightweight C++ simulator (MARSIM-style) with synthetic LiDAR sensing, for obstacle-avoidance principle verification |
 
 ```bash
-make sim-gazebo-up      # Gazebo layer: docker compose up (3 services)
-make sim-simple-up      # simple_sim layer: docker compose up
+uv run ap-pnc sim gazebo     # Gazebo layer (PX4-VTOL SITL + Gazebo Garden)
+uv run ap-pnc sim simple     # simple_sim layer (lightweight LiDAR sim)
+uv run ap-pnc sim stop       # scale everything down
 ```
 
 The `px4-vtol` firmware fork is a build-time dependency cloned inside the

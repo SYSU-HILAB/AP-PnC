@@ -7,22 +7,26 @@
 # Hanamy: rongerch@outlook.com
 #
 # Paper:
-# Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+# Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+# Tail-sitter UAV.
 
-from acados_template import AcadosOcp, AcadosSim, AcadosSimSolver, AcadosOcpSolver
-from config import MpcConfig
+"""Generate the acados OCP solver code for the c_nmpc wrapper.
+
+Run via `uv run ap-pnc gen-nmpc-lib` with cwd .artifacts/c_generated_code:
+the json and C sources land there, then nmpc_wrapper builds and merges
+everything into libnmpc_bundle.a.
+"""
+
+import casadi as cs
 import numpy as np
-from model import *
-import time
+from acados_template import AcadosOcp, AcadosOcpSolver
 
-
-
+from ap_pnc.nmpc.config import MpcConfig
+from ap_pnc.nmpc.model import tailsitter_flu
 
 
 def ocp_nls() -> AcadosOcp:
-    # recent acados support directly model constraint to cost
-    # cost type must be Convex Over Nonlinear / Nonlinear Square
-    # create ocp object to formulate the OCP
+    """Formulate the prior-free NMPC OCP (convex-over-nonlinear least squares)."""
     ocp = AcadosOcp()
     model = tailsitter_flu()
 
@@ -32,18 +36,14 @@ def ocp_nls() -> AcadosOcp:
     nu = model.u.size()[0]
     nparam = model.p.size()[0]
 
-    ocp.cost.cost_type_0 = 'NONLINEAR_LS'
-    ocp.cost.cost_type_e = 'NONLINEAR_LS'
-    ocp.cost.cost_type = 'NONLINEAR_LS'
+    ocp.cost.cost_type_0 = "NONLINEAR_LS"
+    ocp.cost.cost_type_e = "NONLINEAR_LS"
+    ocp.cost.cost_type = "NONLINEAR_LS"
     sym_p = model.x[:3]
     sym_v = model.x[3:6]
     sym_r = model.x[6:9]
     sym_q = model.x[9:13]
-
-    # du    = model.u
     sym_u = model.u
-
-
 
     qw = sym_q[0]
     qx = sym_q[1]
@@ -62,40 +62,21 @@ def ocp_nls() -> AcadosOcp:
     )
     cost_x_size = cost_x.shape[0]
 
-    model.cost_y_expr_0 = cs.vertcat(
-        cost_x,
-        sym_u
-    )
-    model.cost_y_expr = cs.vertcat(
-        cost_x,
-        sym_u
-    )
+    model.cost_y_expr_0 = cs.vertcat(cost_x, sym_u)
+    model.cost_y_expr = cs.vertcat(cost_x, sym_u)
     model.cost_y_expr_e = cost_x
 
     ny = cost_x_size + nu
-    # set dimensions , if not set, it will auotmatically set finally
-    # ocp.dims.nx = nx_aug
-    # ocp.dims.nu = nu
-    # ocp.dims.np = nparam
-
-    ocp.cost.yref_0 = np.zeros((ny))
-    ocp.cost.yref = np.zeros((ny))
-    ocp.cost.yref_e = np.zeros((cost_x_size))
-    ocp.parameter_values = np.zeros((nparam))
-    print(nx)
+    ocp.cost.yref_0 = np.zeros(ny)
+    ocp.cost.yref = np.zeros(ny)
+    ocp.cost.yref_e = np.zeros(cost_x_size)
+    ocp.parameter_values = np.zeros(nparam)
     assert nx == 3 + 3 + 3 + 4 + 1
     assert nu == 4
 
-    Q_list = np.hstack((
-        MpcConfig.qPos,
-        MpcConfig.qVel,
-        MpcConfig.qAngV,
-        MpcConfig.qYB
-    ))
+    Q_list = np.hstack((MpcConfig.qPos, MpcConfig.qVel, MpcConfig.qAngV, MpcConfig.qYB))
     Q_mat = np.diag(Q_list)  # [x,y,x_d,y_d,th,th_d]
     W_mat = np.zeros((ny, ny))
-    We_mat = np.zeros((cost_x_size, cost_x_size))
-
     We_mat = Q_mat
     ## weight
     ocp.cost.W_0 = W_mat
@@ -110,42 +91,35 @@ def ocp_nls() -> AcadosOcp:
     ocp.solver_options.tf = MpcConfig.T_horizon
     ocp.solver_options.exact_hess_cost = False
 
-    ocp.constraints.x0 = np.zeros((nx_aug))
+    ocp.constraints.x0 = np.zeros(nx_aug)
     # bound part of x
-    ocp.constraints.idxbx = np.array([6,7,8,13,14,15,16])
+    ocp.constraints.idxbx = np.array([6, 7, 8, 13, 14, 15, 16])
     ocp.constraints.lbx = np.concatenate((MpcConfig.lb_r, MpcConfig.lb_u))
     ocp.constraints.ubx = np.concatenate((MpcConfig.ub_r, MpcConfig.ub_u))
 
     ocp.constraints.Jbu = np.eye(nu)
-    ocp.constraints.ubu = np.array([10., 10., 10., 10.]) * 1.0 * 0.8
-    ocp.constraints.lbu = -np.array([10., 10., 10., 10.]) * 1.0 * 0.8
+    ocp.constraints.ubu = np.array([10.0, 10.0, 10.0, 10.0]) * 1.0 * 0.8
+    ocp.constraints.lbu = -np.array([10.0, 10.0, 10.0, 10.0]) * 1.0 * 0.8
 
     # set options
-    ocp.solver_options.qp_solver = "FULL_CONDENSING_HPIPM"  # FULL_CONDENSING_QPOASES
-    # PARTIAL_CONDENSING_OSQP
-    # FULL_CONDENSING_HPIPM
-    ocp.solver_options.hessian_approx = "GAUSS_NEWTON"  # 'GAUSS_NEWTON', 'EXACT'
+    ocp.solver_options.qp_solver = "FULL_CONDENSING_HPIPM"
+    ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
     ocp.solver_options.integrator_type = "ERK"
-    ocp.solver_options.nlp_solver_type = "SQP_RTI"  # SQP_RTI, SQP
+    ocp.solver_options.nlp_solver_type = "SQP_RTI"
     ocp.solver_options.nlp_solver_max_iter = 5
     ocp.solver_options.qp_solver_iter_max = 10
     ocp.solver_options.print_level = 0
     ocp.solver_options.hpipm_mode = "SPEED_ABS"
-    # SPEED_ABS SPEED BALANCE ROBUST
-    # ocp.dims.nh_0 = 1
-    # ocp.solver_options.regularize_method = "CONVEXIFY"  # "MIRROR" #"CONVEXIFY"
     # 4-order ERK
     ocp.solver_options.sim_method_num_stages = 4
-    # ocp.
     return ocp
 
 
-
-def main():
+def main() -> None:
     ocp: AcadosOcp = ocp_nls()
-    # Emit code next to the json file (.artifacts/c_generated_code, set by cocp cwd)
+    # Emit code next to the json file (.artifacts/c_generated_code, set by gen-nmpc-lib cwd)
     ocp.code_gen_opts.code_export_directory = "."
-    acados_ocp_solver:AcadosOcpSolver = AcadosOcpSolver(
+    AcadosOcpSolver(
         ocp, json_file="acados_ocp_" + ocp.model.name + ".json"
     )
 

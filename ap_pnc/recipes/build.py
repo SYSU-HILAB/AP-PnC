@@ -73,7 +73,7 @@ def traj_server(
     """Build trajectory_server package (colcon)."""
     _colcon_build(
         ["trajectory_server"],
-        paths=["benchmark/trajectory_planner", "ros_packages"],
+        paths=["ros_packages"],
         clean=clean,
     )
 
@@ -110,7 +110,7 @@ def all_(
     _colcon_build(
         [],
         paths=["ros_packages", "bringup", "simulations/aerodynamics",
-               "simulations/simple_sim/src", "benchmark/trajectory_planner"],
+               "simulations/simple_sim/src"],
         clean=clean,
     )
 

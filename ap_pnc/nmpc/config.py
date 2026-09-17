@@ -9,8 +9,8 @@
 # Paper:
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
+
 import numpy as np
-from enum import Enum
 
 
 class ControlConfig:

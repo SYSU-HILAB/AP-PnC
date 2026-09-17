@@ -1,5 +1,0 @@
-px4_interface:
-  ros__parameters:
-    # PX4 interface parameters
-    target_system_id: 1
-    target_component_id: 1
