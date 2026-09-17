@@ -12,16 +12,10 @@ find_package(px4_msgs REQUIRED)
 find_package(Ceres REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_library(helper src/helper.cpp)
-target_link_libraries(
-  helper
-  Ceres::ceres
-  Eigen3::Eigen
-)
-
 ament_auto_add_executable(px4_interface src/px4_interface.cpp)
 target_link_libraries(
   px4_interface
+  Ceres::ceres
   Eigen3::Eigen
 )
 

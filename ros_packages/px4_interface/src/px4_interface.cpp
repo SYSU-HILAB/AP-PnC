@@ -8,8 +8,12 @@
  * Hanamy: rongerch@outlook.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
+
+#include <ceres/ceres.h>
+#include <ceres/rotation.h>
 
 #include <Eigen/Geometry>
 #include <cfloat>
@@ -30,13 +34,77 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 
-#include "helper.cpp"
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
 
 #include <stdexcept>
 #include <vector>
+
+/**
+ * @brief Least-squares refinement of the initial-attitude yaw via Ceres.
+ *
+ * Solves for the yaw offset theta that best aligns the fixed base attitude
+ * with the collected odometry quaternions (consolidated from helper.cpp).
+ */
+struct YawCostFunctor
+{
+  YawCostFunctor(const Eigen::Quaterniond &q_i) : q_i_(q_i) {}
+
+  /**
+   * @brief Build the yaw-alignment problem over the collected quaternions.
+   *
+   * @param[in] quaternions Collected odometry attitudes [-]
+   * @return Optimized yaw offset [rad]
+   */
+  static double constructProblemAndSolve(
+      std::vector<Eigen::Quaterniond> &quaternions)
+  {
+    double         theta = 0;
+    ceres::Problem problem;
+
+    for (size_t i = 0; i < quaternions.size(); ++i)
+    {
+      ceres::CostFunction *cost_function =
+          new ceres::AutoDiffCostFunction<YawCostFunctor, 1, 1>(
+              new YawCostFunctor(quaternions[i]));
+      problem.AddResidualBlock(cost_function, nullptr, &theta);
+    }
+
+    ceres::Solver::Options options;
+    options.max_num_iterations = 100;
+    options.linear_solver_type = ceres::DENSE_QR;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    return theta;
+  }
+
+  /**
+   * @brief Ceres autodiff residual: yaw-misalignment angle to q_i_ [rad].
+   *
+   * @param[in] theta Yaw offset [rad]
+   * @param[out] residual Attitude misalignment [rad]
+   * @return Always true (autodiff contract)
+   */
+  template <typename T>
+  bool operator()(const T *const theta, T *residual) const
+  {
+    T cos_half_theta = ceres::cos(theta[0] / T(2.0));
+    T sin_half_theta = ceres::sin(theta[0] / T(2.0));
+
+    Eigen::Quaternion<T> q_yaw(cos_half_theta, T(0.0), T(0.0), sin_half_theta);
+    Eigen::Quaternion<T> transformed_q = base_q_.cast<T>() * q_yaw;
+    Eigen::Quaternion<T> relative_q = transformed_q.inverse() * q_i_.cast<T>();
+    residual[0] =
+        T(2.0) * ceres::atan2(relative_q.vec().norm(), relative_q.w());
+    return true;
+  }
+
+  const Eigen::Quaterniond  q_i_;     ///< The i-th quaternion in the series [-]
+  static Eigen::Quaterniond base_q_;  ///< Fixed base attitude target [-]
+};
+
+Eigen::Quaterniond YawCostFunctor::base_q_ = Eigen::Quaterniond(0, 1, 0, 0);
 
 static Eigen::Quaterniond q_flu_frd = Eigen::Quaterniond(0, 1, 0, 0);
 class Transcribe
