@@ -6,7 +6,7 @@ This directory provides architecture-specific base images (`amd64` and `arm64`) 
 
 The container environment cleanly decouples runtime dependencies from source code:
 
-- `/workspace/src`: Mapped to host `ros_packages/` (contains `c_nmpc`, `px4_interface`, `interface_msgs`, `utils`).
+- `/workspace/src`: Mapped to host `ros_packages/` (core: planner line, `c_nmpc`, `px4ctrl`, `utils/msgs`).
 - `/workspace/bringup`: Mapped to host `bringup/` (contains launch files and configurations).
 - `/workspace/artifacts`: Mapped to host `.artifacts/nmpc_wrapper/` (contains compiled `libnmpc_bundle.a`).
 

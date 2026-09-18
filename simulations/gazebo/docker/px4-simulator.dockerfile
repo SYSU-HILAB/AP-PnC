@@ -1,8 +1,10 @@
 # PX4 SITL simulator container — stock upstream firmware (no forks).
 #
 # Mirrors the upstream v1.17 container recipe (ubuntu:24.04 +
-# Tools/setup/ubuntu.sh) but selects Gazebo Jetty (gz-sim9) instead of the
-# script default Harmonic — v1.17 adds Jetty support. PX4 itself is pinned
+# Tools/setup/ubuntu.sh) and installs the SAME Gazebo version the script
+# and CI use: Harmonic (gz-sim8). The v1.17 gz_bridge is built and tested
+# against Harmonic; newer Gazebo releases (Jetty/gz-sim10) are nominally
+# supported but the actuator path was observed broken there. PX4 is pinned
 # to a release tag (ARG PX4_VERSION).
 #
 # Run the SITL inside with:  cd /home/px4/PX4-Autopilot && make px4_sitl gz_x500
@@ -46,10 +48,14 @@ RUN git -c http.version=HTTP/1.1 clone --depth 1 --branch "$PX4_VERSION" \
         https://github.com/PX4/PX4-Autopilot.git /home/px4/PX4-Autopilot
 WORKDIR /home/px4/PX4-Autopilot
 
-RUN sudo bash Tools/setup/ubuntu.sh --no-sim-tools
+# Generous pip retry/timeout: ubuntu.sh installs PX4 python deps and the
+# default pip timeouts are too tight behind throttled proxies.
+ENV PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10
 
-# Simulation dependencies: the v1.17 script block, with gz-jetty replacing
-# the default gz-harmonic (both supported by this firmware version).
+RUN sudo bash Tools/setup/ubuntu.sh --no-sim-tools --no-nuttx
+
+# Simulation dependencies: the v1.17 ubuntu.sh block verbatim (gz-harmonic).
 RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache_pxsitl,sharing=locked \
     sudo wget -q https://packages.osrfoundation.org/gazebo.gpg \
         -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
@@ -57,7 +63,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache_pxsitl,sharing=loc
         | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null \
     && sudo apt-get update -y \
     && sudo apt-get install -y --no-install-recommends \
-        gz-jetty \
+        gz-harmonic \
         libunwind-dev \
         cppzmq-dev \
         dmidecode \
@@ -78,6 +84,15 @@ ENV PATH="/home/px4/PX4-Autopilot/Tools:$PATH"
 RUN make px4_sitl_default
 
 RUN echo "export GZ_SIM_RESOURCE_PATH=/home/px4/PX4-Autopilot/Tools/simulation/gz/models:/home/px4/PX4-Autopilot/Tools/simulation/gz/worlds" \
-        >> /home/px4/.bashrc
+        >> /home/px4/.bashrc \
+    && echo "# Offboard-only companion stack: exempt OFFBOARD from the RC and \
+datalink loss failsafes (no RC transmitter, GCS heartbeat only)." \
+        > /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt \
+    && echo "param set COM_RCL_EXCEPT 12" \
+        >> /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt \
+    && echo "param set COM_DLL_EXCEPT 4" \
+        >> /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt \
+    && echo "param save" \
+        >> /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt
 
 CMD ["bash"]

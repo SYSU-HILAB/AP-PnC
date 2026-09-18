@@ -103,11 +103,11 @@ def cnmpc(
 def all_(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
 ) -> None:
-    """Build the whole workspace (all discovered packages)."""
+    """Build the whole workspace (core + nav_infra, all packages)."""
     _colcon_build(
         [],
-        paths=["ros_packages", "bringup", "simulations/aerodynamics",
-               "simulations/simple_sim/src"],
+        paths=["ros_packages", "nav_infra/ros_packages", "bringup",
+               "simulations/aerodynamics", "simulations/simple_sim/src"],
         clean=clean,
     )
 

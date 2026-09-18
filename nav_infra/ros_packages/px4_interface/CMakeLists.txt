@@ -15,9 +15,6 @@ ament_auto_find_build_dependencies()
 ament_auto_add_executable(nmpc_bridge src/nmpc_bridge.cpp)
 target_link_libraries(nmpc_bridge yaml-cpp Eigen3::Eigen)
 
-ament_auto_add_executable(flight_mux src/flight_mux.cpp)
-target_link_libraries(flight_mux yaml-cpp Eigen3::Eigen)
-
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_px4_interface test/test_px4_interface.cpp)

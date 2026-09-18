@@ -170,7 +170,7 @@ External planning algorithms:
 | LBFGS | `LBFGS.hpp` | Limited-memory BFGS optimizer |
 | SDLP | `SDLP.hpp` | Sequential Dual Linear Programming |
 
-### 3. PX4 Interface (`src/px4_interface/`)
+### 3. PX4 Interface (`nav_infra/ros_packages/px4_interface/`)
 
 #### PX4Interface Node
 **File**: `px4_interface.cpp`

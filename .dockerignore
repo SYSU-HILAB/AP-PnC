@@ -4,3 +4,4 @@
 !bringup/
 !simulations/
 !.artifacts/nmpc_wrapper/libnmpc_bundle.a
+!nav_infra/

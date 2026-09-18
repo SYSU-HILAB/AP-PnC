@@ -31,7 +31,7 @@ def _launch(env: dict[str, str], core: int, *args: str) -> None:
 
 @app.command()
 def start() -> None:
-    """Launch the full local stack (trajectory_server + px4_interface + c_nmpc).
+    """Launch the full local stack (planner + control core + nav_infra gateway).
 
     Cores are pinned on the last three CPUs, mirroring the legacy runall tool.
     Ctrl-C stops everything.
@@ -47,8 +47,9 @@ def start() -> None:
     signal.signal(signal.SIGTERM, _cleanup)
     typer.echo(f"Detected {ncpu} CPU cores, pinning stack to cores {ncpu - 2}-{ncpu - 1}")
 
-    _launch(env, ncpu - 2, "bringup", "planning.launch.py")
-    _launch(env, ncpu - 1, "bringup", "bringup.launch.py")
+    _launch(env, ncpu - 3, "bringup", "planning.launch.py")
+    _launch(env, ncpu - 2, "bringup", "bringup.launch.py")
+    _launch(env, ncpu - 1, "bringup", "nav_infra.launch.py", "profile:=sim")
 
     typer.echo(f"All processes started (PIDs: {PIDS}). Press CTRL-C to stop.")
     try:
@@ -60,17 +61,19 @@ def start() -> None:
 
 @app.command()
 def trigger(
-    what: str = typer.Argument(..., help="'pos_est' (pub /est_cmd) or 'go' (pub /mode)"),
+    what: str = typer.Argument(..., help="'go' (pass-through on) or 'back' (pass-through off)"),
 ) -> None:
-    """Publish a one-shot Boolean trigger to a stack topic."""
-    topics = {"pos_est": "/est_cmd", "go": "/mode"}
-    topic = topics.get(what)
-    if topic is None:
-        typer.echo(f"Unknown trigger '{what}'. Choose from: {', '.join(topics)}.", err=True)
+    """Synchronously toggle the px4ctrl PASS_THROUGH state (NMPC handover)."""
+    actions = {"go": "true", "back": "false"}
+    if what not in actions:
+        typer.echo(f"Unknown trigger '{what}'. Choose from: {', '.join(actions)}.", err=True)
         raise typer.Exit(1)
     env = source_ros2_workspace()
     subprocess.run(
-        ["ros2", "topic", "pub", topic, "std_msgs/msg/Bool", "data: true", "-1"],
+        [
+            "ros2", "service", "call", "/px4ctrl/toggle_pass_through",
+            "std_srvs/srv/SetBool", f"{{data: {actions[what]}}}",
+        ],
         env=env,
         check=True,
     )

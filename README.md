@@ -75,7 +75,7 @@ ros_packages/        # Core ROS2 C++ stack
                      #   kernel), basic_trajectories, trajectory_server, traj_buffer
   c_nmpc/            #   NMPC tracking node + nmpc_wrapper
   px4_interface/     #   PX4 bridge
-  interface_msgs/    #   ros2_msgs (interface package)
+  utils/msgs/        #   interface package (shared ROS msg contract, no px4_msgs)
   utils/             #   ROS2-Utils + vendored libraries
 bringup/             # Top-layer package: config/ + launch/ (single entry)
 ap_pnc/              # Python package: CLI, nmpc/ codegen toolchain, lu_mpc, aerodynamics
@@ -104,19 +104,21 @@ Two stacked simulation setups live under `simulations/`:
 
 | Layer | Directory | What it runs |
 |-------|-----------|--------------|
-| Gazebo | `simulations/gazebo/` | Generic-interface SITL: stock PX4 v1.17.0 under Gazebo Jetty (`gz_x500`), bridged by mavros2 to the AP-PnC NMPC stack (`px4-simulator` + `nav-sidecar` + `qground_control` + `ap-pnc`) |
+| Gazebo | `simulations/gazebo/` | Generic-interface SITL: stock PX4 v1.17.0 under Gazebo Harmonic (`gz_x500`), bridged by mavros2 to the AP-PnC NMPC stack (`px4-simulator` + `nav_infra` + `qground_control` + `ap-pnc`) |
 | Simple sim | `simulations/simple_sim/` | Lightweight C++ simulator (MARSIM-style) with synthetic LiDAR sensing, for obstacle-avoidance principle verification |
 
 ```bash
-uv run ap-pnc sim gazebo     # Gazebo layer (stock PX4 v1.17.0 + Gazebo Jetty + mavros2)
+uv run ap-pnc sim gazebo     # Gazebo layer (stock PX4 v1.17.0 + Gazebo Harmonic + mavros2)
 uv run ap-pnc sim simple     # simple_sim layer (lightweight LiDAR sim)
 uv run ap-pnc sim stop       # scale everything down
 ```
 
 The gazebo layer runs stock upstream PX4 (no fork), pinned to a release tag
-via `ARG PX4_VERSION` in the image. The single `nav-sidecar` container is the
-navigation gateway (mavros2 in simulation; livox + fast_lio + ekf_quat on the
-real machine — same image, different bringup profile). See
+via `ARG PX4_VERSION` in the image. The single `nav_infra` container provides
+the base services (mavros2 + NMPC-mavros bridge + setpoint mux; livox +
+fast_lio + ekf_quat join on the real machine — same image, different bringup
+profile), while the `ap-pnc` core container carries only research code
+(planner + c_nmpc + px4ctrl). See `nav_infra/README.md`,
 `simulations/gazebo/README.md` and `simulations/simple_sim/README.md`.
 
 ---

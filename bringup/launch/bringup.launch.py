@@ -1,12 +1,18 @@
-"""Control stack launch (c_nmpc + nmpc_bridge + flight_mux + px4ctrl).
+"""Core control stack launch (c_nmpc + px4ctrl) — research code container.
+
+profile:=sim|real selects the px4ctrl parameter set (px4ctrl.yaml vs
+px4ctrl_real.yaml, e.g. hover_percentage 0.9 sim / 0.5 real) and the
+default odometry source.
 
 Nodes read their configuration from the conventional cwd-relative
 bringup/config yaml files; no ROS parameters are passed here except for
 px4ctrl, which follows the vendored ROS2 parameter style.
 
-px4ctrl owns arming/offboard via the mavros services; flight_mux is the
-single publisher of /mavros/setpoint_raw/attitude (px4ctrl's stream is
-remapped onto an internal topic).
+The base services (mavros, nmpc_bridge, LIO) run in the nav_infra
+container; px4ctrl consumes /mavros/* and the bridge's world-frame
+odometry from there over the shared ROS 2 graph. px4ctrl also owns the
+PASS_THROUGH state: /px4ctrl/toggle_pass_through switches it to forward
+the NMPC rates stream verbatim (single mavros setpoint publisher).
 """
 
 import os
@@ -14,13 +20,17 @@ import os
 import launch
 import launch_ros.actions
 from ament_index_python.packages import get_package_share_directory
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 
 
 def generate_launch_description():
     bringup_share = get_package_share_directory("bringup")
     fastdds_xml = os.path.join(bringup_share, "config", "fastdds.xml")
-    px4ctrl_params = os.path.join(bringup_share, "config", "px4ctrl.yaml")
+
+    profile = LaunchConfiguration("profile")
+    px4ctrl_params = PythonExpression(
+        ["'", bringup_share, "/config/px4ctrl' + ('' if '", profile,
+         "'.lower() == 'sim' else '_real') + '.yaml'"])
 
     odom_topic = LaunchConfiguration("odom_topic")
 
@@ -37,20 +47,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    nmpc_bridge_node = launch_ros.actions.Node(
-        package="px4_interface",
-        executable="nmpc_bridge",
-        name="nmpc_bridge",
-        output="screen",
-    )
-
-    flight_mux_node = launch_ros.actions.Node(
-        package="px4_interface",
-        executable="flight_mux",
-        name="flight_mux",
-        output="screen",
-    )
-
     px4ctrl_node = launch_ros.actions.Node(
         package="px4ctrl",
         executable="px4ctrl_node",
@@ -61,21 +57,24 @@ def generate_launch_description():
             ("odom", odom_topic),
             ("cmd", "/setpoint_cmd"),
             ("takeoff_land", "/px4ctrl/takeoff_land"),
-            # Keep flight_mux the single mavros setpoint publisher.
-            ("/mavros/setpoint_raw/attitude", "/px4ctrl/setpoint_raw/attitude"),
         ],
         parameters=[px4ctrl_params],
     )
 
     return launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(
+            "profile",
+            default_value="sim",
+            description="sim | real (px4ctrl parameter set + odom default)",
+        ),
+        launch.actions.DeclareLaunchArgument(
             "odom_topic",
-            default_value="/nmpc_bridge/odom_world",
+            default_value=PythonExpression([
+                "'/ekf_quat/ekf_odom' if '", profile,
+                "'.lower() == 'real' else '/nmpc_bridge/odom_world'"]),
             description="Odometry source for px4ctrl: world-frame corrected "
                         "mavros odom (sim) or /ekf_quat/ekf_odom (real)",
         ),
         c_nmpc_node,
-        nmpc_bridge_node,
-        flight_mux_node,
         px4ctrl_node,
     ])

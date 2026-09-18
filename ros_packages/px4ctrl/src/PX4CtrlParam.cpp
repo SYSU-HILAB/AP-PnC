@@ -29,6 +29,7 @@ void Parameter_t::config_from_ros_handle(const rclcpp::Node::SharedPtr &node)
     read_essential_param(node, "msg_timeout.cmd", msg_timeout.cmd);
     read_essential_param(node, "msg_timeout.imu", msg_timeout.imu);
     read_essential_param(node, "msg_timeout.bat", msg_timeout.bat);
+    read_essential_param(node, "msg_timeout.pass_through", msg_timeout.pass_through);
 
     read_essential_param(node, "pose_solver", pose_solver);
     read_essential_param(node, "enable_body_rate_ctrl", enable_body_rate_ctrl);

@@ -1,15 +1,16 @@
-"""nav-sidecar launch: the single navigation gateway container profile.
+"""nav_infra launch: the base-services gateway container stack.
 
-    ros2 launch bringup nav_sidecar.launch.py profile:=sim
-    ros2 launch bringup nav_sidecar.launch.py profile:=real
+    ros2 launch bringup nav_infra.launch.py profile:=sim
+    ros2 launch bringup nav_infra.launch.py profile:=real
 
-sim  : mavros2 only (PX4 SITL over TCP 4560), odometry from
-       /mavros/local_position/odom (PX4 EKF2).
-real : livox_ros_driver2 (Mid-360) + fast_lio + ekf_quat + mavros2 (FCU
-       serial), odometry from /ekf_quat/ekf_odom.
+Runs inside the nav_infra container (not research code):
+  sim  : mavros2 (PX4 SITL over TCP 4560) + nmpc_bridge; odometry from
+         /mavros/local_position/odom (PX4 EKF2).
+  real : + livox_ros_driver2 (Mid-360) + fast_lio + ekf_quat;
+         odometry from /ekf_quat/ekf_odom.
 
-The container image is identical for both profiles; only this bringup
-selection differs (compose command override or k3s ConfigMap).
+The core container (planner + c_nmpc + px4ctrl) consumes /cur_state and
+feeds /mpc_controls + /mode over the shared ROS 2 graph.
 """
 
 import os
@@ -59,6 +60,17 @@ def generate_launch_description():
         condition=IfCondition(is_real),
     )
 
+    # NMPC controls -> RLS throttle model + INDI thrust -> AttitudeTarget
+    # on /nmpc_bridge/setpoint_raw/attitude (px4ctrl forwards it in its
+    # PASS_THROUGH state); mavros odometry -> /cur_state
+    # (+ world-frame /nmpc_bridge/odom_world).
+    nmpc_bridge = Node(
+        package="px4_interface",
+        executable="nmpc_bridge",
+        name="nmpc_bridge",
+        output="screen",
+    )
+
     livox = Node(
         package="livox_ros_driver2",
         executable="livox_ros_driver2_node",
@@ -106,6 +118,7 @@ def generate_launch_description():
                               description="sim | real"),
         mavros_sim,
         mavros_real,
+        nmpc_bridge,
         livox,
         fast_lio,
         ekf_quat,

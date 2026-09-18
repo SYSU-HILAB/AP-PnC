@@ -34,7 +34,7 @@ nmpc_bridge:
     meas_lpf_cutoff_hz: 20.0
   io:
     # Odometry source: mavros EKF2 in simulation, /ekf_quat/ekf_odom on the
-    # real machine (nav_sidecar profile switch, code unchanged).
+    # real machine (nav_infra profile switch, code unchanged).
     odom_topic: /mavros/local_position/odom
     imu_topic: /mavros/imu/data_raw
     controls_topic: /mpc_controls
@@ -46,14 +46,3 @@ nmpc_bridge:
     bridge_setpoint_topic: /nmpc_bridge/setpoint_raw/attitude
     status_topic: /nmpc_bridge/throttle_model_status
     state_rate_hz: 50.0
-
-flight_mux:
-  handover:
-    # NMPC stream staleness before falling back to the px4ctrl stream [s].
-    stream_timeout: 0.2
-  io:
-    px4ctrl_topic: /px4ctrl/setpoint_raw/attitude
-    bridge_topic: /nmpc_bridge/setpoint_raw/attitude
-    output_topic: /mavros/setpoint_raw/attitude
-    mode_topic: /mode
-    reset_topic: /mux_reset

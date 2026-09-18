@@ -1,6 +1,6 @@
 # K3s Simulation Orchestration for AP-PnC
 
-基于 K3s `ConfigMap` 实现动态、声明式选择并启动 `simple-sim`（轻量级 LiDAR + 气动仿真）或 `gazebo`（stock PX4 v1.17.0 + Gazebo Jetty SITL，mavros2 通用接口栈）。
+基于 K3s `ConfigMap` 实现动态、声明式选择并启动 `simple-sim`（轻量级 LiDAR + 气动仿真）或 `gazebo`（stock PX4 v1.17.0 + Gazebo Harmonic SITL，mavros2 通用接口栈）。
 
 ---
 
@@ -35,9 +35,10 @@
 3. **`ap-pnc-simple-sim`**：
    - 运行 C++ 气动力学与激光雷达模拟器，开箱即用。
 4. **`ap-pnc-gazebo`**（三容器 Pod，hostNetwork）：
-   - `px4-simulator`：stock PX4 v1.17.0 + Gazebo Jetty（`gz_x500`）。
-   - `nav-sidecar`：单一导航网关容器（mavros2，sim profile；实机 profile
-     为 livox + fast_lio + ekf_quat，镜像不变，`NAV_PROFILE` ConfigMap 键切换）。
+   - `px4-simulator`：stock PX4 v1.17.0 + Gazebo Harmonic（`gz_x500`）。
+   - `nav_infra`：基础服务网关容器（mavros2 + nmpc_bridge + flight_mux，
+     sim profile；实机 profile 再加 livox + fast_lio + ekf_quat，镜像不变，
+     `NAV_PROFILE` ConfigMap 键切换）。
    - `ap-pnc`：NMPC / 规划 / px4ctrl / flight_mux 控制栈。
 
 ---

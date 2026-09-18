@@ -377,11 +377,11 @@ spec:
               name: host-localtime
               readOnly: true
 
-        # Container 2: nav-sidecar — single navigation gateway (mavros2 in
+        # Container 2: nav_infra — single navigation gateway (mavros2 in
         # the sim profile; livox + fast_lio + ekf_quat for the real one).
         # NAV_PROFILE selects the bringup profile (sim | real) via ConfigMap.
-        - name: nav-sidecar
-          image: nav-sidecar:latest
+        - name: nav_infra
+          image: nav_infra:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: RMW_IMPLEMENTATION
@@ -395,8 +395,8 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              echo "[nav-sidecar] Starting navigation gateway (profile: ${NAV_PROFILE:-sim})..."
-              exec ros2 launch bringup nav_sidecar.launch.py profile:=${NAV_PROFILE:-sim}
+              echo "[nav_infra] Starting navigation gateway (profile: ${NAV_PROFILE:-sim})..."
+              exec ros2 launch bringup nav_infra.launch.py profile:=${NAV_PROFILE:-sim}
           stdin: true
           tty: true
           resources:

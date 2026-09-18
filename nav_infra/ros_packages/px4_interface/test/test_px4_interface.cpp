@@ -4,12 +4,11 @@
  * Authors: Hanamy: rongerch@outlook.com
  *
  * Unit tests for the RLS throttle model, INDI thrust law, and mux
- * selection logic (see rls_throttle_model.h / mux_selector.h).
+ * selection logic (see rls_throttle_model.h).
  */
 
 #include <gtest/gtest.h>
 
-#include "mux_selector.h"
 #include "rls_throttle_model.h"
 
 namespace
@@ -120,35 +119,4 @@ TEST(IndiThrottle, PushesTowardsSetpointAndClamps)
   const double u_hold =
       computeIndiThrottle(0.6, 20.0, 9.81, 9.81, 2.0, 0.02, 0.05, 1.0);
   EXPECT_DOUBLE_EQ(u_hold, 0.6);
-}
-
-TEST(MuxSelector, TriggerLatchesAndStalenessFallsBack)
-{
-  MuxSelector sel;
-  sel.setStreamTimeout(0.2);
-
-  // Fresh NMPC stream + trigger -> NMPC.
-  sel.update(true, 0.01, 1.0);
-  EXPECT_TRUE(sel.isNmpcActive());
-
-  // Stale NMPC stream -> fallback to px4ctrl.
-  sel.update(false, 1.0, 2.0);
-  EXPECT_FALSE(sel.isNmpcActive());
-
-  // Stream recovers -> NMPC again (latch persists).
-  sel.update(false, 0.01, 3.0);
-  EXPECT_TRUE(sel.isNmpcActive());
-
-  // Operator reset -> px4ctrl even with fresh NMPC stream.
-  sel.reset(4.0);
-  sel.update(false, 0.01, 5.0);
-  EXPECT_FALSE(sel.isNmpcActive());
-}
-
-TEST(MuxSelector, NoTriggerNeverSelectsNmpc)
-{
-  MuxSelector sel;
-  sel.update(false, 0.01, 1.0);
-  sel.update(false, 0.001, 2.0);
-  EXPECT_FALSE(sel.isNmpcActive());
 }

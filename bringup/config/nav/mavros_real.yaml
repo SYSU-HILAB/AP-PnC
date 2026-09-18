@@ -1,5 +1,5 @@
 # MAVROS ROS 2 Humble configuration for PX4 Autopilot
-mavros:
+/**:
   ros__parameters:
     fcu_url: "/dev/fcu:921600"
     gcs_url: ""

@@ -58,7 +58,7 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/qgc/.Xauthority:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ../../artifacts/benchmarks/ulgs:/home/qgc/artifacts/benchmarks/ulgs
+      - ../../../artifacts/benchmarks/ulgs:/home/qgc/artifacts/benchmarks/ulgs
     deploy:
       resources:
         reservations:
@@ -68,18 +68,22 @@ services:
               capabilities: [gpu, compute, graphics, utility, video]
     command: qgc
 
-  # Single navigation gateway: mavros2 (sim profile) — livox + fast_lio +
-  # ekf_quat ship in the same image for the real-machine profile.
-  nav-sidecar:
+  # nav_infra: single base-services gateway — mavros2 + nmpc_bridge +
+  # flight_mux (sim); livox + fast_lio + ekf_quat join in the real profile.
+  # Research code (planner + c_nmpc + px4ctrl) stays in the ap-pnc core.
+  nav_infra:
     build:
       context: ../../..
-      dockerfile: simulations/gazebo/docker/nav-sidecar.dockerfile
-    image: nav-sidecar:latest
-    container_name: nav-sidecar
+      dockerfile: nav_infra/docker/Dockerfile
+    image: nav_infra:latest
+    container_name: nav_infra
     network_mode: host
     environment:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-    command: ros2 launch bringup nav_sidecar.launch.py profile:=sim
+    # Self-contained image (bringup baked in); config updates go through an
+    # image rebuild or a k3s ConfigMap overlay — NOT a bind mount (the
+    # /workspace/bringup symlink resolves into the colcon install share).
+    command: ros2 launch bringup nav_infra.launch.py profile:=sim
     stdin_open: true
     tty: true
     depends_on:
@@ -103,14 +107,14 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ../../.artifacts/nmpc_wrapper/libnmpc_bundle.a:/workspace/artifacts/libnmpc_bundle.a
-      - ../../ros_packages:/workspace/src
-      - ../../bringup:/workspace/bringup
-      - ../../artifacts/simulations/temp_data:/workspace/artifacts/simulations/temp_data
+      - ../../../.artifacts/nmpc_wrapper/libnmpc_bundle.a:/workspace/artifacts/libnmpc_bundle.a
+      - ../../../ros_packages:/workspace/src
+      - ../../../bringup:/workspace/bringup
+      - ../../../artifacts/simulations/temp_data:/workspace/artifacts/simulations/temp_data
     command: bash
     stdin_open: true
     tty: true
     depends_on:
       - qground_control
       - px4-simulator
-      - nav-sidecar
+      - nav_infra

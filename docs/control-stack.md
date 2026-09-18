@@ -15,7 +15,7 @@ ros_packages/
 │   └── traj_buffer/          #   reference conditioning + bullet republisher
 ├── c_nmpc/                   # NMPC tracking node + nmpc_wrapper (bundle C API)
 ├── px4_interface/            # PX4 bridge node
-├── interface_msgs/           # ros2_msgs (interface package)
+├── utils/                    # utils + external_libraries + msgs (interface package, shared contract)
 └── utils/                    # ROS2-Utils + external libraries (subtrees)
 ```
 
@@ -38,13 +38,13 @@ by gazebo and simple_sim); the acados codegen toolchain lives in
 
 1. **Global trajectory generation (`ros_packages/planner/trajectory_server`)** samples a basic curve (circle, lemniscate, line, etc.), builds safe flight corridors with GCOPTER, and publishes `interface/RefTrajectory` messages on `control_traj` along with visualization markers on `traj_viz`.
 2. **Trajectory buffering (`ros_packages/planner/traj_buffer`)** listens to new `RefTrajectory`s plus mode/ready flags. It conditions the path (offset removal, thrust initialization, down-sampling) and continually publishes fixed-size `RefTrajectoryBullet` packets (`ref_trajectory_bullet`) that always cover one second of future motion. It also mirrors the path to RViz via `ref_vis`.
-3. **State estimation & PX4 bridge (`ros_packages/px4_interface`)** receives raw PX4 `VehicleOdometry` and `VehicleStatus`, applies frame transforms, and republishes `interface/State` on `/cur_state` (and `/cur_state_odom` for visualization). The same node subscribes to `/mpc_controls`, converts FLU controls/rates into PX4 FRD commands, and streams them to `/fmu/in/vehicle_thrust_acc_setpoint`. Heartbeat and tracking info are also bridged to PX4 via `/fmu/in/offboard_control_mode` and `/fmu/in/tracking_info`.
-4. **NMPC runtime (`ros_packages/c_nmpc`)** combines the latest `/cur_state`, `/ref_trajectory_bullet`, and `/fmu/out/vehicle_acceleration`. `stateCallback()` updates the acados NLP bounds and publishes `/ref_can_set` so the buffer knows the solver is live. `referenceCallback()` loads the whole reference horizon into acados, injects aerodynamic parameters, triggers `solve()`, and publishes `/mpc_controls` plus `/tracking_info`.
+3. **Base-services gateway (`nav_infra/ros_packages/px4_interface`, sidecar container)** bridges the control core to mavros2. `nmpc_bridge` adapts `/mavros/local_position/odom` (ENU/FLU, world-frame twist correction) into `interface/State` on `/cur_state` (+ `/cur_state_odom`), and converts `/mpc_controls` (FLU rates + thrust accel) into mavros `AttitudeTarget` through the RLS throttle model + INDI incremental thrust law. px4ctrl owns the single `/mavros/setpoint_raw/attitude` publisher; its PASS_THROUGH state (synchronous `/px4ctrl/toggle_pass_through` service) repeat-forwards the NMPC bridge stream at the ctrl rate with stale-stream fallback to AUTO_HOVER. On the real machine the same container adds livox + fast_lio + ekf_quat (odom := `/ekf_quat/ekf_odom`).
+4. **NMPC runtime (`ros_packages/c_nmpc`)** combines the latest `/cur_state`, `/ref_trajectory_bullet`, and `/mavros/imu/data_raw`. `stateCallback()` updates the acados NLP bounds and publishes `/ref_can_set` so the buffer knows the solver is live. `referenceCallback()` loads the whole reference horizon into acados, injects aerodynamic parameters, triggers `solve()`, and publishes `/mpc_controls` plus `/tracking_info`.
 5. **Differential-flatness & aerodynamics layers** (`ros_packages/planner/tailsitter_df`, `simulations/aerodynamics`, `ros_packages/utils`) supply the planner and NMPC with aerodynamic coefficients, analytic derivatives, and config readers. Python tooling in `ap_pnc/nmpc` regenerates acados models and JSON artifacts when weights or dynamics change.
 
 ## Module Details
 
-### ROS messages (`ros_packages/interface_msgs/ros2_msgs`)
+### ROS messages (`ros_packages/utils/msgs`, package `interface`)
 * Defines the lingua franca between nodes.
 * `State.msg` stores `[p, v, body rates, quaternion]` plus `cur_cz` (filtered lift coefficient estimate).
 * `TrajectoryPoint.msg` packs pose, velocity, rates, thrust, and body-axis targets into a fixed-length array so the planner, the buffer, and the solver agree on indices.

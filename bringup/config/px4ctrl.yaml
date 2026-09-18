@@ -38,7 +38,7 @@
       K1: 0.7583
       K2: 1.6942
       K3: 0.6786
-      hover_percentage: 0.5
+      hover_percentage: 0.9 # gz x500 needs a high normalized hover throttle
 
     gain:
       Kp0: 1.666666667
@@ -66,3 +66,4 @@
       cmd: 0.5
       imu: 0.5
       bat: 0.5
+      pass_through: 0.2 # stale external rates stream falls back to AUTO_HOVER

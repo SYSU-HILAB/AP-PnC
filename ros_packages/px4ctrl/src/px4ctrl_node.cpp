@@ -1,5 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "PX4CtrlFSM.h"
+#include <std_srvs/srv/set_bool.hpp>
 #include <signal.h>
 
 void mySigintHandler(int sig)
@@ -84,6 +85,25 @@ int main(int argc, char *argv[])
         [&fsm](const quadrotor_msgs::msg::TakeoffLand::SharedPtr msg)
         {
             fsm.takeoff_land_data.feed(msg);
+        });
+
+    // External rates + thrust setpoint forwarded verbatim in PASS_THROUGH
+    // (NMPC bridge from the nav_infra container).
+    auto pass_through_sub = node->create_subscription<mavros_msgs::msg::AttitudeTarget>(
+        "/nmpc_bridge/setpoint_raw/attitude", qos,
+        [&fsm](const mavros_msgs::msg::AttitudeTarget::SharedPtr msg)
+        {
+            fsm.pass_through_data.feed(msg);
+        });
+
+    // Synchronous PASS_THROUGH toggle for the upper layer (stack trigger).
+    auto toggle_pass_through_srv = node->create_service<std_srvs::srv::SetBool>(
+        "/px4ctrl/toggle_pass_through",
+        [&fsm](const std_srvs::srv::SetBool::Request::SharedPtr req,
+               std_srvs::srv::SetBool::Response::SharedPtr res)
+        {
+            res->success = fsm.toggle_pass_through(req->data);
+            res->message = res->success ? "pass-through toggled" : "rejected, see px4ctrl logs";
         });
 
     fsm.ctrl_FCU_pub = node->create_publisher<mavros_msgs::msg::AttitudeTarget>("/mavros/setpoint_raw/attitude", 10);

@@ -279,6 +279,39 @@ void PX4CtrlFSM::process()
         break;
     }
 
+    case PASS_THROUGH:
+    {
+        if (!state_data.current_state.armed)
+        {
+            // Not armed: cannot command the FCU. Fall back to MANUAL_CTRL.
+            state = MANUAL_CTRL;
+            toggle_offboard_mode(false);
+
+            px4ctrl_trace::transition("PASS_THROUGH", "MANUAL_CTRL", "not_armed");
+        }
+        else if (!odom_is_received(now_time) || !imu_is_received(now_time))
+        {
+            state = AUTO_HOVER;
+            set_hov_with_odom();
+            des = get_hover_des();
+            controller.resetThrustMapping();
+            px4ctrl_trace::transition("PASS_THROUGH", "AUTO_HOVER",
+                                      !odom_is_received(now_time) ? "odom_timeout" : "imu_timeout");
+        }
+        else if (!pass_through_data.is_received(now_time, param.msg_timeout.pass_through))
+        {
+            // External rates stream went stale: fall back to hover on the
+            // latest odometry so offboard continuity is preserved.
+            state = AUTO_HOVER;
+            set_hov_with_odom();
+            des = get_hover_des();
+            controller.resetThrustMapping();
+            px4ctrl_trace::transition("PASS_THROUGH", "AUTO_HOVER", "external_stream_timeout");
+        }
+
+        break;
+    }
+
     case AUTO_LAND:
     {
         if (!rc_data.is_hover_mode || !odom_is_received(now_time))
@@ -335,6 +368,21 @@ void PX4CtrlFSM::process()
 
     default:
         break;
+    }
+
+    if (state == PASS_THROUGH)
+    {
+        // Forward the latest external body-rate + thrust setpoint verbatim
+        // at the ctrl rate (repeat-forward keeps the offboard stream alive
+        // even when the producer runs slower than this loop).
+        mavros_msgs::msg::AttitudeTarget msg = pass_through_data.msg;
+        msg.header.stamp = now_time;
+        msg.header.frame_id = "FCU";
+        ctrl_FCU_pub->publish(msg);
+
+        // STEP8 bookkeeping for the bypassed pipeline
+        last_state = state;
+        return;
     }
 
     // STEP2: solve and update new control commands
@@ -777,5 +825,48 @@ bool PX4CtrlFSM::toggle_arm_disarm(bool arm)
         return false;
     }
 
+    return true;
+}
+
+bool PX4CtrlFSM::toggle_pass_through(bool enable)
+{
+    const rclcpp::Time now_time = rclcpp::Clock().now();
+
+    if (enable)
+    {
+        if (state != AUTO_HOVER)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("px4ctrl"),
+                         "[px4ctrl] [%s] Reject PASS_THROUGH: only AUTO_HOVER can switch over", state_name(state));
+            return false;
+        }
+        if (!state_data.current_state.armed)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("px4ctrl"), "[px4ctrl] Reject PASS_THROUGH: not armed");
+            return false;
+        }
+        if (!pass_through_data.is_received(now_time, param.msg_timeout.pass_through))
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("px4ctrl"),
+                         "[px4ctrl] Reject PASS_THROUGH: external rates stream not received yet");
+            return false;
+        }
+
+        state = PASS_THROUGH;
+        px4ctrl_trace::transition("AUTO_HOVER", "PASS_THROUGH", "service_on");
+        return true;
+    }
+
+    if (state != PASS_THROUGH)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("px4ctrl"),
+                     "[px4ctrl] [%s] Reject PASS_THROUGH exit: not in PASS_THROUGH", state_name(state));
+        return false;
+    }
+
+    state = AUTO_HOVER;
+    set_hov_with_odom();
+    controller.resetThrustMapping();
+    px4ctrl_trace::transition("PASS_THROUGH", "AUTO_HOVER", "service_off");
     return true;
 }
