@@ -40,7 +40,7 @@ publisher).
 
 ```bash
 # from repo root
-docker compose -f simulations/gazebo/docker/docker-compose.yml up -d
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d
 ```
 
 Inside `px4-simulator` (interactive, user 1002):
@@ -64,14 +64,14 @@ Upstream PX4 (no fork) is cloned in the image and pinned via
 `ARG PX4_VERSION` (default `v1.17.0`) in `px4-simulator.dockerfile`:
 
 ```bash
-docker compose -f simulations/gazebo/docker/docker-compose.yml build px4-simulator
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build px4-simulator
 ```
 
 Behind a campus/corporate proxy, pass proxy build args (docker-proxy host
 address as seen from the build container):
 
 ```bash
-docker compose -f simulations/gazebo/docker/docker-compose.yml build \
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build \
   --build-arg http_proxy=http://172.17.0.1:7890 \
   --build-arg https_proxy=http://172.17.0.1:7890 \
   --build-arg HTTP_PROXY=http://172.17.0.1:7890 \
@@ -82,9 +82,9 @@ docker compose -f simulations/gazebo/docker/docker-compose.yml build \
 ## Notes
 
 - The `nav_infra` image is shared by simulation and the real machine;
-  only the bringup profile differs (see `bringup/launch/nav_infra.launch.py`).
-- K3s orchestration mirrors this stack (see `simulations/k3s/`); the
+  only the bringup profile differs (see `infra/nav_infra/bringup/launch/nav_infra.launch.py`).
+- K3s orchestration mirrors this stack (see `infra/sim_k3s/`); the
   `NAV_PROFILE` ConfigMap key selects the sidecar profile.
 - The retired tail-sitter fork (`px4-vtol`) and the uXRCE-DDS bridge are
   gone; aerodynamics injection is not part of this stack (see
-  `simulations/simple_sim/` for the aero line).
+  `infra/sim_infra/simple_sim/` for the aero line).

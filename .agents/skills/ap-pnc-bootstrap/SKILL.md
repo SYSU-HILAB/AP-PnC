@@ -145,7 +145,7 @@ uv run ap-pnc aerodyn show --aero-type lyu  # specific type
 
 ```bash
 uv run ap-pnc gen-nmpc-lib
-docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build ap-pnc
 ```
 
 The resulting `c_nmpc_node` binary is fully self-contained — zero acados runtime deps.

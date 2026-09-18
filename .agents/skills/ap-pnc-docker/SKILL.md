@@ -17,23 +17,23 @@ From repo root (compose handles all services):
 
 ```bash
 uv run ap-pnc gen-nmpc-lib
-docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc nav_infra
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build ap-pnc nav_infra
 ```
 
 `px4-simulator` builds from upstream PX4 v1.17.0 (pinned by
 `ARG PX4_VERSION`, Gazebo Harmonic) and is slow — only rebuild when bumping
 the firmware. Behind a proxy pass
 `--build-arg https_proxy=http://<docker0-ip>:<port>` (see
-`simulations/gazebo/README.md`).
+`infra/sim_infra/gazebo/README.md`).
 
 ## Run
 
 ```bash
 # all services (add --scale qground_control=0 for headless)
-docker compose -f simulations/gazebo/docker/docker-compose.yml up -d
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d
 
 # core subset
-docker compose -f simulations/gazebo/docker/docker-compose.yml up -d \
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d \
   --no-deps px4-simulator nav_infra ap-pnc
 ```
 
@@ -51,7 +51,7 @@ docker exec ap-pnc bash -c 'pkill -f c_nmpc' && ...   # restart the node/stack
 ```
 
 Rebuild `ap-pnc` only when C++ sources or dependencies change; config
-(`bringup/`) is live through the symlink-install mount.
+(`core/bringup/`) is live through the symlink-install mount.
 
 ## Tips
 

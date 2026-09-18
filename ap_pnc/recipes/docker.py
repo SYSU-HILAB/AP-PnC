@@ -9,7 +9,7 @@ app = typer.Typer()
 
 def _compose(*args: str) -> None:
     git_root = get_git_root()
-    compose_file = git_root / "simulations" / "gazebo" / "docker" / "docker-compose.yml"
+    compose_file = git_root / "infra" / "sim_infra" / "gazebo" / "docker" / "docker-compose.yml"
     cmd = ["docker", "compose", "-f", str(compose_file), *args]
     subprocess.run(cmd, check=True)
 

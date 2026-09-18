@@ -120,12 +120,12 @@ class OrchestratorBridge:
     def apply_writes_to_config(self) -> str:
         """
         Synchronize current scenario parameters to bringup/config/planning.yaml
-        and simulations/simple_sim/config/simple_sim.yaml.
+        and infra/sim_infra/simple_sim/config/simple_sim.yaml.
         """
         messages = []
 
         # 1. Write to bringup/config/planning.yaml
-        planning_yaml = self.git_root / "bringup" / "config" / "planning.yaml"
+        planning_yaml = self.git_root / "core" / "bringup" / "config" / "planning.yaml"
         if planning_yaml.exists():
             try:
                 data = yaml.safe_load(planning_yaml.read_text()) or {}
@@ -144,7 +144,7 @@ class OrchestratorBridge:
                 messages.append(f"planning.yaml error: {e}")
 
         # 2. Write to simulations/simple_sim/config/simple_sim.yaml (open scenario)
-        sim_yaml = self.git_root / "simulations" / "simple_sim" / "config" / "simple_sim.yaml"
+        sim_yaml = self.git_root / "infra" / "sim_infra" / "simple_sim" / "config" / "simple_sim.yaml"
         if sim_yaml.exists():
             try:
                 sim_data = yaml.safe_load(sim_yaml.read_text()) or {}

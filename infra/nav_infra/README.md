@@ -1,8 +1,8 @@
 # nav_infra — base-services sidecar
 
 Single self-contained unit providing the generic flight interface. NOT
-research code: the core container (`ros_packages/`: planner line, c_nmpc,
-px4ctrl) consumes these services over the shared host-network ROS 2 graph.
+research code: the core container (`core/ros_packages/`: planner line,
+c_nmpc, px4ctrl) consumes these services over the shared host-network ROS 2 graph.
 
 ## Contents
 
@@ -29,7 +29,7 @@ Selection: `ros2 launch bringup nav_infra.launch.py profile:=sim|real`
 ## Build
 
 ```bash
-docker compose -f simulations/gazebo/docker/docker-compose.yml build nav_infra
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build nav_infra
 # behind a proxy: add --build-arg https_proxy=http://<docker0-ip>:<port> ...
 ```
 

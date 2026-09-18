@@ -15,16 +15,16 @@ The container environment cleanly decouples runtime dependencies from source cod
 ### amd64
 ```bash
 # Build base image
-docker build -f docker/amd64/ros2-base.dockerfile --target base -t ap-pnc-ros2-base:amd64 .
+docker build -f core/docker/amd64/ros2-base.dockerfile --target base -t ap-pnc-ros2-base:amd64 .
 
 # Or build self-contained runner image with precompiled packages
-docker build -f docker/amd64/ros2-base.dockerfile --target runner -t ap-pnc:amd64 .
+docker build -f core/docker/amd64/ros2-base.dockerfile --target runner -t ap-pnc:amd64 .
 ```
 
 ### arm64
 ```bash
 # Build base image (using buildx or on Apple Silicon / arm64 Linux)
-docker buildx build --platform linux/arm64 -f docker/arm64/ros2-base.dockerfile --target base -t ap-pnc-ros2-base:arm64 .
+docker buildx build --platform linux/arm64 -f core/docker/arm64/ros2-base.dockerfile --target base -t ap-pnc-ros2-base:arm64 .
 ```
 
 ## Running Dev Container

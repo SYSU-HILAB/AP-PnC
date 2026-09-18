@@ -20,6 +20,6 @@ RUN chown -R qgc:qgc /app
 
 USER qgc
 WORKDIR /home/qgc
-COPY simulations/gazebo/installations/QGroundControl.ini /home/qgc/.config/QGroundControl.org/QGroundControl.ini
+COPY infra/sim_infra/gazebo/installations/QGroundControl.ini /home/qgc/.config/QGroundControl.org/QGroundControl.ini
 RUN mkdir ulgs/
 RUN chmod 777 ulgs/

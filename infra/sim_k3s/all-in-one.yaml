@@ -6,15 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: sim-config
     app.kubernetes.io/part-of: ap-pnc
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: sim-config
-  namespace: sim
-  labels:
-    app.kubernetes.io/name: sim-config
-    app.kubernetes.io/part-of: ap-pnc
 data:
   # =========================================================================
   # SIM_TYPE: 仿真模式选择器
@@ -377,8 +368,9 @@ spec:
               name: host-localtime
               readOnly: true
 
-        # Container 2: nav_infra — single navigation gateway (mavros2 in
-        # the sim profile; livox + fast_lio + ekf_quat for the real one).
+        # Container 2: nav_infra — single base-services gateway (mavros2 +
+        # nmpc_bridge + flight_mux in the sim profile; livox + fast_lio +
+        # ekf_quat join in the real one). Research code stays in ap-pnc.
         # NAV_PROFILE selects the bringup profile (sim | real) via ConfigMap.
         - name: nav_infra
           image: nav_infra:latest
@@ -395,7 +387,7 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              echo "[nav_infra] Starting navigation gateway (profile: ${NAV_PROFILE:-sim})..."
+              echo "[nav_infra] Starting base-services gateway (profile: ${NAV_PROFILE:-sim})..."
               exec ros2 launch bringup nav_infra.launch.py profile:=${NAV_PROFILE:-sim}
           stdin: true
           tty: true

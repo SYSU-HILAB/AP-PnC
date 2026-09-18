@@ -15,7 +15,7 @@ repeat-forwards the NMPC rates stream.
 
 ```bash
 # 1) containers (skip qgc for headless runs)
-docker compose -f simulations/gazebo/docker/docker-compose.yml up -d \
+docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d \
   --no-deps px4-simulator nav_infra ap-pnc
 
 # 2) SITL inside the simulator container — GZ_IP is MANDATORY (see pitfalls)

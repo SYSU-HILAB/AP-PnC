@@ -21,7 +21,7 @@ def _ensure_k3s_deployed(namespace: str = "sim") -> None:
     res = _run_kubectl("get", "cm", "sim-config", "-n", namespace, check=False, capture=True)
     if res.returncode != 0:
         git_root = get_git_root()
-        manifest = git_root / "simulations/k3s/all-in-one.yaml"
+        manifest = git_root / "infra/sim_k3s/all-in-one.yaml"
         console.print(f"[bold cyan]Deploying K3s simulation stack from {manifest}...[/bold cyan]")
         _run_kubectl("apply", "-f", str(manifest))
         time.sleep(1)
@@ -171,7 +171,7 @@ def build(
                 "docker",
                 "compose",
                 "-f",
-                str(git_root / "simulations/simple_sim/docker/docker-compose.yml"),
+                str(git_root / "infra/sim_infra/simple_sim/docker/docker-compose.yml"),
                 "build",
             ],
             check=True,
@@ -183,7 +183,7 @@ def build(
                 "docker",
                 "compose",
                 "-f",
-                str(git_root / "simulations/gazebo/docker/docker-compose.yml"),
+                str(git_root / "infra/sim_infra/gazebo/docker/docker-compose.yml"),
                 "build",
             ],
             check=True,

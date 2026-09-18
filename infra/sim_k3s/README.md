@@ -53,7 +53,7 @@ uv run ap-pnc k3s apply
 ```
 或直接通过 `kubectl`：
 ```bash
-kubectl apply -f simulations/k3s/all-in-one.yaml
+kubectl apply -f infra/sim_k3s/all-in-one.yaml
 ```
 
 ### 2. 动态切换仿真器
@@ -111,13 +111,13 @@ uv run ap-pnc k3s delete
 ## Bringup config mounting (core stack)
 
 Core ROS2 nodes read their configuration directly from sectioned yaml files
-(`bringup/config/planning.yaml`, `bringup/config/c_nmpc.yaml`) — no ROS
+(`core/bringup/config/planning.yaml`, `core/bringup/config/c_nmpc.yaml`) — no ROS
 parameters. When the core stack is deployed into k3s, mount these via the
 same `sim-config` ConfigMap pattern:
 
 ```yaml
 volumeMounts:
-  - mountPath: /workspace/bringup/config/planning.yaml
+  - mountPath: /workspace/core/bringup/config/planning.yaml
     name: bringup-config
     subPath: planning.yaml
     readOnly: true
@@ -127,6 +127,6 @@ volumes:
       name: sim-config
 ```
 
-Nodes read the conventional cwd-relative path `bringup/config/*.yaml`,
+Nodes read the conventional cwd-relative path `core/bringup/config/*.yaml`,
 which matches the `/workspace` workdir — no environment variables needed.
 ConfigMap updates take effect on rollout restart.

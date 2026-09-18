@@ -58,7 +58,7 @@ def aero(
     """Build aerodynamics package (colcon)."""
     _colcon_build(
         ["aerodynamics"],
-        paths=["simulations/aerodynamics", "ros_packages"],
+        paths=["infra/sim_infra/aerodynamics", "core/ros_packages"],
         clean=clean,
     )
 
@@ -103,11 +103,18 @@ def cnmpc(
 def all_(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
 ) -> None:
-    """Build the whole workspace (core + nav_infra, all packages)."""
+    """Build the whole workspace (core + nav_infra code, all packages).
+
+    NOTE: infra/nav_infra/bringup is deliberately NOT in the base paths —
+    it is a same-name `bringup` package that lives only inside the
+    nav_infra container (entry-environment isolation, never co-installed
+    with core/bringup in one workspace).
+    """
     _colcon_build(
         [],
-        paths=["ros_packages", "nav_infra/ros_packages", "bringup",
-               "simulations/aerodynamics", "simulations/simple_sim/src"],
+        paths=["core/ros_packages", "infra/nav_infra/ros_packages",
+               "core/bringup", "infra/sim_infra/aerodynamics",
+               "infra/sim_infra/simple_sim/src"],
         clean=clean,
     )
 
@@ -120,7 +127,7 @@ def bindings() -> None:
     bindings_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [sys.executable, "setup.py", "build_ext", "--build-lib", str(bindings_dir)],
-        cwd=git_root / "simulations" / "aerodynamics" / "python",
+        cwd=git_root / "infra" / "sim_infra" / "aerodynamics" / "python",
         check=True,
     )
     so_files = list(bindings_dir.glob("aerodynamics_bindings*.so"))

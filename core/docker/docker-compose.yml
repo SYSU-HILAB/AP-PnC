@@ -1,7 +1,7 @@
 services:
   ros2-dev-amd64:
     build:
-      context: ..
+      context: ../..
       dockerfile: docker/amd64/ros2-base.dockerfile
       target: base
     image: ap-pnc-ros2-base:amd64
@@ -9,9 +9,9 @@ services:
     network_mode: host
     ipc: host
     volumes:
-      - ../ros_packages:/workspace/src:rw
-      - ../bringup:/workspace/bringup:rw
-      - ../.artifacts/nmpc_wrapper:/workspace/artifacts:ro
+      - ../../core/ros_packages:/workspace/src:rw
+      - ../../core/bringup:/workspace/bringup:rw
+      - ../../.artifacts/nmpc_wrapper:/workspace/artifacts:ro
     environment:
       - AP_PNC_DIR=/workspace
       - NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a
@@ -20,7 +20,7 @@ services:
 
   ros2-dev-arm64:
     build:
-      context: ..
+      context: ../..
       dockerfile: docker/arm64/ros2-base.dockerfile
       target: base
     image: ap-pnc-ros2-base:arm64
@@ -28,9 +28,9 @@ services:
     network_mode: host
     ipc: host
     volumes:
-      - ../ros_packages:/workspace/src:rw
-      - ../bringup:/workspace/bringup:rw
-      - ../.artifacts/nmpc_wrapper:/workspace/artifacts:ro
+      - ../../core/ros_packages:/workspace/src:rw
+      - ../../core/bringup:/workspace/bringup:rw
+      - ../../.artifacts/nmpc_wrapper:/workspace/artifacts:ro
     environment:
       - AP_PNC_DIR=/workspace
       - NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a

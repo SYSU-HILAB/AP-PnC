@@ -27,8 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup decoupled workspace layout
-# /workspace/src       <- host ros_packages/
-# /workspace/bringup   <- host bringup/
+# /workspace/src       <- host core/ros_packages/
+# /workspace/bringup   <- host core/bringup/
 # /workspace/artifacts <- host .artifacts/nmpc_wrapper/ (libnmpc_bundle.a)
 WORKDIR /workspace
 RUN mkdir -p /workspace/src /workspace/bringup /workspace/artifacts
@@ -40,7 +40,7 @@ ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
     && echo "if [ -f /workspace/install/setup.bash ]; then source /workspace/install/setup.bash; fi" >> /root/.bashrc
 
-COPY docker/arm64/entrypoint.sh /entrypoint.sh
+COPY core/docker/arm64/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

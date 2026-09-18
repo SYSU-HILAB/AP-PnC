@@ -196,7 +196,7 @@ initial_alpha_deg: 90.0
 
 1. **Lookup Table**: Binary search with linear interpolation (robust, always converges)
    - Used when `solver_method = "lookup_table"`
-   - Data: `artifacts/simulations/aero_lookup_table.csv`
+   - Data: `artifacts/infra/sim_infra/aero_lookup_table.csv`
 
 2. **Newton-Raphson**: Iterative solver with temporal coherence
    - Used when `solver_method = "newton_raphson"`

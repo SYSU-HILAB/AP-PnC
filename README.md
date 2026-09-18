@@ -93,30 +93,25 @@ uv run ap-pnc lint                 # Lint
 ## Repository Layout
 
 ```
-ros_packages/        # Research code
-  planner/           #   trajectory generation: tailsitter_df (DF phi-theory
-                     #   kernel), basic_trajectories, trajectory_server, traj_buffer
-  c_nmpc/            #   NMPC tracking node + nmpc_wrapper
-  px4ctrl/           #   vendored L2 control (arming/offboard/takeoff/PASS_THROUGH)
-  quadrotor_msgs/    #   vendored (PositionCommand, TakeoffLand, Px4ctrlDebug)
-  utils/msgs/        #   interface package (shared ROS msg contract, no px4_msgs)
-  utils/             #   ROS2-Utils + vendored libraries
-nav_infra/           # Base-services sidecar (not research code)
-  ros_packages/      #   px4_interface (nmpc_bridge RLS+INDI), livox, fast_lio, ekf_quat_pose
-  docker/Dockerfile  #   nav_infra:latest — mavros2 (source) + gateway + lio, sim/real profiles
-bringup/             # Single config/launch source: planning, c_nmpc, px4ctrl (sim/real),
-                     # mavros_bridge, nav profiles; bringup/nav_infra.launch.py
-ap_pnc/              # Python package: CLI, nmpc/ codegen toolchain, lu_mpc, aerodynamics
-simulations/         # aerodynamics (ground truth), gazebo, simple_sim, k3s
+core/                # Research code — owns only itself
+  ros_packages/      #   planner (tailsitter_df + trajectory_server + traj_buffer),
+                     #   c_nmpc, px4ctrl, quadrotor_msgs, utils (+msgs interface contract)
+  bringup/           #   core config/launch: planning, c_nmpc, px4ctrl{,_real}, fastdds
+  docker/            #   amd64/arm64 ros2-base dev images
+infra/               # Infrastructure — each unit self-contained
+  nav_infra/         #   ros_packages/ (nmpc_bridge RLS+INDI, livox, fast_lio, ekf_quat_pose)
+                     #   + own bringup/ (nav profiles, mavros_bridge) + docker/Dockerfile
+  sim_infra/         #   gazebo/ (stock PX4 v1.17 + Harmonic stack), simple_sim/, aerodynamics/
+  sim_k3s/           #   ConfigMap-driven sim orchestration manifests
+ap_pnc/              # Python CLI — top-level orchestration (stack start, build, sim)
 benchmark/           # Prior-based experiment configs (Lyu force-balance)
-docker/              # amd64/arm64 ros2-base images
 .agents/skills/      # bootstrap / docker / gazebo-e2e (flight runbook + pitfalls)
 ```
 
 ## Runtime Configuration
 
 No ROS parameters for core nodes — they read sectioned yaml directly from
-the cwd-relative `bringup/config/` (matches the container `/workspace`
+the cwd-relative `core/bringup/config/` (matches the container `/workspace`
 mount):
 
 - `planning.yaml` — `problem_formulation` (box, basic_traj, nested cost,
@@ -135,8 +130,8 @@ mount):
 
 | Layer | Directory | What it runs |
 |-------|-----------|--------------|
-| Gazebo | `simulations/gazebo/` | Generic-interface SITL: stock PX4 v1.17.0 under Gazebo Harmonic (`gz_x500`), bridged by mavros2 (`px4-simulator` + `nav_infra` + `qground_control` + `ap-pnc`) |
-| Simple sim | `simulations/simple_sim/` | Lightweight C++ simulator (MARSIM-style) with synthetic LiDAR sensing |
+| Gazebo | `infra/sim_infra/gazebo/` | Generic-interface SITL: stock PX4 v1.17.0 under Gazebo Harmonic (`gz_x500`), bridged by mavros2 (`px4-simulator` + `nav_infra` + `qground_control` + `ap-pnc`) |
+| Simple sim | `infra/sim_infra/simple_sim/` | Lightweight C++ simulator (MARSIM-style) with synthetic LiDAR sensing |
 
 ```bash
 uv run ap-pnc sim gazebo     # Gazebo layer via K3s ConfigMap
@@ -146,8 +141,8 @@ uv run ap-pnc sim stop       # scale everything down
 
 For the full flight procedure (takeoff → hover → NMPC handover) and the
 SITL pitfalls reference, see the `ap-pnc-gazebo-e2e` skill in
-`.agents/skills/`. Details of each layer: `nav_infra/README.md`,
-`simulations/gazebo/README.md`, `simulations/simple_sim/README.md`.
+`.agents/skills/`. Details of each layer: `infra/nav_infra/README.md`,
+`infra/sim_infra/gazebo/README.md`, `infra/sim_infra/simple_sim/README.md`.
 
 ---
 

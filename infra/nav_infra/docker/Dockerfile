@@ -64,12 +64,13 @@ RUN export http_proxy="${HTTP_PROXY:-}" https_proxy="${HTTPS_PROXY:-}" \
 # (config/launch carrier). Plain install (no symlink-install) so the image
 # is self-contained; the build tree is dropped afterwards.
 WORKDIR /nav_ws
-COPY nav_infra/ros_packages/livox_ros_driver2 src/livox_ros_driver2
-COPY nav_infra/ros_packages/fast_lio src/fast_lio
-COPY nav_infra/ros_packages/ekf_quat_pose src/ekf_quat_pose
-COPY nav_infra/ros_packages/px4_interface src/px4_interface
-COPY ros_packages/utils/msgs src/interface
-COPY bringup src/bringup
+COPY infra/nav_infra/ros_packages/livox_ros_driver2 src/livox_ros_driver2
+COPY infra/nav_infra/ros_packages/fast_lio src/fast_lio
+COPY infra/nav_infra/ros_packages/ekf_quat_pose src/ekf_quat_pose
+COPY infra/nav_infra/ros_packages/px4_interface src/px4_interface
+# The shared interface contract is defined by the core; nav_infra consumes it.
+COPY core/ros_packages/utils/msgs src/interface
+COPY infra/nav_infra/bringup src/bringup
 
 RUN bash -c ". /opt/ros/humble/setup.sh \
     && . /opt/mavros/setup.bash \

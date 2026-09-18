@@ -1,8 +1,8 @@
 services:
   px4-simulator:
     build:
-      context: ../../..
-      dockerfile: simulations/gazebo/docker/px4-simulator.dockerfile
+      context: ../../../..
+      dockerfile: infra/sim_infra/gazebo/docker/px4-simulator.dockerfile
       network: host
     image: px4-simulator:latest
     container_name: px4-simulator
@@ -39,8 +39,8 @@ services:
 
   qground_control:
     build:
-      context: ../../..
-      dockerfile: simulations/gazebo/docker/qgc.dockerfile
+      context: ../../../..
+      dockerfile: infra/sim_infra/gazebo/docker/qgc.dockerfile
       network: host
     image: qground_control:latest
     container_name: qground_control
@@ -58,7 +58,7 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/qgc/.Xauthority:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ../../../artifacts/benchmarks/ulgs:/home/qgc/artifacts/benchmarks/ulgs
+      - ../../../../artifacts/benchmarks/ulgs:/home/qgc/artifacts/benchmarks/ulgs
     deploy:
       resources:
         reservations:
@@ -73,8 +73,8 @@ services:
   # Research code (planner + c_nmpc + px4ctrl) stays in the ap-pnc core.
   nav_infra:
     build:
-      context: ../../..
-      dockerfile: nav_infra/docker/Dockerfile
+      context: ../../../..
+      dockerfile: infra/nav_infra/docker/Dockerfile
     image: nav_infra:latest
     container_name: nav_infra
     network_mode: host
@@ -91,8 +91,8 @@ services:
 
   ap-pnc:
     build:
-      context: ../../..
-      dockerfile: simulations/gazebo/docker/ap-pnc.dockerfile
+      context: ../../../..
+      dockerfile: infra/sim_infra/gazebo/docker/ap-pnc.dockerfile
     image: ap-pnc:latest
     container_name: ap-pnc
     privileged: true
@@ -107,10 +107,10 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ../../../.artifacts/nmpc_wrapper/libnmpc_bundle.a:/workspace/artifacts/libnmpc_bundle.a
-      - ../../../ros_packages:/workspace/src
-      - ../../../bringup:/workspace/bringup
-      - ../../../artifacts/simulations/temp_data:/workspace/artifacts/simulations/temp_data
+      - ../../../../.artifacts/nmpc_wrapper/libnmpc_bundle.a:/workspace/artifacts/libnmpc_bundle.a
+      - ../../../../core/ros_packages:/workspace/src
+      - ../../../../core/bringup:/workspace/bringup
+      - ../../../../artifacts/simulations/temp_data:/workspace/artifacts/simulations/temp_data
     command: bash
     stdin_open: true
     tty: true

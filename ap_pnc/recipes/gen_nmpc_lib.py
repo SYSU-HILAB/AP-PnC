@@ -32,7 +32,7 @@ def _build_acados_static(git_root: Path) -> None:
 
 def _build_wrapper_and_bundle(git_root: Path) -> None:
     """Build libnmpc_solver.a, then merge with static acados into libnmpc_bundle.a."""
-    wrapper_src = git_root / "ros_packages" / "c_nmpc" / "nmpc_wrapper"
+    wrapper_src = git_root / "core" / "ros_packages" / "c_nmpc" / "nmpc_wrapper"
     build_dir = git_root / ".artifacts" / "nmpc_wrapper"
     bundle = build_dir / "libnmpc_bundle.a"
 
