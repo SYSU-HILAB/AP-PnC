@@ -1,6 +1,6 @@
 ---
 name: ap-pnc-docker
-description: Build and run the AP-PnC ROS2 execution environment in Docker. Covers prerequisites, building, running, and hot-update of the NMPC solver bundle. Use when working with the ROS2 stack or when the user mentions Docker/container build/run/up.
+description: Build and run the AP-PnC gazebo Docker stack (px4-simulator, nav_infra, ap-pnc). Covers prerequisites, building, running, and hot-update of the NMPC solver bundle. Use when working with the ROS2 stack or when the user mentions Docker/container build/run/up.
 ---
 
 # AP-PnC Docker
@@ -8,50 +8,56 @@ description: Build and run the AP-PnC ROS2 execution environment in Docker. Cove
 ## Prerequisites
 
 - Host bootstrap must be done: `uv run ap-pnc install`
-- OCP bundle must exist: `ls build/nmpc_wrapper/libnmpc_bundle.a`
+- NMPC bundle must exist: `ls .artifacts/nmpc_wrapper/libnmpc_bundle.a`
   If not, run `uv run ap-pnc gen-nmpc-lib` first.
 
 ## Build
 
-One command from repo root:
-
-```bash
-./scripts/docker-build.sh
-```
-
-Or manually:
+From repo root (compose handles all services):
 
 ```bash
 uv run ap-pnc gen-nmpc-lib
-docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc
+docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc nav_infra
 ```
+
+`px4-simulator` builds from upstream PX4 v1.17.0 (pinned by
+`ARG PX4_VERSION`, Gazebo Harmonic) and is slow — only rebuild when bumping
+the firmware. Behind a proxy pass
+`--build-arg https_proxy=http://<docker0-ip>:<port>` (see
+`simulations/gazebo/README.md`).
 
 ## Run
 
-Start all services (px4-simulator, qgroundcontrol, ap-pnc):
-
 ```bash
-docker compose -f simulations/gazebo/docker/docker-compose.yml up
+# all services (add --scale qground_control=0 for headless)
+docker compose -f simulations/gazebo/docker/docker-compose.yml up -d
+
+# core subset
+docker compose -f simulations/gazebo/docker/docker-compose.yml up -d \
+  --no-deps px4-simulator nav_infra ap-pnc
 ```
 
-Start ap-pnc only (if other services are already running):
-
-```bash
-docker compose -f simulations/gazebo/docker/docker-compose.yml up ap-pnc
-```
+Containers are interactive (`command: bash`) — the SITL and the control
+stack are started inside them per the `ap-pnc-gazebo-e2e` skill.
 
 ## Hot Update
 
-When the OCP model/weights change:
+The bundle is bind-mounted at runtime, so most solver updates need no
+rebuild:
 
 ```bash
-uv run ap-pnc gen-nmpc-lib              # regenerate bundle
-docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc  # rebuild image
-docker compose up ap-pnc       # restart container
+uv run ap-pnc gen-nmpc-lib     # rewrites .artifacts/nmpc_wrapper/libnmpc_bundle.a
+docker exec ap-pnc bash -c 'pkill -f c_nmpc' && ...   # restart the node/stack
 ```
+
+Rebuild `ap-pnc` only when C++ sources or dependencies change; config
+(`bringup/`) is live through the symlink-install mount.
 
 ## Tips
 
-- The bundle `.a` is volume-mounted at runtime for easy updates
-- `NMPC_BUNDLE_PATH=/ap-pnc/build/nmpc_wrapper/libnmpc_bundle.a` is already set in the image
-- The final `c_nmpc_node` binary is fully self-contained — no acados `.so` dependencies
+- `NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a` is set in the
+  image; `c_nmpc_node` links acados statically — no `.so` dependencies.
+- Core image (`ap-pnc-ros2-base`) stays lean; PCL/tf2/mavros runtime
+  dependencies live only in the `nav_infra` image.
+- The install dir is root-owned after container builds — clean it via a
+  container, not host `rm`.

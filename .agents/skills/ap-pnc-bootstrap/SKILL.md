@@ -79,7 +79,7 @@ Output:
 | ----------------------------------- | -------------------------------- |
 | Generated `.c` / `.h` / `Makefile`   | `c_generated_code/`              |
 | `libacados_ocp_solver_tailsitter_flu.so` | `c_generated_code/` (shared)     |
-| `libnmpc_bundle.a`                  | `build/nmpc_wrapper/` (static)   |
+| `libnmpc_bundle.a`                  | `.artifacts/nmpc_wrapper/` (static)   |
 
 The bundle is a single static archive containing the wrapper + generated solver + acados/hpipm/blasfeo.
 
@@ -92,7 +92,7 @@ uv run ap-pnc --help
 uv run python -c "from acados_template import AcadosOcpSolver; print('OK')"
 
 # Bundle exists
-ls -lh build/nmpc_wrapper/libnmpc_bundle.a
+ls -lh .artifacts/nmpc_wrapper/libnmpc_bundle.a
 ```
 
 ## ML / Aerodynamics Usage
@@ -143,12 +143,6 @@ uv run ap-pnc aerodyn show --aero-type lyu  # specific type
 
 ## Docker Build
 
-```bash
-# One command — regenerates bundle + builds image
-./scripts/docker-build.sh
-```
-
-Or manually:
 ```bash
 uv run ap-pnc gen-nmpc-lib
 docker compose -f simulations/gazebo/docker/docker-compose.yml build ap-pnc
