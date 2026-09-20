@@ -48,11 +48,11 @@ docker exec ap-pnc bash -c 'ros2 service call /px4ctrl/toggle_pass_through \
 #   Flight A: throttle_estimator: 0 (thr2acc mapping)
 #   Flight B: throttle_estimator: 1 (RLS eta + INDI)  -> rebuild nav_infra
 # Compare /debugPx4ctrl hover_percentage and
-# /nmpc_bridge/throttle_model_status (eta, estimate_valid).
+# /px4ctrl/throttle_model_status (eta, estimate_valid).
 ```
 
 Smoke topic checks (inside any ROS container): `/mavros/state` connected=true,
-`/mavros/imu/data` ~200 Hz, `/nmpc_bridge/odom_world` fresh, `/cur_state`
+`/mavros/imu/data` ~200 Hz, `/px4ctrl/odom_world` fresh, `/cur_state`
 origin locked in the px4ctrl log.
 
 ## Pitfalls (all were hit and fixed — do not rediscover)
@@ -95,7 +95,7 @@ origin locked in the px4ctrl log.
    gz server dies creating log dirs. chown in the image or drop the mount.
 9. **RLS throttle model**: px4ctrl seeds eta = g/hover_percentage
    (sim: 9.81/0.9 ≈ 10.9, real: ≈ 19.6). During `go` handover the estimate
-   refines until `estimate_valid: true` (`/nmpc_bridge/throttle_model_status`);
+   refines until `estimate_valid: true` (`/px4ctrl/throttle_model_status`);
    if it wobbles, seed/check `thrust_model.hover_percentage` in
    `px4ctrl{,_real}.yaml`.
 10. **Do not manually spawn PX4/gz outside the make flow** — the bridge's

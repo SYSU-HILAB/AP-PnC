@@ -8,7 +8,7 @@ c_nmpc) consumes these services over the shared host-network ROS 2 graph.
 
 | Package           | Role                                                                |
 | ----------------- | ------------------------------------------------------------------- |
-| `px4ctrl`         | FCU interface + L2 control: arming/offboard/takeoff/hover/land, sole `/mavros/setpoint_raw/attitude` publisher, state adapter (`/cur_state`, `/cur_state_odom`, `/nmpc_bridge/odom_world`). Controller modes: `ctrl_mode=0` tracking, `ctrl_mode=1` NMPC rates + RLS eta/INDI thrust from `/mpc_controls` |
+| `px4ctrl`         | FCU interface + L2 control: arming/offboard/takeoff/hover/land, sole `/mavros/setpoint_raw/attitude` publisher, state adapter (`/cur_state`, `/cur_state_odom`, `/px4ctrl/odom_world`). Controller modes: `ctrl_mode=0` tracking, `ctrl_mode=1` NMPC rates + RLS eta/INDI thrust from `/mpc_controls` |
 | `quadrotor_msgs`  | `PositionCommand` / `TakeoffLand` / `Px4ctrlDebug` (px4ctrl contract) |
 | `livox_ros_driver2` | Mid-360 driver (real profile)                                    |
 | `fast_lio`        | FAST-LIO2 (real profile)                                             |
@@ -17,11 +17,10 @@ c_nmpc) consumes these services over the shared host-network ROS 2 graph.
 Plus a from-source mavros2 build (the jammy repo ships `mavros-msgs` only),
 installed under `/opt/mavros` inside the image.
 
-`px4_interface` (the former `nmpc_bridge`) was merged into px4ctrl and
-removed: its RLS/INDI logic lives in `include/rls_throttle_model.h` and the
-`ctrl_mode=1` controller path, and its odometry state adapter plus throttle
-telemetry are preserved as `/cur_state*` and
-`/nmpc_bridge/throttle_model_status`.
+px4ctrl natively provides the odometry state adapter (`/cur_state*`,
+`/px4ctrl/odom_world`), the RLS/INDI throttle law
+(`include/rls_throttle_model.h`, `ctrl_mode=1` path), and the throttle
+telemetry on `/px4ctrl/throttle_model_status`.
 
 ## Profiles (same image)
 
@@ -45,7 +44,7 @@ docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build nav_inf
 | Direction | Topic                    | Type                      | Note                          |
 | --------- | ------------------------ | ------------------------- | ----------------------------- |
 | → core    | `/cur_state`             | interface/State           | ENU world, FLU body (50 Hz)   |
-| → core    | `/nmpc_bridge/odom_world`| nav_msgs/Odometry         | world-frame twist (px4ctrl lineage) |
+| → core    | `/px4ctrl/odom_world`    | nav_msgs/Odometry         | world-frame twist (px4ctrl)    |
 | ← core    | `/mpc_controls`          | interface/Controls        | rates_sp FLU + specific_force_sp |
 | ← core    | `/setpoint_cmd`          | quadrotor_msgs/PositionCommand | tracking controller input |
 
@@ -95,4 +94,4 @@ in `include/rls_throttle_model.h` with its unit test
 (`include/rls_throttle_model.h`) with the INDI incremental law
 (`u += kp * (a_sp - a_meas) / eta * dt`). Both are startup parameters in
 `bringup/config/px4ctrl{,_real}.yaml`; telemetry is published on
-`/nmpc_bridge/throttle_model_status` (interface/ThrottleModelStatus).
+`/px4ctrl/throttle_model_status` (interface/ThrottleModelStatus).

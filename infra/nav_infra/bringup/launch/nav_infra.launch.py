@@ -12,7 +12,7 @@ Runs inside the nav_infra container (not research code):
 px4ctrl owns arming/offboard, is the single /mavros/setpoint_raw/attitude
 publisher, and hosts both controller modes (tracking / internal NMPC+INDI)
 plus the odometry state adapter (/cur_state, /cur_state_odom,
-/nmpc_bridge/odom_world). The core container (planner + c_nmpc) consumes
+/px4ctrl/odom_world). The core container (planner + c_nmpc) consumes
 /cur_state and feeds /mpc_controls + /setpoint_cmd over the shared ROS 2
 graph.
 """

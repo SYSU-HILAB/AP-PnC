@@ -138,7 +138,7 @@ class PX4CtrlFSM
 
   /**
    * Fixed-rate /cur_state + /cur_state_odom publication for c_nmpc and
-   * traj_buffer (contract preserved from the former nmpc_bridge).
+   * traj_buffer.
    */
   void     publish_state_adapter();
   FsmState get_state() { return state; }
@@ -165,7 +165,7 @@ class PX4CtrlFSM
   void publish_throttle_status(const rclcpp::Time &now_time,
                                uint64_t            timestamp_sample_us = 0);
 
-  // ---- state adapter (former nmpc_bridge) ----
+  // ---- state adapter (odometry origin lock + /cur_state contract) ----
   Eigen::Vector3d       adapter_init_pos_{Eigen::Vector3d::Zero()};
   bool                  adapter_origin_set_{false};
   bool                  adapter_odom_valid_{false};

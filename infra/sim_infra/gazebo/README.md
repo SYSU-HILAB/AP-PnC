@@ -29,7 +29,7 @@ publisher and also owns arming/offboard/takeoff/hover/land.
 
 - **px4ctrl** owns arming/offboard/takeoff/hover/land (TakeoffLand topic)
   and the odometry state adapter (`/cur_state`, `/cur_state_odom`,
-  `/nmpc_bridge/odom_world`).
+  `/px4ctrl/odom_world`).
 - **Handover**: `ros2 service call /px4ctrl/toggle_pass_through
   std_srvs/srv/SetBool "{data: true}"` (or `ap-pnc stack trigger go`)
   switches px4ctrl to its remote-rates source (`ctrl_mode=1` internal NMPC

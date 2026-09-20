@@ -75,10 +75,10 @@ int main(int argc, char *argv[])
           [&fsm](const quadrotor_msgs::msg::TakeoffLand::SharedPtr msg)
           { fsm.takeoff_land_data.feed(msg); });
   // External rates + thrust setpoint forwarded verbatim in PASS_THROUGH
-  // (external bridge; the internal nmpc controller mode uses /mpc_controls).
+  // (external stream; the internal nmpc controller mode uses /mpc_controls).
   auto pass_through_sub =
       node->create_subscription<mavros_msgs::msg::AttitudeTarget>(
-          "/nmpc_bridge/setpoint_raw/attitude", qos,
+          "/px4ctrl/setpoint_raw/attitude", qos,
           [&fsm](const mavros_msgs::msg::AttitudeTarget::SharedPtr msg)
           { fsm.pass_through_data.feed(msg); });
 
@@ -118,18 +118,17 @@ int main(int argc, char *argv[])
   fsm.debug_pub = node->create_publisher<quadrotor_msgs::msg::Px4ctrlDebug>(
       "/debugPx4ctrl", 10);  // debug
 
-  // State adapter outputs + throttle estimator telemetry (contracts
-  // preserved from the former nmpc_bridge node).
+  // State adapter outputs + throttle estimator telemetry.
   auto latch_qos = rclcpp::QoS(1).transient_local();
   fsm.state_pub =
       node->create_publisher<interface::msg::State>("/cur_state", latch_qos);
   fsm.state_odom_pub = node->create_publisher<nav_msgs::msg::Odometry>(
       "/cur_state_odom", latch_qos);
   fsm.odom_world_pub = node->create_publisher<nav_msgs::msg::Odometry>(
-      "/nmpc_bridge/odom_world", qos);
+      "/px4ctrl/odom_world", qos);
   fsm.throttle_status_pub =
       node->create_publisher<interface::msg::ThrottleModelStatus>(
-          "/nmpc_bridge/throttle_model_status", qos);
+          "/px4ctrl/throttle_model_status", qos);
 
   // /cur_state publication at 50 Hz for c_nmpc + traj_buffer.
   auto state_timer = node->create_wall_timer(
