@@ -6,176 +6,64 @@
 #define __CONTROLLER_H
 
 #include <Eigen/Dense>
+#include <interface/msg/throttle_model_status.hpp>
 #include <mavros_msgs/msg/attitude_target.hpp>
+#include <memory>
 #include <quadrotor_msgs/msg/position_command.hpp>
 #include <quadrotor_msgs/msg/px4ctrl_debug.hpp>
-#include <queue>
 
-#include "input.h"
-#include "rls_throttle_model.h"
+#include "controller/attitude_feedback.h"
+#include "controller/pid_position.h"
+#include "controller/throttle_manager.h"
+#include "controller/thrust_limiter.h"
+#include "controller/tracking_controller_base.h"
+#include "controller/types.h"
+#include "controller/yaw_target.h"
 
-struct DesiredState
-{
-  Eigen::Vector3d    p;
-  Eigen::Vector3d    v;
-  Eigen::Vector3d    a;
-  Eigen::Vector3d    j;
-  Eigen::Quaterniond q;
-  double             yaw;
-  double             yaw_rate;
-  uint8_t            yaw_control_mode{
-      quadrotor_msgs::msg::PositionCommand::YAW_CONTROL_TRACK};
-
-  DesiredState() {};
-
-  DesiredState(OdomData &odom)
-      : p(odom.p),
-        v(Eigen::Vector3d::Zero()),
-        a(Eigen::Vector3d::Zero()),
-        j(Eigen::Vector3d::Zero()),
-        q(odom.q),
-        yaw(uav_utils::get_yaw_from_quaternion(odom.q)),
-        yaw_rate(0),
-        yaw_control_mode(
-            quadrotor_msgs::msg::PositionCommand::YAW_CONTROL_TRACK) {};
-};
-
-struct ControllerOutput
-{
-  // Orientation of the body frame with respect to the world frame
-  Eigen::Quaterniond q;
-
-  // Body rates in body frame
-  Eigen::Vector3d bodyrates;  // [rad/s]
-
-  // Collective mass normalized thrust
-  double thrust;
-
-  // Eigen::Vector3d des_v_real;
-};
-
+/**
+ * Tracking facade: owns one pose_solver strategy plus the shared
+ * PID/attitude/limiter/throttle modules. FSM calls update() only.
+ */
 class Controller
 {
  public:
-  Parameters &param;
+  explicit Controller(Parameters &param);
 
-  Eigen::Vector3d                             Kp;
-  Eigen::Vector3d                             Kv;
-  Eigen::Vector3d                             Kvi;
-  Eigen::Vector3d                             Kvd;
-  Eigen::Vector3d                             KAng;
-  Eigen::Vector3d                             int_e_v;
-  Eigen::Vector3d                             Gravity;
-  std::queue<std::pair<rclcpp::Time, double>> timed_thrust;
-  rclcpp::Time    last_ctrl_timestamp_{rclcpp::Time(0, 0, RCL_SYSTEM_TIME)};
-  Eigen::Vector3d last_bodyrate_{Eigen::Vector3d(0, 0, 0)};
-  quadrotor_msgs::msg::Px4ctrlDebug debug;  // debug
+  /**
+   * One position-control step via the configured pose_solver strategy.
+   *
+   * @param[in] des Desired state (position/velocity/accel/jerk/yaw) [-]
+   * @param[in] odom Current odometry (world frame) [-]
+   * @param[in] imu Current IMU (attitude/gyro/accel) [-]
+   * @param[out] u Body-rate + thrust command (FCU frame conv. by solver) [-]
+   * @param[in] voltage Battery voltage [V]
+   * @return Debug telemetry to publish [-]
+   */
+  quadrotor_msgs::msg::Px4ctrlDebug update(const DesiredState &des,
+                                           const OdomData     &odom,
+                                           const ImuData      &imu,
+                                           ControllerOutput &u, double voltage);
 
-  // Thrust-accel mapping params
-  double       thr_scale_compensate;
-  const double rho2 = 0.998;  // do not change
-  double       thr2acc;
-  double       P;
-
-  // Throttle estimator: RLS eta model + INDI incremental thrust state
-  RlsThrottleModel rls_;
-  FirstOrderLpf    setpoint_lpf_, meas_lpf_, throttle_lpf_;
-  double           throttle_memory_{0.0};  // last commanded normalized throttle
-  double           control_dt_{0.005};     // control period fed by the FSM [s]
-
-  Controller(Parameters &);
+  /**
+   * Yaw body-rate command for YAW_CONTROL_TARGET mode [rad/s].
+   *
+   * @param[in] target_yaw Absolute yaw target [rad]
+   * @param[in] current_yaw Estimated yaw [rad]
+   * @return Yaw body rate [rad/s]
+   */
   double computeYawTargetBodyRate(double target_yaw, double current_yaw) const;
 
-  /* Algorithm0 from  Zhepei Wang*/
-  quadrotor_msgs::msg::Px4ctrlDebug update_alg0(const DesiredState &des,
-                                                const OdomData     &odom,
-                                                const ImuData      &imu,
-                                                ControllerOutput   &u,
-                                                double              voltage);
-
-  Eigen::Vector3d computeLimitedTotalAccFromThrustForce(
-      const Eigen::Vector3d &thrustforce, const double &mass) const;
-
-  bool flatnessWithDrag(const Eigen::Vector3d &vel, const Eigen::Vector3d &acc,
-                        const Eigen::Vector3d &jer, const double &psi,
-                        const double &dpsi, double &thr, Eigen::Vector4d &quat,
-                        Eigen::Vector3d &omg, const double &mass,
-                        const double &grav, const double &dh, const double &dv,
-                        const double &cp, const double &veps) const;
-
-  void minimumSingularityFlatWithDrag(
-      const double mass, const double grav, const Eigen::Vector3d &vel,
-      const Eigen::Vector3d &acc, const Eigen::Vector3d &jer, const double &yaw,
-      const double &yawd, const Eigen::Quaterniond &att_est,
-      Eigen::Quaterniond &att, Eigen::Vector3d &omg, double &thrust) const;
-
-  /* Algorithm1 from  Zhepei Wang*/
-  quadrotor_msgs::msg::Px4ctrlDebug update_alg1(const DesiredState &des,
-                                                const OdomData     &odom,
-                                                const ImuData      &imu,
-                                                ControllerOutput   &u,
-                                                double              voltage);
-
-  void normalizeWithGrad(const Eigen::Vector3d &x, const Eigen::Vector3d &xd,
-                         Eigen::Vector3d &xNor, Eigen::Vector3d &xNord) const;
-
-  void computeFlatInput(const Eigen::Vector3d &thr_acc,
-                        const Eigen::Vector3d &jer, const double &yaw,
-                        const double &yawd, const Eigen::Quaterniond &att_est,
-                        Eigen::Quaterniond &att, Eigen::Vector3d &omg) const;
-
-  /*Algorithm from the rotor-drag paper*/
-  void update_alg2(const DesiredState &des, const OdomData &odom,
-                   const ImuData &imu, ControllerOutput &u, double voltage);
-
-  void computeAeroCompensatedReferenceInputs(const DesiredState &des,
-                                             const OdomData     &odom,
-                                             const Parameters   &param,
-                                             ControllerOutput   *u,
-                                             Eigen::Vector3d *drag_acc) const;
-
-  Eigen::Quaterniond computeDesiredAttitude(
-      const Eigen::Vector3d &des_acc, const double reference_heading,
-      const Eigen::Quaterniond &est_q) const;
-
-  Eigen::Vector3d computeRobustBodyXAxis(const Eigen::Vector3d &x_B_prototype,
-                                         const Eigen::Vector3d &x_C,
-                                         const Eigen::Vector3d &y_C,
-                                         const Eigen::Quaterniond &est_q) const;
-
-  /* Shared functions*/
-  Eigen::Vector3d computePIDErrorAcc(const OdomData     &odom,
-                                     const DesiredState &des,
-                                     const Parameters   &param);
-
-  Eigen::Vector3d computeLimitedTotalAcc(
-      const Eigen::Vector3d &PIDErrorAcc, const Eigen::Vector3d &ref_acc,
-      const Eigen::Vector3d &drag_acc = Eigen::Vector3d::Zero()) const;
-
-  Eigen::Vector3d computeLimitedAngularAcc(
-      const Eigen::Vector3d candirate_bodyrate);
-
-  double computeDesiredCollectiveThrustSignal(const Eigen::Quaterniond &est_q,
-                                              const Eigen::Vector3d    &est_v,
-                                              const Eigen::Vector3d    &des_acc,
-                                              const Parameters         &param,
-                                              double voltage);
-
-  double AccurateThrustAccMapping(const double des_acc_z, double voltage,
-                                  const Parameters &param) const;
-
+  /**
+   * Attitude-error to body-rate feedback for tests [rad/s].
+   *
+   * @param[in] des_q Desired attitude (world from body) [-]
+   * @param[in] est_q Estimated attitude (world from body) [-]
+   * @return Feedback body rates in body [rad/s]
+   */
   Eigen::Vector3d computeFeedBackControlBodyrates(
-      const Eigen::Quaterniond &des_q, const Eigen::Quaterniond &est_q,
-      const Parameters &param);
+      const Eigen::Quaterniond &des_q, const Eigen::Quaterniond &est_q);
 
-  bool estimateThrustModel(const Eigen::Vector3d &est_a, const double voltage,
-                           const Eigen::Vector3d &est_v,
-                           const Parameters      &param);
-
-  bool almostZero(const double value) const;
-
-  bool almostZeroThrust(const double thrust_value) const;
-
+  /** Reset thrust estimators and solver memory (takeoff / mode switch). */
   void resetThrustMapping(void);
 
   /**
@@ -186,8 +74,7 @@ class Controller
   void setControlDt(double dt);
 
   /**
-   * Step the RLS eta estimator on the latest thrust-axis specific force
-   * (tracking `throttle_estimator=1` path).
+   * Step the RLS eta estimator on the thrust-axis specific force.
    *
    * @param[in] specific_force Measured body-z specific force [m/s^2]
    * @return True once the eta variance has converged [-]
@@ -195,8 +82,7 @@ class Controller
   bool updateIndiThrottleModel(double specific_force);
 
   /**
-   * NMPC controller mode: step the estimator and produce the INDI
-   * throttle command for one NMPC control packet.
+   * NMPC path: estimate then produce the INDI throttle command.
    *
    * @param[in] specific_force Measured body-z specific force [m/s^2]
    * @param[in] specific_force_sp NMPC thrust-axis setpoint [m/s^2]
@@ -211,20 +97,34 @@ class Controller
    */
   void fillThrottleStatus(interface::msg::ThrottleModelStatus &status) const;
 
+  /**
+   * Legacy RLS thrust-model update on the delayed thrust queue.
+   *
+   * @param[in] est_a Estimated acceleration in world [m/s^2]
+   * @param[in] voltage Battery voltage [V]
+   * @param[in] est_v Estimated velocity in world [m/s]
+   * @return True when a delayed sample was consumed [-]
+   */
+  bool estimateThrustModel(const Eigen::Vector3d &est_a, double voltage,
+                           const Eigen::Vector3d &est_v);
+
  private:
   /**
-   * INDI incremental throttle from the current estimator state.
+   * Build the solver matching param.pose_solver (0/1/2).
    *
-   * @param[in] specific_force_sp Thrust-axis setpoint [m/s^2]
-   * @return Normalized throttle command [0,1]
+   * @return Owned tracking strategy [-]
    */
-  double computeIndiThrustSignal(double specific_force_sp);
+  std::unique_ptr<TrackingControllerBase> makeSolver();
 
-  static constexpr double kMinNormalizedCollectiveAcc_ = 3;
-  static constexpr double kAlmostZeroValueThreshold_   = 0.001;
-  static constexpr double kAlmostZeroThrustThreshold_  = 0.01;
-  static constexpr double kMaxBodyratesFeedback_       = 4;
-  static constexpr double kMaxAngularAcc_              = 60;
+  Parameters                             &param_;
+  PidPosition                             pid_;
+  AttitudeFeedback                        att_fb_;
+  ThrustLimiter                           limiter_;
+  ThrottleManager                         throttle_;
+  YawTarget                               yaw_target_;
+  quadrotor_msgs::msg::Px4ctrlDebug       debug_;  // scratch telemetry buffer
+  std::unique_ptr<TrackingControllerBase> solver_;
+  int                                     solver_id_{-1};
 };
 
 #endif

@@ -46,7 +46,7 @@ docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build nav_inf
 | --------- | ------------------------ | ------------------------- | ----------------------------- |
 | → core    | `/cur_state`             | interface/State           | ENU world, FLU body (50 Hz)   |
 | → core    | `/nmpc_bridge/odom_world`| nav_msgs/Odometry         | world-frame twist (px4ctrl lineage) |
-| ← core    | `/mpc_controls`          | interface/Controls        | rates_sp FLU + thrust_acc_sp  |
+| ← core    | `/mpc_controls`          | interface/Controls        | rates_sp FLU + specific_force_sp |
 | ← core    | `/setpoint_cmd`          | quadrotor_msgs/PositionCommand | tracking controller input |
 
 px4ctrl (nav_infra container) owns arming/offboard through the mavros
@@ -63,6 +63,30 @@ subscribes `/mpc_controls` itself and applies the RLS eta + INDI thrust
 law) or forwards an external rates stream when `ctrl_mode=0`. In
 PASS_THROUGH px4ctrl publishes at its ctrl rate and falls back to
 AUTO_HOVER when the source goes stale (`msg_timeout.pass_through`).
+
+## Tracking controller layout (`px4ctrl/src/controller/`)
+
+`Controller` (`src/controller.h`) is a facade: it owns the shared modules
+plus one `pose_solver` strategy, and the FSM calls `update()` only.
+Each solver owns independent gains and filter state:
+
+| `pose_solver` | Class | Algorithm |
+| ------------- | ----- | --------- |
+| 0 | `Alg0DifferentialFlatness` | differential flatness with rotor-drag feedforward (Zhepei Wang alg0) |
+| 1 | `Alg1Geometric` | geometric tracking on SE(3) (Zhepei Wang alg1) |
+| 2 | `Alg2RotorDrag` | rotor-drag-compensated tracking (rotor-drag paper) |
+
+Shared modules: `PidPosition` (position-to-acceleration law),
+`AttitudeFeedback` (quaternion-error to body-rate feedback),
+`ThrustLimiter` (collective-acceleration magnitude/tilt gate plus the
+body-rate angular-acceleration limiter), `YawTarget` (bounded shortest-error
+yaw regulator for `YAW_CONTROL_TARGET` mode), `ThrottleManager` (legacy
+`thr2acc`/accurate-curve mapping plus the RLS eta + INDI incremental law
+and the delayed thrust queue), and free functions in `flatness_math`
+(normalization gradient, robust body-x axis). The RLS/INDI math itself stays
+in `include/rls_throttle_model.h` with its unit test
+(`test/throttle_model_test.cpp`); yaw contracts live in
+`test/yaw_contract_test.cpp`.
 
 ## Throttle estimation
 

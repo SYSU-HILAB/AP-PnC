@@ -23,30 +23,45 @@ PX4CtrlFSM::PX4CtrlFSM(Parameters &param_, Controller &controller_,
   last_planner_reset_time = rclcpp::Time(0, 0, RCL_SYSTEM_TIME);
 }
 
+// clang-format off
 /*
-        Finite State Machine
-
-          system start
-                |
-                |
-                v
-    ----- > MANUAL_CTRL <-----------------
-    |         ^   |    \                 |
-    |         |   |     \                |
-    |         |   |      > AUTO_TAKEOFF  |
-    |         |   |        /             |
-    |         |   |       /              |
-    |         |   |      /               |
-    |         |   v     /                |
-    |       AUTO_HOVER <                 |
-    |         ^   |  \  \                |
-    |         |   |   \  \               |
-    |         |	  |    > AUTO_LAND -------
-    |         |   |
-    |         |   v
-    -------- CMD_CTRL
-
-*/
+ * Finite State Machine
+ *
+ *   [start] --> MANUAL_CTRL
+ *
+ *   flight chain (all fallback edges return to MANUAL_CTRL unless noted):
+ *     AUTO_TAKEOFF --> AUTO_HOVER <--> CMD_CTRL
+ *                          |    ^
+ *                          |    +-- PASS_THROUGH
+ *                          v
+ *                       AUTO_LAND --> MANUAL_CTRL
+ *
+ *   from            to              guard
+ *   --------------  --------------  --------------------------------------------
+ *   MANUAL_CTRL     AUTO_HOVER      RC hover mode on
+ *   MANUAL_CTRL     AUTO_TAKEOFF    /px4ctrl/takeoff_land == TAKEOFF (only arm path)
+ *   AUTO_TAKEOFF    AUTO_HOVER      takeoff height reached
+ *   AUTO_TAKEOFF    MANUAL_CTRL     unarmed > 3 s (arm rejected/lost)
+ *   AUTO_HOVER      CMD_CTRL        RC command mode + /setpoint_cmd fresh + OFFBOARD
+ *   CMD_CTRL        AUTO_HOVER      RC command mode off / cmd timeout
+ *   AUTO_HOVER      AUTO_LAND       /px4ctrl/takeoff_land == LAND
+ *   AUTO_LAND       AUTO_HOVER      RC command mode off
+ *   AUTO_LAND       MANUAL_CTRL     landed on ground + disarmed
+ *   AUTO_HOVER      PASS_THROUGH    toggle_pass_through(true) [armed, stream fresh]
+ *   PASS_THROUGH    AUTO_HOVER      toggle_pass_through(false) / stream stale /
+ *                                   odom|imu timeout
+ *   AUTO_HOVER      MANUAL_CTRL     disarm / RC hover off / odom timeout
+ *   CMD_CTRL        MANUAL_CTRL     disarm / RC hover off / odom timeout
+ *   AUTO_LAND       MANUAL_CTRL     RC hover off / odom timeout
+ *   PASS_THROUGH    MANUAL_CTRL     disarm
+ *
+ *   PASS_THROUGH sources body-rate + thrust from the internal NMPC
+ *   controller (ctrl_mode=1: /mpc_controls -> RLS eta + INDI) or from an
+ *   external rates stream (ctrl_mode=0); px4ctrl stays the single mavros
+ *   setpoint publisher. The RC-free profile (no_RC) reaches flight only
+ *   through AUTO_TAKEOFF.
+ */
+// clang-format on
 
 void PX4CtrlFSM::process()
 {
@@ -499,35 +514,20 @@ void PX4CtrlFSM::process()
   }
   else
   {
-    switch (param.pose_solver)
+    try
     {
-      case 0:
-        debug_msg =
-            controller.update_alg0(des, odom_data, imu_data, u, bat_data.volt);
-        debug_msg.header.stamp   = now_time;
-        debug_msg.fsm_state      = static_cast<double>(state);
-        debug_msg.last_fsm_state = static_cast<double>(last_state);
-        debug_pub->publish(debug_msg);
-        break;
-      case 1:
-        debug_msg =
-            controller.update_alg1(des, odom_data, imu_data, u, bat_data.volt);
-        debug_msg.header.stamp   = now_time;
-        debug_msg.fsm_state      = static_cast<double>(state);
-        debug_msg.last_fsm_state = static_cast<double>(last_state);
-        debug_pub->publish(debug_msg);
-        break;
-
-      case 2:
-        controller.update_alg2(des, odom_data, imu_data, u, bat_data.volt);
-        break;
-
-      default:
-        RCLCPP_ERROR(rclcpp::get_logger("px4ctrl"),
-                     "[px4ctrl] [%s] Illegal pose_solver selection!",
-                     state_name(state));
-        return;
+      debug_msg = controller.update(des, odom_data, imu_data, u, bat_data.volt);
     }
+    catch (const std::exception &e)
+    {
+      RCLCPP_ERROR(rclcpp::get_logger("px4ctrl"), "[px4ctrl] [%s] %s",
+                   state_name(state), e.what());
+      return;
+    }
+    debug_msg.header.stamp   = now_time;
+    debug_msg.fsm_state      = static_cast<double>(state);
+    debug_msg.last_fsm_state = static_cast<double>(last_state);
+    debug_pub->publish(debug_msg);
   }
   if (yaw_target_mode)
   {
@@ -547,8 +547,7 @@ void PX4CtrlFSM::process()
     }
     else
     {
-      controller.estimateThrustModel(imu_data.a, bat_data.volt, odom_data.v,
-                                     param);
+      controller.estimateThrustModel(imu_data.a, bat_data.volt, odom_data.v);
     }
   }
 
@@ -1049,7 +1048,7 @@ void PX4CtrlFSM::publish_nmpc_pass_through(const rclcpp::Time &now_time)
   u.bodyrates = Eigen::Vector3d(controls.rates_sp[0], controls.rates_sp[1],
                                 controls.rates_sp[2]);
   u.thrust =
-      controller.computeNmpcThrottle(imu_data.a(2), controls.thrust_acc_sp);
+      controller.computeNmpcThrottle(imu_data.a(2), controls.specific_force_sp);
 
   publish_bodyrate_ctrl(u, now_time);
   publish_throttle_status(now_time, controls.timestamp);

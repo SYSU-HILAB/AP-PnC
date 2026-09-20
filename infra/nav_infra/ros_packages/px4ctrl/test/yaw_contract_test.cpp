@@ -36,6 +36,7 @@ namespace
     Parameters parameter;
     parameter.mass                          = 1.0;
     parameter.gra                           = 9.81;
+    parameter.pose_solver                   = 0;
     parameter.max_angle                     = rad(80.0);
     parameter.ctrl_freq_max                 = 200.0;
     parameter.max_yaw_target_mode_rate_max  = 1.0;
@@ -79,7 +80,7 @@ namespace
     desired.yaw      = command_yaw;
     desired.yaw_rate = command_yaw_rate;
     ControllerOutput output;
-    controller.update_alg0(desired, odometry, imu, output, 24.0);
+    controller.update(desired, odometry, imu, output, 24.0);
     return output;
   }
 
@@ -120,7 +121,7 @@ namespace
     const Eigen::Quaterniond current = yawQuaternion(rad(179.0));
     const Eigen::Quaterniond desired = yawQuaternion(rad(-179.0));
     const Eigen::Vector3d    body_rate =
-        controller.computeFeedBackControlBodyrates(desired, current, parameter);
+        controller.computeFeedBackControlBodyrates(desired, current);
     EXPECT_GT(body_rate.z(), 0.0);
     EXPECT_LT(std::abs(body_rate.z()), rad(20.0));
   }
@@ -132,11 +133,11 @@ namespace
     const Eigen::Quaterniond target = yawQuaternion(rad(-179.0));
 
     const Eigen::Vector3d before_wrap =
-        controller.computeFeedBackControlBodyrates(
-            target, yawQuaternion(rad(179.0)), parameter);
+        controller.computeFeedBackControlBodyrates(target,
+                                                   yawQuaternion(rad(179.0)));
     const Eigen::Vector3d after_wrap =
-        controller.computeFeedBackControlBodyrates(
-            target, yawQuaternion(rad(-178.0)), parameter);
+        controller.computeFeedBackControlBodyrates(target,
+                                                   yawQuaternion(rad(-178.0)));
 
     EXPECT_GT(before_wrap.z(), 0.0);
     EXPECT_LT(after_wrap.z(), 0.0);
@@ -164,7 +165,7 @@ namespace
     for (int i = 0; i < 20; ++i)
     {
       ControllerOutput output;
-      controller.update_alg0(desired, odometry, imu, output, 24.0);
+      controller.update(desired, odometry, imu, output, 24.0);
       EXPECT_GT(output.bodyrates.z(), 0.0);
       EXPECT_LT(std::abs(output.bodyrates.z()), rad(20.0));
       const Eigen::Vector3d body_z = output.q * Eigen::Vector3d::UnitZ();

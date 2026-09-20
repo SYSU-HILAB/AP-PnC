@@ -26,7 +26,16 @@ add_executable(px4ctrl_node
   src/px4ctrl_node.cpp
   src/PX4CtrlFSM.cpp
   src/PX4CtrlParam.cpp
-  src/controller.cpp
+  src/controller/controller.cpp
+  src/controller/flatness_math.cpp
+  src/controller/pid_position.cpp
+  src/controller/attitude_feedback.cpp
+  src/controller/thrust_limiter.cpp
+  src/controller/yaw_target.cpp
+  src/controller/throttle_manager.cpp
+  src/controller/alg0_differential_flatness.cpp
+  src/controller/alg1_geometric.cpp
+  src/controller/alg2_rotor_drag.cpp
   src/input.cpp
 )
 
@@ -49,7 +58,16 @@ install(TARGETS px4ctrl_node
 
 ament_add_gtest(px4ctrl_yaw_contract_test
   test/yaw_contract_test.cpp
-  src/controller.cpp
+  src/controller/controller.cpp
+  src/controller/flatness_math.cpp
+  src/controller/pid_position.cpp
+  src/controller/attitude_feedback.cpp
+  src/controller/thrust_limiter.cpp
+  src/controller/yaw_target.cpp
+  src/controller/throttle_manager.cpp
+  src/controller/alg0_differential_flatness.cpp
+  src/controller/alg1_geometric.cpp
+  src/controller/alg2_rotor_drag.cpp
   src/input.cpp
   src/PX4CtrlParam.cpp
   SKIP_LINKING_MAIN_LIBRARIES

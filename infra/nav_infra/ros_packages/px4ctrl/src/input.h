@@ -177,7 +177,7 @@ class ControlsData
   /**
    * Cache the newest NMPC control packet and stamp its arrival.
    *
-   * @param[in] pMsg Controls (FLU rates_sp + thrust_acc_sp) [-]
+   * @param[in] pMsg Controls (FLU rates_sp + specific_force_sp) [-]
    */
   void feed(interface::msg::Controls::ConstPtr pMsg)
   {

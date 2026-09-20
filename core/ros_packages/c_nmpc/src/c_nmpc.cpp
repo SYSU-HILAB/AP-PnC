@@ -27,8 +27,8 @@
 #include <interface/msg/state.hpp>
 #include <interface/msg/tracking_info.hpp>
 #include <interface/msg/trajectory_point.hpp>
-#include <sensor_msgs/msg/imu.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <vector>
 
@@ -160,8 +160,8 @@ void NMPC::solve()
                         x_next[rate_start_index + 2]};
   ctrl_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
   ctrl_msg.pitch_sp  = pitch;
-  ctrl_msg.thrust_acc_sp = (u_[0] + u_[1] + u_[2] + u_[3]) / mass_;
-  t_end_                 = std::chrono::high_resolution_clock::now();
+  ctrl_msg.specific_force_sp = (u_[0] + u_[1] + u_[2] + u_[3]) / mass_;
+  t_end_                     = std::chrono::high_resolution_clock::now();
 
   ctrl_msg.sol_time =
       std::chrono::duration<double, std::milli>(t_end_ - t_start_).count();
@@ -172,7 +172,8 @@ void NMPC::accCallback(const AccelerationMsg &msg)
 {
   // mavros HIGHRES_IMU is FLU (body x forward); the legacy px4_msgs input
   // was FRD, hence the flipped sign of the drag-axis acceleration.
-  cz_filtered_ = msg.linear_acceleration.x / (cur_vel_norm * cur_vel_norm + 0.1) * 1.0;
+  cz_filtered_ =
+      msg.linear_acceleration.x / (cur_vel_norm * cur_vel_norm + 0.1) * 1.0;
   if (cz_filtered_ > 0.4)
     cz_filtered_ = 0.4;
   if (cz_filtered_ < -0.4)

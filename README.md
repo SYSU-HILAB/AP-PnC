@@ -28,7 +28,7 @@ Research code is separated from base services:
 ```
 ┌─ ap-pnc (core) ────────────────────────────────────────────────────┐
 │ planner (tailsitter_df phi-theory + trajectory_server + traj_buffer)│
-│ c_nmpc  — acados NMPC tracker → /mpc_controls (FLU rates + thrust)  │
+│ c_nmpc  — acados NMPC → /mpc_controls (FLU rates + specific force)  │
 └──────────────┬─────────────────────────────────────────────────────┘
                │ /cur_state ↑   /mpc_controls ↓
 ┌─ nav_infra (sidecar) ──────────────────────────────────────────────┐

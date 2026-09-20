@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
           [&fsm](const mavros_msgs::msg::AttitudeTarget::SharedPtr msg)
           { fsm.pass_through_data.feed(msg); });
 
-  // NMPC controls (rates_sp FLU + thrust_acc_sp) for ctrl_mode=1.
+  // NMPC controls (rates_sp FLU + specific_force_sp) for ctrl_mode=1.
   auto controls_sub = node->create_subscription<interface::msg::Controls>(
       "/mpc_controls", qos,
       [&fsm](const interface::msg::Controls::SharedPtr msg)
