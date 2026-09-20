@@ -40,6 +40,33 @@
       K3: 0.6786
       hover_percentage: 0.9 # gz x500 needs a high normalized hover throttle
 
+    # Controller mode: 0 = px4ctrl tracking (position/hover), 1 = internal
+    # NMPC controller (rates_sp + thrust_acc_sp from /mpc_controls via RLS +
+    # INDI). PASS_THROUGH still gates when the NMPC source takes over.
+    ctrl_mode: 0
+    # Throttle estimation: 0 = thr2acc mapping, 1 = RLS eta + INDI
+    # incremental law (both tracking and NMPC mode use the RLS eta model).
+    throttle_estimator: 0
+    # mavros local_position/odom twist is body-frame; convert to world.
+    odom_twist_is_body: true
+
+    rls: # RLS throttle model (eta = specific force per throttle unit)
+      lambda: 0.999
+      eta_min: 9.81
+      eta_max: 40.0
+      u_min: 0.10 # no RLS update below this throttle (low SNR)
+      p_init: 10.0
+      var_valid_thr: 0.01
+      innovation_gate: 5.0
+
+    indi: # INDI incremental thrust law
+      specific_force_p: 2.0 # specific-force feedback gain [1/s]
+      throttle_min: 0.05
+      throttle_max: 1.0
+      throttle_lpf_cutoff_hz: 20.0
+      setpoint_lpf_cutoff_hz: 20.0
+      meas_lpf_cutoff_hz: 20.0
+
     gain:
       Kp0: 1.666666667
       Kp1: 1.666666667

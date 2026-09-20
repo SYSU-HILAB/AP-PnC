@@ -9,32 +9,37 @@ NMPC stack. No customized firmware, no uXRCE-DDS.
 | Service          | Image                  | Role                                        |
 | ---------------- | ---------------------- | ------------------------------------------- |
 | `px4-simulator`  | `px4-simulator:latest` | stock PX4 v1.17.0 + Gazebo Harmonic, `gz_x500` |
-| `nav_infra`      | `nav_infra:latest`     | base-services gateway: mavros2 + nmpc_bridge + flight_mux (sim); livox + fast_lio + ekf_quat join in the real profile |
+| `nav_infra`      | `nav_infra:latest`     | base-services gateway: mavros2 + px4ctrl (FCU interface, tracking/NMPC controller modes); livox + fast_lio + ekf_quat join in the real profile |
 | `qground_control`| `qground_control:latest` | QGroundControl ground station             |
-| `ap-pnc`（核心）  | `ap-pnc:latest`        | research code: planner 线 / c_nmpc / px4ctrl |
+| `ap-pnc`（核心）  | `ap-pnc:latest`        | research code: planner 线 / c_nmpc |
 
 ## Control path
 
 ```
 planner → c_nmpc → /mpc_controls (rates FLU + thrust_acc_sp)
-    → nmpc_bridge (RLS throttle model + INDI incremental thrust,
+    → px4ctrl ctrl_mode=1 (RLS throttle model + INDI incremental thrust,
        reference: PX4-Neupilot acc_rates_control)
-    → flight_mux (single /mavros/setpoint_raw/attitude publisher)
-    → px4ctrl (PASS_THROUGH state, service handover) → mavros2 (nav_infra) → PX4
+    → /mavros/setpoint_raw/attitude (single publisher)
+    → mavros2 → PX4
 
-nmpc_bridge lives in the nav_infra container (base services); the core
-container holds planner + c_nmpc + px4ctrl (the sole mavros setpoint
-publisher).
+px4ctrl lives in the nav_infra container (base services); the core
+container holds planner + c_nmpc. px4ctrl is the sole mavros setpoint
+publisher and also owns arming/offboard/takeoff/hover/land.
 ```
 
-- **px4ctrl** owns arming/offboard/takeoff/hover/land (TakeoffLand topic);
-  its setpoint stream is remapped to `/px4ctrl/setpoint_raw/attitude`.
+- **px4ctrl** owns arming/offboard/takeoff/hover/land (TakeoffLand topic)
+  and the odometry state adapter (`/cur_state`, `/cur_state_odom`,
+  `/nmpc_bridge/odom_world`).
 - **Handover**: `ros2 service call /px4ctrl/toggle_pass_through
   std_srvs/srv/SetBool "{data: true}"` (or `ap-pnc stack trigger go`)
-  switches px4ctrl into PASS_THROUGH; stale streams fall back to hover.
-- **Odometry**: sim = `/mavros/local_position/odom` (PX4 EKF2); real =
-  `/ekf_quat/ekf_odom` — one config switch (`odom_topic` /
-  `nav_infra.launch.py profile:=real`).
+  switches px4ctrl to its remote-rates source (`ctrl_mode=1` internal NMPC
+  + INDI, `ctrl_mode=0` external stream); stale streams fall back to hover.
+- **Throttle estimation**: startup parameter `throttle_estimator`
+  (0 = thr2acc mapping, 1 = RLS eta + INDI) applies to the tracking
+  controller as well.
+- **Odometry**: sim = `/mavros/local_position/odom` (PX4 EKF2, body twist
+  converted internally); real = `/ekf_quat/ekf_odom` — one profile switch
+  (`nav_infra.launch.py profile:=real`).
 
 ## Quick Start
 
@@ -50,13 +55,15 @@ cd /home/px4/PX4-Autopilot
 make px4_sitl gz_x500
 ```
 
-`nav_infra` connects mavros via `tcp://localhost:4560` (host network).
-Then start the control stack (in `ap-pnc` or via `ap-pnc stack start`):
-`ros2 launch bringup bringup.launch.py` (px4ctrl + mux + bridge + c_nmpc).
+`nav_infra` connects mavros via `udp://:14540@localhost:14580` (host
+network). Then start the core stack (in `ap-pnc` or via `ap-pnc stack
+start`): `ros2 launch bringup bringup.launch.py` (c_nmpc only — px4ctrl is
+launched by the nav_infra container).
 
-Flight sequence: takeoff via `/px4ctrl/takeoff_land`, then
+Flight sequence: takeoff via `/px4ctrl/takeoff_land` (publish from the
+`nav_infra` container: `quadrotor_msgs` lives there), then
 `ap-pnc stack trigger go` (synchronous service) hands control to the NMPC
-rates stream; `ap-pnc stack trigger back` returns to hover.
+rates source; `ap-pnc stack trigger back` returns to hover.
 
 ## Firmware Versioning
 

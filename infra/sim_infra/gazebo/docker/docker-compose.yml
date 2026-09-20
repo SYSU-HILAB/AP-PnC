@@ -68,9 +68,10 @@ services:
               capabilities: [gpu, compute, graphics, utility, video]
     command: qgc
 
-  # nav_infra: single base-services gateway — mavros2 + nmpc_bridge +
-  # flight_mux (sim); livox + fast_lio + ekf_quat join in the real profile.
-  # Research code (planner + c_nmpc + px4ctrl) stays in the ap-pnc core.
+  # nav_infra: single base-services gateway — mavros2 + px4ctrl (FCU
+  # interface, tracking/NMPC controller modes, state adapter); livox +
+  # fast_lio + ekf_quat join in the real profile. Research code (planner +
+  # c_nmpc) stays in the ap-pnc core.
   nav_infra:
     build:
       context: ../../../..

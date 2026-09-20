@@ -7,7 +7,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-class Parameter_t
+class Parameters
 {
  public:
   struct Gain
@@ -68,6 +68,27 @@ class Parameter_t
     std::string service;
   };
 
+  struct Rls
+  {
+    double lambda{0.999};
+    double eta_min{9.81};
+    double eta_max{40.0};
+    double u_min{0.10};
+    double p_init{10.0};
+    double var_valid_thr{0.01};
+    double innovation_gate{5.0};
+  };
+
+  struct Indi
+  {
+    double specific_force_p{2.0};
+    double throttle_min{0.05};
+    double throttle_max{1.0};
+    double throttle_lpf_cutoff_hz{20.0};
+    double setpoint_lpf_cutoff_hz{20.0};
+    double meas_lpf_cutoff_hz{20.0};
+  };
+
   Gain            gain;
   RotorDrag       rt_drag;
   MsgTimeout      msg_timeout;
@@ -75,7 +96,12 @@ class Parameter_t
   ThrustMapping   thr_map;
   AutoTakeoffLand takeoff_land;
   PlannerReset    planner_reset;
+  Rls             rls;
+  Indi            indi;
 
+  int    ctrl_mode{0};               // 0 = tracking, 1 = NMPC rates + INDI
+  int    throttle_estimator{0};      // 0 = thr2acc mapping, 1 = RLS + INDI
+  bool   odom_twist_is_body{false};  // body-frame odom twist needs rotation
   int    pose_solver;
   bool   enable_body_rate_ctrl;
   double mass;
@@ -89,7 +115,7 @@ class Parameter_t
   double rc_cmd_vel_bias_scale;
   double low_voltage;
 
-  Parameter_t();
+  Parameters();
   void config_from_ros_handle(const rclcpp::Node::SharedPtr &node);
 
  private:

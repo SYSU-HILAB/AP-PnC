@@ -4,20 +4,24 @@
     ros2 launch bringup nav_infra.launch.py profile:=real
 
 Runs inside the nav_infra container (not research code):
-  sim  : mavros2 (PX4 SITL over TCP 4560) + nmpc_bridge; odometry from
+  sim  : mavros2 (PX4 SITL over UDP 14540/14580) + px4ctrl; odometry from
          /mavros/local_position/odom (PX4 EKF2).
   real : + livox_ros_driver2 (Mid-360) + fast_lio + ekf_quat;
-         odometry from /ekf_quat/ekf_odom.
+         px4ctrl odometry from /ekf_quat/ekf_odom.
 
-The core container (planner + c_nmpc + px4ctrl) consumes /cur_state and
-feeds /mpc_controls + /mode over the shared ROS 2 graph.
+px4ctrl owns arming/offboard, is the single /mavros/setpoint_raw/attitude
+publisher, and hosts both controller modes (tracking / internal NMPC+INDI)
+plus the odometry state adapter (/cur_state, /cur_state_odom,
+/nmpc_bridge/odom_world). The core container (planner + c_nmpc) consumes
+/cur_state and feeds /mpc_controls + /setpoint_cmd over the shared ROS 2
+graph.
 """
 
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
@@ -60,15 +64,45 @@ def generate_launch_description():
         condition=IfCondition(is_real),
     )
 
-    # NMPC controls -> RLS throttle model + INDI thrust -> AttitudeTarget
-    # on /nmpc_bridge/setpoint_raw/attitude (px4ctrl forwards it in its
-    # PASS_THROUGH state); mavros odometry -> /cur_state
-    # (+ world-frame /nmpc_bridge/odom_world).
-    nmpc_bridge = Node(
-        package="px4_interface",
-        executable="nmpc_bridge",
-        name="nmpc_bridge",
+    # px4ctrl: L2 control + FCU interface (arming/offboard, single mavros
+    # setpoint publisher). ctrl_mode / throttle_estimator select the
+    # controller implementation and the throttle estimation law.
+    px4ctrl_params = PythonExpression(
+        ["'", bringup_share, "/config/px4ctrl' + ('' if '", profile,
+         "'.lower() == 'sim' else '_real') + '.yaml'"])
+    px4ctrl_odom = PythonExpression(
+        ["'/mavros/local_position/odom' if '", profile,
+         "'.lower() == 'sim' else '/ekf_quat/ekf_odom'"])
+    px4ctrl = Node(
+        package="px4ctrl",
+        executable="px4ctrl_node",
+        name="px4ctrl",
         output="screen",
+        emulate_tty=True,
+        remappings=[
+            ("odom", px4ctrl_odom),
+            ("cmd", "/setpoint_cmd"),
+            ("takeoff_land", "/px4ctrl/takeoff_land"),
+        ],
+        parameters=[px4ctrl_params],
+    )
+
+    # mavros 2.15 plugin sub-nodes are created with use_global_arguments(false)
+    # (mavros/src/lib/plugin.cpp), so the params file never reaches
+    # /mavros/setpoint_raw. Its declared thrust_scaling default is NaN, which
+    # makes the plugin ignore every AttitudeTarget with thrust != 0 - PX4 then
+    # never sees an offboard signal and refuses OFFBOARD/arming. Set it as
+    # soon as the sub-node appears (bounded retry, ~2 min).
+    set_thrust_scaling = ExecuteProcess(
+        cmd=[
+            "bash", "-lc",
+            "for _ in $(seq 1 240); do "
+            "ros2 param set /mavros/setpoint_raw thrust_scaling 1.0 "
+            ">/dev/null 2>&1 && exit 0; sleep 0.5; done; "
+            "echo 'nav_infra: failed to set setpoint_raw.thrust_scaling' >&2; "
+            "exit 1",
+        ],
+        output="log",
     )
 
     livox = Node(
@@ -118,7 +152,8 @@ def generate_launch_description():
                               description="sim | real"),
         mavros_sim,
         mavros_real,
-        nmpc_bridge,
+        px4ctrl,
+        set_thrust_scaling,
         livox,
         fast_lio,
         ekf_quat,

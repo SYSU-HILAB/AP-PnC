@@ -10,6 +10,10 @@
  * Ported from PX4-Neupilot src/modules/acc_rates_control (AccRatesControl)
  * to ROS2/mavros: single-parameter RLS throttle model, first-order LPF,
  * and INDI-style incremental thrust command.
+ *
+ * Lives in px4ctrl: the throttle estimator selected by
+ * `throttle_estimator` (tracking) and the NMPC controller mode both use
+ * this model.
  */
 
 #pragma once
@@ -192,6 +196,13 @@ class FirstOrderLpf
    * @param[in] cutoff_hz Cutoff frequency [Hz]
    */
   void setCutoff(double cutoff_hz) { cutoff_hz_ = std::max(cutoff_hz, 0.1); }
+
+  /** Drop the filter state; the next sample re-initializes the filter. */
+  void reset()
+  {
+    state_       = 0.0;
+    initialized_ = false;
+  }
 
   /**
    * Apply the filter; initializes to the first sample.

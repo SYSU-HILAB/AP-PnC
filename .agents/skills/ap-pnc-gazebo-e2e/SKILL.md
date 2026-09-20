@@ -6,10 +6,11 @@ description: End-to-end flight procedure and pitfall reference for the AP-PnC ga
 # AP-PnC Gazebo E2E
 
 Flight loop: `px4-simulator` (stock PX4 v1.17.0, Gazebo Harmonic `gz_x500`)
-→ `nav_infra` (mavros2 + `nmpc_bridge` RLS/INDI + odometry adapter) →
-`ap-pnc` core (planner + `c_nmpc` + `px4ctrl`). px4ctrl is the single
-`/mavros/setpoint_raw/attitude` publisher; its PASS_THROUGH state
-repeat-forwards the NMPC rates stream.
+→ `nav_infra` (mavros2 + `px4ctrl` with RLS/INDI + odometry adapter) →
+`ap-pnc` core (planner + `c_nmpc`). px4ctrl is the single
+`/mavros/setpoint_raw/attitude` publisher and owns arming/offboard; in
+`ctrl_mode=1` its PASS_THROUGH state consumes `/mpc_controls` internally
+(RLS eta + INDI thrust) instead of forwarding an external stream.
 
 ## Full flight runbook
 
@@ -27,32 +28,46 @@ docker exec -d px4-simulator bash -c \
 #    (udp from port 14550 to 18570, MAV_TYPE_GCS, srcSystem=255)
 cd /tmp && uv run --with pymavlink python gcs_heartbeat.py   # any 1 Hz GCS heartbeat sender
 
-# 4) control stack (sim profile; px4ctrl.yaml hover_percentage 0.9)
+# 4) core stack (c_nmpc only; px4ctrl runs in the nav_infra container CMD,
+#    sim profile, px4ctrl.yaml hover_percentage 0.9)
 docker exec -d ap-pnc bash -c \
   'cd /workspace && source /opt/ros/humble/setup.bash && source install/setup.bash && \
-   ros2 launch bringup bringup.launch.py profile:=sim > /tmp/stack.log 2>&1'
+   ros2 launch bringup bringup.launch.py > /tmp/stack.log 2>&1'
 
-# 5) takeoff → stable 1 m hover (px4ctrl AUTO_TAKEOFF arms + enters OFFBOARD)
-docker exec ap-pnc bash -c 'source ... && ros2 topic pub -1 /px4ctrl/takeoff_land \
+# 5) takeoff → stable 1 m hover (px4ctrl AUTO_TAKEOFF arms + enters OFFBOARD).
+#    quadrotor_msgs now lives in nav_infra, publish from there.
+docker exec nav_infra bash -c 'source ... && ros2 topic pub -1 /px4ctrl/takeoff_land \
   quadrotor_msgs/msg/TakeoffLand "{takeoff_land_cmd: 1}"'
 
-# 6) NMPC handover (synchronous service; falls back to hover on stream loss)
+# 6) remote-rates handover (synchronous service; falls back to hover on loss).
+#    ctrl_mode=1: internal NMPC controls (/mpc_controls) + RLS/INDI thrust.
 docker exec ap-pnc bash -c 'ros2 service call /px4ctrl/toggle_pass_through \
   std_srvs/srv/SetBool "{data: true}"'        # back: data: false
+
+# throttle-estimator A/B (startup parameter, two flights):
+#   Flight A: throttle_estimator: 0 (thr2acc mapping)
+#   Flight B: throttle_estimator: 1 (RLS eta + INDI)  -> rebuild nav_infra
+# Compare /debugPx4ctrl hover_percentage and
+# /nmpc_bridge/throttle_model_status (eta, estimate_valid).
 ```
 
 Smoke topic checks (inside any ROS container): `/mavros/state` connected=true,
 `/mavros/imu/data` ~200 Hz, `/nmpc_bridge/odom_world` fresh, `/cur_state`
-origin locked in the bridge log.
+origin locked in the px4ctrl log.
 
 ## Pitfalls (all were hit and fixed — do not rediscover)
 
-1. **mavros silently drops setpoints**: the `setpoint_raw` plugin drops every
-   `AttitudeTarget` with thrust != 0 when `thrust_scaling` is NaN (its
-   default). The parameter lives on the plugin sub-node
-   `/mavros/setpoint_raw`, so the config must use a `/**:` wildcard key —
-   `mavros: ros__parameters:` never reaches plugin sub-nodes. Set
-   `setpoint_raw.thrust_scaling: 1.0`.
+1. **mavros drops setpoints when `thrust_scaling` is NaN**: the
+   `setpoint_raw` plugin ignores every `AttitudeTarget` with thrust != 0
+   (`src/plugins/setpoint_raw.cpp`), so PX4 never sees an offboard signal
+   and denies OFFBOARD/arming (`check_modes_offboard_signal`). The
+   parameter lives on the plugin sub-node `/mavros/setpoint_raw`, and
+   mavros 2.15 plugin sub-nodes are created with
+   `use_global_arguments(false)` (`src/lib/plugin.cpp`) — a YAML params
+   file (wildcard or `/**/setpoint_raw:` block) never reaches them.
+   `nav_infra.launch.py` sets it at startup
+   (`ros2 param set /mavros/setpoint_raw thrust_scaling 1.0`); verify with
+   `ros2 param get /mavros/setpoint_raw thrust_scaling` before takeoff.
 2. **fcu_url**: stock PX4 SITL has NO TCP 4560. Onboard mavlink instance is
    UDP 14580→14540: `fcu_url: "udp://:14540@localhost:14580"`.
 3. **GZ_IP unicast discovery**: container multicast is broken, which kills
@@ -78,11 +93,11 @@ origin locked in the bridge log.
 8. **`~/.gz` mount ownership**: compose mounts `${HOME}/.gz/sim` which is
    owned by the host user (1000) but the container user is px4 (1002) — the
    gz server dies creating log dirs. chown in the image or drop the mount.
-9. **RLS throttle model**: starts at eta = g/hover_throttle (19.6 for 0.5).
-   With the real sim hover of 0.9 (eta≈10.9) the handover wobbles until the
-   RLS converges (`/nmpc_bridge/throttle_model_status`,
-   `estimate_valid: true`). Warm it up by streaming controls before
-   handover, or seed `rls.eta_init` ≈ 10.9 in `mavros_bridge.yaml`.
+9. **RLS throttle model**: px4ctrl seeds eta = g/hover_percentage
+   (sim: 9.81/0.9 ≈ 10.9, real: ≈ 19.6). During `go` handover the estimate
+   refines until `estimate_valid: true` (`/nmpc_bridge/throttle_model_status`);
+   if it wobbles, seed/check `thrust_model.hover_percentage` in
+   `px4ctrl{,_real}.yaml`.
 10. **Do not manually spawn PX4/gz outside the make flow** — the bridge's
     actuator path depends on the environment the official
     `make px4_sitl gz_x500` injects.

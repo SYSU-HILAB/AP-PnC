@@ -36,10 +36,10 @@
    - 运行 C++ 气动力学与激光雷达模拟器，开箱即用。
 4. **`ap-pnc-gazebo`**（三容器 Pod，hostNetwork）：
    - `px4-simulator`：stock PX4 v1.17.0 + Gazebo Harmonic（`gz_x500`）。
-   - `nav_infra`：基础服务网关容器（mavros2 + nmpc_bridge + flight_mux，
+   - `nav_infra`：基础服务网关容器（mavros2 + px4ctrl FCU 接口/控制器，
      sim profile；实机 profile 再加 livox + fast_lio + ekf_quat，镜像不变，
      `NAV_PROFILE` ConfigMap 键切换）。
-   - `ap-pnc`：NMPC / 规划 / px4ctrl / flight_mux 控制栈。
+   - `ap-pnc`：研究栈（规划 + c_nmpc），px4ctrl 已迁至 nav_infra 镜像。
 
 ---
 
@@ -130,3 +130,8 @@ volumes:
 Nodes read the conventional cwd-relative path `core/bringup/config/*.yaml`,
 which matches the `/workspace` workdir — no environment variables needed.
 ConfigMap updates take effect on rollout restart.
+
+The nav_infra container bakes `infra/nav_infra/bringup/config/` into the
+image (including `px4ctrl{,_real}.yaml`), so px4ctrl parameter changes
+require an image rebuild or the same ConfigMap overlay pattern at
+`/workspace/bringup/config/`.

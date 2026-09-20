@@ -16,7 +16,7 @@ def _cleanup(*_: int) -> None:
     for pid in PIDS:
         if pid > 0:
             subprocess.run(["kill", str(pid)], stderr=subprocess.DEVNULL)
-    for name in ("c_nmpc", "px4_interface", "trajectory_server", "px4ctrl"):
+    for name in ("c_nmpc", "trajectory_server", "px4ctrl"):
         subprocess.run(["pkill", "-f", name], stderr=subprocess.DEVNULL)
     for pid in PIDS:
         if pid > 0:
@@ -31,10 +31,12 @@ def _launch(env: dict[str, str], core: int, *args: str) -> None:
 
 @app.command()
 def start() -> None:
-    """Launch the full local stack (planner + control core + nav_infra gateway).
+    """Launch the local research stack (planner + c_nmpc control core).
 
-    Cores are pinned on the last three CPUs, mirroring the legacy runall tool.
-    Ctrl-C stops everything.
+    The base services (mavros + px4ctrl + LIO) run inside the nav_infra
+    container; bring them up with the gazebo compose file (see the
+    ap-pnc-docker skill). Cores are pinned on the last two CPUs, mirroring
+    the legacy runall tool. Ctrl-C stops everything.
     """
     env = source_ros2_workspace()
 
@@ -47,9 +49,8 @@ def start() -> None:
     signal.signal(signal.SIGTERM, _cleanup)
     typer.echo(f"Detected {ncpu} CPU cores, pinning stack to cores {ncpu - 2}-{ncpu - 1}")
 
-    _launch(env, ncpu - 3, "bringup", "planning.launch.py")
-    _launch(env, ncpu - 2, "bringup", "bringup.launch.py")
-    _launch(env, ncpu - 1, "bringup", "nav_infra.launch.py", "profile:=sim")
+    _launch(env, ncpu - 2, "bringup", "planning.launch.py")
+    _launch(env, ncpu - 1, "bringup", "bringup.launch.py")
 
     typer.echo(f"All processes started (PIDs: {PIDS}). Press CTRL-C to stop.")
     try:

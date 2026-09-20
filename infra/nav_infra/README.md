@@ -2,13 +2,14 @@
 
 Single self-contained unit providing the generic flight interface. NOT
 research code: the core container (`core/ros_packages/`: planner line,
-c_nmpc, px4ctrl) consumes these services over the shared host-network ROS 2 graph.
+c_nmpc) consumes these services over the shared host-network ROS 2 graph.
 
 ## Contents
 
 | Package           | Role                                                                |
 | ----------------- | ------------------------------------------------------------------- |
-| `px4_interface`   | `nmpc_bridge` (/mpc_controls → RLS throttle model + INDI thrust → AttitudeTarget on /nmpc_bridge/setpoint_raw/attitude; odom adapter → /cur_state, /nmpc_bridge/odom_world) |
+| `px4ctrl`         | FCU interface + L2 control: arming/offboard/takeoff/hover/land, sole `/mavros/setpoint_raw/attitude` publisher, state adapter (`/cur_state`, `/cur_state_odom`, `/nmpc_bridge/odom_world`). Controller modes: `ctrl_mode=0` tracking, `ctrl_mode=1` NMPC rates + RLS eta/INDI thrust from `/mpc_controls` |
+| `quadrotor_msgs`  | `PositionCommand` / `TakeoffLand` / `Px4ctrlDebug` (px4ctrl contract) |
 | `livox_ros_driver2` | Mid-360 driver (real profile)                                    |
 | `fast_lio`        | FAST-LIO2 (real profile)                                             |
 | `ekf_quat_pose`   | odom fusion → /ekf_quat/ekf_odom (real profile)                      |
@@ -16,11 +17,17 @@ c_nmpc, px4ctrl) consumes these services over the shared host-network ROS 2 grap
 Plus a from-source mavros2 build (the jammy repo ships `mavros-msgs` only),
 installed under `/opt/mavros` inside the image.
 
+`px4_interface` (the former `nmpc_bridge`) was merged into px4ctrl and
+removed: its RLS/INDI logic lives in `include/rls_throttle_model.h` and the
+`ctrl_mode=1` controller path, and its odometry state adapter plus throttle
+telemetry are preserved as `/cur_state*` and
+`/nmpc_bridge/throttle_model_status`.
+
 ## Profiles (same image)
 
 ```
-sim  : mavros (tcp://localhost:4560) + nmpc_bridge + flight_mux
-real : sim + livox + fast_lio + ekf_quat   (odom := /ekf_quat/ekf_odom)
+sim  : mavros (udp://:14540@localhost:14580) + px4ctrl
+real : sim + livox + fast_lio + ekf_quat   (px4ctrl odom := /ekf_quat/ekf_odom)
 ```
 
 Selection: `ros2 launch bringup nav_infra.launch.py profile:=sim|real`
@@ -37,21 +44,31 @@ docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build nav_inf
 
 | Direction | Topic                    | Type                      | Note                          |
 | --------- | ------------------------ | ------------------------- | ----------------------------- |
-| → core    | `/cur_state`             | interface/State           | ENU world, FLU body           |
-| → core    | `/nmpc_bridge/odom_world`| nav_msgs/Odometry         | world-frame twist (for px4ctrl) |
+| → core    | `/cur_state`             | interface/State           | ENU world, FLU body (50 Hz)   |
+| → core    | `/nmpc_bridge/odom_world`| nav_msgs/Odometry         | world-frame twist (px4ctrl lineage) |
 | ← core    | `/mpc_controls`          | interface/Controls        | rates_sp FLU + thrust_acc_sp  |
-| → core    | `/nmpc_bridge/setpoint_raw/attitude` | mavros_msgs/AttitudeTarget | NMPC rates+throttle (px4ctrl forwards it in PASS_THROUGH) |
+| ← core    | `/setpoint_cmd`          | quadrotor_msgs/PositionCommand | tracking controller input |
 
-px4ctrl (core container) keeps ownership of arming/offboard through the
-mavros services exposed here and is the single publisher of
-/mavros/setpoint_raw/attitude. Handover to the NMPC rates stream is a
-synchronous service on px4ctrl itself:
+px4ctrl (nav_infra container) owns arming/offboard through the mavros
+services and is the single publisher of /mavros/setpoint_raw/attitude.
+Handover to the remote-rates source is a synchronous service on px4ctrl:
 
 ```bash
 ros2 service call /px4ctrl/toggle_pass_through std_srvs/srv/SetBool "{data: true}"   # go
 ros2 service call /px4ctrl/toggle_pass_through std_srvs/srv/SetBool "{data: false}"  # back to hover
 ```
 
-In PASS_THROUGH px4ctrl repeat-forwards the bridge stream at its ctrl
-rate and falls back to AUTO_HOVER when the stream goes stale
-(`msg_timeout.pass_through`).
+`go` uses the internal NMPC controller when `ctrl_mode=1` (px4ctrl
+subscribes `/mpc_controls` itself and applies the RLS eta + INDI thrust
+law) or forwards an external rates stream when `ctrl_mode=0`. In
+PASS_THROUGH px4ctrl publishes at its ctrl rate and falls back to
+AUTO_HOVER when the source goes stale (`msg_timeout.pass_through`).
+
+## Throttle estimation
+
+`throttle_estimator=0` keeps the legacy `thr2acc` mapping
+(`u = a_des / eta`), `throttle_estimator=1` uses the RLS eta model
+(`include/rls_throttle_model.h`) with the INDI incremental law
+(`u += kp * (a_sp - a_meas) / eta * dt`). Both are startup parameters in
+`bringup/config/px4ctrl{,_real}.yaml`; telemetry is published on
+`/nmpc_bridge/throttle_model_status` (interface/ThrottleModelStatus).

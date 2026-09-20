@@ -75,8 +75,9 @@ spec:
               readOnly: true
 
         # Container 2: nav_infra — single base-services gateway (mavros2 +
-        # nmpc_bridge + flight_mux in the sim profile; livox + fast_lio +
-        # ekf_quat join in the real one). Research code stays in ap-pnc.
+        # px4ctrl FCU interface/controller in the sim profile; livox +
+        # fast_lio + ekf_quat join in the real one). Research code stays in
+        # ap-pnc.
         # NAV_PROFILE selects the bringup profile (sim | real) via ConfigMap.
         - name: nav_infra
           image: nav_infra:latest

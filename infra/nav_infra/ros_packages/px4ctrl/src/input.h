@@ -4,6 +4,9 @@
 #include <uav_utils/utils.h>
 
 #include <Eigen/Dense>
+#include <interface/msg/controls.hpp>
+#include <interface/msg/state.hpp>
+#include <interface/msg/throttle_model_status.hpp>
 #include <mavros_msgs/msg/attitude_target.hpp>
 #include <mavros_msgs/msg/extended_state.hpp>
 #include <mavros_msgs/msg/rc_in.hpp>
@@ -16,7 +19,7 @@
 
 #include "PX4CtrlParam.h"
 
-class RC_Data_t
+class RcData
 {
  public:
   double mode;
@@ -48,14 +51,14 @@ class RC_Data_t
   static constexpr int    RC_PWM_MIN                  = 800;
   static constexpr int    RC_PWM_MAX                  = 2200;
 
-  RC_Data_t();
+  RcData();
   bool check_validity();
   bool check_centered();
   void feed(mavros_msgs::msg::RCIn::ConstPtr pMsg);
   bool is_received(const rclcpp::Time &now_time);
 };
 
-class Odom_Data_t
+class OdomData
 {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -68,11 +71,18 @@ class Odom_Data_t
   rclcpp::Time            rcv_stamp;
   bool                    recv_new_msg;
 
-  Odom_Data_t();
-  void feed(nav_msgs::msg::Odometry::ConstPtr pMsg);
+  OdomData();
+  /**
+   * Cache one odometry sample.
+   *
+   * @param[in] pMsg Odometry message [-]
+   * @param[in] twist_is_body True when twist is body-frame and needs the
+   *            body->world rotation (mavros local_position in sim) [-]
+   */
+  void feed(nav_msgs::msg::Odometry::ConstPtr pMsg, bool twist_is_body = false);
 };
 
-class Imu_Data_t
+class ImuData
 {
  public:
   Eigen::Quaterniond q;
@@ -82,30 +92,30 @@ class Imu_Data_t
   sensor_msgs::msg::Imu msg;
   rclcpp::Time          rcv_stamp;
 
-  Imu_Data_t();
+  ImuData();
   void feed(sensor_msgs::msg::Imu::ConstPtr pMsg);
 };
 
-class State_Data_t
+class StateData
 {
  public:
   mavros_msgs::msg::State current_state;
   mavros_msgs::msg::State state_before_offboard;
 
-  State_Data_t();
+  StateData();
   void feed(mavros_msgs::msg::State::ConstPtr pMsg);
 };
 
-class ExtendedState_Data_t
+class ExtendedStateData
 {
  public:
   mavros_msgs::msg::ExtendedState current_extended_state;
 
-  ExtendedState_Data_t();
+  ExtendedStateData();
   void feed(mavros_msgs::msg::ExtendedState::ConstPtr pMsg);
 };
 
-class Command_Data_t
+class CommandData
 {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -120,11 +130,11 @@ class Command_Data_t
   quadrotor_msgs::msg::PositionCommand msg;
   rclcpp::Time                         rcv_stamp;
 
-  Command_Data_t();
+  CommandData();
   void feed(quadrotor_msgs::msg::PositionCommand::ConstPtr pMsg);
 };
 
-class Battery_Data_t
+class BatteryData
 {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -134,11 +144,11 @@ class Battery_Data_t
   sensor_msgs::msg::BatteryState msg;
   rclcpp::Time                   rcv_stamp;
 
-  Battery_Data_t();
+  BatteryData();
   void feed(sensor_msgs::msg::BatteryState::ConstPtr pMsg);
 };
 
-class Takeoff_Land_Data_t
+class TakeoffLandData
 {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -148,15 +158,52 @@ class Takeoff_Land_Data_t
   quadrotor_msgs::msg::TakeoffLand msg;
   rclcpp::Time                     rcv_stamp;
 
-  Takeoff_Land_Data_t();
+  TakeoffLandData();
   void feed(quadrotor_msgs::msg::TakeoffLand::ConstPtr pMsg);
 };
 
 /**
- * Latest external body-rate + thrust setpoint for the PASS_THROUGH state
- * (e.g. the NMPC rates bridge running in the nav_infra container).
+ * Latest NMPC control packet: source of the internal nmpc controller mode
+ * (ctrl_mode=1) and of PASS_THROUGH when it is selected.
  */
-class PassThrough_Data_t
+class ControlsData
+{
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  interface::msg::Controls msg;
+  rclcpp::Time             rcv_stamp{0, 0, RCL_SYSTEM_TIME};
+  bool                     msg_received{false};
+
+  /**
+   * Cache the newest NMPC control packet and stamp its arrival.
+   *
+   * @param[in] pMsg Controls (FLU rates_sp + thrust_acc_sp) [-]
+   */
+  void feed(interface::msg::Controls::ConstPtr pMsg)
+  {
+    msg          = *pMsg;
+    rcv_stamp    = rclcpp::Clock().now();
+    msg_received = true;
+  }
+
+  /**
+   * Check the controls stream against the pass-through timeout.
+   *
+   * @param[in] now_time Current FSM time [s]
+   * @param[in] timeout_s Staleness threshold [s]
+   * @return True when the latest packet is fresh enough [-]
+   */
+  bool is_received(const rclcpp::Time &now_time, double timeout_s) const
+  {
+    return msg_received && (now_time - rcv_stamp).seconds() < timeout_s;
+  }
+};
+
+/**
+ * Latest external body-rate + thrust setpoint for the PASS_THROUGH state
+ * (e.g. an external rates bridge running in the nav_infra container).
+ */
+class PassThroughData
 {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

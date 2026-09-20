@@ -3,8 +3,8 @@
  * Copyright (c) 2025, Sun Yat-sen University. All rights reserved.
  * Authors: Hanamy: rongerch@outlook.com
  *
- * Unit tests for the RLS throttle model, INDI thrust law, and mux
- * selection logic (see rls_throttle_model.h).
+ * Unit tests for the px4ctrl RLS throttle model and INDI thrust law
+ * (see rls_throttle_model.h).
  */
 
 #include <gtest/gtest.h>

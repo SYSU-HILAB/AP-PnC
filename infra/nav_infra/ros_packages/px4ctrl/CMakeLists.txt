@@ -18,6 +18,7 @@ find_package(nav_msgs REQUIRED)
 find_package(mavros_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(quadrotor_msgs REQUIRED)
+find_package(interface REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(ament_cmake_gtest REQUIRED)
 
@@ -39,6 +40,7 @@ ament_target_dependencies(px4ctrl_node
   mavros_msgs
   std_srvs
   quadrotor_msgs
+  interface
 )
 
 install(TARGETS px4ctrl_node
@@ -62,7 +64,15 @@ if(TARGET px4ctrl_yaw_contract_test)
     nav_msgs
     mavros_msgs
     quadrotor_msgs
+    interface
   )
+endif()
+
+ament_add_gtest(px4ctrl_throttle_model_test
+  test/throttle_model_test.cpp
+)
+if(TARGET px4ctrl_throttle_model_test)
+  target_include_directories(px4ctrl_throttle_model_test PRIVATE include)
 endif()
 
 ament_package()

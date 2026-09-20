@@ -17,6 +17,7 @@
   <depend>mavros_msgs</depend>
   <depend>std_srvs</depend>
   <depend>quadrotor_msgs</depend>
+  <depend>interface</depend>
   <depend>eigen</depend>
 
   <export>

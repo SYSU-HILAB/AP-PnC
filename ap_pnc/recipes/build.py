@@ -91,10 +91,10 @@ def simple_sim(
 def cnmpc(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
 ) -> None:
-    """Build c_nmpc and px4_interface packages (colcon)."""
+    """Build the control packages: c_nmpc (core) + px4ctrl (nav_infra)."""
     _colcon_build(
-        ["c_nmpc", "px4_interface"],
-        paths=["ros_packages"],
+        ["c_nmpc", "px4ctrl"],
+        paths=["core/ros_packages", "infra/nav_infra/ros_packages"],
         clean=clean,
     )
 

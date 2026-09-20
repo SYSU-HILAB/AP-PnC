@@ -34,3 +34,8 @@
     time:
       time_ref_source: "fcu"
       timesync_mode: "MAVLINK"
+
+# NOTE: the setpoint_raw plugin parameter (thrust_scaling) cannot be set
+# from this file: mavros 2.15 plugin sub-nodes disable global arguments
+# (src/lib/plugin.cpp), so the params file never reaches them. The launch
+# file sets /mavros/setpoint_raw/thrust_scaling once the sub-node appears.

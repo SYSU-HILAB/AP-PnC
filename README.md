@@ -29,11 +29,12 @@ Research code is separated from base services:
 ┌─ ap-pnc (core) ────────────────────────────────────────────────────┐
 │ planner (tailsitter_df phi-theory + trajectory_server + traj_buffer)│
 │ c_nmpc  — acados NMPC tracker → /mpc_controls (FLU rates + thrust)  │
-│ px4ctrl — arming/offboard/takeoff/hover + PASS_THROUGH forwarding   │
 └──────────────┬─────────────────────────────────────────────────────┘
-               │ /cur_state ↑   /mpc_controls + toggle service ↓
+               │ /cur_state ↑   /mpc_controls ↓
 ┌─ nav_infra (sidecar) ──────────────────────────────────────────────┐
-│ nmpc_bridge — RLS throttle model + INDI thrust, odom world-frame   │
+│ px4ctrl — FCU interface: arming/offboard/takeoff/hover, single      │
+│   mavros setpoint publisher, state adapter (/cur_state), controller │
+│   modes: tracking (ctrl_mode=0) | NMPC rates + RLS/INDI (ctrl_mode=1)│
 │ mavros2 + (real profile) livox + fast_lio + ekf_quat               │
 └──────────────┬─────────────────────────────────────────────────────┘
                │ MAVLink UDP 14580↔14540
@@ -42,9 +43,14 @@ Research code is separated from base services:
 
 - **Handover**: `ros2 service call /px4ctrl/toggle_pass_through
   std_srvs/srv/SetBool "{data: true}"` (synchronous) switches px4ctrl from
-  hover to verbatim forwarding of the NMPC rates stream; stale streams fall
-  back to hover automatically. CLI shortcut: `uv run ap-pnc stack trigger
-  go|back`.
+  tracking hover to its remote-rates source: the internal NMPC controller
+  (`ctrl_mode=1`, `/mpc_controls` → RLS eta + INDI thrust) or an external
+  rates stream (`ctrl_mode=0`); stale streams fall back to hover
+  automatically. CLI shortcut: `uv run ap-pnc stack trigger go|back`.
+- **Throttle estimation**: `throttle_estimator=0` keeps the legacy
+  `thr2acc` mapping, `throttle_estimator=1` uses the RLS eta + INDI
+  incremental law in the tracking controller too. Both are startup
+  parameters in `px4ctrl.yaml`/`px4ctrl_real.yaml`.
 - **Profiles**: same nav_infra image for sim and real —
   `profile:=sim|real` selects mavros-only vs livox+fast_lio+ekf_quat and the
   px4ctrl parameter set (`px4ctrl.yaml` hover 0.9 vs `px4ctrl_real.yaml`
@@ -95,12 +101,13 @@ uv run ap-pnc lint                 # Lint
 ```
 core/                # Research code — owns only itself
   ros_packages/      #   planner (tailsitter_df + trajectory_server + traj_buffer),
-                     #   c_nmpc, px4ctrl, quadrotor_msgs, utils (+msgs interface contract)
-  bringup/           #   core config/launch: planning, c_nmpc, px4ctrl{,_real}, fastdds
+                     #   c_nmpc, utils (+msgs interface contract)
+  bringup/           #   core config/launch: planning, c_nmpc, fastdds
   docker/            #   amd64/arm64 ros2-base dev images
 infra/               # Infrastructure — each unit self-contained
-  nav_infra/         #   ros_packages/ (nmpc_bridge RLS+INDI, livox, fast_lio, ekf_quat_pose)
-                     #   + own bringup/ (nav profiles, mavros_bridge) + docker/Dockerfile
+  nav_infra/         #   ros_packages/ (px4ctrl tracking+NMPC/INDI, quadrotor_msgs,
+                     #   livox, fast_lio, ekf_quat_pose)
+                     #   + own bringup/ (nav profiles, px4ctrl{,_real}) + docker/Dockerfile
   sim_infra/         #   gazebo/ (stock PX4 v1.17 + Harmonic stack), simple_sim/, aerodynamics/
   sim_k3s/           #   ConfigMap-driven sim orchestration manifests
 ap_pnc/              # Python CLI — top-level orchestration (stack start, build, sim)
@@ -110,19 +117,22 @@ benchmark/           # Prior-based experiment configs (Lyu force-balance)
 
 ## Runtime Configuration
 
-No ROS parameters for core nodes — they read sectioned yaml directly from
-the cwd-relative `core/bringup/config/` (matches the container `/workspace`
-mount):
+Core nodes read sectioned yaml directly from the cwd-relative
+`core/bringup/config/` (matches the container `/workspace` mount):
 
 - `planning.yaml` — `problem_formulation` (box, basic_traj, nested cost,
   MINCO, prior-free phi-theory flatness) + `io` (topics, dump dirs)
 - `c_nmpc.yaml` — `nmpc: {mass, cz_rate}`
-- `mavros_bridge.yaml` — `nmpc_bridge` (RLS throttle model + INDI thrust
-  law, odom source switch `/mavros/local_position/odom` sim vs
-  `/ekf_quat/ekf_odom` real)
-- `px4ctrl.yaml` / `px4ctrl_real.yaml` — sim/real control parameters
+
+nav_infra nodes read from `infra/nav_infra/bringup/config/`:
+
+- `px4ctrl.yaml` / `px4ctrl_real.yaml` — sim/real control parameters:
+  `ctrl_mode` (0 tracking / 1 NMPC), `throttle_estimator` (0 mapping /
+  1 RLS eta + INDI), `rls.*`, `indi.*`, gains, takeoff/land, timeouts
   (px4ctrl is the one ROS-parameter exception, vendored style)
 - `nav/` — mavros sim/real endpoints, livox, fast_lio, ekf_quat profiles
+  (mavros plugin sub-node params are set by `nav_infra.launch.py`, not by
+  these files)
 
 ---
 

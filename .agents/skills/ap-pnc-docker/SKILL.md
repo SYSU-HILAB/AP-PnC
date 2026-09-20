@@ -50,8 +50,11 @@ uv run ap-pnc gen-nmpc-lib     # rewrites .artifacts/nmpc_wrapper/libnmpc_bundle
 docker exec ap-pnc bash -c 'pkill -f c_nmpc' && ...   # restart the node/stack
 ```
 
-Rebuild `ap-pnc` only when C++ sources or dependencies change; config
-(`core/bringup/`) is live through the symlink-install mount.
+Rebuild `ap-pnc` only when C++ sources or dependencies change; core config
+(`core/bringup/`) is live through the symlink-install mount. `px4ctrl`
+(FCU interface/controller) lives in the `nav_infra` image — source or
+config changes there require `docker compose ... build nav_infra` (the
+image is self-contained, no bind mounts).
 
 ## Tips
 

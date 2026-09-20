@@ -1,12 +1,14 @@
 # nav_infra: the single navigation & interface gateway container.
 #
 # Base services, not research code — provides the generic flight interface
-# consumed by the core container (planner + c_nmpc + px4ctrl) over the
-# shared host-network ROS 2 graph:
+# consumed by the core container (planner + c_nmpc) over the shared
+# host-network ROS 2 graph:
 #   - mavros2 (built from source; jammy repo ships mavros-msgs only)
-#   - nmpc_bridge: /mpc_controls -> RLS throttle model + INDI thrust
-#     -> AttitudeTarget; odom adapter -> /cur_state, /nmpc_bridge/odom_world
-#   - flight_mux: single /mavros/setpoint_raw/attitude publisher
+#   - px4ctrl: FCU interface + L2 control. Single
+#     /mavros/setpoint_raw/attitude publisher, owns arming/offboard.
+#     ctrl_mode=0 tracking controller, ctrl_mode=1 internal NMPC rates +
+#     RLS eta/INDI thrust (/mpc_controls). Hosts the odometry state adapter
+#     (/cur_state, /cur_state_odom, /nmpc_bridge/odom_world).
 #
 # One image for both profiles (ros2 launch bringup nav_infra.launch.py
 # profile:=sim|real):
@@ -67,7 +69,8 @@ WORKDIR /nav_ws
 COPY infra/nav_infra/ros_packages/livox_ros_driver2 src/livox_ros_driver2
 COPY infra/nav_infra/ros_packages/fast_lio src/fast_lio
 COPY infra/nav_infra/ros_packages/ekf_quat_pose src/ekf_quat_pose
-COPY infra/nav_infra/ros_packages/px4_interface src/px4_interface
+COPY infra/nav_infra/ros_packages/px4ctrl src/px4ctrl
+COPY infra/nav_infra/ros_packages/quadrotor_msgs src/quadrotor_msgs
 # The shared interface contract is defined by the core; nav_infra consumes it.
 COPY core/ros_packages/utils/msgs src/interface
 COPY infra/nav_infra/bringup src/bringup
@@ -75,7 +78,7 @@ COPY infra/nav_infra/bringup src/bringup
 RUN bash -c ". /opt/ros/humble/setup.sh \
     && . /opt/mavros/setup.bash \
     && colcon build \
-        --packages-select interface livox_ros_driver2 fast_lio ekf_quat_pose px4_interface bringup \
+        --packages-select interface quadrotor_msgs px4ctrl livox_ros_driver2 fast_lio ekf_quat_pose bringup \
         --cmake-args -DCMAKE_BUILD_TYPE=Release \
     && rm -rf build"
 
