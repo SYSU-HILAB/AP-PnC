@@ -44,12 +44,6 @@ def jax_trim() -> None:
     _run_script("test/lu_mpc/analysis/user_test_jax_trim.py", {"JAX_PLATFORM_NAME": "cpu"})
 
 
-@app.command(name="sim-model")
-def sim_model() -> None:
-    """Run simulation math utility tests."""
-    _pytest("test/lu_mpc/utils/test_math_utils.py")
-
-
 @app.command()
 def casadi() -> None:
     """Run CasADi symbolic model script."""

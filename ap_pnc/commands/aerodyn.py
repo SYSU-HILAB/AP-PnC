@@ -131,23 +131,6 @@ def pipeline() -> None:
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
-@app.command()
-def show(
-    aero_type: str = typer.Option(
-        "", "--aero-type", help="Specific aero type to compare"
-    ),
-) -> None:
-    """Compare derivatives across aero types."""
-    setup_env()
-    script = get_git_root() / "ap_pnc" / "tools" / "compare_aero_derivatives.py"
-    args = [sys.executable, str(script)]
-    if aero_type:
-        args.extend(["--aero-type", aero_type])
-    else:
-        args.append("--all")
-    subprocess.run(args, check=True)
-
-
 @app.command(name="direct-show")
 def direct_show() -> None:
     """Plot raw CSV aero data."""

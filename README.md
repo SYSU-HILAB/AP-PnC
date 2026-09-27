@@ -72,14 +72,12 @@ uv run ap-pnc --help
 |----------------|----------|-------------|
 | `install`      | (default) | Install everything (acados + deps) |
 | `gen-nmpc-lib` | (default) | acados NMPC codegen + self-contained `libnmpc_bundle.a` |
-| `aerodyn`      | `gen`, `viz`, `ml train\|pipeline`, `show`, `direct-show`, `csv-vs-model` | Aerodynamics |
+| `aerodyn`      | `gen`, `viz`, `ml train\|pipeline`, `direct-show`, `csv-vs-model` | Aerodynamics |
 | `benchmark`    | `run`, `flight` | `run` = offline pipeline (plan → SE3 → data); `flight` = sync config → start stack |
 | `test`         | `all`, `nmpc`, `lmpc`, ..., `colcon`, `colcon-result` | Test runners |
 | `build`        | `all`, `nmpc` (nmpc + px4ctrl), `planner`, `planner-bindings`, `aero`, `simple-sim`, `bindings` | C++ colcon builds + pybind |
-| `sim`          | `simple`, `gazebo`, `stop`, `status`, `logs`, `pcd` | K3s ConfigMap-driven simulation |
+| `sim`          | `simple`, `gazebo`, `stop`, `status`, `logs` | K3s ConfigMap-driven simulation |
 | `stack`        | `start`, `trigger go\|back` | Local ROS2 stack lifecycle (go/back = PASS_THROUGH service) |
-| `debug`        | `echo`, `pcd` | Interactive debugging (fzf topic picker, open3d viewer) |
-| `nn-trim`      | `run`, `plot` | Neural network trim analysis |
 | `docker`       | `build`, `up`, `down` | Docker compose commands |
 | `lint`         | (default), `fmt` | Ruff linter and formatter |
 

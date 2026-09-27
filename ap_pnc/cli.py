@@ -4,12 +4,10 @@ from ap_pnc.commands import (
     aerodyn,
     benchmark,
     build,
-    debug,
     docker,
     gen_nmpc_lib,
     install,
     lint,
-    nn_trim,
     sim,
     stack,
     test,
@@ -25,10 +23,8 @@ app.add_typer(aerodyn.app, name="aerodyn", help="Aerodynamics data generation, v
 app.add_typer(benchmark.app, name="benchmark", help="Planning benchmark experiments")
 app.add_typer(test.app, name="test", help="Test runners (pytest, colcon)")
 app.add_typer(build.app, name="build", help="C++ colcon builds")
-app.add_typer(nn_trim.app, name="nn-trim", help="Neural network trim analysis")
 app.add_typer(sim.app, name="sim", help="Simulation management (K3s ConfigMap-driven)")
 app.add_typer(stack.app, name="stack", help="Local ROS2 stack lifecycle")
-app.add_typer(debug.app, name="debug", help="Interactive debugging helpers")
 app.add_typer(docker.app, name="docker", help="Docker compose commands")
 app.add_typer(lint.app, name="lint", help="Lint and format")
 

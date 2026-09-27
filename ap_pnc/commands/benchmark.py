@@ -3,10 +3,10 @@ from pathlib import Path
 import typer
 import yaml
 
+from ap_pnc.commands import stack
+from ap_pnc.env import get_git_root
 from ap_pnc.paper.benchmark import runner
 from ap_pnc.paper.benchmark.runner import TRAJ_TYPES
-from ap_pnc.env import get_git_root
-from ap_pnc.commands import stack
 
 app = typer.Typer(help="Trajectory-tracking benchmark experiments (planner -> controller -> data).")
 
