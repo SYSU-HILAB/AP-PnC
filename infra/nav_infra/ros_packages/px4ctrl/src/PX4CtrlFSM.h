@@ -55,7 +55,7 @@ class PX4CtrlFSM
   rclcpp::Publisher<quadrotor_msgs::msg::Px4ctrlDebug>::SharedPtr
       debug_pub;  // debug
 
-  // State adapter outputs (/cur_state contract for c_nmpc + traj_buffer) and
+  // State adapter outputs (/cur_state contract for nmpc + planner) and
   // throttle-model telemetry (RLS eta / INDI).
   rclcpp::Publisher<interface::msg::State>::SharedPtr   state_pub;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr state_odom_pub;
@@ -137,8 +137,8 @@ class PX4CtrlFSM
       const nav_msgs::msg::Odometry::SharedPtr msg);
 
   /**
-   * Fixed-rate /cur_state + /cur_state_odom publication for c_nmpc and
-   * traj_buffer.
+   * Fixed-rate /cur_state + /cur_state_odom publication for nmpc and
+   * planner.
    */
   void     publish_state_adapter();
   FsmState get_state() { return state; }

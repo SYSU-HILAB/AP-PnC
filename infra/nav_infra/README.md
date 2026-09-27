@@ -2,7 +2,7 @@
 
 Single self-contained unit providing the generic flight interface. NOT
 research code: the core container (`core/ros_packages/`: planner line,
-c_nmpc) consumes these services over the shared host-network ROS 2 graph.
+nmpc) consumes these services over the shared host-network ROS 2 graph.
 
 ## Contents
 

@@ -63,14 +63,14 @@ def aero(
     )
 
 
-@app.command(name="traj-server")
-def traj_server(
+@app.command(name="planner")
+def planner(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
 ) -> None:
-    """Build trajectory_server package (colcon)."""
+    """Build the planner package (colcon)."""
     _colcon_build(
-        ["trajectory_server"],
-        paths=["ros_packages"],
+        ["planner"],
+        paths=["core/ros_packages"],
         clean=clean,
     )
 
@@ -87,13 +87,13 @@ def simple_sim(
     )
 
 
-@app.command(name="cnmpc")
-def cnmpc(
+@app.command(name="nmpc")
+def nmpc(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
 ) -> None:
-    """Build the control packages: c_nmpc (core) + px4ctrl (nav_infra)."""
+    """Build the control packages: nmpc (core) + px4ctrl (nav_infra)."""
     _colcon_build(
-        ["c_nmpc", "px4ctrl"],
+        ["nmpc", "px4ctrl"],
         paths=["core/ros_packages", "infra/nav_infra/ros_packages"],
         clean=clean,
     )
@@ -126,13 +126,38 @@ def bindings() -> None:
     bindings_dir = git_root / ".artifacts" / "bindings"
     bindings_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "setup.py", "build_ext", "--build-lib", str(bindings_dir)],
+        [sys.executable, "setup.py", "build_ext", "--build-lib", str(bindings_dir),
+         "--build-temp", str(bindings_dir / "build")],
         cwd=git_root / "infra" / "sim_infra" / "aerodynamics" / "python",
         check=True,
     )
     so_files = list(bindings_dir.glob("aerodynamics_bindings*.so"))
     if not so_files:
         typer.echo("ERROR: no aerodynamics_bindings .so produced", err=True)
+        raise typer.Exit(1)
+    for f in so_files:
+        typer.echo(f"Bindings: {f}")
+
+
+@app.command(name="planner-bindings")
+def planner_bindings() -> None:
+    """Build the pure planning-core pybind11 module into .artifacts/bindings.
+
+    Compiles planner_core sources directly (no colcon/ROS); used by the
+    offline benchmark pipeline.
+    """
+    git_root = get_git_root()
+    bindings_dir = git_root / ".artifacts" / "bindings"
+    bindings_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [sys.executable, "setup.py", "build_ext", "--build-lib", str(bindings_dir),
+         "--build-temp", str(bindings_dir / "build")],
+        cwd=git_root / "core" / "ros_packages" / "planner" / "python",
+        check=True,
+    )
+    so_files = list(bindings_dir.glob("planner_bindings*.so"))
+    if not so_files:
+        typer.echo("ERROR: no planner_bindings .so produced", err=True)
         raise typer.Exit(1)
     for f in so_files:
         typer.echo(f"Bindings: {f}")

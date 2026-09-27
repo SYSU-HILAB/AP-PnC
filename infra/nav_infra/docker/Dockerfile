@@ -1,7 +1,7 @@
 # nav_infra: the single navigation & interface gateway container.
 #
 # Base services, not research code — provides the generic flight interface
-# consumed by the core container (planner + c_nmpc) over the shared
+# consumed by the core container (planner + nmpc) over the shared
 # host-network ROS 2 graph:
 #   - mavros2 (built from source; jammy repo ships mavros-msgs only)
 #   - px4ctrl: FCU interface + L2 control. Single
@@ -85,8 +85,6 @@ RUN bash -c ". /opt/ros/humble/setup.sh \
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
     && echo "source /opt/mavros/setup.bash" >> /root/.bashrc \
     && echo "source /nav_ws/install/setup.bash" >> /root/.bashrc
-
-ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
 # Nodes read configs from the cwd-relative bringup/ path (repo convention).
 # Default to the installed share; deployments can mount the real bringup/

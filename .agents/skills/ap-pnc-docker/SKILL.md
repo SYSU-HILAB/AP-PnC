@@ -8,7 +8,7 @@ description: Build and run the AP-PnC gazebo Docker stack (px4-simulator, nav_in
 ## Prerequisites
 
 - Host bootstrap must be done: `uv run ap-pnc install`
-- NMPC bundle must exist: `ls .artifacts/nmpc_wrapper/libnmpc_bundle.a`
+- NMPC bundle must exist: `ls .artifacts/nmpc_solver/libnmpc_bundle.a`
   If not, run `uv run ap-pnc gen-nmpc-lib` first.
 
 ## Build
@@ -46,8 +46,8 @@ The bundle is bind-mounted at runtime, so most solver updates need no
 rebuild:
 
 ```bash
-uv run ap-pnc gen-nmpc-lib     # rewrites .artifacts/nmpc_wrapper/libnmpc_bundle.a
-docker exec ap-pnc bash -c 'pkill -f c_nmpc' && ...   # restart the node/stack
+uv run ap-pnc gen-nmpc-lib     # rewrites .artifacts/nmpc_solver/libnmpc_bundle.a
+docker exec ap-pnc bash -c 'pkill -f nmpc' && ...   # restart the node/stack
 ```
 
 Rebuild `ap-pnc` only when C++ sources or dependencies change; core config
@@ -59,7 +59,7 @@ image is self-contained, no bind mounts).
 ## Tips
 
 - `NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a` is set in the
-  image; `c_nmpc_node` links acados statically — no `.so` dependencies.
+  image; `nmpc_node` links acados statically — no `.so` dependencies.
 - Core image (`ap-pnc-ros2-base`) stays lean; PCL/tf2/mavros runtime
   dependencies live only in the `nav_infra` image.
 - The install dir is root-owned after container builds — clean it via a

@@ -1,0 +1,7 @@
+# AP-PnC NMPC tracking controller configuration.
+#
+# Loaded by the nmpc node from <AP_PNC_DIR>/bringup/config/nmpc.yaml.
+
+nmpc:
+  mass: 2.0
+  cz_rate: 0.10

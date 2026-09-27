@@ -5,8 +5,6 @@
 #
 # JAX batched implementation for efficient aerodynamic coefficient calculations
 #
-import time
-
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
@@ -370,7 +368,7 @@ def reg_Cn_batch(alpha, beta):
 @jax.jit
 def compute_aerodynamic_coeffs_jax(ALPHA, BETA):
     """
-    Compute all aerodynamic coefficients using JAX with JIT compilation - for timing purposes.
+    Compute all aerodynamic coefficients using JAX with JIT compilation.
     Returns all coefficients without plotting.
     """
     # Calculate coefficients using vmap-based batch functions
@@ -661,68 +659,6 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
         "CLL": CLL_np,
         "CM": CM_np,
         "CN": CN_np,
-    }
-
-
-def benchmark_jax_timing(mesh_size=361, num_runs=10):
-    """
-    Benchmark JAX computation time for aerodynamic coefficient calculations.
-    """
-    print("\n=== JAX Performance Benchmark ===")
-    print(f"Mesh size: {mesh_size}x{mesh_size} points")
-    print(f"Number of runs: {num_runs}")
-
-    # Check device
-    devices = jax.devices()
-    device = devices[0] if devices else jax.devices("cpu")[0]
-    print(f"Using device: {device}")
-    if hasattr(device, "platform"):
-        print(f"Platform: {device.platform}")
-
-    # Generate ranges for alpha and beta
-    alpha_deg = jnp.linspace(-180, 180, mesh_size)
-    beta_deg = jnp.linspace(-180, 180, mesh_size)
-
-    alpha_rad = deg2rad_batch(alpha_deg)
-    beta_rad = deg2rad_batch(beta_deg)
-
-    # Create meshgrid
-    ALPHA, BETA = jnp.meshgrid(alpha_rad, beta_rad, indexing="ij")
-
-    # Warmup run
-    print("Performing warmup run...")
-    _ = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
-
-    # Benchmark runs
-    print("Starting benchmark...")
-    times = []
-    for i in range(num_runs):
-        start_time = time.time()
-        _ = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
-        end_time = time.time()
-        elapsed = (end_time - start_time) * 1000  # Convert to milliseconds
-        times.append(elapsed)
-        print(f"Run {i + 1}: {elapsed:.2f} ms")
-
-    # Calculate statistics
-    avg_time = sum(times) / len(times)
-    min_time = min(times)
-    max_time = max(times)
-    std_time = (sum((t - avg_time) ** 2 for t in times) / len(times)) ** 0.5
-
-    print("\nJAX Timing Results:")
-    print(f"Average: {avg_time:.2f} ms")
-    print(f"Min: {min_time:.2f} ms")
-    print(f"Max: {max_time:.2f} ms")
-    print(f"Std Dev: {std_time:.2f} ms")
-    print(f"Throughput: {mesh_size * mesh_size / avg_time:.0f} points/ms")
-
-    return {
-        "avg_time": avg_time,
-        "min_time": min_time,
-        "max_time": max_time,
-        "std_time": std_time,
-        "throughput": mesh_size * mesh_size / avg_time,
     }
 
 

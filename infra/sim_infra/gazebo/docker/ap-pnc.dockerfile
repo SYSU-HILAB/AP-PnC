@@ -5,7 +5,7 @@ WORKDIR /workspace
 COPY core/ros_packages/ /workspace/src/
 COPY core/bringup/ /workspace/bringup/
 COPY infra/sim_infra/aerodynamics/ /workspace/sim_infra/aerodynamics/
-COPY .artifacts/nmpc_wrapper/libnmpc_bundle.a /workspace/artifacts/
+COPY .artifacts/nmpc_solver/libnmpc_bundle.a /workspace/artifacts/
 
 RUN . /opt/ros/humble/setup.sh && \
     colcon build --symlink-install \

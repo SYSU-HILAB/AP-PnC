@@ -11,19 +11,19 @@ NMPC stack. No customized firmware, no uXRCE-DDS.
 | `px4-simulator`  | `px4-simulator:latest` | stock PX4 v1.17.0 + Gazebo Harmonic, `gz_x500` |
 | `nav_infra`      | `nav_infra:latest`     | base-services gateway: mavros2 + px4ctrl (FCU interface, tracking/NMPC controller modes); livox + fast_lio + ekf_quat join in the real profile |
 | `qground_control`| `qground_control:latest` | QGroundControl ground station             |
-| `ap-pnc`（核心）  | `ap-pnc:latest`        | research code: planner 线 / c_nmpc |
+| `ap-pnc`（核心）  | `ap-pnc:latest`        | research code: planner 线 / nmpc |
 
 ## Control path
 
 ```
-planner → c_nmpc → /mpc_controls (rates FLU + specific_force_sp)
+planner → nmpc → /mpc_controls (rates FLU + specific_force_sp)
     → px4ctrl ctrl_mode=1 (RLS throttle model + INDI incremental thrust,
        reference: PX4-Neupilot acc_rates_control)
     → /mavros/setpoint_raw/attitude (single publisher)
     → mavros2 → PX4
 
 px4ctrl lives in the nav_infra container (base services); the core
-container holds planner + c_nmpc. px4ctrl is the sole mavros setpoint
+container holds planner + nmpc. px4ctrl is the sole mavros setpoint
 publisher and also owns arming/offboard/takeoff/hover/land.
 ```
 
@@ -57,7 +57,7 @@ make px4_sitl gz_x500
 
 `nav_infra` connects mavros via `udp://:14540@localhost:14580` (host
 network). Then start the core stack (in `ap-pnc` or via `ap-pnc stack
-start`): `ros2 launch bringup bringup.launch.py` (c_nmpc only — px4ctrl is
+start`): `ros2 launch bringup bringup.launch.py` (nmpc only — px4ctrl is
 launched by the nav_infra container).
 
 Flight sequence: takeoff via `/px4ctrl/takeoff_land` (publish from the

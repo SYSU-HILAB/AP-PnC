@@ -14,6 +14,9 @@ AGENTS.md
 # build / codegen / colcon outputs (canonical location, see AGENTS.md artifacts convention)
 .artifacts/
 
+# pybind11 in-tree build dir
+core/ros_packages/planner/python/build/
+
 # datasets (untracked pending keep/delete decision)
 /artifacts/
 

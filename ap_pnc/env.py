@@ -1,11 +1,22 @@
 import os
+import platform
 import subprocess
+import sys
 from pathlib import Path
 
-T_RENDERER_URL = (
-    "https://github.com/acados/tera_renderer/releases/download/"
-    "v0.2.0/t_renderer-v0.2.0-linux-amd64"
-)
+
+def _t_renderer_url() -> str:
+    """Choose the acados renderer for the host running code generation."""
+    arch = {"x86_64": "amd64", "AMD64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
+        platform.machine()
+    )
+    system = {"linux": "linux", "darwin": "macos"}.get(sys.platform)
+    if not arch or not system:
+        raise RuntimeError(f"Unsupported t_renderer platform: {sys.platform}/{platform.machine()}")
+    return (
+        "https://github.com/acados/tera_renderer/releases/download/"
+        f"v0.2.0/t_renderer-v0.2.0-{system}-{arch}"
+    )
 
 
 def ensure_t_renderer() -> Path:
@@ -17,7 +28,7 @@ def ensure_t_renderer() -> Path:
     if renderer.exists():
         return renderer
     bin_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["curl", "-L", T_RENDERER_URL, "-o", str(renderer)], check=True)
+    subprocess.run(["curl", "-fL", _t_renderer_url(), "-o", str(renderer)], check=True)
     renderer.chmod(0o755)
     return renderer
 

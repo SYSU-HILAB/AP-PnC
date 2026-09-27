@@ -6,7 +6,6 @@
 # PyTorch batched implementation for efficient aerodynamic coefficient calculations
 #
 import math
-import time
 
 import matplotlib.pyplot as plt
 import torch
@@ -309,7 +308,7 @@ def compute_aerodynamic_coeffs_torch(
     kCn: torch.Tensor,
 ):
     """
-    Compute all aerodynamic coefficients using PyTorch - for timing purposes.
+    Compute all aerodynamic coefficients using PyTorch.
     Returns all coefficients without plotting.
     Note: JIT disabled due to compatibility issues with mixed tensor/scalar operations.
     """
@@ -498,103 +497,6 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
         "CLL": CLL_np,
         "CM": CM_np,
         "CN": CN_np,
-    }
-
-
-def benchmark_torch_timing(mesh_size=361, num_runs=10):
-    """
-    Benchmark PyTorch computation time for aerodynamic coefficient calculations.
-    """
-    print("\n=== PyTorch Performance Benchmark ===")
-    print(f"Mesh size: {mesh_size}x{mesh_size} points")
-    print(f"Number of runs: {num_runs}")
-
-    # Force GPU usage
-    if not torch.cuda.is_available():
-        print("Warning: CUDA not available. Using CPU.")
-        device = torch.device("cpu")
-    else:
-        device = torch.device("cuda")
-        print(f"Using device: {device}")
-        print(f"CUDA device: {torch.cuda.get_device_name()}")
-        print(f"CUDA version: {torch.version.cuda}")
-
-    # Generate ranges for alpha and beta on device
-    alpha_deg = torch.linspace(-180, 180, mesh_size, device=device)
-    beta_deg = torch.linspace(-180, 180, mesh_size, device=device)
-
-    alpha_rad = deg2rad_batch(alpha_deg)
-    beta_rad = deg2rad_batch(beta_deg)
-
-    # Create meshgrid on device
-    ALPHA, BETA = torch.meshgrid(alpha_rad, beta_rad, indexing="ij")
-
-    # Move coefficient tensors to device
-    kCL_device = kCL.to(device)
-    kCD_device = kCD.to(device)
-    kCY_device = kCY.to(device)
-    kCLL_device = kCLL.to(device)
-    kCm_device = kCm.to(device)
-    kCn_device = kCn.to(device)
-
-    # Warmup run
-    print("Performing warmup run...")
-    if device.type == "cuda":
-        torch.cuda.synchronize()
-    _ = compute_aerodynamic_coeffs_torch(
-        ALPHA,
-        BETA,
-        kCL_device,
-        kCD_device,
-        kCY_device,
-        kCLL_device,
-        kCm_device,
-        kCn_device,
-    )
-
-    # Benchmark runs
-    print("Starting benchmark...")
-    times = []
-    for i in range(num_runs):
-        if device.type == "cuda":
-            torch.cuda.synchronize()
-        start_time = time.time()
-        _ = compute_aerodynamic_coeffs_torch(
-            ALPHA,
-            BETA,
-            kCL_device,
-            kCD_device,
-            kCY_device,
-            kCLL_device,
-            kCm_device,
-            kCn_device,
-        )
-        if device.type == "cuda":
-            torch.cuda.synchronize()
-        end_time = time.time()
-        elapsed = (end_time - start_time) * 1000  # Convert to milliseconds
-        times.append(elapsed)
-        print(f"Run {i + 1}: {elapsed:.2f} ms")
-
-    # Calculate statistics
-    avg_time = sum(times) / len(times)
-    min_time = min(times)
-    max_time = max(times)
-    std_time = (sum((t - avg_time) ** 2 for t in times) / len(times)) ** 0.5
-
-    print("\nPyTorch Timing Results:")
-    print(f"Average: {avg_time:.2f} ms")
-    print(f"Min: {min_time:.2f} ms")
-    print(f"Max: {max_time:.2f} ms")
-    print(f"Std Dev: {std_time:.2f} ms")
-    print(f"Throughput: {mesh_size * mesh_size / avg_time:.0f} points/ms")
-
-    return {
-        "avg_time": avg_time,
-        "min_time": min_time,
-        "max_time": max_time,
-        "std_time": std_time,
-        "throughput": mesh_size * mesh_size / avg_time,
     }
 
 

@@ -1,8 +1,6 @@
 # AP-PnC prior-free planning configuration (phi-theory trajectory generation).
 #
-# Loaded directly (yaml-cpp) by trajectory_server from:
-#   $AP_PNC_PLANNING_YAML, or "bringup/config/planning.yaml" relative to cwd.
-# Container: mounted at /workspace/bringup/config/planning.yaml via ConfigMap.
+# Loaded by the planner node from <AP_PNC_DIR>/bringup/config/planning.yaml.
 
 problem_formulation:
   piece_n: 10
@@ -52,6 +50,4 @@ problem_formulation:
     - -0.09408
     mass: 2.0
 io:
-  traj_topic: /control_traj
   traj_pub_rsl: 0.02
-  temp_data_dir: artifacts/simulations/temp_data

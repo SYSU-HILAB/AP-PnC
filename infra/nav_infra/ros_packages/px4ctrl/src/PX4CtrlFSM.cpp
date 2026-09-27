@@ -1086,7 +1086,7 @@ void PX4CtrlFSM::state_adapter_odom_callback(
       msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
       msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
   // mavros local_position/odom twist is body-frame (FLU); the /cur_state
-  // contract (px4ctrl / c_nmpc / ekf_quat lineage) is world-frame.
+  // contract (px4ctrl / nmpc / ekf_quat lineage) is world-frame.
   const Eigen::Vector3d v =
       q * Eigen::Vector3d(msg->twist.twist.linear.x, msg->twist.twist.linear.y,
                           msg->twist.twist.linear.z);

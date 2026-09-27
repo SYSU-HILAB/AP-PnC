@@ -71,7 +71,7 @@ services:
   # nav_infra: single base-services gateway — mavros2 + px4ctrl (FCU
   # interface, tracking/NMPC controller modes, state adapter); livox +
   # fast_lio + ekf_quat join in the real profile. Research code (planner +
-  # c_nmpc) stays in the ap-pnc core.
+  # nmpc) stays in the ap-pnc core.
   nav_infra:
     build:
       context: ../../../..
@@ -79,8 +79,6 @@ services:
     image: nav_infra:latest
     container_name: nav_infra
     network_mode: host
-    environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     # Self-contained image (bringup baked in); config updates go through an
     # image rebuild or a k3s ConfigMap overlay — NOT a bind mount (the
     # /workspace/bringup symlink resolves into the colcon install share).
@@ -108,10 +106,9 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ../../../../.artifacts/nmpc_wrapper/libnmpc_bundle.a:/workspace/artifacts/libnmpc_bundle.a
+      - ../../../../.artifacts/nmpc_solver/libnmpc_bundle.a:/workspace/artifacts/libnmpc_bundle.a
       - ../../../../core/ros_packages:/workspace/src
       - ../../../../core/bringup:/workspace/bringup
-      - ../../../../artifacts/simulations/temp_data:/workspace/artifacts/simulations/temp_data
     command: bash
     stdin_open: true
     tty: true

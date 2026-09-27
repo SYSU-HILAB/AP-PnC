@@ -83,8 +83,6 @@ spec:
           image: nav_infra:latest
           imagePullPolicy: IfNotPresent
           env:
-            - name: RMW_IMPLEMENTATION
-              value: rmw_fastrtps_cpp
             - name: NAV_PROFILE
               valueFrom:
                 configMapKeyRef:

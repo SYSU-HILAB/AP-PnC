@@ -6,7 +6,6 @@ from ap_pnc.recipes import (
     build,
     debug,
     docker,
-    experiments,
     gen_nmpc_lib,
     install,
     lint,
@@ -14,7 +13,6 @@ from ap_pnc.recipes import (
     sim,
     stack,
     test,
-    tracker,
     traj,
 )
 
@@ -27,37 +25,14 @@ app.add_typer(
 app.add_typer(traj.app, name="traj", help="Trajectory visualization and tools")
 app.add_typer(aerodyn.app, name="aerodyn", help="Aerodynamics data generation, viz, ML")
 app.add_typer(benchmark.app, name="benchmark", help="Planning benchmark experiments")
-app.add_typer(test.app, name="test", help="Test runners (pytest, colcon, timing)")
+app.add_typer(test.app, name="test", help="Test runners (pytest, colcon)")
 app.add_typer(build.app, name="build", help="C++ colcon builds")
 app.add_typer(nn_trim.app, name="nn-trim", help="Neural network trim analysis")
 app.add_typer(sim.app, name="sim", help="Simulation management (K3s ConfigMap-driven)")
 app.add_typer(stack.app, name="stack", help="Local ROS2 stack lifecycle")
 app.add_typer(debug.app, name="debug", help="Interactive debugging helpers")
 app.add_typer(docker.app, name="docker", help="Docker compose commands")
-app.add_typer(experiments.app, name="experiments", help="Run performance experiments (wind, etc.)")
-app.add_typer(tracker.app, name="tracker", help="Tracker evaluation, open scenarios, and TUI")
 app.add_typer(lint.app, name="lint", help="Lint and format")
-
-
-@app.command(name="web")
-def web_shortcut(
-    scenario: str = typer.Option("open_circle", "--scenario", "-s", help="Initial scenario"),
-    speed: float = typer.Option(10.0, "--speed", "-v", help="Target velocity [m/s]"),
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host interface to bind"),
-    port: int = typer.Option(8080, "--port", "-p", help="Port to listen on"),
-    no_browser: bool = typer.Option(False, "--no-browser", help="Don't open browser automatically"),
-) -> None:
-    """Launch the 3D Web simulation visualizer (FastAPI + Three.js)."""
-    tracker.web_cmd(scenario=scenario, speed=speed, host=host, port=port, no_browser=no_browser)
-
-
-@app.command(name="tui")
-def tui_shortcut(
-    scenario: str = typer.Option("open_circle", "--scenario", "-s", help="Initial scenario"),
-    speed: float = typer.Option(10.0, "--speed", "-v", help="Target velocity [m/s]"),
-) -> None:
-    """Launch the interactive terminal dashboard for tracker monitoring and orchestration."""
-    tracker.tui_cmd(scenario=scenario, speed=speed)
 
 
 @app.command(name="start")

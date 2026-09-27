@@ -7,7 +7,7 @@ description: End-to-end flight procedure and pitfall reference for the AP-PnC ga
 
 Flight loop: `px4-simulator` (stock PX4 v1.17.0, Gazebo Harmonic `gz_x500`)
 → `nav_infra` (mavros2 + `px4ctrl` with RLS/INDI + odometry adapter) →
-`ap-pnc` core (planner + `c_nmpc`). px4ctrl is the single
+`ap-pnc` core (planner + `nmpc`). px4ctrl is the single
 `/mavros/setpoint_raw/attitude` publisher and owns arming/offboard; in
 `ctrl_mode=1` its PASS_THROUGH state consumes `/mpc_controls` internally
 (RLS eta + INDI thrust) instead of forwarding an external stream.
@@ -28,7 +28,7 @@ docker exec -d px4-simulator bash -c \
 #    (udp from port 14550 to 18570, MAV_TYPE_GCS, srcSystem=255)
 cd /tmp && uv run --with pymavlink python gcs_heartbeat.py   # any 1 Hz GCS heartbeat sender
 
-# 4) core stack (c_nmpc only; px4ctrl runs in the nav_infra container CMD,
+# 4) core stack (nmpc only; px4ctrl runs in the nav_infra container CMD,
 #    sim profile, px4ctrl.yaml hover_percentage 0.9)
 docker exec -d ap-pnc bash -c \
   'cd /workspace && source /opt/ros/humble/setup.bash && source install/setup.bash && \

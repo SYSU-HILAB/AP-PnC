@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
       node->create_publisher<interface::msg::ThrottleModelStatus>(
           "/px4ctrl/throttle_model_status", qos);
 
-  // /cur_state publication at 50 Hz for c_nmpc + traj_buffer.
+  // /cur_state publication at 50 Hz for nmpc + planner.
   auto state_timer = node->create_wall_timer(
       std::chrono::milliseconds(20), [&fsm]() { fsm.publish_state_adapter(); });
 

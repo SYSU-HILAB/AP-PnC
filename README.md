@@ -27,8 +27,8 @@ Research code is separated from base services:
 
 ```
 ┌─ ap-pnc (core) ────────────────────────────────────────────────────┐
-│ planner (tailsitter_df phi-theory + trajectory_server + traj_buffer)│
-│ c_nmpc  — acados NMPC → /mpc_controls (FLU rates + specific force)  │
+│ planner — GCOPTER/MINCO → buffered RefTrajectory → /ref_trajectory_bullet│
+│ nmpc    — acados NMPC → /mpc_controls (FLU rates + specific force)  │
 └──────────────┬─────────────────────────────────────────────────────┘
                │ /cur_state ↑   /mpc_controls ↓
 ┌─ nav_infra (sidecar) ──────────────────────────────────────────────┐
@@ -73,9 +73,9 @@ uv run ap-pnc --help
 | `gen-nmpc-lib` | (default) | acados NMPC codegen + self-contained `libnmpc_bundle.a` |
 | `traj`         | `viz-tracking`, `viz-elmpc`, `odom` | Trajectory visualization |
 | `aerodyn`      | `gen`, `viz`, `ml train\|pipeline`, `show`, `direct-show`, `csv-vs-model` | Aerodynamics |
-| `benchmark`    | `run`    | Planning experiments (`--vmax --type --radius` → sync config → start stack) |
-| `test`         | `all`, `nmpc`, `lmpc`, ..., `timing-jax/torch/compare`, `colcon`, `colcon-result` | Test runners |
-| `build`        | `all`, `cnmpc` (c_nmpc + px4ctrl), `aero`, `simple-sim`, `traj-server`, `bindings` | C++ colcon builds |
+| `benchmark`    | `run`, `flight` | `run` = offline pipeline (plan → SE3 → data); `flight` = sync config → start stack |
+| `test`         | `all`, `nmpc`, `lmpc`, ..., `colcon`, `colcon-result` | Test runners |
+| `build`        | `all`, `nmpc` (nmpc + px4ctrl), `planner`, `planner-bindings`, `aero`, `simple-sim`, `bindings` | C++ colcon builds + pybind |
 | `sim`          | `simple`, `gazebo`, `stop`, `status`, `logs`, `pcd` | K3s ConfigMap-driven simulation |
 | `stack`        | `start`, `trigger go\|back` | Local ROS2 stack lifecycle (go/back = PASS_THROUGH service) |
 | `debug`        | `echo`, `pcd` | Interactive debugging (fzf topic picker, open3d viewer) |
@@ -87,11 +87,25 @@ uv run ap-pnc --help
 
 ```bash
 uv run ap-pnc gen-nmpc-lib         # acados NMPC codegen + bundle
-uv run ap-pnc benchmark run --vmax 5 --type 1 --radius 4   # Planning experiment
-uv run ap-pnc test nmpc            # Run proposed NMPC test
+uv run ap-pnc build planner-bindings  # pybind planning core for the benchmark
+uv run ap-pnc benchmark run --vmax 8 --type 2 --radius 12   # Offline SE3 benchmark
+uv run ap-pnc benchmark flight --vmax 5 --type 1 --radius 4 # Sync config + start stack
 uv run ap-pnc build all            # Build the whole workspace (core + nav_infra)
 uv run ap-pnc lint                 # Lint
 ```
+
+### Offline benchmark pipeline
+
+`ap-pnc benchmark run` orchestrates the whole offline loop in one process:
+
+```
+planning.yaml ─► planner_core.plan() ─► Reference ─► SE3 ─► rigid-body plant ─► data.npz + metrics
+                  (pybind, pure C++)     (numpy)    controller
+```
+
+Artifacts land in `.artifacts/benchmark/<name>/` (`planning.yaml`, `data.npz`,
+`metrics.json`). No ROS and no CSV are involved; the real C++ planner is
+reused in-process via `planner_bindings`.
 
 ---
 
@@ -99,9 +113,11 @@ uv run ap-pnc lint                 # Lint
 
 ```
 core/                # Research code — owns only itself
-  ros_packages/      #   planner (tailsitter_df + trajectory_server + traj_buffer),
-                     #   c_nmpc, utils (+msgs interface contract)
-  bringup/           #   core config/launch: planning, c_nmpc, fastdds
+  ros_packages/      #   planner — core/ (pure C++, ROS-free: planner_core,
+                     #     gcopter, basic_trajectories, tailsitter_df),
+                     #     node/ (thin ROS adapter), python/ (pybind);
+                     #   nmpc, utils (+msgs interface contract)
+  bringup/           #   core config/launch: planning, nmpc
   docker/            #   amd64/arm64 ros2-base dev images
 infra/               # Infrastructure — each unit self-contained
   nav_infra/         #   ros_packages/ (px4ctrl tracking+NMPC/INDI, quadrotor_msgs,
@@ -121,7 +137,7 @@ Core nodes read sectioned yaml directly from the cwd-relative
 
 - `planning.yaml` — `problem_formulation` (box, basic_traj, nested cost,
   MINCO, prior-free phi-theory flatness) + `io` (topics, dump dirs)
-- `c_nmpc.yaml` — `nmpc: {mass, cz_rate}`
+- `nmpc.yaml` — `nmpc: {mass, cz_rate}`
 
 nav_infra nodes read from `infra/nav_infra/bringup/config/`:
 

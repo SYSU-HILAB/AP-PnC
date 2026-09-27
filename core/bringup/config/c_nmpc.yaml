@@ -1,9 +1,0 @@
-# AP-PnC NMPC tracking controller configuration.
-#
-# Loaded directly (yaml-cpp) by c_nmpc from:
-#   $AP_PNC_NMPC_YAML, or "bringup/config/c_nmpc.yaml" relative to cwd.
-# Container: mounted at /workspace/bringup/config/c_nmpc.yaml via ConfigMap.
-
-nmpc:
-  mass: 2.0
-  cz_rate: 0.10

@@ -16,7 +16,7 @@ def _cleanup(*_: int) -> None:
     for pid in PIDS:
         if pid > 0:
             subprocess.run(["kill", str(pid)], stderr=subprocess.DEVNULL)
-    for name in ("c_nmpc", "trajectory_server", "px4ctrl"):
+    for name in ("nmpc", "planner", "px4ctrl"):
         subprocess.run(["pkill", "-f", name], stderr=subprocess.DEVNULL)
     for pid in PIDS:
         if pid > 0:
@@ -31,7 +31,7 @@ def _launch(env: dict[str, str], core: int, *args: str) -> None:
 
 @app.command()
 def start() -> None:
-    """Launch the local research stack (planner + c_nmpc control core).
+    """Launch the local research stack (planner + nmpc control core).
 
     The base services (mavros + px4ctrl + LIO) run inside the nav_infra
     container; bring them up with the gazebo compose file (see the

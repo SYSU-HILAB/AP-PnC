@@ -1,4 +1,4 @@
 *
 !core/
 !infra/
-!.artifacts/nmpc_wrapper/libnmpc_bundle.a
+!.artifacts/nmpc_solver/libnmpc_bundle.a

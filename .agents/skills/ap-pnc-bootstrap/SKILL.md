@@ -26,7 +26,7 @@ If any missing → ask user to install.
 uv sync --group dev --group extra
 ```
 
-The `extra` group installs ML/compute dependencies (JAX, Torch, CasADi, matplotlib, optax, flax, seaborn) needed for benchmark and aerodynamics commands. Omit `--group extra` if you only need the C++/ROS2 pipeline.
+The `extra` group installs ML/compute dependencies (JAX, Torch, CasADi, matplotlib, optax, flax, seaborn) needed for aerodynamics commands. Omit `--group extra` if you only need the C++/ROS2 pipeline.
 
 ### 2. Initialize acados submodule
 
@@ -79,7 +79,7 @@ Output:
 | ----------------------------------- | -------------------------------- |
 | Generated `.c` / `.h` / `Makefile`   | `c_generated_code/`              |
 | `libacados_ocp_solver_tailsitter_flu.so` | `c_generated_code/` (shared)     |
-| `libnmpc_bundle.a`                  | `.artifacts/nmpc_wrapper/` (static)   |
+| `libnmpc_bundle.a`                  | `.artifacts/nmpc_solver/` (static)   |
 
 The bundle is a single static archive containing the wrapper + generated solver + acados/hpipm/blasfeo.
 
@@ -92,7 +92,7 @@ uv run ap-pnc --help
 uv run python -c "from acados_template import AcadosOcpSolver; print('OK')"
 
 # Bundle exists
-ls -lh .artifacts/nmpc_wrapper/libnmpc_bundle.a
+ls -lh .artifacts/nmpc_solver/libnmpc_bundle.a
 ```
 
 ## ML / Aerodynamics Usage
@@ -101,14 +101,6 @@ Install the extra dependencies separately if skipped earlier:
 
 ```bash
 uv sync --group extra
-```
-
-### Benchmark compute timing
-
-```bash
-uv run ap-pnc benchmark jax        # JAX timing
-uv run ap-pnc benchmark torch      # Torch timing
-uv run ap-pnc benchmark compare    # All backends
 ```
 
 ### Aerodynamic data generation
@@ -148,6 +140,6 @@ uv run ap-pnc gen-nmpc-lib
 docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build ap-pnc
 ```
 
-The resulting `c_nmpc_node` binary is fully self-contained — zero acados runtime deps.
+The resulting `nmpc_node` binary is fully self-contained — zero acados runtime deps.
 
 See the ap-pnc-docker skill for run, hot-update, and troubleshooting.

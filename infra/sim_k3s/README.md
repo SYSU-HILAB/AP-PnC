@@ -39,7 +39,7 @@
    - `nav_infra`：基础服务网关容器（mavros2 + px4ctrl FCU 接口/控制器，
      sim profile；实机 profile 再加 livox + fast_lio + ekf_quat，镜像不变，
      `NAV_PROFILE` ConfigMap 键切换）。
-   - `ap-pnc`：研究栈（规划 + c_nmpc），px4ctrl 已迁至 nav_infra 镜像。
+   - `ap-pnc`：研究栈（规划 + nmpc），px4ctrl 已迁至 nav_infra 镜像。
 
 ---
 
@@ -111,7 +111,7 @@ uv run ap-pnc k3s delete
 ## Bringup config mounting (core stack)
 
 Core ROS2 nodes read their configuration directly from sectioned yaml files
-(`core/bringup/config/planning.yaml`, `core/bringup/config/c_nmpc.yaml`) — no ROS
+(`core/bringup/config/planning.yaml`, `core/bringup/config/nmpc.yaml`) — no ROS
 parameters. When the core stack is deployed into k3s, mount these via the
 same `sim-config` ConfigMap pattern:
 

@@ -44,34 +44,10 @@ def jax_trim() -> None:
     _run_script("test/lu_mpc/analysis/user_test_jax_trim.py", {"JAX_PLATFORM_NAME": "cpu"})
 
 
-@app.command()
-def lmpc() -> None:
-    """Run error-state LMPC controller test."""
-    _run_script("test/lu_mpc/controller/user_test_ctrl_err_state_lmpc_ang_vel_actuated.py")
-
-
-@app.command()
-def nmpc(simple: bool = typer.Option(False, "--simple", help="Use simple NMPC test")) -> None:
-    """Run proposed NMPC controller test."""
-    if simple:
-        _run_script("ap_pnc/lu_mpc/model/ctrl/test_proposed_nmpc_simple.py")
-    else:
-        subprocess.run(
-            [sys.executable, "-m", "feature.lu_mpc.model.ctrl.test_proposed_nmpc"],
-            check=True,
-        )
-
-
 @app.command(name="sim-model")
 def sim_model() -> None:
     """Run simulation math utility tests."""
-    _pytest("test/lu_mpc/model/sim/test_math_utils.py")
-
-
-@app.command(name="sim-gd")
-def sim_gd() -> None:
-    """Run GD simulation model test."""
-    _pytest("test/lu_mpc/model/sim/test_sim_gd_model.py")
+    _pytest("test/lu_mpc/utils/test_math_utils.py")
 
 
 @app.command()
@@ -85,40 +61,6 @@ def frame_conversion() -> None:
     """Run frame conversion test."""
     code = "from ap_pnc.lu_mpc.model.sim.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
     subprocess.run([sys.executable, "-c", code], check=True)
-
-
-@app.command(name="ros-viz")
-def ros_viz() -> None:
-    """Run ROS2 visualization node tests."""
-    _pytest("test/lu_mpc/ros")
-
-
-@app.command(name="timing-jax")
-def timing_jax() -> None:
-    """Benchmark JAX compute timing."""
-    setup_env()
-    code = "from ap_pnc.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()"
-    subprocess.run([sys.executable, "-c", code], check=True)
-
-
-@app.command(name="timing-torch")
-def timing_torch() -> None:
-    """Benchmark Torch compute timing."""
-    setup_env()
-    code = "from ap_pnc.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()"
-    subprocess.run([sys.executable, "-c", code], check=True)
-
-
-@app.command(name="timing-compare")
-def timing_compare() -> None:
-    """Run timing benchmarks across all backends (JAX, Torch, CasADi)."""
-    setup_env()
-    codes = [
-        "from ap_pnc.lu_mpc.model.sim.gd_model_jax import benchmark_jax_timing; benchmark_jax_timing()",
-        "from ap_pnc.lu_mpc.model.sim.gd_model_torch import benchmark_torch_timing; benchmark_torch_timing()",
-    ]
-    for code in codes:
-        subprocess.run([sys.executable, "-c", code], check=True)
 
 
 @app.command(name="colcon")

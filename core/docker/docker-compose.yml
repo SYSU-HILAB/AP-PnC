@@ -11,7 +11,7 @@ services:
     volumes:
       - ../../core/ros_packages:/workspace/src:rw
       - ../../core/bringup:/workspace/bringup:rw
-      - ../../.artifacts/nmpc_wrapper:/workspace/artifacts:ro
+      - ../../.artifacts/nmpc_solver:/workspace/artifacts:ro
     environment:
       - AP_PNC_DIR=/workspace
       - NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a
@@ -30,7 +30,7 @@ services:
     volumes:
       - ../../core/ros_packages:/workspace/src:rw
       - ../../core/bringup:/workspace/bringup:rw
-      - ../../.artifacts/nmpc_wrapper:/workspace/artifacts:ro
+      - ../../.artifacts/nmpc_solver:/workspace/artifacts:ro
     environment:
       - AP_PNC_DIR=/workspace
       - NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a

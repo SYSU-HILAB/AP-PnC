@@ -10,11 +10,12 @@
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
 # Tail-sitter UAV.
 
-"""Planning stack launch (trajectory_server + traj_buffer).
+"""Planning stack launch (planner_node).
 
-Nodes read their configuration from the conventional cwd-relative
-bringup/config/planning.yaml; no ROS parameters are passed here.
-Use `debug:=true` to run the planner under gdbserver :7777.
+The planner package packs the whole planning line into one process: the
+trajectory optimizer, the reference buffer module, and the ROS interfaces.
+Configuration is read from <AP_PNC_DIR>/bringup/config/planning.yaml.
+Use `debug:=true` to run planner_node under gdbserver :7777.
 """
 
 import launch
@@ -25,29 +26,25 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
     debug = LaunchConfiguration("debug")
 
+    node_args = dict(
+        package="planner",
+        executable="planner_node",
+        name="planner_node",
+        output="screen",
+    )
+
     return launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(
             "debug", default_value="false",
-            description="Run global_planning_node under gdbserver :7777",
+            description="Run planner_node under gdbserver :7777",
         ),
         launch_ros.actions.Node(
-            package="traj_buffer",
-            executable="traj_buffer_node",
-            name="traj_buffer_node",
-        ),
-        launch_ros.actions.Node(
-            package="trajectory_server",
-            executable="trajectory_server_node",
-            name="global_planning_node",
+            **node_args,
             prefix=["gdbserver :7777"],
             condition=launch.conditions.IfCondition(debug),
-            output="screen",
         ),
         launch_ros.actions.Node(
-            package="trajectory_server",
-            executable="trajectory_server_node",
-            name="global_planning_node",
+            **node_args,
             condition=launch.conditions.UnlessCondition(debug),
-            output="screen",
         ),
     ])

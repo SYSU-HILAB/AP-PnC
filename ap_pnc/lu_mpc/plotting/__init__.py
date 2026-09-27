@@ -12,7 +12,6 @@ from .mesh_plots import (
     plot_aerodynamic_mesh_jax,
     plot_aerodynamic_mesh_torch,
 )
-from .trajectory_plots import plot_trajectory_over_time
 
 __all__ = [
     "plot_cl_cd_cm_coordinated",
@@ -20,5 +19,4 @@ __all__ = [
     "plot_aerodynamic_mesh",
     "plot_aerodynamic_mesh_jax",
     "plot_aerodynamic_mesh_torch",
-    "plot_trajectory_over_time",
 ]

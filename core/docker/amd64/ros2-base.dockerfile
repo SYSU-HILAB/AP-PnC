@@ -29,13 +29,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Setup decoupled workspace layout
 # /workspace/src       <- host core/ros_packages/
 # /workspace/bringup   <- host core/bringup/
-# /workspace/artifacts <- host .artifacts/nmpc_wrapper/ (libnmpc_bundle.a)
+# /workspace/artifacts <- host .artifacts/nmpc_solver/ (libnmpc_bundle.a)
 WORKDIR /workspace
 RUN mkdir -p /workspace/src /workspace/bringup /workspace/artifacts
 
 ENV AP_PNC_DIR=/workspace
 ENV NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a
-ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
     && echo "if [ -f /workspace/install/setup.bash ]; then source /workspace/install/setup.bash; fi" >> /root/.bashrc
@@ -51,7 +50,7 @@ FROM base AS runner
 
 COPY core/ros_packages /workspace/src/
 COPY core/bringup /workspace/bringup/
-COPY .artifacts/nmpc_wrapper/libnmpc_bundle.a /workspace/artifacts/libnmpc_bundle.a
+COPY .artifacts/nmpc_solver/libnmpc_bundle.a /workspace/artifacts/libnmpc_bundle.a
 
 RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"

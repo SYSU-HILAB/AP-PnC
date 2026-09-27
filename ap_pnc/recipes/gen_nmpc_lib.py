@@ -32,15 +32,15 @@ def _build_acados_static(git_root: Path) -> None:
 
 def _build_wrapper_and_bundle(git_root: Path) -> None:
     """Build libnmpc_solver.a, then merge with static acados into libnmpc_bundle.a."""
-    wrapper_src = git_root / "core" / "ros_packages" / "c_nmpc" / "nmpc_wrapper"
-    build_dir = git_root / ".artifacts" / "nmpc_wrapper"
+    wrapper_src = git_root / "core" / "ros_packages" / "nmpc" / "solver"
+    build_dir = git_root / ".artifacts" / "nmpc_solver"
     bundle = build_dir / "libnmpc_bundle.a"
 
     if bundle.exists():
         bundle.unlink()
 
     # Build wrapper .a (includes generated solver .c files)
-    typer.echo("Building nmpc_wrapper...")
+    typer.echo("Building nmpc solver wrapper...")
     subprocess.run(
         ["cmake", "-S", str(wrapper_src), "-B", str(build_dir),
          "-DAP_PNC_DIR=" + str(git_root),
@@ -118,7 +118,7 @@ def cocp() -> None:
     _ensure_prerequisites()
     setup_env()
     git_root = get_git_root()
-    script = git_root / "ap_pnc" / "nmpc" / "create_ocp.py"
+    script = git_root / "ap_pnc" / "nmpc_gen" / "create_ocp.py"
     gen_dir = git_root / ".artifacts" / "c_generated_code"
     gen_dir.mkdir(parents=True, exist_ok=True)
     typer.echo(f"Running: {script}")
