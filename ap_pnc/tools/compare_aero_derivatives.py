@@ -31,7 +31,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ap_pnc.aerodynamics.inference.derivatives import AerodynamicsMLPDerivatives
+from aerodynamics.inference.derivatives import AerodynamicsMLPDerivatives
 
 AERO_TYPES = Literal["lyu", "bspline", "phi", "advanced"]
 

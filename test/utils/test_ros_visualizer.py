@@ -9,7 +9,7 @@ import pytest
 from geometry_msgs.msg import Point, Vector3, Quaternion, PoseStamped
 from nav_msgs.msg import Path
 
-from ap_pnc.utils.ros_viz_utils import (
+from ap_pnc.ros_viz_utils import (
     make_topic,
     get_topic_prefix,
     numpy_to_point,
@@ -303,7 +303,7 @@ def test_sleep_period_skips_non_positive(monkeypatch):
     def fake_sleep(value):
         called.append(value)
 
-    import ap_pnc.utils.ros_visualizer as rv
+    import ap_pnc.ros_viz_utils as rv
     monkeypatch.setattr(rv.time, "sleep", fake_sleep)
 
     rv.sleep_period(0.0)
@@ -319,7 +319,7 @@ def test_sleep_period_invokes_time_sleep(monkeypatch):
     def fake_sleep(value):
         recorded.append(value)
 
-    import ap_pnc.utils.ros_visualizer as rv
+    import ap_pnc.ros_viz_utils as rv
     monkeypatch.setattr(rv.time, "sleep", fake_sleep)
 
     rv.sleep_period(0.5)

@@ -33,8 +33,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import root_scalar
 
-from ap_pnc.aerodynamics.inference.derivatives import load_aero_derivatives
-from ap_pnc.aerodynamics.inference.predictor import load_aerodynamics_mlp
+from aerodynamics.inference.derivatives import load_aero_derivatives
+from aerodynamics.inference.predictor import load_aerodynamics_mlp
 
 
 @dataclass

@@ -15,7 +15,7 @@ uv run ap-pnc gen-nmpc-lib   # acados codegen → self-contained libnmpc_bundle.
 
 No recursive clone needed: `ap-pnc install` fetches acados automatically
 (commit-locked into `.artifacts/acados_src`). The vendored dependencies
-(`ap_pnc/sciplots`, `autodiff`, `px4ctrl`, `quadrotor_msgs`, `livox_ros_driver2`,
+(`ap_pnc/paper/figure/styles/sciplots`, `autodiff`, `px4ctrl`, `quadrotor_msgs`, `livox_ros_driver2`,
 `fast_lio`, `ekf_quat_pose`) are git subtrees and live directly in the repo.
 Aerodynamics ships its own B-spline evaluator (`aero_utils` + a self-contained
 `bspline_basis.hpp`), so no third-party B-spline library is vendored.
@@ -72,7 +72,6 @@ uv run ap-pnc --help
 |----------------|----------|-------------|
 | `install`      | (default) | Install everything (acados + deps) |
 | `gen-nmpc-lib` | (default) | acados NMPC codegen + self-contained `libnmpc_bundle.a` |
-| `traj`         | `viz-tracking`, `viz-elmpc`, `odom` | Trajectory visualization |
 | `aerodyn`      | `gen`, `viz`, `ml train\|pipeline`, `show`, `direct-show`, `csv-vs-model` | Aerodynamics |
 | `benchmark`    | `run`, `flight` | `run` = offline pipeline (plan → SE3 → data); `flight` = sync config → start stack |
 | `test`         | `all`, `nmpc`, `lmpc`, ..., `colcon`, `colcon-result` | Test runners |
@@ -172,7 +171,7 @@ SITL pitfalls reference, see the `ap-pnc-gazebo-e2e` skill in
 
 ---
 
-## Generated Artifacts and Git Worktrees
+## Generated Artifacts
 
 Everything generated lands in a single untracked `.artifacts/` root (acados
 staging, codegen output, `libnmpc_bundle.a`, pybind11 bindings, colcon
