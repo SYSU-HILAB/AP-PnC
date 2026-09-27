@@ -16,7 +16,6 @@ import os
 
 import numpy as np
 import pandas as pd
-import pyulog
 from .specify_figure_dirs import root_dir
 
 RequiredTopics = [
@@ -86,6 +85,8 @@ class UlgDataLoader:
             dict: Dictionary containing DataFrames for each required topic.
         """
         try:
+            import pyulog  # optional, only needed to read .ulg logs
+
             self._ulog_data = pyulog.ULog(self._ulg_path)
 
             # Check if all required topics are available

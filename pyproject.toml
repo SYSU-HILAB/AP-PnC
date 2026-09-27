@@ -43,8 +43,8 @@ extra = [
 package = true
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["ap_pnc*"]
+where = [".", "infra/sim_infra/aerodynamics/python"]
+include = ["ap_pnc*", "aerodynamics*"]
 
 [tool.ruff]
 line-length = 100

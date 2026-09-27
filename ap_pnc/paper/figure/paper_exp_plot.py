@@ -439,7 +439,7 @@ def main_plotting_pipeline():
     print(f"Max pitch angle: {max_pitch:.4f} rad ({np.degrees(max_pitch):.4f} deg)")
 
     # Initialize figure
-    with plt.style.context(['ieee', 'latex-sc', 'ticks-inward']):
+    with plt.style.context("default"):
         fig, axes = initialize_figure()
         ref_yb = df_tracking[['ref_yb[0]', 'ref_yb[1]', 'ref_yb[2]']].values
         # Plot content

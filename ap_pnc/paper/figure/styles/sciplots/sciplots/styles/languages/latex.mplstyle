@@ -1,7 +1,0 @@
-# simplified chinse setting
-font.family: serif
-font.serif: Times New Roman
-text.usetex: True
-pgf.rcfonts: True
-pgf.texsystem: pdflatex
-pgf.preamble: \usepackage{amsmath,amssymb,mathtools}

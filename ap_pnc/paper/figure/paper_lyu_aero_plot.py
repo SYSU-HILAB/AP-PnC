@@ -16,9 +16,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import MultipleLocator
 
-from ap_pnc import sciplots
 
-colors = sciplots.colors
+colors = dict(enumerate(plt.get_cmap("tab10").colors))
 
 def read_aero_data(filename):
     """Read aerodynamic data from CSV file."""
@@ -58,7 +57,7 @@ def plot_aero_coefficients(data_files):
       # Adjust tick parameters for closer spacing
       ax.tick_params(axis='x', pad=2)  # Reduced from 8 to 2
       ax.tick_params(axis='y', pad=2)  # Also adjust y-axis for consistency
-    with plt.style.context(['ieee', 'latex', 'ticks-inward']):
+    with plt.style.context("default"):
 
         for i, (name, file) in enumerate(data_files.items()):
             data = read_aero_data(file)

@@ -59,7 +59,8 @@ namespace aerodynamics
       if (env_p != nullptr)
       {
         config_path =
-            std::string(env_p) + "/benchmark/config/aero_alpha_solver.yaml";
+            std::string(env_p) +
+                "/infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml";
       }
     }
 

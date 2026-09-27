@@ -182,7 +182,7 @@ double alpha = solver.solve(V, S_ap_x, S_ap_z, mass);
 
 ### Configuration
 
-The solver supports configuration via `config/aero_alpha_solver.yaml`:
+The solver supports configuration via `infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml`:
 
 ```yaml
 max_iterations: 1000

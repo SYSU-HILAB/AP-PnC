@@ -56,7 +56,7 @@ struct AlphaSolverResult
  * This is a direct aerodynamic force balance approach without lookup tables.
  * The solver uses Newton-Raphson iteration with temporal coherence for fast convergence.
  *
- * Configuration is read directly from $AP_PNC_DIR/config/aero_alpha_solver.yaml:
+ * Configuration is read directly from $AP_PNC_DIR/infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml:
  * - max_iterations: Maximum Newton-Raphson iterations (default: 50)
  * - tolerance: Convergence tolerance for |f(alpha)| (default: 1e-8)
  * - damping_factor: Damping factor (0 < d <= 1) for stability (default: 1.0)
@@ -73,7 +73,7 @@ class AeroAlphaSolver
   /**
    * @brief Constructor - reads configuration from config/aero_alpha_solver.yaml
    *
-   * Reads configuration from $AP_PNC_DIR/config/aero_alpha_solver.yaml.
+   * Reads configuration from $AP_PNC_DIR/infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml.
    * If AP_PNC_DIR is not set or the file cannot be parsed, uses default values.
    *
    * @param aero_interface Aerodynamics model for computing forces

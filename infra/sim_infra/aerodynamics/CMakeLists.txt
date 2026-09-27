@@ -123,4 +123,8 @@ install(TARGETS rt_nonfinite_matlab ${PROJECT_NAME}_aerodynamics_lib
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib)
 
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_auto_package()
