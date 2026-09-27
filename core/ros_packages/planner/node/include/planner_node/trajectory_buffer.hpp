@@ -130,10 +130,7 @@ class TrajectoryBuffer
   rclcpp::Publisher<TrajecotryBullet>::SharedPtr traj_bullet_pub_;
 
   const rclcpp::QoS reliabe_qos_keep_last =
-      rclcpp::QoS(10)
-          .reliable()
-          .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
-          .keep_last(1);
+      rclcpp::QoS(10).reliable().keep_last(1);
 };
 
 }  // namespace planner::node

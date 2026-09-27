@@ -62,10 +62,7 @@ class NmpcCallbacks
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub_;
   rclcpp::Publisher<TrackingInfoMsg>::SharedPtr     tracking_info_pub_;
   const rclcpp::QoS                                 reliabe_qos_keep_last =
-      rclcpp::QoS(10)
-          .reliable()
-          .durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
-          .keep_last(1);
+      rclcpp::QoS(10).reliable().keep_last(1);
 };
 
 class NMPC : public rclcpp::Node, public NmpcCallbacks

@@ -18,8 +18,9 @@ Runs the whole core line as composable components in a single process:
 
 `component_container_mt` is used on purpose: the planner blocks for a few
 hundred ms during a solve, which must not stall the NMPC control loop.
-(Intra-process comms is intentionally left off: the reference/bullet topics use
-TRANSIENT_LOCAL durability, which rclcpp rejects with intra-process enabled.)
+`use_intra_process_comms` makes the in-container reference/control handoff
+zero-copy; all core topics use the default (volatile) durability, which
+intra-process requires.
 
 Configuration is read from <AP_PNC_DIR>/bringup/config/{planning,nmpc}.yaml.
 """
@@ -40,11 +41,13 @@ def generate_launch_description():
                 package="planner",
                 plugin="planner::node::PlannerNode",
                 name="planner_node",
+                extra_arguments=[{"use_intra_process_comms": True}],
             ),
             ComposableNode(
                 package="nmpc",
                 plugin="NMPC",
                 name="nmpc_node",
+                extra_arguments=[{"use_intra_process_comms": True}],
             ),
         ],
         output="screen",
