@@ -72,7 +72,6 @@ uv run ap-pnc --help
 |----------------|----------|-------------|
 | `install`      | (default) | Install everything (acados + deps) |
 | `gen-nmpc-lib` | (default) | acados NMPC codegen + self-contained `libnmpc_bundle.a` |
-| `aerodyn`      | `gen`, `viz`, `ml train\|pipeline`, `direct-show`, `csv-vs-model` | Aerodynamics |
 | `benchmark`    | `run`, `flight` | `run` = offline pipeline (plan → SE3 → data); `flight` = sync config → start stack |
 | `test`         | `all`, `nmpc`, `lmpc`, ..., `colcon`, `colcon-result` | Test runners |
 | `build`        | `all`, `nmpc` (nmpc + px4ctrl), `planner`, `planner-bindings`, `aero`, `simple-sim`, `bindings` | C++ colcon builds + pybind |

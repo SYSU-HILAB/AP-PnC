@@ -1,7 +1,6 @@
 import typer
 
 from ap_pnc.commands import (
-    aerodyn,
     benchmark,
     build,
     docker,
@@ -19,7 +18,6 @@ app.add_typer(install.app, name="install", help="Install everything (venv, acado
 app.add_typer(
     gen_nmpc_lib.app, name="gen-nmpc-lib", help="Generate acados NMPC code and bundle lib"
 )
-app.add_typer(aerodyn.app, name="aerodyn", help="Aerodynamics data generation, viz, ML")
 app.add_typer(benchmark.app, name="benchmark", help="Planning benchmark experiments")
 app.add_typer(test.app, name="test", help="Test runners (pytest, colcon)")
 app.add_typer(build.app, name="build", help="C++ colcon builds")
