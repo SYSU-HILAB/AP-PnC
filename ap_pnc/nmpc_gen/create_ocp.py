@@ -17,9 +17,10 @@ the json and C sources land there, then the solver wrapper builds and merges
 everything into libnmpc_bundle.a.
 """
 
+from __future__ import annotations
+
 import casadi as cs
 import numpy as np
-from acados_template import AcadosOcp, AcadosOcpSolver
 
 from ap_pnc.nmpc_gen.config import MpcConfig
 from ap_pnc.nmpc_gen.model import tailsitter_flu
@@ -27,6 +28,7 @@ from ap_pnc.nmpc_gen.model import tailsitter_flu
 
 def ocp_nls() -> AcadosOcp:
     """Formulate the prior-free NMPC OCP (convex-over-nonlinear least squares)."""
+    from acados_template import AcadosOcp
     ocp = AcadosOcp()
     model = tailsitter_flu()
 
@@ -116,6 +118,8 @@ def ocp_nls() -> AcadosOcp:
 
 
 def main() -> None:
+    from acados_template import AcadosOcpSolver
+
     ocp: AcadosOcp = ocp_nls()
     # Emit code next to the json file (.artifacts/c_generated_code, set by gen-nmpc-lib cwd)
     ocp.code_gen_opts.code_export_directory = "."

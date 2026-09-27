@@ -17,7 +17,6 @@
 #
 import casadi as cs
 import numpy as np
-from acados_template import AcadosModel
 from casadi import SX, vertcat
 
 # import torch
@@ -57,6 +56,9 @@ def Quat2RotMat(q):
     return rotation_matrix
 
 def tailsitter_flu():
+    # acados_template is only needed when building the OCP (host-side codegen)
+    from acados_template import AcadosModel
+
     model_name = "tailsitter_flu"
 
     # DESPRS: parameters are tuned for performance, not accurate
