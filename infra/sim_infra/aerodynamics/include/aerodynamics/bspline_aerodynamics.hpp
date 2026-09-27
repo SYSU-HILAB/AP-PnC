@@ -12,9 +12,8 @@
  */
 
 #pragma once
-#include <bspline/Core.h>
-
 #include <aerodynamics/aero_interface.hpp>
+#include <aerodynamics/bspline_basis.hpp>
 
 namespace aerodynamics
 {
@@ -30,7 +29,6 @@ namespace aerodynamics
   {
    private:
     static constexpr size_t SPLINE_ORDER = 3;
-    using Spline = bspline::Spline<double, SPLINE_ORDER>;
 
     /// Knot vectors for x-axis coefficient splines
     std::vector<double> cx_knots_;

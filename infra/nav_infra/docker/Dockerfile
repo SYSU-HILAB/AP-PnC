@@ -72,7 +72,7 @@ COPY infra/nav_infra/ros_packages/ekf_quat_pose src/ekf_quat_pose
 COPY infra/nav_infra/ros_packages/px4ctrl src/px4ctrl
 COPY infra/nav_infra/ros_packages/quadrotor_msgs src/quadrotor_msgs
 # The shared interface contract is defined by the core; nav_infra consumes it.
-COPY core/ros_packages/utils/msgs src/interface
+COPY core/ros_packages/interface src/interface
 COPY infra/nav_infra/bringup src/bringup
 
 RUN bash -c ". /opt/ros/humble/setup.sh \

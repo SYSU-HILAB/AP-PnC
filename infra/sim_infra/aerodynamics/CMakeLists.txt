@@ -5,8 +5,14 @@ project(aerodynamics)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(fmt REQUIRED)
+find_package(SQLite3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 ament_auto_find_build_dependencies()
+
+# In-package config readers (former standalone `utils` package)
+add_subdirectory(config_reader)
 
 # Zhang Lyu aerodynamics
 add_library(
@@ -47,10 +53,15 @@ target_include_directories(${PROJECT_NAME}_lyu
 ament_auto_add_library(${PROJECT_NAME}_advanced_lift_drag
     src/advanced_lift_drag.cpp
 )
+target_link_libraries(${PROJECT_NAME}_advanced_lift_drag
+  aerodynamics_config_reader_advanced_lift_drag
+)
 # Phi aerodynamics
 ament_auto_add_library(${PROJECT_NAME}_phi src/phi_aerodynamics.cpp)
+target_link_libraries(${PROJECT_NAME}_phi aerodynamics_config_reader_phi)
 # B-spline aerodynamics
 ament_auto_add_library(${PROJECT_NAME}_bspline src/bspline_aerodynamics.cpp)
+target_link_libraries(${PROJECT_NAME}_bspline aerodynamics_config_reader_bspline)
 # Non aerodynamics
 ament_auto_add_library(${PROJECT_NAME}_non src/non_aerodynamics.cpp)
 
@@ -72,6 +83,7 @@ target_link_libraries(aero_comparison
   ${PROJECT_NAME}_non
   ${PROJECT_NAME}_advanced_lift_drag
   ${PROJECT_NAME}_bspline
+  aerodynamics_config_common
 )
 
 # Generate ML training data from all aerodynamic types
@@ -95,6 +107,13 @@ if(BUILD_TESTING)
   )
   ament_target_dependencies(test_aero_alpha_solver
     rclcpp
+  )
+
+  ament_add_gtest(test_bspline_basis
+    test/test_bspline_basis.cpp
+  )
+  target_link_libraries(test_bspline_basis
+    ${PROJECT_NAME}_bspline
   )
 endif()
 

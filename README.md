@@ -15,9 +15,10 @@ uv run ap-pnc gen-nmpc-lib   # acados codegen → self-contained libnmpc_bundle.
 
 No recursive clone needed: `ap-pnc install` fetches acados automatically
 (commit-locked into `.artifacts/acados_src`). The vendored dependencies
-(`ap_pnc/sciplots`, `autodiff`, `ROS2-Utils`, `tomlplusplus`, `yamlcpp`,
-`BSplinebasis`, `px4ctrl`, `quadrotor_msgs`, `livox_ros_driver2`, `fast_lio`,
-`ekf_quat_pose`) are git subtrees and live directly in the repo.
+(`ap_pnc/sciplots`, `autodiff`, `px4ctrl`, `quadrotor_msgs`, `livox_ros_driver2`,
+`fast_lio`, `ekf_quat_pose`) are git subtrees and live directly in the repo.
+Aerodynamics ships its own B-spline evaluator (`aero_utils` + a self-contained
+`bspline_basis.hpp`), so no third-party B-spline library is vendored.
 
 ---
 

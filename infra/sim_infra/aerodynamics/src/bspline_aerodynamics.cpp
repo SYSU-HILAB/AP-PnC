@@ -36,11 +36,11 @@ namespace aerodynamics
                                           Eigen::Vector3d&       aero_moment_b,
                                           double& alpha, double& beta)
   {
-    // Generate bspline basis functions
-    static std::vector<Spline> cx_splines =
-        bspline::generateBSplines<SPLINE_ORDER>(cx_knots_);
-    static std::vector<Spline> cz_splines =
-        bspline::generateBSplines<SPLINE_ORDER>(cz_knots_);
+    // Evaluate the cubic B-spline basis at alpha (knots/coefs from the aero DB)
+    const std::vector<double> cx_basis =
+        bspline_basis(SPLINE_ORDER, cx_knots_, alpha);
+    const std::vector<double> cz_basis =
+        bspline_basis(SPLINE_ORDER, cz_knots_, alpha);
     // Calculate alpha and beta first, similar to PhiAerodynamics
     // alpha, beta  [rad]
     constexpr double vThreshold = 5e-1;
@@ -61,13 +61,13 @@ namespace aerodynamics
     constexpr double aeroForceBy = 0.0;
     double           aeroForceBz = 0.0;
 
-    for (size_t i = 0; i < cx_splines.size(); ++i)
+    for (size_t i = 0; i < cx_basis.size() && i < cx_coefficients_.size(); ++i)
     {
-      aeroForceBx += cx_coefficients_[i] * cx_splines[i](alpha);
+      aeroForceBx += cx_coefficients_[i] * cx_basis[i];
     }
-    for (size_t i = 0; i < cz_splines.size(); ++i)
+    for (size_t i = 0; i < cz_basis.size() && i < cz_coefficients_.size(); ++i)
     {
-      aeroForceBz += cz_coefficients_[i] * cz_splines[i](alpha);
+      aeroForceBz += cz_coefficients_[i] * cz_basis[i];
     }
 
     aero_force_b = scale_factor_ *

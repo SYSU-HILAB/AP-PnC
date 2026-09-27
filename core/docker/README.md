@@ -6,7 +6,7 @@ This directory provides architecture-specific base images (`amd64` and `arm64`) 
 
 The container environment cleanly decouples runtime dependencies from source code:
 
-- `/workspace/src`: Mapped to host `core/ros_packages/` (planner line, `nmpc`, `utils/msgs`; `px4ctrl` and `quadrotor_msgs` moved to `infra/nav_infra/ros_packages/`).
+- `/workspace/src`: Mapped to host `core/ros_packages/` (planner line, `nmpc`, `interface`; `px4ctrl` and `quadrotor_msgs` moved to `infra/nav_infra/ros_packages/`).
 - `/workspace/bringup`: Mapped to host `bringup/` (contains launch files and configurations).
 - `/workspace/artifacts`: Mapped to host `.artifacts/nmpc_solver/` (contains compiled `libnmpc_bundle.a`).
 

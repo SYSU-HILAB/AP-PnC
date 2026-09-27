@@ -11,8 +11,9 @@
 
     <depend>ament_index_cpp</depend>
     <depend>rclcpp</depend>
-    <depend>utils</depend>
-    <depend>external_libraries</depend>
+    <depend>SQLite3</depend>
+    <depend>spdlog</depend>
+    <depend>fmt</depend>
     <test_depend>ament_lint_auto</test_depend>
     <test_depend>ament_lint_common</test_depend>
 

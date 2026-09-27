@@ -23,14 +23,12 @@ ext_modules = [
             str(src_dir / "include"),
             str(src_dir / "src" / "MatlabGenerated" / "Zhang" / "include"),
             "/usr/include/eigen3",
-            str(git_root / "ros_packages" / "utils" / "external_libraries" / "BSplinebasis" / "include"),
         ],
         # deps/ carries the matching fmt/spdlog ABI from the ros2-base container,
         # listed first so the host's newer system fmt cannot shadow it.
         library_dirs=[
             str(git_root / ".artifacts" / "colcon" / "deps"),
             str(colcon_build / "aerodynamics"),
-            str(colcon_build / "utils"),
         ],
         extra_link_args=[f"-Wl,-rpath,{git_root / '.artifacts' / 'colcon' / 'deps'}"],
         libraries=[
@@ -40,10 +38,6 @@ ext_modules = [
             "aerodynamics_advanced_lift_drag",
             "aerodynamics_bspline",
             "aerodynamics_aerodynamics_lib",
-            "utils_config_reader",
-            "utils_config_reader_phi",
-            "utils_config_reader_advanced_lift_drag",
-            "utils_config_reader_bspline",
             "rt_nonfinite_matlab",
             "sqlite3",
             "fmt",
