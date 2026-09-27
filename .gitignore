@@ -8,7 +8,6 @@ compile_commands.json
 claude_temp/
 Claude.md
 CLAUDE.md
-AGENTS.md
 .claude/
 
 # build / codegen / colcon outputs (canonical location, see AGENTS.md artifacts convention)
