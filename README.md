@@ -15,8 +15,8 @@ uv run ap-pnc gen-nmpc-lib   # acados codegen → self-contained libnmpc_bundle.
 
 No recursive clone needed: `ap-pnc install` fetches acados automatically
 (commit-locked into `.artifacts/acados_src`). The vendored dependencies
-(`ap_pnc/paper/figure/styles/sciplots`, `autodiff`, `px4ctrl`, `quadrotor_msgs`, `livox_ros_driver2`,
-`fast_lio`, `ekf_quat_pose`) are git subtrees and live directly in the repo.
+(`autodiff`, `px4ctrl`, `quadrotor_msgs`, `livox_ros_driver2`, `fast_lio`,
+`ekf_quat_pose`) are git subtrees and live directly in the repo.
 Aerodynamics ships its own B-spline evaluator (`aero_utils` + a self-contained
 `bspline_basis.hpp`), so no third-party B-spline library is vendored.
 
@@ -70,6 +70,7 @@ uv run ap-pnc --help
 
 | Group          | Commands | Description |
 |----------------|----------|-------------|
+| `start`        | `--target simple\|gazebo\|stop\|stack` | Start the project runtime |
 | `install`      | (default) | Install everything (acados + deps) |
 | `gen-nmpc-lib` | (default) | acados NMPC codegen + self-contained `libnmpc_bundle.a` |
 | `benchmark`    | `run`, `flight` | `run` = offline pipeline (plan → SE3 → data); `flight` = sync config → start stack |
@@ -109,32 +110,37 @@ reused in-process via `planner_bindings`.
 ## Repository Layout
 
 ```
-core/                # Research code — owns only itself
-  ros_packages/      #   planner — core/ (pure C++, ROS-free: planner_core,
-                     #     gcopter, basic_trajectories, tailsitter_df),
-                     #     node/ (thin ROS adapter), python/ (pybind);
-                     #   nmpc, utils (+msgs interface contract)
+core/                # C++/ROS research code
+  ros_packages/      #   planner (core/ pure C++ + node/ ROS adapter + python/ pybind),
+                     #   nmpc, interface (the message contract)
   bringup/           #   core config/launch: planning, nmpc
   docker/            #   amd64/arm64 ros2-base dev images
 infra/               # Infrastructure — each unit self-contained
   nav_infra/         #   ros_packages/ (px4ctrl tracking+NMPC/INDI, quadrotor_msgs,
                      #   livox, fast_lio, ekf_quat_pose)
                      #   + own bringup/ (nav profiles, px4ctrl{,_real}) + docker/Dockerfile
-  sim_infra/         #   gazebo/ (stock PX4 v1.17 + Harmonic stack), simple_sim/, aerodynamics/
+  sim_infra/         #   gazebo/ (stock PX4 v1.17 + Harmonic), simple_sim/,
+                     #   aerodynamics/ (C++ ROS pkg + python/ ML service + bindings)
   sim_k3s/           #   ConfigMap-driven sim orchestration manifests
-ap_pnc/              # Python CLI — top-level orchestration (stack start, build, sim)
-benchmark/           # Prior-based experiment configs (Lyu force-balance)
+ap_pnc/              # Python
+  cli.py, env.py, commands/          # the ap-pnc CLI
+  nmpc_gen/                          # acados OCP codegen (core algorithm)
+  paper/{benchmark,figure,methods/lu}/  # paper layer
+test/                # pytest + manual scripts
 .agents/skills/      # bootstrap / docker / gazebo-e2e (flight runbook + pitfalls)
 ```
 
 ## Runtime Configuration
 
-Core nodes read sectioned yaml directly from the cwd-relative
-`core/bringup/config/` (matches the container `/workspace` mount):
+Nodes read sectioned yaml from `<AP_PNC_DIR>/bringup/config/`:
 
 - `planning.yaml` — `problem_formulation` (box, basic_traj, nested cost,
-  MINCO, prior-free phi-theory flatness) + `io` (topics, dump dirs)
-- `nmpc.yaml` — `nmpc: {mass, cz_rate}`
+  MINCO, prior-free phi-theory flatness)
+- `nmpc.yaml` — the horizon convention + model:
+  `nmpc: {horizon_s, traj_res_s, ctrl_frq, mass, cz_rate, u_hover}`
+
+The aerodynamics alpha-solver reads
+`infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml`.
 
 nav_infra nodes read from `infra/nav_infra/bringup/config/`:
 

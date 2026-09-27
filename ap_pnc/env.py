@@ -4,29 +4,46 @@ import subprocess
 import sys
 from pathlib import Path
 
+IS_LINUX = sys.platform == "linux"
+IS_MACOS = sys.platform == "darwin"
+
 
 def _t_renderer_url() -> str:
-    """Choose the acados renderer for the host running code generation."""
+    """t_renderer release asset for the host.
+
+    Only Linux builds are published (no macOS asset exists), so acados codegen
+    requires a Linux development host.
+    """
+    if not IS_LINUX:
+        raise RuntimeError(
+            "t_renderer has no build for this platform; the acados codegen "
+            "requires a Linux development host (macOS is not supported)"
+        )
     arch = {"x86_64": "amd64", "AMD64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
         platform.machine()
     )
-    system = {"linux": "linux", "darwin": "macos"}.get(sys.platform)
-    if not arch or not system:
-        raise RuntimeError(f"Unsupported t_renderer platform: {sys.platform}/{platform.machine()}")
+    if not arch:
+        raise RuntimeError(f"Unsupported t_renderer arch: {platform.machine()}")
     return (
         "https://github.com/acados/tera_renderer/releases/download/"
-        f"v0.2.0/t_renderer-v0.2.0-{system}-{arch}"
+        f"v0.2.0/t_renderer-v0.2.0-linux-{arch}"
     )
 
 
-def ensure_t_renderer() -> Path:
+def ensure_t_renderer() -> Path | None:
     """Make sure t_renderer exists; acados_template would otherwise ask
-    interactively whether to download it (hangs in non-tty subprocesses)."""
+    interactively whether to download it (hangs in non-tty subprocesses).
+
+    Returns None on non-Linux hosts (acados codegen is Linux-only); callers that
+    actually generate code must check for that.
+    """
     git_root = get_git_root()
     bin_dir = git_root / ".artifacts" / "acados" / "bin"
     renderer = bin_dir / "t_renderer"
     if renderer.exists():
         return renderer
+    if not IS_LINUX:
+        return None
     bin_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(["curl", "-fL", _t_renderer_url(), "-o", str(renderer)], check=True)
     renderer.chmod(0o755)
