@@ -1,6 +1,6 @@
 # AGENTS.md — working conventions
 
-Local, gitignored project conventions for coding agents.
+Project conventions for coding agents.
 
 ## Artifacts: everything under `<proj_root>/.artifacts/`
 
