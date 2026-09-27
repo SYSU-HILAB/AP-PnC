@@ -45,9 +45,6 @@ namespace trajectory_server
     YAML::Node root = YAML::LoadFile(yaml_path);
 
     const YAML::Node problem_node = root["problem_formulation"];
-    problem.frame = get_or<std::string>(problem_node, "frame", problem.frame);
-    problem.uav_scale =
-        get_or<double>(problem_node, "uav_scale", problem.uav_scale);
     problem.piece_n = get_or<int>(problem_node, "piece_n", problem.piece_n);
 
     const YAML::Node box_node = problem_node["box"];

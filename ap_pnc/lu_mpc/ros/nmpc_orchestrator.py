@@ -35,7 +35,6 @@ Key Functionality:
     - Runs closed-loop simulation with NMPC controller
     - Publishes odometry, motor commands, and tracking path at sim_dt
     - Delegates all ROS publishing to NmpcVisualizer
-    - Differs from reference_visualizer.py: Uses controller+simulator instead of CSV replay
 """
 
 from __future__ import annotations

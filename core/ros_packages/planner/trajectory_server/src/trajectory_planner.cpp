@@ -42,8 +42,6 @@ namespace trajectory_server
 
     auto reliable_qos =
         rclcpp::QoS(10).transient_local().reliable().keep_last(1);
-    trajVizPub = this->create_publisher<geometry_msgs::msg::PoseArray>(
-        "traj_viz", reliable_qos);
 
     trajPub = this->create_publisher<RefTrajectory>(config.io.traj_topic,
                                                     reliable_qos);
@@ -100,11 +98,6 @@ namespace trajectory_server
     H.resize(6, 4);
 
     auto route = basic_traj->samplingPointArray(config.problem.piece_n);
-
-    auto traj_vis_msg            = basic_traj->toMsg();
-    traj_vis_msg.header.frame_id = config.problem.frame;
-    traj_vis_msg.header.stamp    = this->get_clock()->now();
-    this->trajVizPub->publish(traj_vis_msg);
 
     Eigen::Vector3d pc, v_direction, u_direction;
     for (size_t i = 1; i < route.size() - 1; i++)
@@ -202,11 +195,6 @@ namespace trajectory_server
                 << "ms" << std::endl;
 
       init_setup = true;
-
-      auto route_msg            = basic_traj->toMsg(100);
-      route_msg.header.frame_id = config.problem.frame;
-      route_msg.header.stamp    = this->get_clock()->now();
-      this->trajVizPub->publish(route_msg);
 
       auto &tailsitter_data = tailsitter_df::Data::getInstance();
       tailsitter_data.reset();

@@ -18,7 +18,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <interface/msg/ref_trajectory.hpp>
 
@@ -110,8 +109,7 @@ class GlobalPlanner : public rclcpp::Node
   Config config;
 
   // ROS2 interfaces
-  rclcpp::Publisher<RefTrajectory>::SharedPtr                 trajPub;
-  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr trajVizPub;
+  rclcpp::Publisher<RefTrajectory>::SharedPtr trajPub;
 
   // Trajectory data
   RefTrajectory                                     control_traj_msg;

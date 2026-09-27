@@ -20,7 +20,6 @@
 #pragma once
 
 #include <Eigen/Geometry>
-#include <geometry_msgs/msg/pose_array.hpp>
 
 /**
  * @brief Interface for more complex trajectories
@@ -28,9 +27,8 @@
  */
 namespace basic_trajectories
 {
-  using PoseArray = geometry_msgs::msg::PoseArray;
-  using Vec3E     = Eigen::Vector3d;
-  using Mat3x4    = Eigen::Matrix<double, 3, 4>;
+  using Vec3E  = Eigen::Vector3d;
+  using Mat3x4 = Eigen::Matrix<double, 3, 4>;
 
   /**
    * @brief Reserved for future use
@@ -77,14 +75,6 @@ namespace basic_trajectories
     Type type;
 
    public:
-    /**
-     * @brief Transforms the trajectory to a PoseArray message
-     *
-     * @param resolution The time segments of the whole trajectory
-     * @return PoseArray&
-     */
-    PoseArray &toMsg(int resolution = 50);
-
     /**
      * @brief Sampling points of the trajectory
      *

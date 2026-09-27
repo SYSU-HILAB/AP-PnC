@@ -91,14 +91,12 @@ namespace trajectory_server
   };
 
   /**
-   * @brief The optimization problem itself: frame, scale, corridor, seed
-   * curve, cost, trajectory parameterization, and vehicle flatness model
+   * @brief The optimization problem itself: corridor, seed curve, cost,
+   * trajectory parameterization, and vehicle flatness model
    */
   struct ProblemCfg
   {
-    std::string frame     = "world";
-    double      uav_scale = 1.0;
-    int         piece_n   = 10;
+    int piece_n = 10;
 
     BoxCfg       box;
     BasicTrajCfg basic_traj;

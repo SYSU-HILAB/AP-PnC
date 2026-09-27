@@ -5,8 +5,6 @@
 # Container: mounted at /workspace/bringup/config/planning.yaml via ConfigMap.
 
 problem_formulation:
-  frame: world
-  uav_scale: 1.0
   piece_n: 10
   box:
     side_inside: 0.3

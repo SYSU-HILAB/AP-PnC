@@ -71,7 +71,7 @@ uv run ap-pnc --help
 |----------------|----------|-------------|
 | `install`      | (default) | Install everything (acados + deps) |
 | `gen-nmpc-lib` | (default) | acados NMPC codegen + self-contained `libnmpc_bundle.a` |
-| `traj`         | `viz`, `viz-tracking`, `viz-elmpc`, `odom` | Trajectory visualization |
+| `traj`         | `viz-tracking`, `viz-elmpc`, `odom` | Trajectory visualization |
 | `aerodyn`      | `gen`, `viz`, `ml train\|pipeline`, `show`, `direct-show`, `csv-vs-model` | Aerodynamics |
 | `benchmark`    | `run`    | Planning experiments (`--vmax --type --radius` → sync config → start stack) |
 | `test`         | `all`, `nmpc`, `lmpc`, ..., `timing-jax/torch/compare`, `colcon`, `colcon-result` | Test runners |
@@ -87,7 +87,6 @@ uv run ap-pnc --help
 
 ```bash
 uv run ap-pnc gen-nmpc-lib         # acados NMPC codegen + bundle
-uv run ap-pnc traj viz             # Launch reference trajectory + RViz2
 uv run ap-pnc benchmark run --vmax 5 --type 1 --radius 4   # Planning experiment
 uv run ap-pnc test nmpc            # Run proposed NMPC test
 uv run ap-pnc build all            # Build the whole workspace (core + nav_infra)
