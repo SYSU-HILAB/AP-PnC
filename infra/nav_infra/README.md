@@ -8,7 +8,7 @@ nmpc) consumes these services over the shared host-network ROS 2 graph.
 
 | Package           | Role                                                                |
 | ----------------- | ------------------------------------------------------------------- |
-| `px4ctrl`         | FCU interface + L2 control: arming/offboard/takeoff/hover/land, sole `/mavros/setpoint_raw/attitude` publisher, state adapter (`/cur_state`, `/cur_state_odom`, `/px4ctrl/odom_world`). Controller modes: `ctrl_mode=0` tracking, `ctrl_mode=1` NMPC rates + RLS eta/INDI thrust from `/mpc_controls` |
+| `px4ctrl`         | FCU interface + L2 control: arming/offboard/takeoff/hover/land, sole `/mavros/setpoint_raw/attitude` publisher, state adapter (`/cur_state`, `/cur_state_odom`, `/px4ctrl/odom_world`). Controller modes: `ctrl_mode=0` tracking, `ctrl_mode=1` NMPC rates + RLS eta/INDI thrust from `/nmpc/control` |
 | `quadrotor_msgs`  | `PositionCommand` / `TakeoffLand` / `Px4ctrlDebug` (px4ctrl contract) |
 | `livox_ros_driver2` | Mid-360 driver (real profile)                                    |
 | `fast_lio`        | FAST-LIO2 (real profile)                                             |
@@ -45,7 +45,7 @@ docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build nav_inf
 | --------- | ------------------------ | ------------------------- | ----------------------------- |
 | → core    | `/cur_state`             | interface/State           | ENU world, FLU body (50 Hz)   |
 | → core    | `/px4ctrl/odom_world`    | nav_msgs/Odometry         | world-frame twist (px4ctrl)    |
-| ← core    | `/mpc_controls`          | interface/Controls        | rates_sp FLU + specific_force_sp |
+| ← core    | `/nmpc/control`          | interface/Controls        | rates_sp FLU + specific_force_sp |
 | ← core    | `/setpoint_cmd`          | quadrotor_msgs/PositionCommand | tracking controller input |
 
 px4ctrl (nav_infra container) owns arming/offboard through the mavros
@@ -58,7 +58,7 @@ ros2 service call /px4ctrl/toggle_pass_through std_srvs/srv/SetBool "{data: fals
 ```
 
 `go` uses the internal NMPC controller when `ctrl_mode=1` (px4ctrl
-subscribes `/mpc_controls` itself and applies the RLS eta + INDI thrust
+subscribes `/nmpc/control` itself and applies the RLS eta + INDI thrust
 law) or forwards an external rates stream when `ctrl_mode=0`. In
 PASS_THROUGH px4ctrl publishes at its ctrl rate and falls back to
 AUTO_HOVER when the source goes stale (`msg_timeout.pass_through`).

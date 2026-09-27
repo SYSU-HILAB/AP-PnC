@@ -12,7 +12,6 @@
  * Tail-sitter UAV.
  */
 
-#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <iostream>
@@ -138,7 +137,7 @@ namespace planner::core
     }
   }
 
-  std::optional<Trajectory> Planner::plan()
+  std::optional<ReferenceTrajectory> Planner::plan()
   {
     std::vector<Eigen::MatrixX4d> hPolys;
     log(LogLevel::Info, "In Planning");
@@ -152,8 +151,8 @@ namespace planner::core
         Eigen::Vector3d::Zero();
     gcopter::GCOPTER_PolytopeSFC gcopter;
 
-    traj_.clear();
-    Eigen::VectorXd initTime;
+    TrajectoryRepresentation<5> traj;
+    Eigen::VectorXd             initTime;
     initTime.resize(config_.problem.piece_n);
     initTime.setConstant(2 * M_PI / config_.problem.basic_traj.rate /
                          config_.problem.piece_n);
@@ -181,7 +180,7 @@ namespace planner::core
     }
     auto opt_start = std::chrono::high_resolution_clock::now();
 
-    if (std::isinf(gcopter.optimize(traj_, config_.problem.minco.rel_cost_tol)))
+    if (std::isinf(gcopter.optimize(traj, config_.problem.minco.rel_cost_tol)))
     {
       log(LogLevel::Error, "GCOPTER optimization diverged");
       return std::nullopt;
@@ -196,39 +195,7 @@ namespace planner::core
                     .count()) +
             " ms");
 
-    auto &tailsitter_data = tailsitter_df::Data::getInstance();
-    tailsitter_data.reset();
-
-    // Sample the optimized trajectory into the flatness-based reference.
-    Trajectory out;
-    out.duration = traj_.getTotalDuration();
-    for (double t = 0.0; t <= out.duration + DBL_EPSILON;
-         t += config_.io.traj_pub_rsl)
-    {
-      Eigen::Vector3d omg;
-      double          thrust;
-      tailsitter_data.df_backward_auto(traj_.getVel(t), traj_.getAcc(t),
-                                       traj_.getJer(t), thrust, omg);
-
-      TrajectorySample sample;
-      sample.t      = t;
-      sample.p      = traj_.getPos(t);
-      sample.v      = traj_.getVel(t);
-      sample.a      = traj_.getAcc(t);
-      sample.omega  = omg;
-      sample.thrust = thrust;
-
-      // reference trajectory uses quad FLU body frame, so negate yb
-      auto yb_df   = tailsitter_data.getYb();
-      sample.yb    = Eigen::Vector3d(-yb_df(0), -yb_df(1), -yb_df(2));
-
-      out.samples.push_back(sample);
-    }
-
-    log(LogLevel::Info,
-        "Reference trajectory built: " + std::to_string(out.samples.size()) +
-            " points");
-    return out;
+    return ReferenceTrajectory(std::move(traj));
   }
 
 }  // namespace planner::core

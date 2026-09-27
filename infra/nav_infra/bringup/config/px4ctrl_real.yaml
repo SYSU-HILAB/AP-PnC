@@ -41,7 +41,7 @@
       hover_percentage: 0.5
 
     # Controller mode: 0 = px4ctrl tracking (position/hover), 1 = internal
-    # NMPC controller (rates_sp + specific_force_sp from /mpc_controls via
+    # NMPC controller (rates_sp + specific_force_sp from /nmpc/control via
     # RLS + INDI). PASS_THROUGH still gates when the NMPC source takes over.
     ctrl_mode: 0
     # Throttle estimation: 0 = thr2acc mapping, 1 = RLS eta + INDI

@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
           [&fsm](const quadrotor_msgs::msg::TakeoffLand::SharedPtr msg)
           { fsm.takeoff_land_data.feed(msg); });
   // External rates + thrust setpoint forwarded verbatim in PASS_THROUGH
-  // (external stream; the internal nmpc controller mode uses /mpc_controls).
+  // (external stream; the internal nmpc controller mode uses /nmpc/control).
   auto pass_through_sub =
       node->create_subscription<mavros_msgs::msg::AttitudeTarget>(
           "/px4ctrl/setpoint_raw/attitude", qos,
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 
   // NMPC controls (rates_sp FLU + specific_force_sp) for ctrl_mode=1.
   auto controls_sub = node->create_subscription<interface::msg::Controls>(
-      "/mpc_controls", qos,
+      "/nmpc/control", qos,
       [&fsm](const interface::msg::Controls::SharedPtr msg)
       { fsm.controls_data.feed(msg); });
 

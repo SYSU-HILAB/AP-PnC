@@ -56,7 +56,7 @@ PX4CtrlFSM::PX4CtrlFSM(Parameters &param_, Controller &controller_,
  *   PASS_THROUGH    MANUAL_CTRL     disarm
  *
  *   PASS_THROUGH sources body-rate + thrust from the internal NMPC
- *   controller (ctrl_mode=1: /mpc_controls -> RLS eta + INDI) or from an
+ *   controller (ctrl_mode=1: /nmpc/control -> RLS eta + INDI) or from an
  *   external rates stream (ctrl_mode=0); px4ctrl stays the single mavros
  *   setpoint publisher. The RC-free profile (no_RC) reaches flight only
  *   through AUTO_TAKEOFF.
@@ -477,7 +477,7 @@ void PX4CtrlFSM::process()
   {
     if (param.ctrl_mode == 1)
     {
-      // Internal NMPC controller: rates from /mpc_controls + INDI
+      // Internal NMPC controller: rates from /nmpc/control + INDI
       // throttle, produced by px4ctrl itself.
       publish_nmpc_pass_through(now_time);
     }

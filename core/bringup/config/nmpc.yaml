@@ -1,7 +1,17 @@
 # AP-PnC NMPC tracking controller configuration.
 #
-# Loaded by the nmpc node from <AP_PNC_DIR>/bringup/config/nmpc.yaml.
+# Loaded by the nmpc node (and read by the planner) from
+# <AP_PNC_DIR>/bringup/config/nmpc.yaml.
+#
+# The reference-horizon convention lives here (nmpc namespace). The planner
+# builds the reference on exactly this grid -- no downsampling:
+#   N = round(horizon_s / traj_res_s)        -> N+1 reference points
+#   the playhead advances by 1/ctrl_frq per reference request
+#   point k is evaluated exactly at t0 + k * traj_res_s
 
 nmpc:
+  horizon_s: 1.0     # prediction horizon [s] (acados tf)
+  traj_res_s: 0.1    # horizon node spacing [s] (acados tf/N)
+  ctrl_frq: 50.0     # solve / reference-request frequency [Hz]
   mass: 2.0
   cz_rate: 0.10

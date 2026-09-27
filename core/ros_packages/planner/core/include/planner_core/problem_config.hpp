@@ -106,21 +106,12 @@ namespace planner::core
   };
 
   /**
-   * @brief Internal I/O parameters of the planning core (pure, no topics)
-   */
-  struct IoCfg
-  {
-    double traj_pub_rsl = 0.02;  ///< reference sampling resolution [s]
-  };
-
-  /**
    * @brief Aggregate OCP configuration, loaded from a sectioned yaml
    * (bringup/config/planning.yaml).
    */
   struct ProblemConfig
   {
     ProblemCfg problem;
-    IoCfg      io;
 
     /// gcopter consumes its own singleton; load() mirrors problem.cost into it
     gcopter::CostConfig &cost_config;

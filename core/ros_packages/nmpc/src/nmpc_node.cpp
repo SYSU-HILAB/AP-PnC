@@ -24,7 +24,7 @@
 #include <fstream>
 #include <functional>
 #include <interface/msg/controls.hpp>
-#include <interface/msg/ref_trajectory_bullet.hpp>
+#include <interface/msg/reference_horizon.hpp>
 #include <interface/msg/state.hpp>
 #include <interface/msg/tracking_info.hpp>
 #include <interface/msg/trajectory_point.hpp>
@@ -39,7 +39,7 @@
 #include "nmpc_solver.h"
 
 using StateMsg        = interface::msg::State;
-using ReferenceBullet = interface::msg::RefTrajectoryBullet;
+using ReferenceHorizon = interface::msg::ReferenceHorizon;
 using ControlMsg      = interface::msg::Controls;
 using TrajecotryPoint = interface::msg::TrajectoryPoint;
 using TrackingInfoMsg = interface::msg::TrackingInfo;
@@ -49,13 +49,13 @@ class NmpcCallbacks
 {
  public:
   virtual void stateCallback(const StateMsg &msg)            = 0;
-  virtual void referenceCallback(const ReferenceBullet &msg) = 0;
+  virtual void referenceCallback(const ReferenceHorizon &msg) = 0;
   virtual void accCallback(const AccelerationMsg &msg)       = 0;
   virtual void initSubsPubs()                                = 0;
 
  public:
   rclcpp::Subscription<StateMsg>::SharedPtr        state_sub_;
-  rclcpp::Subscription<ReferenceBullet>::SharedPtr ref_sub_;
+  rclcpp::Subscription<ReferenceHorizon>::SharedPtr ref_sub_;
   rclcpp::Subscription<AccelerationMsg>::SharedPtr acc_sub_;
 
   rclcpp::Publisher<ControlMsg>::SharedPtr          ctrl_pub_;
@@ -70,7 +70,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
  private:
   void initSubsPubs() override;
   void stateCallback(const StateMsg &msg) override;
-  void referenceCallback(const ReferenceBullet &msg) override;
+  void referenceCallback(const ReferenceHorizon &msg) override;
   void accCallback(const AccelerationMsg &msg) override;
   void solve();
 
@@ -109,19 +109,19 @@ void NMPC::initSubsPubs()
       "/cur_state", reliabe_qos_keep_last,
       std::bind(&NMPC::stateCallback, this, std::placeholders::_1));
 
-  ref_sub_ = this->create_subscription<ReferenceBullet>(
-      "/ref_trajectory_bullet", reliabe_qos_keep_last,
+  ref_sub_ = this->create_subscription<ReferenceHorizon>(
+      "/nmpc/reference", reliabe_qos_keep_last,
       std::bind(&NMPC::referenceCallback, this, std::placeholders::_1));
 
   acc_sub_ = this->create_subscription<AccelerationMsg>(
       "/mavros/imu/data_raw", rclcpp::SensorDataQoS(),
       [this](const AccelerationMsg &msg) { accCallback(msg); });
 
-  ctrl_pub_ = this->create_publisher<ControlMsg>("/mpc_controls",
+  ctrl_pub_ = this->create_publisher<ControlMsg>("/nmpc/control",
                                                  reliabe_qos_keep_last);
 
   ready_pub_ = this->create_publisher<std_msgs::msg::Bool>(
-      "/ref_can_set", reliabe_qos_keep_last);
+      "/nmpc/reference_request", reliabe_qos_keep_last);
 
   tracking_info_pub_ = this->create_publisher<TrackingInfoMsg>(
       "/tracking_info", reliabe_qos_keep_last);
@@ -182,9 +182,9 @@ void NMPC::accCallback(const AccelerationMsg &msg)
     cz_filtered_ = -0.4;
 }
 
-void NMPC::referenceCallback(const ReferenceBullet &msg)
+void NMPC::referenceCallback(const ReferenceHorizon &msg)
 {
-  auto           &refs           = const_cast<ReferenceBullet &>(msg);
+  const auto     &refs           = msg;
   bool            tracking_valid = refs.tracking_valid;
   TrackingInfoMsg tracking_info_msg;
   tracking_info_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
@@ -255,7 +255,12 @@ void NMPC::referenceCallback(const ReferenceBullet &msg)
 
   double p[3] = {tracking_info_msg.cz, tracking_info_msg.alpha, cz_rate};
   int    N    = nmpc_solver_horizon(nmpc_);
-  assert(size >= N + 1);
+  if (size < N + 1)
+  {
+    RCLCPP_ERROR(this->get_logger(),
+                 "reference horizon has %d points, need %d", size, N + 1);
+    return;
+  }
 
   for (int i = 0; i < N; i++)
   {

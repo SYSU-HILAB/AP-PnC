@@ -28,7 +28,7 @@ find_package(std_msgs REQUIRED)
 
 add_library(planner_component SHARED
   node/src/planner_node.cpp
-  node/src/trajectory_buffer.cpp
+  node/src/reference_buffer.cpp
 )
 target_include_directories(planner_component PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/node/include)
 target_link_libraries(planner_component planner_core)

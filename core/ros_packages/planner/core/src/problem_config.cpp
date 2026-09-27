@@ -115,9 +115,6 @@ namespace planner::core
     problem.flatness.mass =
         get_or(flatness_node, "mass", problem.flatness.mass);
 
-    const YAML::Node io_node = root["io"];
-    io.traj_pub_rsl = get_or(io_node, "traj_pub_rsl", io.traj_pub_rsl);
-
     // Mirror cost settings into the gcopter singleton it actually consumes
     cost_config.v_max                 = problem.cost.v_max;
     cost_config.omg_x_max             = problem.cost.omg_x_max;

@@ -49,5 +49,3 @@ problem_formulation:
     - 0.0
     - -0.09408
     mass: 2.0
-io:
-  traj_pub_rsl: 0.02

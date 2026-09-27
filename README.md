@@ -28,10 +28,10 @@ Research code is separated from base services:
 
 ```
 ┌─ ap-pnc (core) ────────────────────────────────────────────────────┐
-│ planner — GCOPTER/MINCO → buffered RefTrajectory → /ref_trajectory_bullet│
-│ nmpc    — acados NMPC → /mpc_controls (FLU rates + specific force)  │
+│ planner — GCOPTER/MINCO → buffered RefTrajectory → /nmpc/reference│
+│ nmpc    — acados NMPC → /nmpc/control (FLU rates + specific force)  │
 └──────────────┬─────────────────────────────────────────────────────┘
-               │ /cur_state ↑   /mpc_controls ↓
+               │ /cur_state ↑   /nmpc/control ↓
 ┌─ nav_infra (sidecar) ──────────────────────────────────────────────┐
 │ px4ctrl — FCU interface: arming/offboard/takeoff/hover, single      │
 │   mavros setpoint publisher, state adapter (/cur_state), controller │
@@ -45,7 +45,7 @@ Research code is separated from base services:
 - **Handover**: `ros2 service call /px4ctrl/toggle_pass_through
   std_srvs/srv/SetBool "{data: true}"` (synchronous) switches px4ctrl from
   tracking hover to its remote-rates source: the internal NMPC controller
-  (`ctrl_mode=1`, `/mpc_controls` → RLS eta + INDI thrust) or an external
+  (`ctrl_mode=1`, `/nmpc/control` → RLS eta + INDI thrust) or an external
   rates stream (`ctrl_mode=0`); stale streams fall back to hover
   automatically. CLI shortcut: `uv run ap-pnc stack trigger go|back`.
 - **Throttle estimation**: `throttle_estimator=0` keeps the legacy

@@ -16,7 +16,7 @@ NMPC stack. No customized firmware, no uXRCE-DDS.
 ## Control path
 
 ```
-planner → nmpc → /mpc_controls (rates FLU + specific_force_sp)
+planner → nmpc → /nmpc/control (rates FLU + specific_force_sp)
     → px4ctrl ctrl_mode=1 (RLS throttle model + INDI incremental thrust,
        reference: PX4-Neupilot acc_rates_control)
     → /mavros/setpoint_raw/attitude (single publisher)

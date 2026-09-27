@@ -17,11 +17,13 @@
 #include <memory>
 #include <string>
 
+#include <yaml-cpp/yaml.h>
+
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
 #include <planner_core/planner.hpp>
-#include <planner_node/trajectory_buffer.hpp>
+#include <planner_node/reference_buffer.hpp>
 
 namespace planner::node
 {
@@ -30,9 +32,9 @@ namespace planner::node
  * @brief Thin ROS adapter around the pure planning core.
  *
  * Owns a planner_core::Planner and the reference buffer, loads the yaml,
- * schedules planning, and streams the buffered reference as
- * /ref_trajectory_bullet. All ROS specifics (messages, topics, logger,
- * clock) live here; planner_core stays ROS-free.
+ * schedules planning, and streams the buffered reference as nmpc/reference.
+ * All ROS specifics (messages, topics, logger, clock) live here; planner_core
+ * stays ROS-free.
  */
 class PlannerNode : public rclcpp::Node
 {
@@ -41,11 +43,31 @@ class PlannerNode : public rclcpp::Node
       const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
       : rclcpp::Node("planner_node", options)
   {
+    // Config convention: <AP_PNC_DIR>/bringup/config/ (cwd fallback for dev).
+    const char *root      = std::getenv("AP_PNC_DIR");
+    const std::string cfg = root ? std::string(root) + "/bringup/config"
+                                 : std::string("bringup/config");
+
     core::ProblemConfig config;
-    // Convention: <AP_PNC_DIR>/bringup/config/planning.yaml
-    const char *root = std::getenv("AP_PNC_DIR");
-    config.load(root ? std::string(root) + "/bringup/config/planning.yaml"
-                     : "bringup/config/planning.yaml");
+    config.load(cfg + "/planning.yaml");
+
+    // The NMPC horizon convention is owned by nmpc; the planner reads it and
+    // builds the reference on exactly that grid.
+    ReferenceBufferConfig buffer_cfg;
+    try
+    {
+      const YAML::Node nmpc = YAML::LoadFile(cfg + "/nmpc.yaml")["nmpc"];
+      buffer_cfg.horizon_s =
+          nmpc["horizon_s"].as<double>(buffer_cfg.horizon_s);
+      buffer_cfg.traj_res_s =
+          nmpc["traj_res_s"].as<double>(buffer_cfg.traj_res_s);
+      buffer_cfg.ctrl_frq = nmpc["ctrl_frq"].as<double>(buffer_cfg.ctrl_frq);
+    }
+    catch (const YAML::Exception &e)
+    {
+      RCLCPP_WARN(this->get_logger(),
+                  "Could not read nmpc.yaml (%s); using defaults", e.what());
+    }
 
     auto sink = [this](core::LogLevel level, const std::string &msg)
     {
@@ -68,7 +90,7 @@ class PlannerNode : public rclcpp::Node
     };
 
     planner_ = std::make_unique<core::Planner>(config, sink);
-    buffer_  = std::make_unique<TrajectoryBuffer>(*this);
+    buffer_  = std::make_unique<ReferenceBuffer>(*this, buffer_cfg);
 
     using namespace std::chrono_literals;
     timer_ = this->create_wall_timer(
@@ -91,10 +113,10 @@ class PlannerNode : public rclcpp::Node
   }
 
  private:
-  std::unique_ptr<core::Planner>    planner_;
-  std::unique_ptr<TrajectoryBuffer> buffer_;
-  rclcpp::TimerBase::SharedPtr      timer_;
-  bool                              planned_ = false;
+  std::unique_ptr<core::Planner>   planner_;
+  std::unique_ptr<ReferenceBuffer> buffer_;
+  rclcpp::TimerBase::SharedPtr     timer_;
+  bool                             planned_ = false;
 };
 
 }  // namespace planner::node

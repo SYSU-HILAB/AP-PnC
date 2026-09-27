@@ -14,7 +14,7 @@
 
 Runs the whole core line as composable components in a single process:
   planner::node::PlannerNode  (trajectory optimization + reference buffer)
-  NMPC                        (acados NMPC -> /mpc_controls)
+  NMPC                        (acados NMPC -> /nmpc/control)
 
 `component_container_mt` is used on purpose: the planner blocks for a few
 hundred ms during a solve, which must not stall the NMPC control loop.

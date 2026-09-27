@@ -63,9 +63,9 @@ using LogSink = std::function<void(LogLevel, const std::string &)>;
  * @brief Pure trajectory optimizer (no ROS, no files, no clock).
  *
  * Builds the OCP (seed trajectory + polytope SFC), solves it with
- * GCOPTER/MINCO, and samples the solution into a flatness-based Trajectory.
- * Consumers:
- *   - the ROS node (`planner_node`), which stamps and publishes it, and
+ * GCOPTER/MINCO, and returns a continuous ReferenceTrajectory (flatness
+ * evaluation at arbitrary time). Consumers:
+ *   - the ROS node (`planner_node`), which samples it on the NMPC grid, and
  *   - the Python binding, which exposes it to the benchmark pipeline.
  */
 class Planner
@@ -86,9 +86,9 @@ class Planner
   /**
    * @brief Run the (one-shot) optimization.
    *
-   * @return the sampled reference trajectory, or std::nullopt on failure
+   * @return the continuous reference trajectory, or std::nullopt on failure
    */
-  std::optional<Trajectory> plan();
+  std::optional<ReferenceTrajectory> plan();
 
   /// Problem configuration in use.
   const ProblemConfig &config() const { return config_; }
@@ -100,7 +100,6 @@ class Planner
 
   ProblemConfig                                  config_;
   LogSink                                        log_;
-  TrajectoryRepresentation<5>                    traj_;
   std::unique_ptr<basic_trajectories::Trajectory> basic_traj_;
 };
 

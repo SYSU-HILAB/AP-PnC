@@ -10,14 +10,37 @@
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
 
+import os
+from pathlib import Path
+
 import numpy as np
+import yaml
+
+
+def _nmpc_namespace() -> dict:
+    """Read the `nmpc:` section of the nmpc config (single source of truth)."""
+    root = os.environ.get("AP_PNC_DIR")
+    if not root:
+        return {}
+    for rel in ("bringup/config/nmpc.yaml", "core/bringup/config/nmpc.yaml"):
+        path = Path(root) / rel
+        if path.exists():
+            return (yaml.safe_load(path.read_text()) or {}).get("nmpc", {}) or {}
+    return {}
+
+
+_NMPC = _nmpc_namespace()
 
 
 class ControlConfig:
-    control_time = 0.1
-    control_frequency = 1 / control_time
-    nodes = 10
-    T = control_time * nodes
+    """NMPC horizon convention (see nmpc.yaml)."""
+
+    horizon_s = float(_NMPC.get("horizon_s", 1.0))
+    traj_res_s = float(_NMPC.get("traj_res_s", 0.1))
+    ctrl_frq = float(_NMPC.get("ctrl_frq", 50.0))
+    # acados discretization: N intervals over the horizon
+    nodes = int(round(horizon_s / traj_res_s))
+    T = horizon_s
 
 
 class MpcConfig:
