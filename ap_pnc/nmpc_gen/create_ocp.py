@@ -19,8 +19,13 @@ everything into libnmpc_bundle.a.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import casadi as cs
 import numpy as np
+
+if TYPE_CHECKING:
+    from acados_template import AcadosOcp
 
 from ap_pnc.nmpc_gen.config import MpcConfig
 from ap_pnc.nmpc_gen.model import tailsitter_flu
