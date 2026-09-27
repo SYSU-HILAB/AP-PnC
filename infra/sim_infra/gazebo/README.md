@@ -57,8 +57,9 @@ make px4_sitl gz_x500
 
 `nav_infra` connects mavros via `udp://:14540@localhost:14580` (host
 network). Then start the core stack (in `ap-pnc` or via `ap-pnc stack
-start`): `ros2 launch bringup bringup.launch.py` (nmpc only — px4ctrl is
-launched by the nav_infra container).
+start`): `ros2 launch bringup bringup.launch.py` — that loads the planner and
+nmpc as composable components in a single `component_container_mt` process
+(px4ctrl is launched by the nav_infra container).
 
 Flight sequence: takeoff via `/px4ctrl/takeoff_land` (publish from the
 `nav_infra` container: `quadrotor_msgs` lives there), then

@@ -10,30 +10,44 @@
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
 # Tail-sitter UAV.
 
-"""Core control stack launch (nmpc) — research code container.
+"""Core control stack bringup.
 
-nmpc reads its configuration from <AP_PNC_DIR>/bringup/config/nmpc.yaml;
-no ROS parameters are passed here.
+Runs the whole core line as composable components in a single process:
+  planner::node::PlannerNode  (trajectory optimization + reference buffer)
+  NMPC                        (acados NMPC -> /mpc_controls)
 
-The base services (mavros, px4ctrl, LIO) run in the nav_infra container;
-nmpc consumes /cur_state and feeds /mpc_controls over the shared ROS 2
-graph. px4ctrl (nav_infra) owns arming/offboard and the PASS_THROUGH
-handover: /px4ctrl/toggle_pass_through switches its remote rates source
-(internal NMPC controls or an external stream).
+`component_container_mt` is used on purpose: the planner blocks for a few
+hundred ms during a solve, which must not stall the NMPC control loop.
+(Intra-process comms is intentionally left off: the reference/bullet topics use
+TRANSIENT_LOCAL durability, which rclcpp rejects with intra-process enabled.)
+
+Configuration is read from <AP_PNC_DIR>/bringup/config/{planning,nmpc}.yaml.
 """
 
-import launch
-import launch_ros.actions
+from launch import LaunchDescription
+from launch_ros.actions import ComposableNodeContainer
+from launch_ros.descriptions import ComposableNode
 
 
 def generate_launch_description():
-    nmpc_node = launch_ros.actions.Node(
-        package="nmpc",
-        executable="nmpc_node",
-        name="nmpc_node",
+    container = ComposableNodeContainer(
+        name="core_container",
+        namespace="",
+        package="rclcpp_components",
+        executable="component_container_mt",
+        composable_node_descriptions=[
+            ComposableNode(
+                package="planner",
+                plugin="planner::node::PlannerNode",
+                name="planner_node",
+            ),
+            ComposableNode(
+                package="nmpc",
+                plugin="NMPC",
+                name="nmpc_node",
+            ),
+        ],
         output="screen",
     )
 
-    return launch.LaunchDescription([
-        nmpc_node,
-    ])
+    return LaunchDescription([container])

@@ -29,8 +29,10 @@
 #include <interface/msg/tracking_info.hpp>
 #include <interface/msg/trajectory_point.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_components/register_node_macro.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -81,7 +83,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
   double cz_rate_;
 
  public:
-  NMPC();
+  NMPC(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
   ~NMPC();
 
  private:
@@ -138,9 +140,10 @@ void NMPC::solve()
     case 2:
       break;
     default:
-      RCLCPP_FATAL(this->get_logger(),
-                   "nmpc_solver_solve returned %d. Exiting.\n", status);
-      exit(1);
+      // Never exit(): this node shares a process with the planner component.
+      RCLCPP_ERROR(this->get_logger(),
+                   "nmpc_solver_solve returned %d; skipping cycle.", status);
+      return;
   }
 
   Eigen::Quaterniond q_next(x_next[q_start_index], x_next[q_start_index + 1],
@@ -289,7 +292,7 @@ void NMPC::stateCallback(const StateMsg &msg)
   ready_pub_->publish(ready_msg);
 }
 
-NMPC::NMPC() : Node("NMPC")
+NMPC::NMPC(const rclcpp::NodeOptions &options) : Node("NMPC", options)
 {
   // Config: convention <AP_PNC_DIR>/bringup/config/nmpc.yaml.
   const char *root = std::getenv("AP_PNC_DIR");
@@ -305,8 +308,8 @@ NMPC::NMPC() : Node("NMPC")
   nmpc_ = nmpc_solver_create();
   if (!nmpc_)
   {
-    RCLCPP_FATAL(this->get_logger(), "nmpc_solver_create failed");
-    exit(1);
+    // Throwing fails only this component load, not the whole container.
+    throw std::runtime_error("nmpc_solver_create failed");
   }
 }
 
@@ -315,11 +318,4 @@ NMPC::~NMPC()
   nmpc_solver_destroy(nmpc_);
 }
 
-int main(int argc, char **argv)
-{
-  rclcpp::init(argc, argv);
-  auto node = std::make_shared<NMPC>();
-  rclcpp::spin(node);
-  rclcpp::shutdown();
-  return 0;
-}
+RCLCPP_COMPONENTS_REGISTER_NODE(NMPC)

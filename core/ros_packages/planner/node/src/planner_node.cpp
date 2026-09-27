@@ -18,6 +18,7 @@
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_components/register_node_macro.hpp>
 
 #include <planner_core/planner.hpp>
 #include <planner_node/trajectory_buffer.hpp>
@@ -36,7 +37,9 @@ namespace planner::node
 class PlannerNode : public rclcpp::Node
 {
  public:
-  PlannerNode() : rclcpp::Node("planner_node")
+  explicit PlannerNode(
+      const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
+      : rclcpp::Node("planner_node", options)
   {
     core::ProblemConfig config;
     // Convention: <AP_PNC_DIR>/bringup/config/planning.yaml
@@ -96,11 +99,4 @@ class PlannerNode : public rclcpp::Node
 
 }  // namespace planner::node
 
-int main(int argc, char** argv)
-{
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<planner::node::PlannerNode>());
-  rclcpp::shutdown();
-
-  return 0;
-}
+RCLCPP_COMPONENTS_REGISTER_NODE(planner::node::PlannerNode)

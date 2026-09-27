@@ -16,15 +16,15 @@ def _cleanup(*_: int) -> None:
     for pid in PIDS:
         if pid > 0:
             subprocess.run(["kill", str(pid)], stderr=subprocess.DEVNULL)
-    for name in ("nmpc", "planner", "px4ctrl"):
+    for name in ("component_container", "nmpc_node", "planner_node", "px4ctrl"):
         subprocess.run(["pkill", "-f", name], stderr=subprocess.DEVNULL)
     for pid in PIDS:
         if pid > 0:
             subprocess.run(["kill", "-9", str(pid)], stderr=subprocess.DEVNULL)
 
 
-def _launch(env: dict[str, str], core: int, *args: str) -> None:
-    cmd = ["taskset", "-c", str(core), "ros2", "launch", *args]
+def _launch(env: dict[str, str], cores: str, *args: str) -> None:
+    cmd = ["taskset", "-c", cores, "ros2", "launch", *args]
     proc = subprocess.Popen(cmd, env=env)
     PIDS.append(proc.pid)
 
@@ -33,10 +33,10 @@ def _launch(env: dict[str, str], core: int, *args: str) -> None:
 def start() -> None:
     """Launch the local research stack (planner + nmpc control core).
 
-    The base services (mavros + px4ctrl + LIO) run inside the nav_infra
-    container; bring them up with the gazebo compose file (see the
-    ap-pnc-docker skill). Cores are pinned on the last two CPUs, mirroring
-    the legacy runall tool. Ctrl-C stops everything.
+    Runs both as composable components inside one
+    `component_container_mt` process (single launch); the base services
+    (mavros + px4ctrl + LIO) run inside the nav_infra container. The
+    container is pinned to the last two CPUs. Ctrl-C stops everything.
     """
     env = source_ros2_workspace()
 
@@ -49,8 +49,7 @@ def start() -> None:
     signal.signal(signal.SIGTERM, _cleanup)
     typer.echo(f"Detected {ncpu} CPU cores, pinning stack to cores {ncpu - 2}-{ncpu - 1}")
 
-    _launch(env, ncpu - 2, "bringup", "planning.launch.py")
-    _launch(env, ncpu - 1, "bringup", "bringup.launch.py")
+    _launch(env, f"{ncpu - 2},{ncpu - 1}", "bringup", "bringup.launch.py")
 
     typer.echo(f"All processes started (PIDs: {PIDS}). Press CTRL-C to stop.")
     try:

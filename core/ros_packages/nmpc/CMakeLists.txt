@@ -15,23 +15,31 @@ endif()
 
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 ament_auto_find_build_dependencies()
 
-ament_auto_add_executable(${PROJECT_NAME}_node src/nmpc_node.cpp)
+# Composable component: also produces the standalone `nmpc_node` executable.
+ament_auto_add_library(${PROJECT_NAME}_component SHARED src/nmpc_node.cpp)
 
-target_include_directories(${PROJECT_NAME}_node PRIVATE
+target_include_directories(${PROJECT_NAME}_component PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/solver/include
 )
 
-target_link_libraries(${PROJECT_NAME}_node
+target_link_libraries(${PROJECT_NAME}_component
   ${NMPC_BUNDLE_PATH}
   Eigen3::Eigen
   fmt::fmt
   yaml-cpp
+)
+ament_target_dependencies(${PROJECT_NAME}_component rclcpp_components)
+
+rclcpp_components_register_node(${PROJECT_NAME}_component
+  PLUGIN "NMPC"
+  EXECUTABLE ${PROJECT_NAME}_node
 )
 
 if(BUILD_TESTING)
