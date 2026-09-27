@@ -151,6 +151,12 @@ def setup_env(ros: bool = False) -> None:
 
     ensure_t_renderer()
 
+    # Keep every colcon run's log inside the artifacts tree (no stray ./log).
+    # Overridable; explicit exports win.
+    os.environ.setdefault(
+        "COLCON_LOG_PATH", str(git_root / ".artifacts" / "colcon" / "log")
+    )
+
     pythonpath = os.environ.get("PYTHONPATH", "")
     git_root_str = str(git_root)
     bindings_dir = str(git_root / ".artifacts" / "bindings")
@@ -161,3 +167,7 @@ def setup_env(ros: bool = False) -> None:
     if ros:
         ros_env = source_ros2_env()
         os.environ.update(ros_env)
+        # ROS sourcing must not move colcon logs back to the source tree.
+        os.environ.setdefault(
+            "COLCON_LOG_PATH", str(git_root / ".artifacts" / "colcon" / "log")
+        )

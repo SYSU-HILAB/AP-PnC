@@ -51,5 +51,6 @@ bags/
 # legacy source-tree ignores (no longer at these paths, kept for stray files)
 src/ompl
 src/spdlog
-log*
-log/
+
+# colcon logs must live under .artifacts/ (see AGENTS.md); catch stray ones
+/log/
