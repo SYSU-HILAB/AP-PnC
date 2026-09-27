@@ -22,13 +22,6 @@
 namespace planner::node
 {
 
-  namespace
-  {
-    // NMPC control reference for hover [N/kg per rotor]; the NMPC cost tracks u
-    // towards this (see interface/msg/TrajectoryPoint THR fields).
-    constexpr double kHoverThrustPerRotor = 9.8 / 4.0;
-  }  // namespace
-
   ReferenceBuffer::ReferenceBuffer(rclcpp::Node &node,
                                    ReferenceBufferConfig config)
       : node_(node), config_(config)
@@ -57,17 +50,14 @@ namespace planner::node
   }
 
   void ReferenceBuffer::to_point(const core::ReferencePoint &rp,
-                                 TrajectoryPoint &pt) const
+                                 ReferencePoint &pt) const
   {
     for (int i = 0; i < 3; i++)
     {
-      pt.point[TrajectoryPoint::POS_START_INDEX + i] = rp.p[i] - origin_[i];
-      pt.point[TrajectoryPoint::VEL_START_INDEX + i] = rp.v[i];
-      pt.point[TrajectoryPoint::RATE_START_INDEX + i] = rp.omega[i];
-      pt.point[TrajectoryPoint::YB_START_INDEX + i] = rp.yb[i];
-      pt.point[TrajectoryPoint::THR_START_INDEX + i] = kHoverThrustPerRotor;
+      pt.pos[i] = rp.p[i] - origin_[i];
+      pt.vel[i] = rp.v[i];
+      pt.yb[i]  = rp.yb[i];
     }
-    pt.point[TrajectoryPoint::THR_START_INDEX + 3] = kHoverThrustPerRotor;
   }
 
   void ReferenceBuffer::build_fixed_horizon(ReferenceHorizon &msg) const
@@ -170,7 +160,7 @@ namespace planner::node
     }
 
     ReferenceHorizon out;
-    out.timestamp       = node_.now();
+    out.timestamp       = node_.now().nanoseconds() / 1000;  // [us]
     out.traj_resolution = config_.traj_res_s;
 
     if (traj_type_ == RefTrajType::PLANNING)

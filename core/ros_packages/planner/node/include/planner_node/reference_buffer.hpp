@@ -18,7 +18,7 @@
 
 #include <Eigen/Dense>
 #include <interface/msg/reference_horizon.hpp>
-#include <interface/msg/trajectory_point.hpp>
+#include <interface/msg/reference_point.hpp>
 #include <planner_core/trajectory.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
@@ -26,7 +26,7 @@
 namespace planner::node
 {
 
-using TrajectoryPoint  = interface::msg::TrajectoryPoint;
+using ReferencePoint  = interface::msg::ReferencePoint;
 using ReferenceHorizon = interface::msg::ReferenceHorizon;
 
 /**
@@ -107,7 +107,7 @@ class ReferenceBuffer
 
   /// N+1 = round(horizon_s / traj_res_s) + 1
   std::size_t horizon_points() const;
-  void        to_point(const core::ReferencePoint& rp, TrajectoryPoint& pt) const;
+  void        to_point(const core::ReferencePoint& rp, ReferencePoint& pt) const;
   void        build_fixed_horizon(ReferenceHorizon& msg) const;
   void        terminate(Segment& segment);
 

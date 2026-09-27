@@ -13,5 +13,6 @@ nmpc:
   horizon_s: 1.0     # prediction horizon [s] (acados tf)
   traj_res_s: 0.1    # horizon node spacing [s] (acados tf/N)
   ctrl_frq: 50.0     # solve / reference-request frequency [Hz]
+  u_hover: 2.4525    # actuation reference at hover [N/kg per rotor] (controller-side)
   mass: 2.0
   cz_rate: 0.10

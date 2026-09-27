@@ -31,10 +31,10 @@ Research code is separated from base services:
 │ planner — GCOPTER/MINCO → buffered RefTrajectory → /nmpc/reference│
 │ nmpc    — acados NMPC → /nmpc/control (FLU rates + specific force)  │
 └──────────────┬─────────────────────────────────────────────────────┘
-               │ /cur_state ↑   /nmpc/control ↓
+               │ /px4ctrl/state ↑   /nmpc/control ↓
 ┌─ nav_infra (sidecar) ──────────────────────────────────────────────┐
 │ px4ctrl — FCU interface: arming/offboard/takeoff/hover, single      │
-│   mavros setpoint publisher, state adapter (/cur_state), controller │
+│   mavros setpoint publisher, state adapter (/px4ctrl/state), controller │
 │   modes: tracking (ctrl_mode=0) | NMPC rates + RLS/INDI (ctrl_mode=1)│
 │ mavros2 + (real profile) livox + fast_lio + ekf_quat               │
 └──────────────┬─────────────────────────────────────────────────────┘

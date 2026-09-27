@@ -1042,7 +1042,7 @@ bool PX4CtrlFSM::controls_is_received(const rclcpp::Time &now_time,
 
 void PX4CtrlFSM::publish_nmpc_pass_through(const rclcpp::Time &now_time)
 {
-  const interface::msg::Controls &controls = controls_data.msg;
+  const interface::msg::Control &controls = controls_data.msg;
 
   ControllerOutput u;
   u.bodyrates = Eigen::Vector3d(controls.rates_sp[0], controls.rates_sp[1],
@@ -1085,7 +1085,7 @@ void PX4CtrlFSM::state_adapter_odom_callback(
   const Eigen::Quaterniond q(
       msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
       msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
-  // mavros local_position/odom twist is body-frame (FLU); the /cur_state
+  // mavros local_position/odom twist is body-frame (FLU); the /px4ctrl/state
   // contract (px4ctrl / nmpc / ekf_quat lineage) is world-frame.
   const Eigen::Vector3d v =
       q * Eigen::Vector3d(msg->twist.twist.linear.x, msg->twist.twist.linear.y,

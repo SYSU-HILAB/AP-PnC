@@ -8,7 +8,7 @@
 #     /mavros/setpoint_raw/attitude publisher, owns arming/offboard.
 #     ctrl_mode=0 tracking controller, ctrl_mode=1 internal NMPC rates +
 #     RLS eta/INDI thrust (/nmpc/control). Hosts the odometry state adapter
-#     (/cur_state, /cur_state_odom, /px4ctrl/odom_world).
+#     (/px4ctrl/state, /px4ctrl/state_odom, /px4ctrl/odom_world).
 #
 # One image for both profiles (ros2 launch bringup nav_infra.launch.py
 # profile:=sim|real):

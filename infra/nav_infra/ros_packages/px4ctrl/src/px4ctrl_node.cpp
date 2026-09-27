@@ -83,13 +83,13 @@ int main(int argc, char *argv[])
           { fsm.pass_through_data.feed(msg); });
 
   // NMPC controls (rates_sp FLU + specific_force_sp) for ctrl_mode=1.
-  auto controls_sub = node->create_subscription<interface::msg::Controls>(
+  auto controls_sub = node->create_subscription<interface::msg::Control>(
       "/nmpc/control", qos,
-      [&fsm](const interface::msg::Controls::SharedPtr msg)
+      [&fsm](const interface::msg::Control::SharedPtr msg)
       { fsm.controls_data.feed(msg); });
 
   // State adapter input (mavros ENU/FLU odometry): origin lock + world
-  // twist conversion feeding the /cur_state contract.
+  // twist conversion feeding the /px4ctrl/state contract.
   auto state_adapter_sub = node->create_subscription<nav_msgs::msg::Odometry>(
       "/mavros/local_position/odom", qos,
       [&fsm](const nav_msgs::msg::Odometry::SharedPtr msg)
@@ -121,16 +121,16 @@ int main(int argc, char *argv[])
   // State adapter outputs + throttle estimator telemetry.
   auto latch_qos = rclcpp::QoS(1).transient_local();
   fsm.state_pub =
-      node->create_publisher<interface::msg::State>("/cur_state", latch_qos);
+      node->create_publisher<interface::msg::State>("/px4ctrl/state", latch_qos);
   fsm.state_odom_pub = node->create_publisher<nav_msgs::msg::Odometry>(
-      "/cur_state_odom", latch_qos);
+      "/px4ctrl/state_odom", latch_qos);
   fsm.odom_world_pub = node->create_publisher<nav_msgs::msg::Odometry>(
       "/px4ctrl/odom_world", qos);
   fsm.throttle_status_pub =
       node->create_publisher<interface::msg::ThrottleModelStatus>(
           "/px4ctrl/throttle_model_status", qos);
 
-  // /cur_state publication at 50 Hz for nmpc + planner.
+  // /px4ctrl/state publication at 50 Hz for nmpc + planner.
   auto state_timer = node->create_wall_timer(
       std::chrono::milliseconds(20), [&fsm]() { fsm.publish_state_adapter(); });
 

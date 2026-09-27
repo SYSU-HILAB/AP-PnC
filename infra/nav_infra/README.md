@@ -8,7 +8,7 @@ nmpc) consumes these services over the shared host-network ROS 2 graph.
 
 | Package           | Role                                                                |
 | ----------------- | ------------------------------------------------------------------- |
-| `px4ctrl`         | FCU interface + L2 control: arming/offboard/takeoff/hover/land, sole `/mavros/setpoint_raw/attitude` publisher, state adapter (`/cur_state`, `/cur_state_odom`, `/px4ctrl/odom_world`). Controller modes: `ctrl_mode=0` tracking, `ctrl_mode=1` NMPC rates + RLS eta/INDI thrust from `/nmpc/control` |
+| `px4ctrl`         | FCU interface + L2 control: arming/offboard/takeoff/hover/land, sole `/mavros/setpoint_raw/attitude` publisher, state adapter (`/px4ctrl/state`, `/px4ctrl/state_odom`, `/px4ctrl/odom_world`). Controller modes: `ctrl_mode=0` tracking, `ctrl_mode=1` NMPC rates + RLS eta/INDI thrust from `/nmpc/control` |
 | `quadrotor_msgs`  | `PositionCommand` / `TakeoffLand` / `Px4ctrlDebug` (px4ctrl contract) |
 | `livox_ros_driver2` | Mid-360 driver (real profile)                                    |
 | `fast_lio`        | FAST-LIO2 (real profile)                                             |
@@ -17,7 +17,7 @@ nmpc) consumes these services over the shared host-network ROS 2 graph.
 Plus a from-source mavros2 build (the jammy repo ships `mavros-msgs` only),
 installed under `/opt/mavros` inside the image.
 
-px4ctrl natively provides the odometry state adapter (`/cur_state*`,
+px4ctrl natively provides the odometry state adapter (`/px4ctrl/state*`,
 `/px4ctrl/odom_world`), the RLS/INDI throttle law
 (`include/rls_throttle_model.h`, `ctrl_mode=1` path), and the throttle
 telemetry on `/px4ctrl/throttle_model_status`.
@@ -43,7 +43,7 @@ docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build nav_inf
 
 | Direction | Topic                    | Type                      | Note                          |
 | --------- | ------------------------ | ------------------------- | ----------------------------- |
-| → core    | `/cur_state`             | interface/State           | ENU world, FLU body (50 Hz)   |
+| → core    | `/px4ctrl/state`             | interface/State           | ENU world, FLU body (50 Hz)   |
 | → core    | `/px4ctrl/odom_world`    | nav_msgs/Odometry         | world-frame twist (px4ctrl)    |
 | ← core    | `/nmpc/control`          | interface/Controls        | rates_sp FLU + specific_force_sp |
 | ← core    | `/setpoint_cmd`          | quadrotor_msgs/PositionCommand | tracking controller input |

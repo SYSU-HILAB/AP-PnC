@@ -4,7 +4,7 @@
 #include <uav_utils/utils.h>
 
 #include <Eigen/Dense>
-#include <interface/msg/controls.hpp>
+#include <interface/msg/control.hpp>
 #include <interface/msg/state.hpp>
 #include <interface/msg/throttle_model_status.hpp>
 #include <mavros_msgs/msg/attitude_target.hpp>
@@ -170,7 +170,7 @@ class ControlsData
 {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  interface::msg::Controls msg;
+  interface::msg::Control msg;
   rclcpp::Time             rcv_stamp{0, 0, RCL_SYSTEM_TIME};
   bool                     msg_received{false};
 
@@ -179,7 +179,7 @@ class ControlsData
    *
    * @param[in] pMsg Controls (FLU rates_sp + specific_force_sp) [-]
    */
-  void feed(interface::msg::Controls::ConstPtr pMsg)
+  void feed(interface::msg::Control::ConstPtr pMsg)
   {
     msg          = *pMsg;
     rcv_stamp    = rclcpp::Clock().now();

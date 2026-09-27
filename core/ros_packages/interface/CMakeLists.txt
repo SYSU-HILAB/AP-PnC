@@ -32,7 +32,7 @@ message(WARNING ${MSGS})
 
 rosidl_generate_interfaces(
         ${PROJECT_NAME} ${MSGS}
-        DEPENDENCIES builtin_interfaces std_msgs geometry_msgs
+        DEPENDENCIES std_msgs geometry_msgs
 )
 
 if (BUILD_TESTING)

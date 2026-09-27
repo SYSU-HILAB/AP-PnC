@@ -55,7 +55,7 @@ class PX4CtrlFSM
   rclcpp::Publisher<quadrotor_msgs::msg::Px4ctrlDebug>::SharedPtr
       debug_pub;  // debug
 
-  // State adapter outputs (/cur_state contract for nmpc + planner) and
+  // State adapter outputs (/px4ctrl/state contract for nmpc + planner) and
   // throttle-model telemetry (RLS eta / INDI).
   rclcpp::Publisher<interface::msg::State>::SharedPtr   state_pub;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr state_odom_pub;
@@ -137,7 +137,7 @@ class PX4CtrlFSM
       const nav_msgs::msg::Odometry::SharedPtr msg);
 
   /**
-   * Fixed-rate /cur_state + /cur_state_odom publication for nmpc and
+   * Fixed-rate /px4ctrl/state + /px4ctrl/state_odom publication for nmpc and
    * planner.
    */
   void     publish_state_adapter();
@@ -165,7 +165,7 @@ class PX4CtrlFSM
   void publish_throttle_status(const rclcpp::Time &now_time,
                                uint64_t            timestamp_sample_us = 0);
 
-  // ---- state adapter (odometry origin lock + /cur_state contract) ----
+  // ---- state adapter (odometry origin lock + /px4ctrl/state contract) ----
   Eigen::Vector3d       adapter_init_pos_{Eigen::Vector3d::Zero()};
   bool                  adapter_origin_set_{false};
   bool                  adapter_odom_valid_{false};

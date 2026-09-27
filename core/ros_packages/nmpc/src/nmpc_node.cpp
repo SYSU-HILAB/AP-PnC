@@ -23,11 +23,11 @@
 #include <cstdlib>
 #include <fstream>
 #include <functional>
-#include <interface/msg/controls.hpp>
+#include <interface/msg/control.hpp>
 #include <interface/msg/reference_horizon.hpp>
 #include <interface/msg/state.hpp>
 #include <interface/msg/tracking_info.hpp>
-#include <interface/msg/trajectory_point.hpp>
+#include <interface/msg/reference_point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -40,8 +40,8 @@
 
 using StateMsg        = interface::msg::State;
 using ReferenceHorizon = interface::msg::ReferenceHorizon;
-using ControlMsg      = interface::msg::Controls;
-using TrajecotryPoint = interface::msg::TrajectoryPoint;
+using ControlMsg      = interface::msg::Control;
+using ReferencePoint  = interface::msg::ReferencePoint;
 using TrackingInfoMsg = interface::msg::TrackingInfo;
 using AccelerationMsg = sensor_msgs::msg::Imu;
 
@@ -78,6 +78,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
 
   double mass_;
   double cz_rate_;
+  double u_hover_ = 9.8 / 4.0;  ///< NMPC u reference at hover [N/kg per rotor]
 
  public:
   NMPC(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
@@ -106,7 +107,7 @@ class NMPC : public rclcpp::Node, public NmpcCallbacks
 void NMPC::initSubsPubs()
 {
   state_sub_ = this->create_subscription<StateMsg>(
-      "/cur_state", reliabe_qos_keep_last,
+      "/px4ctrl/state", reliabe_qos_keep_last,
       std::bind(&NMPC::stateCallback, this, std::placeholders::_1));
 
   ref_sub_ = this->create_subscription<ReferenceHorizon>(
@@ -124,7 +125,7 @@ void NMPC::initSubsPubs()
       "/nmpc/reference_request", reliabe_qos_keep_last);
 
   tracking_info_pub_ = this->create_publisher<TrackingInfoMsg>(
-      "/tracking_info", reliabe_qos_keep_last);
+      "/nmpc/tracking_info", reliabe_qos_keep_last);
 }
 
 void NMPC::solve()
@@ -143,25 +144,12 @@ void NMPC::solve()
       return;
   }
 
-  Eigen::Quaterniond q_next(x_next[q_start_index], x_next[q_start_index + 1],
-                            x_next[q_start_index + 2],
-                            x_next[q_start_index + 3]);
-  q_next.normalize();
-
-  double pitch = q_next.toRotationMatrix().eulerAngles(2, 1, 0)(1);
-  if (pitch >= M_PI_2)
-    pitch -= M_PI;
-  if (pitch < -M_PI_2)
-    pitch += M_PI;
-
   std::copy(x_next.data() + state_size,
             x_next.data() + state_size + controls_size, u_.begin());
   ControlMsg ctrl_msg;
-  ctrl_msg.motors_u  = {u_[0], u_[1], u_[2], u_[3]};
   ctrl_msg.rates_sp  = {x_next[rate_start_index], x_next[rate_start_index + 1],
                         x_next[rate_start_index + 2]};
   ctrl_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
-  ctrl_msg.pitch_sp  = pitch;
   ctrl_msg.specific_force_sp = (u_[0] + u_[1] + u_[2] + u_[3]) / mass_;
   t_end_                     = std::chrono::high_resolution_clock::now();
 
@@ -186,22 +174,19 @@ void NMPC::referenceCallback(const ReferenceHorizon &msg)
 {
   const auto     &refs           = msg;
   bool            tracking_valid = refs.tracking_valid;
+  if (refs.points.empty())
+  {
+    RCLCPP_WARN(this->get_logger(), "empty reference horizon, skipping");
+    return;
+  }
   TrackingInfoMsg tracking_info_msg;
   tracking_info_msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
-  tracking_info_msg.ref_position = {
-      static_cast<float>(
-          refs.points[0].point[TrajecotryPoint::POS_START_INDEX]),
-      static_cast<float>(
-          refs.points[0].point[TrajecotryPoint::POS_START_INDEX + 1]),
-      static_cast<float>(
-          refs.points[0].point[TrajecotryPoint::POS_START_INDEX + 2])};
-  tracking_info_msg.ref_velocity = {
-      static_cast<float>(
-          refs.points[0].point[TrajecotryPoint::VEL_START_INDEX]),
-      static_cast<float>(
-          refs.points[0].point[TrajecotryPoint::VEL_START_INDEX + 1]),
-      static_cast<float>(
-          refs.points[0].point[TrajecotryPoint::VEL_START_INDEX + 2])};
+  tracking_info_msg.ref_position = {static_cast<float>(refs.points[0].pos[0]),
+                                    static_cast<float>(refs.points[0].pos[1]),
+                                    static_cast<float>(refs.points[0].pos[2])};
+  tracking_info_msg.ref_velocity = {static_cast<float>(refs.points[0].vel[0]),
+                                    static_cast<float>(refs.points[0].vel[1]),
+                                    static_cast<float>(refs.points[0].vel[2])};
   tracking_info_msg.actual_position = {
       static_cast<float>(x_cur_[pos_start_index]),
       static_cast<float>(x_cur_[pos_start_index + 1]),
@@ -217,12 +202,9 @@ void NMPC::referenceCallback(const ReferenceHorizon &msg)
   tracking_info_msg.ref_vxy =
       tracking_info_msg.ref_velocity[0] * tracking_info_msg.ref_velocity[0] +
       tracking_info_msg.ref_velocity[1] * tracking_info_msg.ref_velocity[1];
-  tracking_info_msg.ref_yb = {
-      static_cast<float>(msg.points[0].point[TrajecotryPoint::YB_START_INDEX]),
-      static_cast<float>(
-          msg.points[0].point[TrajecotryPoint::YB_START_INDEX + 1]),
-      static_cast<float>(
-          msg.points[0].point[TrajecotryPoint::YB_START_INDEX + 2])};
+  tracking_info_msg.ref_yb = {static_cast<float>(msg.points[0].yb[0]),
+                              static_cast<float>(msg.points[0].yb[1]),
+                              static_cast<float>(msg.points[0].yb[2])};
   Eigen::Quaterniond q_cur(x_cur_[q_start_index], x_cur_[q_start_index + 1],
                            x_cur_[q_start_index + 2],
                            x_cur_[q_start_index + 3]);
@@ -262,11 +244,34 @@ void NMPC::referenceCallback(const ReferenceHorizon &msg)
     return;
   }
 
+  // The reference carries only tracking quantities (pos, vel, yb). The NMPC
+  // cost layout is [pos, vel, rate, yb, u]; the rate and actuation references
+  // are controller-side (rate weight is zero, u holds at hover).
   for (int i = 0; i < N; i++)
   {
-    nmpc_solver_set_ref_stage(nmpc_, i, refs.points[i].point.data(), p);
+    const auto &pt = refs.points[i];
+    std::array<double, NMPC_NY> y_stage{};
+    for (int j = 0; j < 3; j++)
+    {
+      y_stage[j]     = pt.pos[j];
+      y_stage[3 + j] = pt.vel[j];
+      y_stage[6 + j] = 0.0;  // body-rate reference (zero-cost) -- controller side
+      y_stage[9 + j] = pt.yb[j];
+    }
+    std::fill(y_stage.end() - 4, y_stage.end(), u_hover_);
+    nmpc_solver_set_ref_stage(nmpc_, i, y_stage.data(), p);
   }
-  nmpc_solver_set_ref_terminal(nmpc_, refs.points[N].point.data());
+
+  const auto &pt_e = refs.points[N];
+  std::array<double, NMPC_NYN> y_terminal{};
+  for (int j = 0; j < 3; j++)
+  {
+    y_terminal[j]     = pt_e.pos[j];
+    y_terminal[3 + j] = pt_e.vel[j];
+    y_terminal[6 + j] = 0.0;
+    y_terminal[9 + j] = pt_e.yb[j];
+  }
+  nmpc_solver_set_ref_terminal(nmpc_, y_terminal.data());
 
   static bool first_solve = true;
   if (first_solve)
@@ -304,6 +309,7 @@ NMPC::NMPC(const rclcpp::NodeOptions &options) : Node("NMPC", options)
   YAML::Node config = YAML::LoadFile(nmpc_yaml);
   mass_             = config["nmpc"]["mass"].as<double>(2.0);
   cz_rate_          = config["nmpc"]["cz_rate"].as<double>(0.10);
+  u_hover_          = config["nmpc"]["u_hover"].as<double>(u_hover_);
   RCLCPP_INFO(this->get_logger(), "mass: %f", mass_);
   initSubsPubs();
   u_.fill(9.8 / 4 * mass_);
