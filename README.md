@@ -4,13 +4,25 @@ Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sit
 
 ---
 
-## Install
+## Quick Start
+
+### 1. Install uv and git
+
+The only host prerequisites are [uv](https://docs.astral.sh/uv/) (Python
+package/environment manager) and git. Both are standard on Linux:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # install uv
+sudo apt install git                                # or your distro's git package
+```
+
+Verify: `uv --version` and `git --version`.
+
+### 2. Clone the repository
 
 ```bash
 git clone https://github.com/WarriorHanamy/AP-PnC.git
-uv sync --group dev --group extra
-uv run ap-pnc install
-uv run ap-pnc gen-nmpc-lib   # acados codegen → self-contained libnmpc_bundle.a
+cd AP-PnC
 ```
 
 No recursive clone needed: `ap-pnc install` fetches acados automatically
@@ -19,6 +31,94 @@ No recursive clone needed: `ap-pnc install` fetches acados automatically
 `ekf_quat_pose`) are git subtrees and live directly in the repo.
 Aerodynamics ships its own B-spline evaluator (`aero_utils` + a self-contained
 `bspline_basis.hpp`), so no third-party B-spline library is vendored.
+
+### 3. Full-stack install
+
+The one-shot bootstrap (venv + acados + OCP bundle + Docker images), with a
+step-by-step log:
+
+```bash
+uv run ap-pnc stack full-install          # everything, ap-pnc + nav_infra images
+uv run ap-pnc stack full-install --docker-all   # + px4-simulator + qground_control (slow)
+```
+
+Or step-by-step, for a C++/ROS2-only pipeline:
+
+```bash
+uv sync --group dev --group extra   # Python env: dev + ML/compute extras
+uv run ap-pnc install               # acados C libs (shared+static), t_renderer, acados_template
+uv run ap-pnc gen-nmpc-lib          # acados codegen → self-contained libnmpc_bundle.a
+```
+
+- `uv sync` creates the project `.venv`; `--group extra` pulls the ML/compute
+  stack (JAX, Torch, CasADi, matplotlib, ...) used by the aerodynamics
+  commands — omit it if you only run the C++/ROS2 pipeline.
+- `ap-pnc install` builds acados from the locked source, downloads
+  `t_renderer`, and installs `acados_template` into the venv.
+- `ap-pnc gen-nmpc-lib` generates the OCP solver code and merges it with
+  acados/hpipm/blasfeo into the self-contained static bundle
+  `.artifacts/nmpc_solver/libnmpc_bundle.a` for ROS2 linking.
+
+Sanity check:
+
+```bash
+uv run ap-pnc --help
+ls -lh .artifacts/nmpc_solver/libnmpc_bundle.a
+```
+
+For a fresh Linux host the full dependency checklist is in the
+`ap-pnc-bootstrap` skill (`.agents/skills/`); the Docker/ROS2 stack is
+covered by the `ap-pnc-docker` skill.
+
+---
+
+## Tuning the NMPC Parameters
+
+The NMPC tracking controller has two parameter surfaces: the
+horizon/model convention read at runtime, and the OCP cost weights baked in
+at codegen time.
+
+### Runtime parameters: `bringup/config/nmpc.yaml`
+
+| Key          | Default | Meaning |
+|--------------|---------|---------|
+| `horizon_s`  | 1.0     | Prediction horizon [s] (acados tf) |
+| `traj_res_s` | 0.1     | Horizon node spacing [s]; grid = `N + 1` reference points, `N = round(horizon_s/traj_res_s)` |
+| `ctrl_frq`   | 50.0    | Solve / reference-request frequency [Hz] |
+| `u_hover`    | 2.4525  | Actuation reference at hover [N/kg per rotor] |
+| `mass`       | 2.0     | Vehicle mass [kg] |
+| `cz_rate`    | 0.10    | Vertical drag (cz) rate parameter |
+
+The planner builds the reference on exactly this grid (no downsampling):
+point `k` is evaluated at `t0 + k·traj_res_s`, the playhead advances by
+`1/ctrl_frq` per request. Changing the grid (`horizon_s` / `traj_res_s`)
+also changes the codegen discretization — see below.
+
+### Cost weights: `ap_pnc/nmpc_gen/config.py` (`MpcConfig`)
+
+The convex-over-nonlinear least-squares cost lives in
+`ap_pnc/nmpc_gen/config.py`:
+
+| Field    | Meaning |
+|----------|---------|
+| `qPos`   | Position tracking weight `[x, y, z]` |
+| `qVel`   | Velocity tracking weight |
+| `qAngV`  | Body-rate tracking weight |
+| `qYB`    | Body-y (lateral) tracking weight, derived from `qh`/`qv` |
+| `rU`     | Control-effort weight (per rotor `u`) |
+| `lb_r`/`ub_r` | Body-rate bounds |
+| `lb_u`/`ub_u` | Actuation bounds |
+
+The cost layout is `[pos, vel, rate, yb, u]`; the rate and actuation
+references are controller-side (rate weight is zero, `u` holds at hover).
+
+Changing any weight, bound, or the horizon grid changes the OCP itself, so
+regenerate the solver and rebuild the node:
+
+```bash
+uv run ap-pnc gen-nmpc-lib    # regenerate solver + bundle
+uv run ap-pnc build nmpc      # rebuild the nmpc node against the new bundle
+```
 
 ---
 
@@ -77,7 +177,7 @@ uv run ap-pnc --help
 | `test`         | `all`, `nmpc`, `lmpc`, ..., `colcon`, `colcon-result` | Test runners |
 | `build`        | `all`, `nmpc` (nmpc + px4ctrl), `planner`, `planner-bindings`, `aero`, `simple-sim`, `bindings` | C++ colcon builds + pybind |
 | `sim`          | `simple`, `gazebo`, `stop`, `status`, `logs` | K3s ConfigMap-driven simulation |
-| `stack`        | `start`, `trigger go\|back` | Local ROS2 stack lifecycle (go/back = PASS_THROUGH service) |
+| `stack`        | `full-install`, `start`, `trigger go\|back` | Full bootstrap (venv+acados+bundle+Docker) / local ROS2 stack lifecycle (go/back = PASS_THROUGH service) |
 | `docker`       | `build`, `up`, `down` | Docker compose commands |
 | `lint`         | (default), `fmt` | Ruff linter and formatter |
 
