@@ -46,9 +46,3 @@ The aerodynamics alpha-solver config lives with its owner:
 `infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml`.
 
 `AP_PNC_DIR` is the **only** path environment variable; no per-file env vars.
-
-## ROS middleware
-
-Use the RMW defaults. Do not set `RMW_IMPLEMENTATION`,
-`FASTRTPS_DEFAULT_PROFILES_FILE`, or FastDDS QoS profiles in launch files,
-Dockerfiles, or manifests.
