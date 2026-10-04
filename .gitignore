@@ -9,6 +9,7 @@ claude_temp/
 Claude.md
 CLAUDE.md
 .claude/
+.pi/
 
 # build / codegen / colcon outputs (canonical location, see AGENTS.md artifacts convention)
 .artifacts/

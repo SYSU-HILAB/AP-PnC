@@ -179,20 +179,42 @@ uv run ap-pnc --help
 | `sim`          | `simple`, `gazebo`, `stop`, `status`, `logs` | K3s ConfigMap-driven simulation |
 | `stack`        | `full-install`, `start`, `trigger go\|back` | Full bootstrap (venv+acados+bundle+Docker) / local ROS2 stack lifecycle (go/back = PASS_THROUGH service) |
 | `docker`       | `build`, `up`, `down` | Docker compose commands |
-| `lint`         | (default), `fmt` | Ruff linter and formatter |
 
 ### Examples
 
+The shortest path from a fresh clone to a running simulation:
+
 ```bash
-uv run ap-pnc gen-nmpc-lib         # acados NMPC codegen + bundle
-uv run ap-pnc build planner-bindings  # pybind planning core for the benchmark
-uv run ap-pnc benchmark run --vmax 8 --type 2 --radius 12   # Offline SE3 benchmark
-uv run ap-pnc benchmark flight --vmax 5 --type 1 --radius 4 # Sync config + start stack
-uv run ap-pnc build all            # Build the whole workspace (core + nav_infra)
-uv run ap-pnc lint                 # Lint
+# 1. Generate the acados NMPC solver (Linux)
+uv run ap-pnc gen-nmpc-lib
+
+# 2a. Simple tracking sim — headless, no ROS graph or K3s required
+uv run ap-pnc build simple-sim
+uv run ap-pnc sim track --controller nmpc
+
+# 2b. Or the full PX4 + Gazebo stack via K3s
+uv run ap-pnc sim gazebo
+uv run ap-pnc sim logs -f          # stream the running sim pod's logs
+uv run ap-pnc sim stop
+
+# 3. Inspect the results
+#    metrics are printed at the end of each run; with ROS the simple sim
+#    can also be visualized live in RViz:
+source "$AP_PNC_DIR/.artifacts/colcon/install/setup.bash"
+ros2 launch bringup simple_sim.launch.py rviz:=true
 ```
 
-### Offline benchmark pipeline
+Web visualization of trajectories and tracking results in the browser is on
+the near-term plan — see the [Roadmap](#roadmap).
+
+---
+
+## Benchmark
+
+Benchmarks are a first-class workflow, kept separate from the quick-start
+examples above. Every run lands in `.artifacts/benchmark/<name>/`.
+
+### Offline tracking benchmark (implemented)
 
 `ap-pnc benchmark run` orchestrates the whole offline loop in one process:
 
@@ -201,9 +223,53 @@ planning.yaml ─► planner_core.plan() ─► Reference ─► SE3 ─► rigi
                   (pybind, pure C++)     (numpy)    controller
 ```
 
-Artifacts land in `.artifacts/benchmark/<name>/` (`planning.yaml`, `data.npz`,
-`metrics.json`). No ROS and no CSV are involved; the real C++ planner is
-reused in-process via `planner_bindings`.
+```bash
+uv run ap-pnc build planner-bindings                        # pybind planner core
+uv run ap-pnc benchmark run --vmax 8 --type 2 --radius 12   # plan → track → data
+```
+
+Artifacts: `planning.yaml` (exact config snapshot), `data.npz`, `metrics.json`.
+No ROS and no CSV are involved; the real C++ planner is reused in-process via
+`planner_bindings`.
+
+### Flight benchmark (SITL)
+
+`ap-pnc benchmark flight` syncs `planning.yaml` with the requested trajectory
+and starts the full stack; the flight itself (takeoff → hover → NMPC handover)
+follows the `ap-pnc-gazebo-e2e` skill runbook in `.agents/skills/`.
+
+```bash
+uv run ap-pnc benchmark flight --vmax 5 --type 1 --radius 4
+```
+
+### Planned extensions
+
+- NMPC vs SE3 controller comparison in one sweep (simple_sim already accepts
+  `--controller nmpc|se3`)
+- Metric aggregation across sweeps into a single comparison table
+- Web dashboard for browsing runs (see Roadmap)
+
+---
+
+## Roadmap
+
+**Done**
+
+- Single-path install: `ap-pnc install` (auto acados fetch) + `gen-nmpc-lib`
+- Planner / NMPC nodes with PASS_THROUGH handover (`ap-pnc stack trigger go`)
+- K3s ConfigMap simulation switching: `ap-pnc sim simple|gazebo|stop`
+- Headless lockstep tracking sim: `ap-pnc sim track`
+- Offline benchmark pipeline: `ap-pnc benchmark run`
+- RViz visualization for the simple sim
+
+**In progress**
+
+- Web visualization: browse trajectories, tracking error and metrics in the
+  browser
+- Benchmark sweeps & aggregation: NMPC vs SE3 comparison table from multiple
+  `benchmark run` invocations
+- Flight benchmark automation: one-command takeoff → handover → log capture
+  in SITL
 
 ---
 
@@ -259,17 +325,20 @@ nav_infra nodes read from `infra/nav_infra/bringup/config/`:
 | Layer | Directory | What it runs |
 |-------|-----------|--------------|
 | Gazebo | `infra/sim_infra/gazebo/` | Generic-interface SITL: stock PX4 v1.17.0 under Gazebo Harmonic (`gz_x500`), bridged by mavros2 (`px4-simulator` + `nav_infra` + `qground_control` + `ap-pnc`) |
-| Simple sim | `infra/sim_infra/simple_sim/` | Lightweight C++ simulator (MARSIM-style) with synthetic LiDAR sensing |
+| Simple sim | `infra/sim_infra/simple_sim/` | Collision-free C++ lockstep tracking; planner/NMPC called synchronously, optional ROS observation |
 
 ```bash
 uv run ap-pnc sim gazebo     # Gazebo layer via K3s ConfigMap
-uv run ap-pnc sim simple     # simple_sim layer
+uv run ap-pnc sim simple     # simple_sim via K3s (initially paused)
+uv run ap-pnc sim track      # installed simple_sim headless run, no K3s/ROS graph
 uv run ap-pnc sim stop       # scale everything down
 ```
 
 For the full flight procedure (takeoff → hover → NMPC handover) and the
 SITL pitfalls reference, see the `ap-pnc-gazebo-e2e` skill in
-`.agents/skills/`. Details of each layer: `infra/nav_infra/README.md`,
+`.agents/skills/`. Simple sim is a separate tracking-only pipeline, not that flight
+procedure; its YAML, launch and RViz resources live in `core/bringup/`.
+Details of each layer: `infra/nav_infra/README.md`,
 `infra/sim_infra/gazebo/README.md`, `infra/sim_infra/simple_sim/README.md`.
 
 ---
