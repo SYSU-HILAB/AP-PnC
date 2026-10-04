@@ -39,14 +39,15 @@ namespace aerodynamics::paths
     return file;
   }
 
-  inline std::filesystem::path database(const std::string &filename)
+  // Canonical per-model parameter file, e.g. config/aero/phi.yaml.
+  // Single source of truth: the tracked config tree only (no .artifacts
+  // shadowing).
+  inline std::filesystem::path aero_config(const std::string &model)
   {
-    if (filename.empty() || filename == "." || filename == ".." ||
-        std::filesystem::path(filename).filename() != filename)
-      throw std::invalid_argument("aerodynamics database requires a filename, not a path");
-    const auto project = root();
-    const auto generated = project / ".artifacts" / "aerodynamics" / filename;
-    if (std::filesystem::is_regular_file(generated)) return generated;
-    return project / "infra" / "sim_infra" / "aerodynamics" / "data" / filename;
+    if (model.empty() || model == "." || model == ".." ||
+        std::filesystem::path(model).filename() != model)
+      throw std::invalid_argument("aero config requires a model name, not a path");
+    return root() / "infra" / "sim_infra" / "aerodynamics" / "config" /
+           "aero" / (model + ".yaml");
   }
 } // namespace aerodynamics::paths

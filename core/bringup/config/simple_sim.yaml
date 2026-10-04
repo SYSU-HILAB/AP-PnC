@@ -18,7 +18,7 @@ simple_sim:
     velocity_gain: [3.0, 3.0, 3.0]
     attitude_gain: [6.0, 6.0, 6.0]
   aero:
-    model: lyu                  # lyu | none
+    model: lyu                  # lyu | phi | ma | advanced | none
     scale: 1.0
     wind_world: [0.0, 0.0, 0.0]  # ENU, m/s
   ros:

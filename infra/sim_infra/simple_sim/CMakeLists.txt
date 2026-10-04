@@ -61,18 +61,27 @@ if(SIMPLE_SIM_BUILD_APP)
   add_subdirectory(${AP_PNC_DIR}/core/ros_packages/planner/core
                    ${CMAKE_CURRENT_BINARY_DIR}/planner_core)
   set(AERO_DIR ${AP_PNC_DIR}/infra/sim_infra/aerodynamics)
-  add_library(simple_sim_lyu STATIC
+  # All five canonical models (lyu | phi | ma | advanced | none) compile
+  # in-tree, exactly like the aerodynamics package builds them; parameters
+  # load from config/aero/<model>.yaml at runtime (AP_PNC_DIR).
+  find_package(spdlog REQUIRED)
+  add_library(simple_sim_aero STATIC
     ${AERO_DIR}/src/zhang_lyu_aerodynamics.cpp
+    ${AERO_DIR}/src/phi_aerodynamics.cpp
+    ${AERO_DIR}/src/bspline_aerodynamics.cpp
+    ${AERO_DIR}/src/advanced_lift_drag.cpp
+    ${AERO_DIR}/src/non_aerodynamics.cpp
+    ${AERO_DIR}/src/aero_factory.cpp
     ${AERO_DIR}/src/MatlabGenerated/Zhang/Aerodynamics.cpp
     ${AERO_DIR}/src/MatlabGenerated/Zhang/rt_nonfinite.cpp
   )
-  target_include_directories(simple_sim_lyu PUBLIC ${AERO_DIR}/include
+  target_include_directories(simple_sim_aero PUBLIC ${AERO_DIR}/include
     PRIVATE ${AERO_DIR}/src/MatlabGenerated/Zhang/include)
-  target_link_libraries(simple_sim_lyu PUBLIC Eigen3::Eigen)
+  target_link_libraries(simple_sim_aero PUBLIC Eigen3::Eigen spdlog::spdlog yaml-cpp)
 
   add_library(simple_sim_adapters STATIC adapters/src/se3_controller.cpp adapters/src/aero_model.cpp)
   target_include_directories(simple_sim_adapters PUBLIC adapters/include)
-  target_link_libraries(simple_sim_adapters PUBLIC simple_sim_core planner_core simple_sim_lyu)
+  target_link_libraries(simple_sim_adapters PUBLIC simple_sim_core planner_core simple_sim_aero)
   set(NMPC_BUNDLE_SHA256 "disabled")
   if(SIMPLE_SIM_WITH_NMPC)
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")

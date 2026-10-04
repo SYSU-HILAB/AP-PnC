@@ -82,6 +82,17 @@ namespace aerodynamics
                                       alpha, beta);
     }
 
+    /**
+     * @brief Release ownership of the created model instance
+     *
+     * Used by aerodynamics::make_aero() to hand the instance to callers
+     * that want the interface, not the creator.
+     */
+    std::unique_ptr<AerodynamicsInterface> takeInstance()
+    {
+      return std::move(_instance);
+    }
+
     virtual ~AerodynamicsCreator() = default;
   };
 

@@ -7,12 +7,12 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED)
-find_package(SQLite3 REQUIRED)
+find_package(yaml-cpp REQUIRED)
+if(TARGET yaml-cpp::yaml-cpp AND NOT TARGET yaml-cpp)
+  add_library(yaml-cpp ALIAS yaml-cpp::yaml-cpp)
+endif()
 include_directories(${EIGEN3_INCLUDE_DIR})
 ament_auto_find_build_dependencies()
-
-# In-package config readers (former standalone `utils` package)
-add_subdirectory(config_reader)
 
 # Zhang Lyu aerodynamics
 add_library(
@@ -49,21 +49,32 @@ target_include_directories(${PROJECT_NAME}_lyu
   src/MatlabGenerated/Zhang/include
 )
 
-# Advanced Lift Drag aerodynamics
+# Advanced Lift Drag aerodynamics ("advanced")
 ament_auto_add_library(${PROJECT_NAME}_advanced_lift_drag
     src/advanced_lift_drag.cpp
 )
 target_link_libraries(${PROJECT_NAME}_advanced_lift_drag
-  aerodynamics_config_reader_advanced_lift_drag
+  yaml-cpp
 )
-# Phi aerodynamics
+# Phi aerodynamics ("phi")
 ament_auto_add_library(${PROJECT_NAME}_phi src/phi_aerodynamics.cpp)
-target_link_libraries(${PROJECT_NAME}_phi aerodynamics_config_reader_phi)
-# B-spline aerodynamics
+target_link_libraries(${PROJECT_NAME}_phi yaml-cpp)
+# B-spline aerodynamics ("ma")
 ament_auto_add_library(${PROJECT_NAME}_bspline src/bspline_aerodynamics.cpp)
-target_link_libraries(${PROJECT_NAME}_bspline aerodynamics_config_reader_bspline)
-# Non aerodynamics
+target_link_libraries(${PROJECT_NAME}_bspline yaml-cpp)
+# Non aerodynamics ("none")
 ament_auto_add_library(${PROJECT_NAME}_non src/non_aerodynamics.cpp)
+
+# Shared factory: the single definition of canonical model names
+# (lyu | phi | ma | advanced | none); every simulator selects through it.
+ament_auto_add_library(${PROJECT_NAME}_aero_factory src/aero_factory.cpp)
+target_link_libraries(${PROJECT_NAME}_aero_factory
+  ${PROJECT_NAME}_lyu
+  ${PROJECT_NAME}_phi
+  ${PROJECT_NAME}_bspline
+  ${PROJECT_NAME}_advanced_lift_drag
+  ${PROJECT_NAME}_non
+)
 
 # AeroAlphaSolver: Force balance equation solver using Newton-Raphson
 ament_auto_add_library(${PROJECT_NAME}_alpha_solver
@@ -78,17 +89,18 @@ target_link_libraries(${PROJECT_NAME}_alpha_solver
 # Testing for aerodynamics
 ament_auto_add_executable(aero_comparison src/aero_comparison.cpp)
 target_link_libraries(aero_comparison
+  ${PROJECT_NAME}_aero_factory
   ${PROJECT_NAME}_phi
   ${PROJECT_NAME}_lyu
   ${PROJECT_NAME}_non
   ${PROJECT_NAME}_advanced_lift_drag
   ${PROJECT_NAME}_bspline
-  aerodynamics_config_common
 )
 
 # Generate ML training data from all aerodynamic types
 ament_auto_add_executable(generate_aero_ml_data src/generate_aero_ml_data.cpp)
 target_link_libraries(generate_aero_ml_data
+  ${PROJECT_NAME}_aero_factory
   ${PROJECT_NAME}_phi
   ${PROJECT_NAME}_lyu
   ${PROJECT_NAME}_advanced_lift_drag

@@ -26,9 +26,12 @@
 #include <spdlog/spdlog.h>
 
 #include <aerodynamics/advanced_lift_drag.hpp>
+#include <aerodynamics/project_paths.hpp>
+#include <yaml-cpp/yaml.h>
+#include <algorithm>
 #include <cmath>
-#include <sq_config_reader/advanced_lift_drag_config_reader.hpp>
 #include <sstream>
+#include <stdexcept>
 
 namespace aerodynamics
 {
@@ -59,25 +62,37 @@ namespace aerodynamics
       double scale_factor;  // Scale factor for the aerodynamics
     };
 
-    // Function to load parameters from config reader
+    // Function to load parameters from config/aero/advanced.yaml
     bool loadAeroParams(AeroParams &params)
     {
-      sq_config_reader::AdvancedLiftDragConfigReader reader;
-      if (!reader.access_and_fetch_data())
+      try
       {
+        const YAML::Node config =
+            YAML::LoadFile(paths::aero_config("advanced").string());
+        const auto read_scalar = [&config](const char *key) {
+          const YAML::Node node = config[key];
+          if (!node)
+            throw std::runtime_error(std::string("advanced.yaml: '") + key +
+                                     "' missing");
+          return node.as<double>();
+        };
+        params.sigmoid_blend = read_scalar("sigmoid_blend");
+        params.CL_alpha_0    = read_scalar("cl_alpha_0");
+        params.CL_alpha      = read_scalar("cl_alpha");
+        params.alpha_stall   = read_scalar("alpha_stall");
+        params.eff           = read_scalar("eff");
+        params.CD_0          = read_scalar("cd_0");
+        params.CD_flat_plate = read_scalar("cd_flat_plate");
+        params.CY_beta       = read_scalar("cy_beta");
+        params.CL_beta_loss  = read_scalar("cl_beta_loss");
+        params.scale_factor  = read_scalar("scale_factor");
+      }
+      catch (const std::exception &e)
+      {
+        spdlog::error("advanced aerodynamics: failed to load {}: {}",
+                      paths::aero_config("advanced").string(), e.what());
         return false;
       }
-
-      params.sigmoid_blend = reader.get_sigmoid_blend();
-      params.CL_alpha_0    = reader.get_cl_alpha_0();
-      params.CL_alpha      = reader.get_cl_alpha();
-      params.alpha_stall   = reader.get_alpha_stall();
-      params.eff           = reader.get_eff();
-      params.CD_0          = reader.get_cd_0();
-      params.CD_flat_plate = reader.get_cd_flat_plate();
-      params.CY_beta       = reader.get_cy_beta();
-      params.CL_beta_loss  = reader.get_cl_beta_loss();
-      params.scale_factor  = reader.get_scale_factor();
 
       return true;
     }
@@ -106,9 +121,12 @@ namespace aerodynamics
       // Pre-stall: linear model
       double CL_prestall = (1 - sigma) * (aero_params.CL_alpha * alpha);
       spdlog::debug("CL_prestall: {}", CL_prestall);
-      // Post-stall: nonlinear model based on flat plate theory
+      // Post-stall: nonlinear model based on flat plate theory.
+      // sign(alpha) with a defined value at alpha == 0 (0/0 would be NaN
+      // and poison the product even though sigma is small there).
+      const double alpha_sign = (alpha > 0.0) - (alpha < 0.0);
       double CL_poststall =
-          sigma * (2 * alpha / abs(alpha)) * sinAlpha * sinAlpha * cosAlpha;
+          sigma * 2.0 * alpha_sign * sinAlpha * sinAlpha * cosAlpha;
       spdlog::debug("CL_poststall: {}", CL_poststall);
 
       // here we don't comply to the original model, but scale the CL by
@@ -168,9 +186,11 @@ namespace aerodynamics
         return true;
       }
 
-      // Calculate alpha and beta
+      // Calculate alpha and beta. Clamp the asin argument: rounding can
+      // push |y|/|v| marginally above 1 and NaN the evaluation.
       alpha = std::atan2(body_speed.z(), body_speed.x());
-      beta  = std::asin(body_speed.y() / vNorm);
+      beta  = std::asin(
+          std::clamp(body_speed.y() / vNorm, -1.0, 1.0));
 
       Eigen::Matrix3d s_R_b = Eigen::Matrix3d::Identity();
       s_R_b.col(0) << cos(alpha), 0, -sin(alpha);

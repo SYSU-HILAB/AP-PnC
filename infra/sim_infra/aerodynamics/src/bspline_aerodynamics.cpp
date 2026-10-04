@@ -14,7 +14,12 @@
 #include <spdlog/spdlog.h>
 
 #include <aerodynamics/bspline_aerodynamics.hpp>
-#include <sq_config_reader/bspline_aero_config_reader.hpp>
+#include <aerodynamics/project_paths.hpp>
+#include <yaml-cpp/yaml.h>
+
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace aerodynamics
 {
@@ -80,23 +85,41 @@ namespace aerodynamics
 
   bool BsplineAerodynamicsCreator::createAerodynamics()
   {
-    // Create config reader instance
-    sq_config_reader::BSplineAeroConfigReader db;
-
-    if (!db.access_and_fetch_data())
+    // Load the fitted coefficients from config/aero/ma.yaml
+    std::vector<double> cx_coefs, cx_knots, cz_coefs, cz_knots;
+    double              scale_factor = 0.0;
+    try
     {
+      const YAML::Node config =
+          YAML::LoadFile(paths::aero_config("ma").string());
+      const auto read_vector = [&config](const char         *key,
+                                         std::vector<double> &out) {
+        const YAML::Node node = config[key];
+        if (!node || !node.IsSequence() || node.size() == 0)
+          throw std::runtime_error(std::string("ma.yaml: '") + key +
+                                   "' must be a non-empty list");
+        out.clear();
+        out.reserve(node.size());
+        for (const auto &item : node)
+          out.push_back(item.as<double>());
+      };
+      read_vector("cx_coefs", cx_coefs);
+      read_vector("cx_knots", cx_knots);
+      read_vector("cz_coefs", cz_coefs);
+      read_vector("cz_knots", cz_knots);
+      if (!config["scale_factor"])
+        throw std::runtime_error("ma.yaml: 'scale_factor' missing");
+      scale_factor = config["scale_factor"].as<double>();
+    }
+    catch (const std::exception &e)
+    {
+      spdlog::error("ma aerodynamics: failed to load {}: {}",
+                    paths::aero_config("ma").string(), e.what());
       return false;
     }
 
-    // Get bspline parameters from database
-    auto cx_coefs = db.get_cx_coefs();
-    auto cx_knots = db.get_cx_knots();
-    auto cz_coefs = db.get_cz_coefs();
-    auto cz_knots = db.get_cz_knots();
-
-    auto scale_factor = db.get_scale_factor();
-
-    spdlog::debug("Loaded bspline parameters");
+    spdlog::debug("Loaded bspline parameters ({} cx coefs, {} cz coefs)",
+                  cx_coefs.size(), cz_coefs.size());
 
     // Create and initialize BsplineAerodynamics instance
     auto instance = std::make_unique<BsplineAerodynamics>(

@@ -14,14 +14,11 @@
 #ifndef GZ_SIM_SYSTEMS_LIFT_DRAG_HH_
 #define GZ_SIM_SYSTEMS_LIFT_DRAG_HH_
 
+#include <aerodynamics/aero_factory.hpp>
 #include <aerodynamics/aero_interface.hpp>
-#include <aerodynamics/bspline_aerodynamics.hpp>
-#include <aerodynamics/non_aerodynamics.hpp>
-#include <aerodynamics/phi_aerodynamics.hpp>
-#include <aerodynamics/zhang_lyu_aerodynamics.hpp>
-#include <aerodynamics/advanced_lift_drag.hpp>
 #include <gz/sim/System.hh>
 #include <memory>
+#include <string>
 
 #include "gz/transport.hh"
 namespace gz

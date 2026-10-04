@@ -6,7 +6,7 @@ WORKDIR /workspace
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake python3-colcon-common-extensions \
-    libeigen3-dev libyaml-cpp-dev ros-humble-rviz2 \
+    libeigen3-dev libyaml-cpp-dev libspdlog-dev libfmt-dev ros-humble-rviz2 \
     ros-humble-nav-msgs ros-humble-sensor-msgs ros-humble-std-srvs ros-humble-rosgraph-msgs \
     && rm -rf /var/lib/apt/lists/*
 

@@ -24,9 +24,14 @@ src/aerodynamics/
 │   ├── gazebo_plugins/           # ROS2/Gazebo integration
 │   └── MatlabGenerated/          # Auto-generated MATLAB code
 ├── data/                         # Configuration and data
-│   ├── aero_sim_params.db        # SQLite parameter database
-│   ├── bspline_fit_results/      # B-spline coefficients
-│   └── *.py                      # Data generation scripts
+│   ├── bspline_fit_results/      # B-spline fit results (npz)
+│   └── *.py                      # Data generation scripts (ma_params_writer.py)
+├── config/
+│   ├── aero_alpha_solver.yaml    # Alpha-solver configuration
+│   └── aero/                     # Per-model parameters (the single source
+│       ├── phi.yaml              #   of truth; loaded at runtime by name)
+│       ├── ma.yaml
+│       └── advanced.yaml
 ├── scripts/
 │   └── generate_aero_lookup_table.cpp
 └── test/
@@ -37,7 +42,7 @@ src/aerodynamics/
 
 ### Base Interface
 
-The module uses an abstract base class pattern with a factory for creating model instances:
+The module uses an abstract base class pattern with a shared factory:
 
 - **`AerodynamicsInterface`**: Abstract base defining the interface for all aerodynamics models
   - Virtual method `getAeroWrench()` computes forces and moments
@@ -45,7 +50,25 @@ The module uses an abstract base class pattern with a factory for creating model
 
 - **`AerodynamicsCreator`**: Factory base class for creating aerodynamics instances
   - Implements the factory pattern for model creation
-  - Loads parameters from configuration database
+  - Loads parameters from `config/aero/<model>.yaml`
+
+- **`make_aero(name)`** (`aerodynamics/aero_factory.hpp`): the single
+  naming authority. Canonical names, identical everywhere (simple_sim yaml
+  `aero.model`, gazebo `<aero_model>`):
+
+  | name          | implementation            | parameters |
+  | ------------- | ------------------------- | ---------- |
+  | `lyu`         | Zhang-Lyu MATLAB model    | (baked in) |
+  | `phi`         | linear phi-theory         | `config/aero/phi.yaml` |
+  | `ma`          | B-spline fitted model     | `config/aero/ma.yaml` |
+  | `advanced`    | advanced lift-drag        | `config/aero/advanced.yaml` |
+  | `none`        | null model (zero wrench)  | — |
+
+```cpp
+#include <aerodynamics/aero_factory.hpp>
+
+auto aero = aerodynamics::make_aero("phi");  // throws on unknown names
+```
 
 ## Aerodynamics Models
 
@@ -66,7 +89,7 @@ creator.createAerodynamics();
 - Comprehensive force and moment calculations
 - Captures complex aerodynamic effects
 
-### BsplineAerodynamics (B-spline Model)
+### BsplineAerodynamics ("ma")
 
 Uses B-spline curves to model force coefficients as functions of angle of attack and sideslip angle.
 
@@ -80,9 +103,9 @@ creator.createAerodynamics();
 
 **Features:**
 - Cubic B-spline interpolation (order 3)
-- Control points and knots loaded from configuration
+- Control points and knots loaded from `config/aero/ma.yaml`
 - Efficient for real-time control
-- Data: `data/bspline_fit_results/bspline_fit_c{x,z}.npz`
+- Fit pipeline: `data/bspline_aero_fit.py` → npz → `data/ma_params_writer.py` → `config/aero/ma.yaml`
 
 ### PhiAerodynamics (Linear Phi-Theory Model)
 
@@ -111,7 +134,7 @@ where:
 - Suitable for real-time control
 - Phi matrix loaded from database
 
-### AdvancedLiftDrag (Advanced Lift-Drag Model)
+### AdvancedLiftDrag ("advanced")
 
 Separate lift and drag coefficients with stall effects.
 
@@ -127,7 +150,7 @@ creator.createAerodynamics();
 - Accounts for stall effects
 - Parasitic and induced drag components
 - Uses PIMPL pattern for data hiding
-- Configurable coefficients
+- Parameters: `config/aero/advanced.yaml` (baseline: PX4 quadtailsitter)
 
 ### NonAerodynamics (Null Model)
 
@@ -244,28 +267,28 @@ uv run ap-pnc aerodyn ml pipeline
 ## Data Flow
 
 ```
-┌─────────────────────┐
-│  Configuration DB   │
-│  (aero_sim_params)  │
-└──────────┬──────────┘
+┌──────────────────────┐
+│  config/aero/*.yaml  │
+│  (per-model params)  │
+└──────────┬───────────┘
            │
            v
-┌─────────────────────┐
-│  Factory Creator    │
-│  createAerodynamics │
-└──────────┬──────────┘
+┌──────────────────────┐
+│  make_aero(name)     │
+│  (shared factory)   │
+└──────────┬───────────┘
            │
            v
-┌─────────────────────┐
-│  Aerodynamics Model │
-│  (Lyu, Bspline, ...)│
-└──────────┬──────────┘
+┌──────────────────────┐
+│  Aerodynamics Model  │
+│  (lyu, phi, ma, ...) │
+└──────────┬───────────┘
            │
            v
-┌─────────────────────┐
-│  getAeroWrench()    │
-│  (forces, moments)  │
-└─────────────────────┘
+┌──────────────────────┐
+│  getAeroWrench()     │
+│  (forces, moments)   │
+└──────────────────────┘
 ```
 
 ## Coordinate Convention

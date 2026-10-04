@@ -40,6 +40,7 @@
 #include <gz/sim/components/Pose.hh>
 #include <gz/transport.hh>
 #include <gz/transport/Node.hh>
+#include <map>
 #include <sdf/Element.hh>
 #include <string>
 #include <vector>
@@ -51,7 +52,10 @@ using namespace systems;
 class gz::sim::systems::AerodynamicsPluginPrivate
 {
  private:
-  std::unique_ptr<aerodynamics::AerodynamicsCreator> aero_creator;
+  // Model instance created via the shared factory (canonical names:
+  // lyu | phi | ma | advanced | none).
+  std::shared_ptr<aerodynamics::AerodynamicsInterface> aero;
+  std::string aeroModel;
   // Initialize the system
  public:
   void Load(const EntityComponentManager &_ecm, const sdf::ElementPtr &_sdf);
@@ -61,9 +65,10 @@ class gz::sim::systems::AerodynamicsPluginPrivate
   /// \param[in] _ecm Immutable reference to the EntityComponentManager
   void Update(EntityComponentManager &_ecm);
 
-  /// \brief Parse the aerodynamics type from aerodynamicsId and create the
-  /// appropriate creator \return true if successful, false otherwise
-  bool parseAerodynamicsType();
+  /// \brief Resolve the aerodynamics model from <aero_model> (deprecated
+  /// integer fallback: <aero_id>) and create it via aerodynamics::make_aero
+  /// \return true if successful, false otherwise
+  bool parseAerodynamicsModel(const sdf::ElementPtr &_sdf);
 
   /// \brief Model interface
   Model model{kNullEntity};
@@ -125,58 +130,55 @@ class gz::sim::systems::AerodynamicsPluginPrivate
 
   /// \brief Flag to omit publishing force
   bool ifOmitForce{false};
-
-  /// \brief Flag to use bspline aerodynamics
-  enum class AerodynamicsType
-  {
-    PHI,
-    MA,
-    LYU,
-    GAZEBO,
-    NONE
-  };
-  AerodynamicsType aerodynamicsType{AerodynamicsType::PHI};
-  int              aerodynamicsId{0};
 };
-bool AerodynamicsPluginPrivate::parseAerodynamicsType()
+
+bool AerodynamicsPluginPrivate::parseAerodynamicsModel(
+    const sdf::ElementPtr &_sdf)
 {
-  // Parse aerodynamics type from ID
-  if (this->aerodynamicsId == 0)
+  std::string model = _sdf->Get<std::string>("aero_model", "").first;
+
+  // Deprecated integer selector (pre-unification): 0=phi 1=ma 2=lyu 3=advanced,
+  // any other value meant "none".
+  if (model.empty() && _sdf->HasElement("aero_id"))
   {
-    this->aerodynamicsType = AerodynamicsType::PHI;
-    this->aero_creator =
-        std::make_unique<aerodynamics::PhiAerodynamicsCreator>();
-  }
-  else if (this->aerodynamicsId == 1)
-  {
-    this->aerodynamicsType = AerodynamicsType::MA;
-    this->aero_creator =
-        std::make_unique<aerodynamics::BsplineAerodynamicsCreator>();
-  }
-  else if (this->aerodynamicsId == 2)
-  {
-    this->aerodynamicsType = AerodynamicsType::LYU;
-    this->aero_creator =
-        std::make_unique<aerodynamics::LyuAerodynamicsCreator>();
-  }
-  else if (this->aerodynamicsId == 3)
-  {
-    this->aerodynamicsType = AerodynamicsType::GAZEBO;
-    this->aero_creator =
-        std::make_unique<aerodynamics::AdvancedLiftDragCreator>();
-  }
-  else
-  {
-    this->aerodynamicsType = AerodynamicsType::NONE;
-    this->aero_creator =
-        std::make_unique<aerodynamics::NonAerodynamicsCreator>();
-    gzdbg << "Invalid aerodynamics ID or choose none aerodynamics: "
-          << this->aerodynamicsId << std::endl;
+    static const std::map<int, std::string> legacy_ids{
+        {0, "phi"}, {1, "ma"}, {2, "lyu"}, {3, "advanced"}};
+    const int  id = _sdf->Get<int>("aero_id", -1).first;
+    const auto it = legacy_ids.find(id);
+    if (it != legacy_ids.end())
+    {
+      model = it->second;
+      gzwarn << "<aero_id> is deprecated; use <aero_model>" << model
+             << "</aero_model> instead" << std::endl;
+    }
+    else
+    {
+      model = "none";
+      gzwarn << "Invalid <aero_id> " << id
+             << "; falling back to 'none'. Use <aero_model> (lyu | phi | ma | "
+                "advanced | none) instead."
+             << std::endl;
+    }
   }
 
-  if (!this->aero_creator->createAerodynamics())
+  if (model.empty())
   {
-    gzerr << "Failed to create aerodynamics" << std::endl;
+    model = "phi";
+    gzwarn << "No <aero_model> specified; defaulting to '" << model
+           << "'. Set <aero_model> (lyu | phi | ma | advanced | none) "
+              "explicitly."
+           << std::endl;
+  }
+
+  try
+  {
+    this->aero      = aerodynamics::make_aero(model);
+    this->aeroModel = model;
+  }
+  catch (const std::exception &e)
+  {
+    gzerr << "Failed to create aerodynamics model '" << model
+          << "': " << e.what() << std::endl;
     this->validConfig = false;
     return false;
   }
@@ -192,9 +194,11 @@ void AerodynamicsPluginPrivate::Load(const EntityComponentManager &_ecm,
   this->rho  = _sdf->Get<double>("air_density", this->rho).first;
   this->area = _sdf->Get<double>("area", this->area).first;
 
-  this->cp             = _sdf->Get<math::Vector3d>("cp", this->cp).first;
-  this->aerodynamicsId = _sdf->Get<int>("aero_id", this->aerodynamicsId).first;
-  this->parseAerodynamicsType();
+  this->cp = _sdf->Get<math::Vector3d>("cp", this->cp).first;
+  if (!this->parseAerodynamicsModel(_sdf))
+  {
+    return;  // validConfig already false; keep the plugin inert
+  }
   if (_sdf->HasElement("link_name"))
   {
     sdf::ElementPtr elem     = _sdf->GetElement("link_name");
@@ -309,8 +313,7 @@ void AerodynamicsPluginPrivate::Update(EntityComponentManager &_ecm)
   Eigen::Vector3d velB_eigen(velB.X(), velB.Y(), velB.Z());
   Eigen::Vector3d fB_eigen(0, 0, 0);
   Eigen::Vector3d mB_eigen(0, 0, 0);
-  this->aero_creator->getAeroWrench(velB_eigen, fB_eigen, mB_eigen, alpha,
-                                    beta);
+  this->aero->getAeroWrench(velB_eigen, fB_eigen, mB_eigen, alpha, beta);
 
   // spanwiseI used to be momentDirection
   // math::Vector3d moment = cm * q * this->area * spanwiseI;

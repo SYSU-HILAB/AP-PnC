@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <set>
 #include <stdexcept>
 
 namespace simple_sim
@@ -83,9 +84,14 @@ namespace simple_sim
     cfg.aero_model      = n["aero"]["model"].as<std::string>();
     cfg.aero.wind_world = vector3(n["aero"]["wind_world"]);
     cfg.aero.scale      = n["aero"]["scale"].as<double>();
-    if ((cfg.aero_model != "none" && cfg.aero_model != "lyu") ||
-        !std::isfinite(cfg.aero.scale) || cfg.aero.scale < 0.0)
-      throw std::invalid_argument("invalid aero model or scale");
+    // Canonical model names, shared with the aerodynamics factory
+    // (sim::gazebo::<model> and sim::simple::<model> use the same set).
+    static const std::set<std::string> aero_models{
+        "lyu", "phi", "ma", "advanced", "none"};
+    if (!aero_models.count(cfg.aero_model) || !std::isfinite(cfg.aero.scale) ||
+        cfg.aero.scale < 0.0)
+      throw std::invalid_argument(
+          "invalid aero model (lyu | phi | ma | advanced | none) or scale");
     if (cfg.physics_dt_ns <= 0 || !std::isfinite(cfg.duration_s) ||
         cfg.duration_s < 0.0)
       throw std::invalid_argument("invalid simulation period/duration");

@@ -1,0 +1,7 @@
+# Linear phi-theory model parameters ("phi").
+# Migrated bit-exact from the retired aero_sim_params.db (phi_aero_config, id=1).
+# Source of truth: this file. Regeneration only via code review (no writer).
+phi_coefs:  # 3x3, row-major; F_b = Phi * v_b * |v_b|
+  - [-0.028810194682436067, 0.0, 0.0]
+  - [0.0, 0.0, 0.0]
+  - [0.0, 0.0, -0.28810194682436063]

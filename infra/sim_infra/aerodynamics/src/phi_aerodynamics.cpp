@@ -15,8 +15,10 @@
 
 #include <Eigen/Dense>
 #include <aerodynamics/phi_aerodynamics.hpp>
-#include <sq_config_reader/phi_aero_config_reader.hpp>
+#include <aerodynamics/project_paths.hpp>
+#include <yaml-cpp/yaml.h>
 #include <sstream>
+#include <stdexcept>
 
 namespace aerodynamics
 {
@@ -47,23 +49,30 @@ namespace aerodynamics
 
   bool PhiAerodynamicsCreator::createAerodynamics()
   {
-    // Create config reader instance
-    sq_config_reader::PhiAeroConfigReader db;
-
-    // Initialize phi matrix with zeros
+    // Load the phi matrix from config/aero/phi.yaml (3x3, row-major)
     Eigen::Matrix3d phi_matrix = Eigen::Matrix3d::Zero();
-
-    if (!db.access_and_fetch_data())
+    try
     {
+      const YAML::Node config =
+          YAML::LoadFile(paths::aero_config("phi").string());
+      const YAML::Node rows    = config["phi_coefs"];
+      if (!rows || !rows.IsSequence() || rows.size() != 3)
+        throw std::runtime_error("phi_coefs must be a 3x3 matrix");
+      for (std::size_t r = 0; r < 3; ++r)
+      {
+        const YAML::Node row = rows[r];
+        if (!row.IsSequence() || row.size() != 3)
+          throw std::runtime_error("phi_coefs must be a 3x3 matrix");
+        for (std::size_t c = 0; c < 3; ++c)
+          phi_matrix(r, c) = row[c].as<double>();
+      }
+    }
+    catch (const std::exception &e)
+    {
+      spdlog::error("phi aerodynamics: failed to load {}: {}",
+                    paths::aero_config("phi").string(), e.what());
       return false;
     }
-
-    // Get phi values from database
-    auto phi_values = db.get_phi();
-
-    phi_matrix << phi_values[0], phi_values[1], phi_values[2], phi_values[3],
-        phi_values[4], phi_values[5], phi_values[6], phi_values[7],
-        phi_values[8];
 
     std::stringstream ss;
     ss << phi_matrix;

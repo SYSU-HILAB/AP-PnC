@@ -2,7 +2,7 @@
 Setup script for aerodynamics Python bindings.
 
 Build with: uv run ap-pnc build bindings
-(requires colcon-built aerodynamics/utils libs under .artifacts/colcon/build/)
+(requires colcon-built aerodynamics model libs under .artifacts/colcon/build/)
 """
 
 import os
@@ -43,7 +43,7 @@ ext_modules = [
             "aerodynamics_bspline",
             "aerodynamics_aerodynamics_lib",
             "rt_nonfinite_matlab",
-            "sqlite3",
+            "yaml-cpp",
             "fmt",
             "spdlog",
         ],

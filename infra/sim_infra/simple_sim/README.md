@@ -151,6 +151,8 @@ This test executes the **real NMPC bundle**, not the fake contract solver:
 1. Write run-local copies of the bringup configs and set planner `cost.v_max: 9.0`.
 2. Plan once; run the full available horizon-covered interval with `aero.model: none`.
 3. Reuse the exact same planner trajectory and all other parameters with `aero.model: lyu`.
+   (`aero.model` accepts the canonical set `lyu | phi | ma | advanced | none`; the
+   acceptance regression intentionally exercises `none` and `lyu`.)
 4. Repeat each case; require completion, finite state/control, no rejected solver
    result, and exact state/reference/control replay (wall time excluded).
 

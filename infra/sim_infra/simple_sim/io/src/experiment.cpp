@@ -2,7 +2,7 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include <aerodynamics/zhang_lyu_aerodynamics.hpp>
+#include <aerodynamics/aero_factory.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -206,10 +206,10 @@ namespace simple_sim
         controller_    = std::make_unique<NmpcController>(trajectory_, cfg);
       }
 #endif
-      ForceModel aero;
-      if (config_.aero_model == "lyu")
-        aero = tailsitter_aero(
-            std::make_shared<aerodynamics::LyuAerodynamics>(), config_.aero);
+      // Any canonical model ("none" resolves to the null model, wrench = 0)
+      ForceModel aero =
+          tailsitter_aero(aerodynamics::make_aero(config_.aero_model),
+                          config_.aero);
       runner_ = std::make_unique<Runner>(
           runner_cfg, Plant(config_.plant, std::move(aero)),
           RateLoop(config_.plant, config_.rate_loop), *controller_);
