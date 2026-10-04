@@ -18,6 +18,7 @@ extern "C"
   void           nmpc_solver_destroy(nmpc_solver_t *s);
 
   int nmpc_solver_horizon(const nmpc_solver_t *s);
+  double nmpc_solver_stage_dt(const nmpc_solver_t *s, int stage);
 
   void nmpc_solver_set_state(nmpc_solver_t *s, const double x_cur[NMPC_NX]);
 

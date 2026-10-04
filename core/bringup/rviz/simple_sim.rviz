@@ -1,0 +1,47 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Plane Cell Count: 40
+      Plane Cell Size: 1
+      Plane: XY
+    - Class: rviz_default_plugins/Path
+      Name: Reference
+      Enabled: true
+      Topic:
+        Value: /simple_sim/reference
+        Durability Policy: Transient Local
+      Color: 0; 200; 0
+    - Class: rviz_default_plugins/Path
+      Name: Actual
+      Enabled: true
+      Topic:
+        Value: /simple_sim/path
+      Color: 255; 170; 0
+    - Class: rviz_default_plugins/Odometry
+      Name: Vehicle
+      Enabled: true
+      Topic:
+        Value: /simple_sim/odom
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: world
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 40
+      Pitch: 0.7
+      Yaw: 1.2
+      Target Frame: world

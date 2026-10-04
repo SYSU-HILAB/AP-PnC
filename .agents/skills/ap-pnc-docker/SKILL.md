@@ -17,7 +17,9 @@ From repo root (compose handles all services):
 
 ```bash
 uv run ap-pnc gen-nmpc-lib
-docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build ap-pnc nav_infra
+# compose resolves every path against an absolute AP_PNC_DIR
+export AP_PNC_DIR="$(git rev-parse --show-toplevel)"
+docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" build ap-pnc nav_infra
 ```
 
 `px4-simulator` builds from upstream PX4 v1.17.0 (pinned by
@@ -30,10 +32,10 @@ the firmware. Behind a proxy pass
 
 ```bash
 # all services (add --scale qground_control=0 for headless)
-docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d
+docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" up -d
 
 # core subset
-docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d \
+docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" up -d \
   --no-deps px4-simulator nav_infra ap-pnc
 ```
 
@@ -58,8 +60,10 @@ image is self-contained, no bind mounts).
 
 ## Tips
 
-- `NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a` is set in the
-  image; `nmpc_node` links acados statically — no `.so` dependencies.
+- The bundle is staged at `<AP_PNC_DIR>/.artifacts/nmpc_solver/libnmpc_bundle.a`;
+  CMake derives that path from `AP_PNC_DIR` (no per-file environment variable).
+  `nmpc_node` links acados statically — no `.so` dependencies. Regenerate the
+  bundle after solver-wrapper API changes.
 - Core image (`ap-pnc-ros2-base`) stays lean; PCL/tf2/mavros runtime
   dependencies live only in the `nav_infra` image.
 - The install dir is root-owned after container builds — clean it via a

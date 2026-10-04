@@ -1,0 +1,26 @@
+# Tracking-only simulation. No collision, ground contact, LiDAR, PX4 or MAVROS.
+# Reference belongs to planner; horizon/outer-loop period belong to nmpc.yaml.
+simple_sim:
+  controller: nmpc              # nmpc | se3
+  physics_dt_ns: 1000000         # fixed RK4 step; must divide the control period
+  duration_s: 0.0                # 0: run until the full prediction horizon no longer fits
+  plant:
+    mass: 2.0                   # must agree with planner and NMPC configuration
+    gravity: 9.81
+    inertia: [0.01715066, 0.01818037, 0.01987597] # diagonal, kg m^2
+  rate_loop:
+    gain: [100.0, 100.0, 100.0]     # rate error -> angular acceleration, 1/s
+    max_rate: [8.0, 8.0, 8.0]    # rad/s, FLU
+    max_moment: [2.0, 2.0, 1.0]  # N m, FLU
+    max_specific_force: 30.0     # m/s^2, along body +Z
+  se3:
+    position_gain: [4.0, 4.0, 4.0]
+    velocity_gain: [3.0, 3.0, 3.0]
+    attitude_gain: [6.0, 6.0, 6.0]
+  aero:
+    model: lyu                  # lyu | none
+    scale: 1.0
+    wind_world: [0.0, 0.0, 0.0]  # ENU, m/s
+  ros:
+    publish_stride: 5           # visualization every N control steps
+    realtime_factor: 1.0        # scheduler pacing only; 0 = unpaced

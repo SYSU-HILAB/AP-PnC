@@ -31,7 +31,7 @@ cd /tmp && uv run --with pymavlink python gcs_heartbeat.py   # any 1 Hz GCS hear
 # 4) core stack (nmpc only; px4ctrl runs in the nav_infra container CMD,
 #    sim profile, px4ctrl.yaml hover_percentage 0.9)
 docker exec -d ap-pnc bash -c \
-  'cd /workspace && source /opt/ros/humble/setup.bash && source install/setup.bash && \
+  'cd /workspace && source /opt/ros/humble/setup.bash && source /workspace/.artifacts/colcon/install/setup.bash && \
    ros2 launch bringup bringup.launch.py > /tmp/stack.log 2>&1'
 
 # 5) takeoff → stable 1 m hover (px4ctrl AUTO_TAKEOFF arms + enters OFFBOARD).

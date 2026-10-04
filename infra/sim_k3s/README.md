@@ -1,6 +1,6 @@
 # K3s Simulation Orchestration for AP-PnC
 
-基于 K3s `ConfigMap` 实现动态、声明式选择并启动 `simple-sim`（轻量级 LiDAR + 气动仿真）或 `gazebo`（stock PX4 v1.17.0 + Gazebo Harmonic SITL，mavros2 通用接口栈）。
+基于 K3s `ConfigMap` 实现动态、声明式选择并启动 `simple-sim`（无碰撞、锁步轨迹跟踪仿真）或 `gazebo`（stock PX4 v1.17.0 + Gazebo Harmonic SITL，mavros2 通用接口栈）。
 
 ---
 
@@ -29,11 +29,12 @@
 
 1. **`sim-config` ConfigMap**：
    - 核心字段 `SIM_TYPE`：支持 `"simple-sim"`、`"gazebo"`、`"stop"`。
-   - 内置包含 `simple_sim.yaml`，直接支持无人机质量、惯量、风阻、气动力学参数热配置与注入。
+   - 只携带模式选择与部署环境；不内嵌 `simple_sim.yaml`。运行配置统一归 `core/bringup/config/`，仿真启动时冻结配置，重启后应用修改。
 2. **`sim-dispatcher` 控制器**：
    - 轻量级监听 Pod，检测到 `SIM_TYPE` 发生变更时，自动调用 Kubernetes API 动态缩放对应 Deployment 的 `replicas`，实现零资源浪费、无缝热切换。
 3. **`ap-pnc-simple-sim`**：
-   - 运行 C++ 气动力学与激光雷达模拟器，开箱即用。
+   - 通过 `ros2 launch bringup simple_sim.launch.py` 运行 C++ 同步跟踪闭环；不启动 LiDAR、碰撞、PX4/MAVROS。
+   - 初始暂停，调用 `/simple_sim/resume` 开始；详见 `infra/sim_infra/simple_sim/README.md`。
 4. **`ap-pnc-gazebo`**（三容器 Pod，hostNetwork）：
    - `px4-simulator`：stock PX4 v1.17.0 + Gazebo Harmonic（`gz_x500`）。
    - `nav_infra`：基础服务网关容器（mavros2 + px4ctrl FCU 接口/控制器，

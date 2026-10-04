@@ -44,13 +44,9 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              source /workspace/install/setup.bash
-              CONFIG_ARG=""
-              if [ -f /workspace/config/simple_sim.yaml ]; then
-                CONFIG_ARG="--ros-args --params-file /workspace/config/simple_sim.yaml"
-              fi
-              echo "[simple-sim] Launching simple_sim_node with config: $CONFIG_ARG"
-              exec ros2 run simple_sim simple_sim_node $CONFIG_ARG
+              source /workspace/.artifacts/colcon/install/setup.bash
+              echo "[simple-sim] Launching lockstep tracking simulator (initially paused)"
+              exec ros2 launch bringup simple_sim.launch.py rviz:=false
           resources:
             limits:
               cpu: "4"
@@ -59,19 +55,12 @@ spec:
               cpu: "500m"
               memory: 512Mi
           volumeMounts:
-            - mountPath: /workspace/config/simple_sim.yaml
-              name: config-volume
-              subPath: simple_sim.yaml
-              readOnly: true
             - mountPath: /tmp/.X11-unix
               name: x11-unix
             - mountPath: /etc/localtime
               name: host-localtime
               readOnly: true
       volumes:
-        - name: config-volume
-          configMap:
-            name: sim-config
         - name: x11-unix
           hostPath:
             path: /tmp/.X11-unix

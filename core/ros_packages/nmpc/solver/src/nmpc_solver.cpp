@@ -81,6 +81,15 @@ int nmpc_solver_horizon(const nmpc_solver_t *s)
   return s->N;
 }
 
+double nmpc_solver_stage_dt(const nmpc_solver_t *s, int stage)
+{
+  if (!s || stage < 0 || stage >= s->N)
+    return -1.0;
+  double dt = 0.0;
+  ocp_nlp_in_get(s->nlp_config, s->nlp_dims, s->nlp_in, stage, "Ts", &dt);
+  return dt;
+}
+
 void nmpc_solver_set_state(nmpc_solver_t *s, const double x_cur[NMPC_NX])
 {
   _set_current_state_lbx((void *)x_cur, s->nlp_config, s->nlp_dims, s->nlp_in,
