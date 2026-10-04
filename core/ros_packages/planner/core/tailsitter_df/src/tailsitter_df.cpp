@@ -190,10 +190,10 @@ namespace tailsitter_df
     attitude << xb, yb, zb;
     q = Eigen::Quaternion<real>(attitude);
 
-    S_ap_z_dot = z_s.transpose() * j;
+    S_ap_z_dot = z_s.dot(j);
     S_ap_z_dot = S_ap_z_dot + omega_sy * S_ap_x;
 
-    S_ap_x_dot = x_s.transpose() * j;
+    S_ap_x_dot = x_s.dot(j);
     S_ap_x_dot = S_ap_x_dot - omega_sy * S_ap_z;
 
     realV3 vb = attitude.transpose() * v;
@@ -334,7 +334,7 @@ namespace tailsitter_df
 
     // Out-of-domain policy: keep the well-defined tangent acceleration along
     // x_s and set the undefined angular rates and S_ap_z derivatives to zero.
-    data.S_ap_x      = x_s.transpose() * (a - g);
+    data.S_ap_x      = x_s.dot(a - g);
     data.S_ap_z      = 0;
     data.S_ap_x_dot  = 0;
     data.S_ap_z_dot  = 0;
@@ -346,7 +346,7 @@ namespace tailsitter_df
     data.B_Omega_b_y = 0;
 
     Eigen::Vector4<real> out = Eigen::Vector4<real>::Zero();
-    out(0)                   = x_s.transpose() * a;
+    out(0)                   = x_s.dot(a);
     return out;
   }
 

@@ -12,6 +12,8 @@
  * Tail-sitter UAV.
  */
 
+#include <filesystem>
+#include <stdexcept>
 #include <yaml-cpp/yaml.h>
 
 #include <planner_core/problem_config.hpp>
@@ -42,6 +44,8 @@ namespace planner::core
 
   void ProblemConfig::load(const std::string &yaml_path)
   {
+    if (!std::filesystem::path(yaml_path).is_absolute())
+      throw std::invalid_argument("planning YAML path must be absolute");
     YAML::Node root = YAML::LoadFile(yaml_path);
 
     const YAML::Node problem_node = root["problem_formulation"];

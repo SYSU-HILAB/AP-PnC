@@ -15,20 +15,30 @@ def _colcon_env() -> dict[str, str]:
     setup_env(ros=True)
     env = os.environ.copy()
     for var in [
-        "VIRTUAL_ENV", "CONDA_PREFIX", "CONDA_SHLVL",
-        "CONDA_DEFAULT_ENV", "CONDA_PROMPT_MODIFIER", "PYTHONPATH",
+        "VIRTUAL_ENV",
+        "CONDA_PREFIX",
+        "CONDA_SHLVL",
+        "CONDA_DEFAULT_ENV",
+        "CONDA_PROMPT_MODIFIER",
+        "PYTHONPATH",
     ]:
         env.pop(var, None)
     cleaned = []
     for d in env.get("PATH", "").split(":"):
-        if not any(k in d for k in ("env", "venv", ".virtualenv", "conda", "anaconda", "miniconda", "IsaacLab")):
+        if not any(
+            k in d
+            for k in ("env", "venv", ".virtualenv", "conda", "anaconda", "miniconda", "IsaacLab")
+        ):
             cleaned.append(d)
     env["PATH"] = ":".join(cleaned)
     return env
 
 
 def _colcon_build(
-    packages: list[str], paths: list[str] | None = None, clean: bool = False
+    packages: list[str],
+    paths: list[str] | None = None,
+    clean: bool = False,
+    cmake_args: list[str] | None = None,
 ) -> None:
     git_root = get_git_root()
     env = _colcon_env()
@@ -37,17 +47,20 @@ def _colcon_build(
         shutil.rmtree(base, ignore_errors=True)
     env["COLCON_LOG_PATH"] = str(base / "log")
     cmd = [
-        "colcon", "build", "--merge-install",
-        "--build-base", str(base / "build"),
-        "--install-base", str(base / "install"),
+        "colcon",
+        "build",
+        "--merge-install",
+        "--build-base",
+        str(base / "build"),
+        "--install-base",
+        str(base / "install"),
     ]
     if paths:
-        cmd.extend(["--base-paths", *paths])
+        cmd.extend(["--base-paths", *(str((git_root / p).resolve()) for p in paths)])
     if packages:
-        for pkg in packages:
-            cmd.extend(["--packages-select", pkg, "--allow-overriding", pkg])
+        cmd.extend(["--packages-select", *packages])
     # --cmake-args is greedy and must stay last
-    cmd.extend(["--cmake-args", f"-DCMAKE_PREFIX_PATH={base / 'install'}"])
+    cmd.extend(["--cmake-args", f"-DCMAKE_PREFIX_PATH={base / 'install'}", *(cmake_args or [])])
     subprocess.run(cmd, cwd=git_root, env=env, check=True)
 
 
@@ -79,11 +92,12 @@ def planner(
 def simple_sim(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
 ) -> None:
-    """Build simple_sim package (colcon)."""
+    """Build lockstep simple_sim and its bringup resources (Linux + solver bundle)."""
     _colcon_build(
-        ["simple_sim"],
-        paths=["ros_packages", "simulations/aerodynamics", "simulations/simple_sim/src"],
+        ["simple_sim", "bringup"],
+        paths=["infra/sim_infra/simple_sim", "core/bringup"],
         clean=clean,
+        cmake_args=["-DSIMPLE_SIM_WITH_ROS=ON", "-DSIMPLE_SIM_WITH_NMPC=ON"],
     )
 
 
@@ -112,9 +126,13 @@ def all_(
     """
     _colcon_build(
         [],
-        paths=["core/ros_packages", "infra/nav_infra/ros_packages",
-               "core/bringup", "infra/sim_infra/aerodynamics",
-               "infra/sim_infra/simple_sim/src"],
+        paths=[
+            "core/ros_packages",
+            "infra/nav_infra/ros_packages",
+            "core/bringup",
+            "infra/sim_infra/aerodynamics",
+            "infra/sim_infra/simple_sim",
+        ],
         clean=clean,
     )
 
@@ -126,8 +144,15 @@ def bindings() -> None:
     bindings_dir = git_root / ".artifacts" / "bindings"
     bindings_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "setup.py", "build_ext", "--build-lib", str(bindings_dir),
-         "--build-temp", str(bindings_dir / "build")],
+        [
+            sys.executable,
+            str(git_root / "infra/sim_infra/aerodynamics/python/setup.py"),
+            "build_ext",
+            "--build-lib",
+            str(bindings_dir),
+            "--build-temp",
+            str(bindings_dir / "build"),
+        ],
         cwd=git_root / "infra" / "sim_infra" / "aerodynamics" / "python",
         check=True,
     )
@@ -150,8 +175,15 @@ def planner_bindings() -> None:
     bindings_dir = git_root / ".artifacts" / "bindings"
     bindings_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "setup.py", "build_ext", "--build-lib", str(bindings_dir),
-         "--build-temp", str(bindings_dir / "build")],
+        [
+            sys.executable,
+            str(git_root / "core/ros_packages/planner/python/setup.py"),
+            "build_ext",
+            "--build-lib",
+            str(bindings_dir),
+            "--build-temp",
+            str(bindings_dir / "build"),
+        ],
         cwd=git_root / "core" / "ros_packages" / "planner" / "python",
         check=True,
     )

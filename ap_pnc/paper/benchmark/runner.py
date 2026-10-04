@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from ap_pnc.env import get_git_root
+from ap_pnc.env import artifact_path, get_git_root
 
 from . import data, metrics as metrics_mod
 from .controllers import SE3Controller, SE3Gains
@@ -51,6 +51,7 @@ def _base_planning_yaml() -> Path:
 
 def write_planning_yaml(cfg: BenchmarkConfig, out_path: Path) -> Path:
     """Derive a run-local planning yaml from the repo defaults + CLI overrides."""
+    out_path = artifact_path(out_path)
     base = yaml.safe_load(_base_planning_yaml().read_text()) or {}
     problem = base.setdefault("problem_formulation", {})
     problem.setdefault("basic_traj", {})["type"] = cfg.traj_type
@@ -68,7 +69,7 @@ def _default_output_dir(cfg: BenchmarkConfig) -> Path:
 
 def run(cfg: BenchmarkConfig) -> dict:
     """Run the full offline pipeline and return paths + metrics."""
-    out_dir = Path(cfg.output_dir) if cfg.output_dir else _default_output_dir(cfg)
+    out_dir = artifact_path(cfg.output_dir if cfg.output_dir else _default_output_dir(cfg))
     out_dir.mkdir(parents=True, exist_ok=True)
 
     yaml_path = write_planning_yaml(cfg, out_dir / "planning.yaml")

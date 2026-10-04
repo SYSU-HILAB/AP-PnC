@@ -9,6 +9,8 @@ from flax.core import FrozenDict
 from safetensors.flax import save_file
 from safetensors.numpy import load_file
 
+from ap_pnc.env import artifact_path, project_path
+
 
 def save_safetensors(
     params: FrozenDict,
@@ -23,7 +25,7 @@ def save_safetensors(
         path: Output file path
         metadata: Optional metadata dictionary
     """
-    path = Path(path)
+    path = artifact_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Convert FrozenDict to regular dict for safetensors
@@ -45,7 +47,7 @@ def load_safetensors(path: str | Path) -> dict:
     Returns:
         Dictionary of model parameters
     """
-    path = Path(path)
+    path = project_path(path)
     if not path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {path}")
 

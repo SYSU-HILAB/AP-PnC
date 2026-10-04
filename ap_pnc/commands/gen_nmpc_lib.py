@@ -35,6 +35,7 @@ def _build_wrapper_and_bundle(git_root: Path) -> None:
     wrapper_src = git_root / "core" / "ros_packages" / "nmpc" / "solver"
     build_dir = git_root / ".artifacts" / "nmpc_solver"
     bundle = build_dir / "libnmpc_bundle.a"
+    build_dir.mkdir(parents=True, exist_ok=True)
 
     if bundle.exists():
         bundle.unlink()
@@ -56,7 +57,7 @@ def _build_wrapper_and_bundle(git_root: Path) -> None:
     typer.echo("Merging into libnmpc_bundle.a...")
     static_dir = git_root / ".artifacts" / "acados_static"
 
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(dir=build_dir, prefix="bundle_merge_") as tmp:
         tmpdir = Path(tmp)
         subprocess.run(["ar", "x", str(build_dir / "libnmpc_solver.a")],
                        cwd=tmpdir, check=True)
@@ -122,7 +123,7 @@ def cocp() -> None:
     gen_dir = git_root / ".artifacts" / "c_generated_code"
     gen_dir.mkdir(parents=True, exist_ok=True)
     typer.echo(f"Running: {script}")
-    # json_file is relative to cwd: codegen C code + JSON land in .artifacts/c_generated_code
+    # The generator explicitly resolves code and JSON outputs against AP_PNC_DIR.
     subprocess.run([sys.executable, str(script)], cwd=gen_dir, check=True)
 
     _build_acados_static(git_root)

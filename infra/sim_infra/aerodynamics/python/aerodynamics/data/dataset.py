@@ -10,6 +10,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ap_pnc.env import artifact_path, project_path
+
 # Map CSV filename to aero_type identifier
 AERO_TYPE_MAP: dict[str, str] = {
     "lyu_across_AoAs.csv": "lyu",
@@ -44,7 +46,7 @@ class AeroMLDataset:
         Returns:
             AeroMLDataset with combined data
         """
-        csv_dir = Path(csv_dir)
+        csv_dir = project_path(csv_dir)
         if aero_types is None:
             aero_types = ["lyu", "bspline", "phi", "advanced"]
 
@@ -102,10 +104,10 @@ class AeroMLDataset:
         seed: int = 42,
     ) -> tuple["AeroMLDataset", "AeroMLDataset"]:
         """Split into training and validation sets."""
-        np.random.seed(seed)
+        rng = np.random.default_rng(seed)
 
         # Shuffle indices
-        indices = np.random.permutation(len(self.df))
+        indices = rng.permutation(len(self.df))
         split_idx = int(len(indices) * train_ratio)
 
         train_indices = indices[:split_idx]
@@ -118,19 +120,19 @@ class AeroMLDataset:
 
     def to_parquet(self, path: str | Path) -> None:
         """Save dataset to parquet file."""
-        path = Path(path)
+        path = artifact_path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.df.to_parquet(path, index=False)
 
     @classmethod
     def from_parquet(cls, path: str | Path) -> "AeroMLDataset":
         """Load dataset from parquet file."""
-        df = pd.read_parquet(path)
+        df = pd.read_parquet(project_path(path))
         return cls(df=df)
 
     def update_weight_path(self, aero_type: str, weight_path: str | Path) -> None:
         """Update weight_path for a specific aerodynamics type."""
-        weight_path_str = str(weight_path)
+        weight_path_str = str(project_path(weight_path))
         self.df.loc[self.df["aero_type"] == aero_type, "weight_path"] = weight_path_str
 
     def get_features(self) -> np.ndarray:
@@ -150,8 +152,8 @@ class AeroMLDataset:
 
 
 def assemble_parquet_dataset(
-    csv_dir: str | Path = "artifacts/simulations/ml_aero_data",
-    output_path: str | Path = "artifacts/simulations/aero_ml_dataset.parquet",
+    csv_dir: str | Path = ".artifacts/aerodynamics",
+    output_path: str | Path = ".artifacts/aerodynamics/aero_ml_dataset.parquet",
     aero_types: list[str] | None = None,
 ) -> AeroMLDataset:
     """

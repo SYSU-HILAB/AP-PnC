@@ -51,36 +51,54 @@ def ensure_t_renderer() -> Path | None:
 
 
 def get_git_root() -> Path:
-    """Find the git repository root, handling worktrees via commondir."""
-    ap_pnc_dir = os.environ.get("AP_PNC_DIR", "")
-    if ap_pnc_dir:
-        return Path(ap_pnc_dir).resolve()
+    """Resolve AP_PNC_DIR, or discover the checkout from this module, never cwd.
 
+    Worktrees retain the project's shared-root convention via commondir. Installed
+    wheels outside a checkout must supply AP_PNC_DIR explicitly.
+    """
+    configured = os.environ.get("AP_PNC_DIR")
+    if configured is not None:
+        root = Path(configured).expanduser()
+        if not configured or not root.is_absolute() or not root.is_dir():
+            raise ValueError("AP_PNC_DIR must be an existing absolute project root")
+        return root.resolve()
+
+    package_root = Path(__file__).resolve().parents[1]
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            capture_output=True,
-            text=True,
+            ["git", "-C", str(package_root), "rev-parse", "--absolute-git-dir"],
+            capture_output=True, text=True, check=True,
         )
-        if result.returncode != 0:
-            return Path.cwd()
-
         git_dir = Path(result.stdout.strip())
-        if git_dir.is_absolute():
-            git_file = git_dir
-        else:
-            git_file = Path.cwd() / git_dir
+        common_file = git_dir / "commondir"
+        if common_file.exists():
+            return (git_dir / common_file.read_text().strip()).resolve().parent
+        result = subprocess.run(
+            ["git", "-C", str(package_root), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        )
+        return Path(result.stdout.strip()).resolve()
+    except (subprocess.SubprocessError, FileNotFoundError) as error:
+        raise RuntimeError("Cannot locate project root; set absolute AP_PNC_DIR") from error
 
-        if "/worktrees/" in str(git_file):
-            commondir_file = git_file / "commondir"
-            if commondir_file.exists():
-                commondir = commondir_file.read_text().strip()
-                original_git_dir = (git_file / commondir).resolve()
-                return original_git_dir.parent
 
-        return git_file.parent.resolve()
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return Path.cwd()
+def project_path(path: str | Path) -> Path:
+    """Resolve an absolute input or a project-root-relative input, never cwd."""
+    value = Path(path).expanduser()
+    if value.is_absolute():
+        return value.resolve()
+    if ".." in value.parts:
+        raise ValueError("Project-relative paths must not contain '..'; use an absolute input")
+    return (get_git_root() / value).resolve()
+
+
+def artifact_path(path: str | Path) -> Path:
+    """Resolve generated output and reject locations outside AP_PNC_DIR/.artifacts."""
+    value = project_path(path)
+    base = (get_git_root() / ".artifacts").resolve()
+    if not value.is_relative_to(base):
+        raise ValueError(f"Generated output must live under {base}: {value}")
+    return value
 
 
 def source_ros2_env() -> dict[str, str]:

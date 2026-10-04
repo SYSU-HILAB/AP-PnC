@@ -27,6 +27,7 @@ dev = [
     "pandas",
     "pybind11",
     "httpx>=0.28.1",
+    "pyarrow>=25.0.1",
 ]
 extra = [
     "jax[cpu]",

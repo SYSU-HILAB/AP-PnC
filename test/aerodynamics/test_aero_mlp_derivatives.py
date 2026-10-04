@@ -7,11 +7,11 @@ for computing ∂cx/∂α and ∂cz/∂α for the aerodynamic MLP models.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from pathlib import Path
-
 from aerodynamics.inference.derivatives import (
     AerodynamicsMLPDerivatives,
     load_aero_derivatives,
@@ -83,14 +83,14 @@ class TestAeroMLPDerivatives:
         """Test that dcx_dalpha returns correct shape."""
         alpha = 0.1
         result = lyu_derivatives.compute_dcx_dalpha(alpha)
-        assert isinstance(result, (jnp.ndarray, np.ndarray)), f"Expected array, got {type(result)}"
+        assert isinstance(result, jnp.ndarray | np.ndarray), f"Expected array, got {type(result)}"
         assert result.shape == (), f"Expected scalar, got shape {result.shape}"
 
     def test_dcz_dalpha_shape(self, lyu_derivatives):
         """Test that dcz_dalpha returns correct shape."""
         alpha = 0.1
         result = lyu_derivatives.compute_dcz_dalpha(alpha)
-        assert isinstance(result, (jnp.ndarray, np.ndarray)), f"Expected array, got {type(result)}"
+        assert isinstance(result, jnp.ndarray | np.ndarray), f"Expected array, got {type(result)}"
         assert result.shape == (), f"Expected scalar, got shape {result.shape}"
 
     def test_jacobian_shape(self, lyu_derivatives):

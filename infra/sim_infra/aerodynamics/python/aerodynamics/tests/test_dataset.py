@@ -2,12 +2,13 @@
 Tests for aerodynamics dataset module.
 """
 
-
 import numpy as np
 import pandas as pd
 import pytest
 
 from aerodynamics.data.dataset import AERO_TYPE_MAP, AeroMLDataset
+
+rng = np.random.default_rng(0)
 
 
 def test_aero_type_map():
@@ -22,11 +23,11 @@ def test_aero_type_map():
 def test_dataset_from_csv_files(tmp_path):
     """Test loading dataset from CSV files."""
     # Create temporary CSV files
-    for csv_file, aero_type in AERO_TYPE_MAP.items():
+    for csv_file, _aero_type in AERO_TYPE_MAP.items():
         csv_path = tmp_path / csv_file
         alpha = np.linspace(-np.pi, np.pi, 101)
-        cx = np.random.randn(101) * 0.1
-        cz = np.random.randn(101) * 0.5
+        cx = rng.standard_normal(101) * 0.1
+        cz = rng.standard_normal(101) * 0.5
 
         df = pd.DataFrame({"alpha(rad)": alpha, "cx": cx, "cz": cz})
         df.to_csv(csv_path, index=False)
@@ -54,8 +55,8 @@ def test_dataset_filter_by_type(tmp_path):
     # Create temporary CSV file
     csv_path = tmp_path / "lyu_across_AoAs.csv"
     alpha = np.linspace(-np.pi, np.pi, 101)
-    cx = np.random.randn(101) * 0.1
-    cz = np.random.randn(101) * 0.5
+    cx = rng.standard_normal(101) * 0.1
+    cz = rng.standard_normal(101) * 0.5
 
     df = pd.DataFrame({"alpha(rad)": alpha, "cx": cx, "cz": cz})
     df.to_csv(csv_path, index=False)
@@ -73,8 +74,8 @@ def test_dataset_split_train_val(tmp_path):
     # Create temporary CSV file
     csv_path = tmp_path / "lyu_across_AoAs.csv"
     alpha = np.linspace(-np.pi, np.pi, 100)
-    cx = np.random.randn(100) * 0.1
-    cz = np.random.randn(100) * 0.5
+    cx = rng.standard_normal(100) * 0.1
+    cz = rng.standard_normal(100) * 0.5
 
     df = pd.DataFrame({"alpha(rad)": alpha, "cx": cx, "cz": cz})
     df.to_csv(csv_path, index=False)
@@ -92,8 +93,8 @@ def test_dataset_parquet_roundtrip(tmp_path):
     # Create temporary CSV file
     csv_path = tmp_path / "lyu_across_AoAs.csv"
     alpha = np.linspace(-np.pi, np.pi, 101)
-    cx = np.random.randn(101) * 0.1
-    cz = np.random.randn(101) * 0.5
+    cx = rng.standard_normal(101) * 0.1
+    cz = rng.standard_normal(101) * 0.5
 
     df = pd.DataFrame({"alpha(rad)": alpha, "cx": cx, "cz": cz})
     df.to_csv(csv_path, index=False)
@@ -115,8 +116,8 @@ def test_dataset_get_features_targets(tmp_path):
     # Create temporary CSV file
     csv_path = tmp_path / "lyu_across_AoAs.csv"
     alpha = np.linspace(-np.pi, np.pi, 101)
-    cx = np.random.randn(101) * 0.1
-    cz = np.random.randn(101) * 0.5
+    cx = rng.standard_normal(101) * 0.1
+    cz = rng.standard_normal(101) * 0.5
 
     df = pd.DataFrame({"alpha(rad)": alpha, "cx": cx, "cz": cz})
     df.to_csv(csv_path, index=False)

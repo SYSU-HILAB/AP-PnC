@@ -22,6 +22,8 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation as R
 
+from ap_pnc.env import project_path
+
 
 def getEulerAnglesZXY(rotation):
     """
@@ -264,7 +266,7 @@ def read_topic_from_ulog_export_csv(topic_name:str):
     pd.DataFrame: The data from the tracking info CSV file as a DataFrame.
     """
     # Set directory to environment variable or current directory if not provided
-    directory = os.getenv('AP_PNC_DIR') or '.'
+    directory = str(project_path('.artifacts/paper/exp'))
 
     # Update the directory to the 'output_csv/' subdirectory
     directory = os.path.join(directory, 'output_csv/')
@@ -395,7 +397,6 @@ def main():
     ref_yb = df[['ref_yb[0]', 'ref_yb[1]', 'ref_yb[2]']].values
     actual_yb = df[['actual_yb[0]', 'actual_yb[1]', 'actual_yb[2]']].values
 
-    alpha = df[['alpha']].values
     old_timestamp = df['timestamp'].values
 
     df = read_topic_from_ulog_export_csv('vehicle_odometry')
@@ -412,8 +413,8 @@ def main():
     rotation = R.from_quat(new_q)
     euler_angles = rotation.as_euler('ZXY', degrees=False)  # In radians by default
 
-    eulers = quaternionsToAnglesZXY(q)
-    attitude_record_time = (df['timestamp'].values - df['timestamp'].values[0]) * 1e-6
+    quaternionsToAnglesZXY(q)
+    (df['timestamp'].values - df['timestamp'].values[0]) * 1e-6
 
     max_pitch = np.max(euler_angles[:,2])
     min_pitch = np.min(euler_angles[:,2])
@@ -436,7 +437,7 @@ def main():
     ax4.set_yticklabels(tick_labels)
 
     ref_angles = extract_yaw_roll_from_yb(ref_yb)
-    actual_angles = extract_yaw_roll_from_yb(actual_yb)
+    extract_yaw_roll_from_yb(actual_yb)
     ax4.plot(old_timestamp, -ref_angles[:, 0], label='Reference Yaw', color='blue')
     ax4.plot(old_timestamp, ref_angles[:, 1], label='Reference Roll', color='green')
     # euler_angles

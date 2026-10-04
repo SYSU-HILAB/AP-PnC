@@ -158,7 +158,7 @@ def train_single_aero_type(
         config = TrainingConfig(aero_type=aero_type)
 
     if dataset is None:
-        dataset = AeroMLDataset.from_parquet("artifacts/simulations/aero_ml_dataset.parquet")
+        dataset = AeroMLDataset.from_parquet(".artifacts/aerodynamics/aero_ml_dataset.parquet")
 
     trainer = AeroMLPTrainer(aero_type, config, dataset)
     result = trainer.train()
@@ -169,7 +169,7 @@ def train_single_aero_type(
 
     # Update dataset with weight path
     dataset.update_weight_path(aero_type, result.checkpoint_path)
-    dataset.to_parquet("artifacts/simulations/aero_ml_dataset.parquet")
+    dataset.to_parquet(".artifacts/aerodynamics/aero_ml_dataset.parquet")
 
     return result
 
@@ -189,7 +189,7 @@ def train_all_aero_types(
         Dictionary mapping aero_type to TrainingResult
     """
     if dataset is None:
-        dataset = AeroMLDataset.from_parquet("artifacts/simulations/aero_ml_dataset.parquet")
+        dataset = AeroMLDataset.from_parquet(".artifacts/aerodynamics/aero_ml_dataset.parquet")
 
     aero_types = ["lyu", "bspline", "phi", "advanced"]
     results = {}

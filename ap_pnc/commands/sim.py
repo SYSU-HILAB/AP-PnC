@@ -1,17 +1,22 @@
 import json
+import os
 import subprocess
 import time
+from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
 
 from ap_pnc.env import get_git_root
 
-app = typer.Typer(help="Simulation management (K3s ConfigMap-driven coarse-grained commands)")
+app = typer.Typer(help="Lockstep tracking runs and K3s simulation management")
 console = Console()
 
 
-def _run_kubectl(*args: str, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess:
+def _run_kubectl(
+    *args: str, check: bool = True, capture: bool = False
+) -> subprocess.CompletedProcess:
     cmd = ["kubectl", *args]
     return subprocess.run(cmd, check=check, capture_output=capture, text=True)
 
@@ -43,13 +48,39 @@ def simple(
     namespace: str = typer.Option("sim", "--namespace", "-n", help="Kubernetes namespace"),
     follow: bool = typer.Option(False, "--follow", "-f", help="Follow logs after starting"),
 ) -> None:
-    """Start simple-sim layer (lightweight LiDAR + aerodynamics simulator) via K3s ConfigMap."""
+    """Start the tracking-only lockstep simulator via K3s ConfigMap (initially paused)."""
     console.print("[bold cyan]Switching simulation to simple-sim via K3s ConfigMap...[/bold cyan]")
     _switch_sim("simple-sim", namespace=namespace)
     time.sleep(1)
     status(namespace=namespace)
     if follow:
         logs(follow=True, namespace=namespace)
+
+
+@app.command()
+def track(
+    config: Annotated[
+        Path | None, typer.Option("--config", help="Absolute simple_sim YAML override")
+    ] = None,
+    controller: Annotated[str | None, typer.Option("--controller", help="nmpc or se3")] = None,
+) -> None:
+    """Run the installed lockstep tracking executable headlessly, without ROS/K3s."""
+    root = get_git_root()
+    executable = root / ".artifacts/colcon/install/lib/simple_sim/simple_sim_run"
+    if not executable.is_file():
+        raise typer.BadParameter(
+            "simple_sim_run not installed; run ap-pnc build simple-sim on Linux"
+        )
+    if config is not None and not config.is_absolute():
+        raise typer.BadParameter("--config must be an absolute path")
+    if controller is not None and controller not in ("nmpc", "se3"):
+        raise typer.BadParameter("--controller must be nmpc or se3")
+    command = [str(executable)]
+    if config is not None:
+        command.extend(["--config", str(config)])
+    if controller is not None:
+        command.extend(["--controller", controller])
+    subprocess.run(command, env={**os.environ, "AP_PNC_DIR": str(root)}, check=True)
 
 
 @app.command()
@@ -103,7 +134,9 @@ def status(
     )
     sim_type = cm_proc.stdout.strip() if cm_proc.returncode == 0 else "[not deployed]"
 
-    console.print(f"\n[bold]Current ConfigMap SIM_TYPE:[/bold] [bold yellow]{sim_type}[/bold yellow]")
+    console.print(
+        f"\n[bold]Current ConfigMap SIM_TYPE:[/bold] [bold yellow]{sim_type}[/bold yellow]"
+    )
     console.print("[bold]AP-PnC Workloads in K3s:[/bold]")
     _run_kubectl(
         "get",
@@ -174,6 +207,7 @@ def build(
                 str(git_root / "infra/sim_infra/simple_sim/docker/docker-compose.yml"),
                 "build",
             ],
+            env={**os.environ, "AP_PNC_DIR": str(git_root)},
             check=True,
         )
     if target in ("gazebo", "all"):
@@ -186,5 +220,6 @@ def build(
                 str(git_root / "infra/sim_infra/gazebo/docker/docker-compose.yml"),
                 "build",
             ],
+            env={**os.environ, "AP_PNC_DIR": str(git_root)},
             check=True,
         )

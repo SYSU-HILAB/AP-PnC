@@ -1,38 +1,38 @@
+# AP_PNC_DIR is the only project path variable: compose resolves every
+# context, dockerfile and volume against it, never against this file's cwd.
 services:
   ros2-dev-amd64:
     build:
-      context: ../..
-      dockerfile: docker/amd64/ros2-base.dockerfile
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/core/docker/amd64/ros2-base.dockerfile
       target: base
     image: ap-pnc-ros2-base:amd64
     container_name: ap-pnc-ros2-amd64
     network_mode: host
     ipc: host
     volumes:
-      - ../../core/ros_packages:/workspace/src:rw
-      - ../../core/bringup:/workspace/bringup:rw
-      - ../../.artifacts/nmpc_solver:/workspace/artifacts:ro
+      - ${AP_PNC_DIR}/core/ros_packages:/workspace/src:rw
+      - ${AP_PNC_DIR}/core/bringup:/workspace/bringup:rw
+      - ${AP_PNC_DIR}/.artifacts/nmpc_solver:/workspace/.artifacts/nmpc_solver:ro
     environment:
       - AP_PNC_DIR=/workspace
-      - NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a
     stdin_open: true
     tty: true
 
   ros2-dev-arm64:
     build:
-      context: ../..
-      dockerfile: docker/arm64/ros2-base.dockerfile
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/core/docker/arm64/ros2-base.dockerfile
       target: base
     image: ap-pnc-ros2-base:arm64
     container_name: ap-pnc-ros2-arm64
     network_mode: host
     ipc: host
     volumes:
-      - ../../core/ros_packages:/workspace/src:rw
-      - ../../core/bringup:/workspace/bringup:rw
-      - ../../.artifacts/nmpc_solver:/workspace/artifacts:ro
+      - ${AP_PNC_DIR}/core/ros_packages:/workspace/src:rw
+      - ${AP_PNC_DIR}/core/bringup:/workspace/bringup:rw
+      - ${AP_PNC_DIR}/.artifacts/nmpc_solver:/workspace/.artifacts/nmpc_solver:ro
     environment:
       - AP_PNC_DIR=/workspace
-      - NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a
     stdin_open: true
     tty: true

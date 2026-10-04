@@ -5,13 +5,16 @@ This module is DEPRECATED due to a known bug in the pybind11 cleanup code
 that causes segfault during object destruction. Use CSV files directly instead.
 
 Use feature.aerodynamics.data.dataset.assemble_parquet_dataset() with
-CSV files from artifacts/simulations/ml_aero_data/ as the data source.
+CSV files from <AP_PNC_DIR>/.artifacts/aerodynamics/ as the data source.
 """
 
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from aerodynamics.data.dataset import AeroMLDataset
 
 
 def _get_aerodynamics_bindings():
@@ -128,7 +131,7 @@ def assemble_parquet_dataset_from_bindings(
     alpha_max: float = np.pi,
     num_points: int = 36001,
     speed: float = 12.0,
-    output_path: str | Path = "artifacts/simulations/aero_ml_dataset.parquet",
+    output_path: str | Path = ".artifacts/aerodynamics/aero_ml_dataset.parquet",
 ) -> "AeroMLDataset":
     """
     Generate data directly from C++ bindings and assemble into parquet dataset.

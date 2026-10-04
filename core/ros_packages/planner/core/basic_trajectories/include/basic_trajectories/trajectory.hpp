@@ -86,6 +86,7 @@ namespace basic_trajectories
 
    public:
     Trajectory();
+    virtual ~Trajectory() = default;
     /**
      * @brief Get the rate of the trajector
      *

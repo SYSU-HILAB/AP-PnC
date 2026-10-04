@@ -627,7 +627,7 @@ def generate_cl_cd_cm_coordinated_data(
     alpha_rad = alpha_deg * (np.pi / 180.0)
 
     # Coordinated flight assumption: beta = 0 (sideslip angle)
-    beta = np.zeros_like(alpha_rad)  # Beta = 0 for all alpha values
+    np.zeros_like(alpha_rad)  # Beta = 0 for all alpha values
 
     print("Computing aerodynamic coefficients with CasADi...")
 
@@ -673,7 +673,7 @@ def generate_cl_cd_cm_coordinated_data(
         )  # Pitching moment coefficient (body frame)
 
     # Save data using data utilities
-    data_path = save_coordinated_data(
+    save_coordinated_data(
         alpha_deg, CL, CD, CM, filename=filename, cache_dir=cache_dir
     )
 

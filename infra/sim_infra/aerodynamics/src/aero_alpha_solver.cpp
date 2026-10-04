@@ -13,6 +13,7 @@
  */
 
 #include <yaml-cpp/yaml.h>
+#include <aerodynamics/project_paths.hpp>
 
 #include <aerodynamics/aero_alpha_solver.hpp>
 #include <cmath>
@@ -58,14 +59,14 @@ namespace aerodynamics
       const char *env_p = std::getenv("AP_PNC_DIR");
       if (env_p != nullptr)
       {
-        config_path =
-            std::string(env_p) +
-                "/infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml";
+        config_path = (paths::root() /
+            "infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml").string();
       }
     }
 
     if (!config_path.empty())
     {
+      config_path = paths::input(config_path).string();
       try
       {
         YAML::Node config = YAML::LoadFile(config_path);

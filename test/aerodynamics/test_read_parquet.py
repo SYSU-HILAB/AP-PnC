@@ -1,14 +1,31 @@
 """
 Test reading and plotting the aerodynamic ML dataset parquet file.
 """
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import pytest
+
+from ap_pnc.env import project_path
+
+
+def _dataset_path() -> str:
+    return str(project_path(".artifacts/aerodynamics/aero_ml_dataset.parquet"))
+
+
+def _require_dataset() -> str:
+    """Skip cleanly when the generated dataset is absent."""
+    from pathlib import Path
+
+    path = _dataset_path()
+    if not Path(path).exists():
+        pytest.skip(f"aero ML dataset not generated: {path}")
+    return path
 
 
 def test_read_aero_ml_dataset() -> None:
     """Read and display the aero_ml_dataset.parquet file."""
-    df = pd.read_parquet('artifacts/simulations/aero_ml_dataset.parquet')
+    df = pd.read_parquet(_require_dataset())
     print(df.head())
     print(f"\nDataset shape: {df.shape}")
     print(f"\nColumns: {df.columns.tolist()}")
@@ -16,7 +33,7 @@ def test_read_aero_ml_dataset() -> None:
 
 def test_plot_aero_ml_dataset() -> None:
     """Plot cx, cz vs alpha in degrees (-180 to 180)."""
-    df = pd.read_parquet('artifacts/simulations/aero_ml_dataset.parquet')
+    df = pd.read_parquet(_require_dataset())
 
     # Convert alpha from radians to degrees
     df['alpha_deg'] = np.degrees(df['alpha'])

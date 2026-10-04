@@ -22,6 +22,8 @@ from typing import Any, TypedDict
 
 import numpy as np
 
+from ap_pnc.env import artifact_path
+
 
 class CoordinatedFlightData(TypedDict):
     """Standardized schema for beta=0 aerodynamic tables."""
@@ -66,7 +68,8 @@ class MeshData(TypedDict):
 
 
 # Default cache directory
-CACHE_DIR = Path(__file__).parent.parent / ".cache"
+# Project-root-relative configuration; resolve through artifact_path before every access.
+CACHE_DIR = Path(".artifacts/paper/cache")
 
 
 def get_data_path(filename: str, cache_dir: str | None = None) -> str:
@@ -75,7 +78,7 @@ def get_data_path(filename: str, cache_dir: str | None = None) -> str:
 
     Args:
         filename (str): Name of the data file
-        cache_dir (str, optional): Custom cache directory. Defaults to built-in .cache/
+        cache_dir (str, optional): Custom cache directory. Defaults to .artifacts/paper/cache
 
     Returns:
         str: Full path to the data file
@@ -83,10 +86,10 @@ def get_data_path(filename: str, cache_dir: str | None = None) -> str:
     if cache_dir is None:
         cache_dir = CACHE_DIR
 
-    cache_path = Path(cache_dir)
-    cache_path.mkdir(exist_ok=True)
-
-    return str(cache_path / filename)
+    cache_path = artifact_path(cache_dir)
+    file_path = artifact_path(cache_path / filename)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    return str(file_path)
 
 
 def save_aero_data(
@@ -98,7 +101,7 @@ def save_aero_data(
     Args:
         data (dict): Dictionary containing aerodynamic data
         filename (str): Name of the data file (should end with .npy)
-        cache_dir (str, optional): Custom cache directory. Defaults to built-in .cache/
+        cache_dir (str, optional): Custom cache directory. Defaults to .artifacts/paper/cache
 
     Returns:
         str: Full path to the saved data file
@@ -115,13 +118,13 @@ def save_aero_data(
             clean_data[key] = np.array(value)
         elif isinstance(value, np.ndarray):
             clean_data[key] = value
-        elif isinstance(value, (int, float, str, bool)):
+        elif isinstance(value, int | float | str | bool):
             clean_data[key] = value
         else:
             # Convert to numpy array if possible
             try:
                 clean_data[key] = np.array(value)
-            except:
+            except Exception:
                 # Skip non-serializable objects
                 print(f"Warning: Skipping non-serializable key: {key}")
 
@@ -136,7 +139,7 @@ def load_aero_data(filename: str, cache_dir: str | None = None) -> dict[str, Any
 
     Args:
         filename (str): Name of the data file
-        cache_dir (str, optional): Custom cache directory. Defaults to built-in .cache/
+        cache_dir (str, optional): Custom cache directory. Defaults to .artifacts/paper/cache
 
     Returns:
         dict: Dictionary containing the aerodynamic data
@@ -163,7 +166,7 @@ def save_metadata(
     Args:
         metadata (dict): Dictionary containing metadata
         filename (str): Name of the metadata file (should end with .json)
-        cache_dir (str, optional): Custom cache directory. Defaults to built-in .cache/
+        cache_dir (str, optional): Custom cache directory. Defaults to .artifacts/paper/cache
 
     Returns:
         str: Full path to the saved metadata file
@@ -186,7 +189,7 @@ def load_metadata(filename: str, cache_dir: str | None = None) -> dict[str, Any]
 
     Args:
         filename (str): Name of the metadata file
-        cache_dir (str, optional): Custom cache directory. Defaults to built-in .cache/
+        cache_dir (str, optional): Custom cache directory. Defaults to .artifacts/paper/cache
 
     Returns:
         dict: Dictionary containing the metadata
@@ -211,12 +214,12 @@ def clear_cache(cache_dir: str | None = None) -> None:
     Clear all cached data files.
 
     Args:
-        cache_dir (str, optional): Custom cache directory. Defaults to built-in .cache/
+        cache_dir (str, optional): Custom cache directory. Defaults to .artifacts/paper/cache
     """
     if cache_dir is None:
         cache_dir = CACHE_DIR
 
-    cache_path = Path(cache_dir)
+    cache_path = artifact_path(cache_dir)
 
     if cache_path.exists():
         for file_path in cache_path.iterdir():
@@ -233,7 +236,7 @@ def list_cache_files(cache_dir: str | None = None) -> list:
     List all files in the cache directory.
 
     Args:
-        cache_dir (str, optional): Custom cache directory. Defaults to built-in .cache/
+        cache_dir (str, optional): Custom cache directory. Defaults to .artifacts/paper/cache
 
     Returns:
         list: List of file paths in the cache directory
@@ -241,7 +244,7 @@ def list_cache_files(cache_dir: str | None = None) -> list:
     if cache_dir is None:
         cache_dir = CACHE_DIR
 
-    cache_path = Path(cache_dir)
+    cache_path = artifact_path(cache_dir)
 
     if not cache_path.exists():
         return []

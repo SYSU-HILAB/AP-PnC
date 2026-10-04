@@ -16,6 +16,9 @@ import os
 
 import numpy as np
 import pandas as pd
+
+from ap_pnc.env import project_path
+
 from .specify_figure_dirs import root_dir
 
 RequiredTopics = [
@@ -25,7 +28,7 @@ RequiredTopics = [
     'vehicle_angular_velocity'
 ]
 
-ulg_file = os.path.join(root_dir(), 'artifacts/benchmarks/ulgs/log_3_UnknownDate.ulg')
+ulg_file = os.path.join(root_dir(), '.artifacts/benchmark/ulgs/log_3_UnknownDate.ulg')
 
 
 class UlgDataLoader:
@@ -42,7 +45,7 @@ class UlgDataLoader:
         self._required_topics = RequiredTopics
 
         if file_path:
-            self._ulg_path = file_path
+            self._ulg_path = str(project_path(file_path))
         else:
             self._ulg_path = self.__find_latest_ulg()
 
@@ -59,8 +62,7 @@ class UlgDataLoader:
         Returns:
             str: Path to the latest ULG file.
         """
-        # Assuming the script is run from the project root directory
-        ulg_dir = os.path.join(root_dir(), 'artifacts/benchmarks/ulgs')
+        ulg_dir = os.path.join(root_dir(), '.artifacts/benchmark/ulgs')
         ulg_files = []
 
         # Recursively find all .ulg files

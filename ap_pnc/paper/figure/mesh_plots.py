@@ -14,11 +14,21 @@ working on malformed inputs.
 """
 
 import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ap_pnc.env import artifact_path, project_path
+
 MESH_KEYS = ("ALPHA_DEG", "BETA_DEG", "CL", "CD", "CY", "CM", "CN")
+
+
+def _mesh_figure_path(name):
+    """Resolve an auto-named mesh figure under AP_PNC_DIR/.artifacts."""
+    path = artifact_path(Path(".artifacts/paper/figures/mesh") / name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
 
 
 def load_mesh_data(data_file, auto_generate=False, mesh_size=361, backend="jax"):
@@ -34,6 +44,7 @@ def load_mesh_data(data_file, auto_generate=False, mesh_size=361, backend="jax")
     Returns:
         dict: Dictionary containing the mesh data
     """
+    data_file = str(project_path(data_file))
     if not os.path.exists(data_file):
         if auto_generate:
             print(f"Data file not found: {data_file}")
@@ -195,7 +206,7 @@ def plot_aerodynamic_mesh(
             base_name = "mesh_aero_data"
         # Convert azimuth to float for formatting, handling string input
         azimuth_float = float(azimuth)
-        save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
+        save_path = _mesh_figure_path(f"{base_name}_azim{azimuth_float:.1f}.png")
 
     # Always save the plot
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -336,7 +347,7 @@ def plot_aerodynamic_mesh_jax(
             base_name = "mesh_aero_data_jax"
         # Convert azimuth to float for formatting, handling string input
         azimuth_float = float(azimuth)
-        save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
+        save_path = _mesh_figure_path(f"{base_name}_azim{azimuth_float:.1f}.png")
 
     # Always save the plot
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -481,7 +492,7 @@ def plot_aerodynamic_mesh_torch(
             base_name = "mesh_aero_data_torch"
         # Convert azimuth to float for formatting, handling string input
         azimuth_float = float(azimuth)
-        save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
+        save_path = _mesh_figure_path(f"{base_name}_azim{azimuth_float:.1f}.png")
 
     # Always save the plot
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -626,7 +637,7 @@ def plot_aerodynamic_mesh_casadi(
             base_name = "mesh_aero_data_casadi"
         # Convert azimuth to float for formatting, handling string input
         azimuth_float = float(azimuth)
-        save_path = f"{base_name}_azim{azimuth_float:.1f}.png"
+        save_path = _mesh_figure_path(f"{base_name}_azim{azimuth_float:.1f}.png")
 
     # Always save the plot
     plt.savefig(save_path, dpi=150, bbox_inches="tight")

@@ -149,7 +149,7 @@ class AerodynamicsMLPDerivatives:
         Returns:
             ∂cx/∂α: Derivative of drag coefficient w.r.t alpha
         """
-        if isinstance(alpha, (float, int)):
+        if isinstance(alpha, float | int):
             alpha = jnp.array(alpha)
 
         if alpha.ndim == 0:
@@ -171,7 +171,7 @@ class AerodynamicsMLPDerivatives:
         Returns:
             ∂cz/∂α: Derivative of lift coefficient w.r.t alpha
         """
-        if isinstance(alpha, (float, int)):
+        if isinstance(alpha, float | int):
             alpha = jnp.array(alpha)
 
         if alpha.ndim == 0:
@@ -195,7 +195,7 @@ class AerodynamicsMLPDerivatives:
         Returns:
             (∂cx/∂α, ∂cz/∂α): Tuple of derivatives
         """
-        if isinstance(alpha, (float, int)):
+        if isinstance(alpha, float | int):
             alpha = jnp.array(alpha)
 
         if alpha.ndim == 0:

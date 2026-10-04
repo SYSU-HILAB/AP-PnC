@@ -44,8 +44,9 @@ publisher and also owns arming/offboard/takeoff/hover/land.
 ## Quick Start
 
 ```bash
-# from repo root
-docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d
+# AP_PNC_DIR must be absolute: compose resolves every path against it
+export AP_PNC_DIR="$(git rev-parse --show-toplevel)"
+docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" up -d
 ```
 
 Inside `px4-simulator` (interactive, user 1002):
@@ -72,14 +73,14 @@ Upstream PX4 (no fork) is cloned in the image and pinned via
 `ARG PX4_VERSION` (default `v1.17.0`) in `px4-simulator.dockerfile`:
 
 ```bash
-docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build px4-simulator
+docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" build px4-simulator
 ```
 
 Behind a campus/corporate proxy, pass proxy build args (docker-proxy host
 address as seen from the build container):
 
 ```bash
-docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml build \
+docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" build \
   --build-arg http_proxy=http://172.17.0.1:7890 \
   --build-arg https_proxy=http://172.17.0.1:7890 \
   --build-arg HTTP_PROXY=http://172.17.0.1:7890 \

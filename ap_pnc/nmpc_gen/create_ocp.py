@@ -125,11 +125,14 @@ def ocp_nls() -> AcadosOcp:
 def main() -> None:
     from acados_template import AcadosOcpSolver
 
+    from ap_pnc.env import get_git_root
+
     ocp: AcadosOcp = ocp_nls()
-    # Emit code next to the json file (.artifacts/c_generated_code, set by gen-nmpc-lib cwd)
-    ocp.code_gen_opts.code_export_directory = "."
+    code_dir = get_git_root() / ".artifacts" / "c_generated_code"
+    code_dir.mkdir(parents=True, exist_ok=True)
+    ocp.code_gen_opts.code_export_directory = str(code_dir)
     AcadosOcpSolver(
-        ocp, json_file="acados_ocp_" + ocp.model.name + ".json"
+        ocp, json_file=str(code_dir / ("acados_ocp_" + ocp.model.name + ".json"))
     )
 
 

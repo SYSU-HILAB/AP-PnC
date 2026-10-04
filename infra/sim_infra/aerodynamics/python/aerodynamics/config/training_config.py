@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from ap_pnc.env import artifact_path
+
 
 @dataclass(frozen=True)
 class TrainingConfig:
@@ -28,8 +30,8 @@ class TrainingConfig:
     val_frequency: int = 5
 
     # Outputs
-    checkpoint_dir: str | Path = "artifacts/simulations/aero_ml_weights"
+    checkpoint_dir: str | Path = ".artifacts/aerodynamics/weights"
 
     def get_checkpoint_path(self) -> Path:
         """Get checkpoint path for this aerodynamic type."""
-        return Path(self.checkpoint_dir) / f"{self.aero_type}_mlp_weights.safetensors"
+        return artifact_path(Path(self.checkpoint_dir) / f"{self.aero_type}_mlp_weights.safetensors")

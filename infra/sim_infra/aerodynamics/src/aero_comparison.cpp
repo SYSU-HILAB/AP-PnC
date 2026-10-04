@@ -18,6 +18,7 @@
 #include <aerodynamics/bspline_aerodynamics.hpp>
 #include <aerodynamics/non_aerodynamics.hpp>
 #include <aerodynamics/phi_aerodynamics.hpp>
+#include <aerodynamics/project_paths.hpp>
 #include <aerodynamics/zhang_lyu_aerodynamics.hpp>
 #include <fstream>
 using namespace aerodynamics;
@@ -46,7 +47,9 @@ bool test_aerodynamics(std::unique_ptr<AerodynamicsCreator> creator,
   constexpr double deg_to_rad      = M_PI / 180.0;
 
   // Create output file for this aerodynamics model
-  std::ofstream outfile("z" + name + ".csv");
+  const auto output_path = paths::output("z" + name + ".csv");
+  std::ofstream outfile(output_path);
+  if (!outfile) throw std::runtime_error("cannot write " + output_path.string());
   outfile << "alpha_deg,cx,cz\n";  // CSV header
 
   try
@@ -77,7 +80,7 @@ bool test_aerodynamics(std::unique_ptr<AerodynamicsCreator> creator,
     }
 
     outfile.close();
-    spdlog::info("Data written to {}_sweep.csv", name);
+    spdlog::info("Data written to {}", output_path.string());
     return true;
   }
   catch (const std::exception& e)

@@ -772,7 +772,7 @@ def generate_cl_cd_cm_coordinated_data(
     CM_np = np.array(CM)
 
     # Save data using data utilities
-    data_path = save_coordinated_data(
+    save_coordinated_data(
         alpha_deg_np, CL_np, CD_np, CM_np, filename=filename, cache_dir=cache_dir
     )
 
@@ -839,7 +839,7 @@ def generate_mesh_data_jax(
     CN_np = np.array(CN)
 
     # Save data using data utilities
-    data_path = save_mesh_data(
+    save_mesh_data(
         ALPHA_DEG_np,
         BETA_DEG_np,
         CL_np,

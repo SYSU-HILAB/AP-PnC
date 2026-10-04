@@ -1,9 +1,12 @@
+from pathlib import Path
+
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import pandas as pd
-from pathlib import Path
 from jaxopt import LevenbergMarquardt
+
+from ap_pnc.env import project_path
 
 # Use pgf backend for publication-quality plots
 plt.rcParams.update({
@@ -14,7 +17,9 @@ plt.rcParams.update({
     "pgf.preamble": r"\usepackage{amsmath}",
 })
 
-from ap_pnc.paper.methods.lu.gd_model_jax import aerodynamics_B_vb
+from ap_pnc.paper.methods.lu.gd_model_jax import (  # noqa: E402 -- after rcParams/pgf setup
+    aerodynamics_B_vb,
+)
 
 # -------------------------------------------------------------------------------
 # MOCK IMPORT: Replace this block with your actual import
@@ -147,7 +152,9 @@ df = pd.DataFrame(
 
 # Get git root for artifact paths
 git_root = Path(__file__).resolve().parent.parent.parent.parent
-csv_filename = git_root / "artifacts" / "visualization" / "figs" / "trim_results.csv"
+figs_dir = project_path(".artifacts/paper/figs")
+figs_dir.mkdir(parents=True, exist_ok=True)
+csv_filename = figs_dir / "trim_results.csv"
 df.to_csv(csv_filename, index=False)
 print(f"Results saved to {csv_filename}")
 
@@ -172,10 +179,10 @@ ax2.tick_params(axis="y", labelcolor="red")
 
 # Combine legends
 lines = line1 + line2
-labels = [l.get_label() for l in lines]
+labels = [line.get_label() for line in lines]
 legend = ax1.legend(lines, labels, loc="upper center", bbox_to_anchor=(0.5, -0.15))
 
-pdf_filename = git_root / "artifacts" / "visualization" / "figs" / "trim_results.pdf"
+pdf_filename = figs_dir / "trim_results.pdf"
 plt.savefig(pdf_filename, backend="pgf", bbox_inches="tight")
 print(f"Plot saved to {pdf_filename}")
 plt.show()

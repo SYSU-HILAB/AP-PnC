@@ -14,9 +14,6 @@ when alpha=0 due to division by zero in CL_poststall calculation.
 
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-
 # Pybind11 verification is disabled due to cleanup code segfault
 HAS_PYBIND = False
 print("Info: Pybind11 verification disabled due to known binding cleanup bug")

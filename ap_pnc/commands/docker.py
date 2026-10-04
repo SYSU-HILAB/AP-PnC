@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 import typer
@@ -11,7 +12,7 @@ def _compose(*args: str) -> None:
     git_root = get_git_root()
     compose_file = git_root / "infra" / "sim_infra" / "gazebo" / "docker" / "docker-compose.yml"
     cmd = ["docker", "compose", "-f", str(compose_file), *args]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, env={**os.environ, "AP_PNC_DIR": str(git_root)}, check=True)
 
 
 @app.command()

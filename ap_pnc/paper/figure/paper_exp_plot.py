@@ -17,9 +17,10 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from .exp_data_loader import UlgDataLoader
 from scipy.spatial import geometric_slerp
 from scipy.spatial.transform import Rotation as R
+
+from .exp_data_loader import UlgDataLoader
 from .specify_figure_dirs import root_dir, tracking_plots_dir
 
 colors = {
@@ -100,8 +101,8 @@ ExtraConfig = {
     "fix_yaw_angle": -np.pi/2,
     # "fix_yaw_angle": 0.0,
     # "fix_yaw_angle": -np.pi/4,
-    # "ulg_file": os.path.join(root_dir(), 'artifacts/benchmarks/ulgs/log_4_UnknownDate.ulg'),
-    "ulg_file": os.path.join(root_dir(), f'artifacts/benchmarks/ulgs/{TestName}.ulg'),
+    # "ulg_file": os.path.join(root_dir(), '.artifacts/benchmark/ulgs/log_4_UnknownDate.ulg'),
+    "ulg_file": os.path.join(root_dir(), f'.artifacts/benchmark/ulgs/{TestName}.ulg'),
     # "ulg_file": None,
 }
 
@@ -129,8 +130,8 @@ def normalize_quaternions(quaternions):
 
 def read_csv_by_topic(directory, topic_name, start_time=None, end_time=None):
     """Read a CSV file by topic name and filter by time range if specified."""
-    directory = directory or os.getenv('AP_PNC_DIR') or '.'
-    directory = os.path.join(directory, 'artifacts/benchmarks/ulgs/output_csv/')
+    directory = directory or root_dir()
+    directory = os.path.join(directory, '.artifacts/paper/exp/output_csv/')
     pattern = re.compile(fr'{topic_name}')
 
     # Find the relevant CSV file
@@ -223,7 +224,7 @@ def plot_trajectory(ax, ref_p, p):
               color=f'{colors["blue"]}', zorder=2)
         ax.set_xlabel(LabelsConfig["TrajXlabel"])
         ax.set_ylabel(LabelsConfig["TrajYlabel"])
-    pos = ax.get_position()  # 获取 axes 位置
+    ax.get_position()  # 获取 axes 位置
     ax.legend(bbox_to_anchor=(0.5, 1.02),
               ncol=2, columnspacing=1.0,
               borderaxespad=0, handletextpad=0.2,
@@ -232,7 +233,7 @@ def plot_trajectory(ax, ref_p, p):
 
 def plot_position_error(ax, time, ref_p, p):
     """Plot position error over time."""
-    position_error = ref_p - p
+    ref_p - p
     ax.plot(time, ref_p[:, 2],'--', color=f'{colors["red"]}', label='Ref.')
     ax.plot(time, p[:, 2], '-', color=f'{colors["blue"]}', label='Est.')
     ax.set_ylabel(LabelsConfig["PosErrorYlabel"], labelpad=-4)

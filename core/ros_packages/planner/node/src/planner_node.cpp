@@ -14,7 +14,9 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include <yaml-cpp/yaml.h>
@@ -43,10 +45,13 @@ class PlannerNode : public rclcpp::Node
       const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
       : rclcpp::Node("planner_node", options)
   {
-    // Config convention: <AP_PNC_DIR>/bringup/config/ (cwd fallback for dev).
-    const char *root      = std::getenv("AP_PNC_DIR");
-    const std::string cfg = root ? std::string(root) + "/bringup/config"
-                                 : std::string("bringup/config");
+    const char *root = std::getenv("AP_PNC_DIR");
+    if (!root || !std::filesystem::path(root).is_absolute())
+      throw std::runtime_error("AP_PNC_DIR must be an absolute project root");
+    auto config_dir = std::filesystem::path(root) / "bringup/config";
+    if (!std::filesystem::is_directory(config_dir))
+      config_dir = std::filesystem::path(root) / "core/bringup/config";
+    const std::string cfg = config_dir.string();
 
     core::ProblemConfig config;
     config.load(cfg + "/planning.yaml");

@@ -29,15 +29,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Setup decoupled workspace layout
 # /workspace/src       <- host core/ros_packages/
 # /workspace/bringup   <- host core/bringup/
-# /workspace/artifacts <- host .artifacts/nmpc_solver/ (libnmpc_bundle.a)
+# /workspace/.artifacts <- generated build/install/log and NMPC bundle
 WORKDIR /workspace
-RUN mkdir -p /workspace/src /workspace/bringup /workspace/artifacts
-
 ENV AP_PNC_DIR=/workspace
-ENV NMPC_BUNDLE_PATH=/workspace/artifacts/libnmpc_bundle.a
+RUN mkdir -p /workspace/src /workspace/bringup /workspace/.artifacts/nmpc_solver
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
-    && echo "if [ -f /workspace/install/setup.bash ]; then source /workspace/install/setup.bash; fi" >> /root/.bashrc
+    && echo 'if [[ "${AP_PNC_DIR:-}" = /* && -f "${AP_PNC_DIR}/.artifacts/colcon/install/setup.bash" ]]; then source "${AP_PNC_DIR}/.artifacts/colcon/install/setup.bash"; fi' >> /root/.bashrc
 
 COPY core/docker/arm64/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

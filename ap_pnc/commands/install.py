@@ -19,42 +19,25 @@ def _fetch_acados_source() -> None:
     """Clone or sync the locked acados source into .artifacts/acados_src."""
     git_root = get_git_root()
     acados_src = git_root / ".artifacts" / "acados_src"
+    def git(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["git", "-C", str(acados_src), *args], capture_output=True, text=True, check=True
+        )
+
     if not (acados_src / ".git").exists():
         typer.echo(f"Cloning acados at {ACADOS_COMMIT[:10]}...")
         subprocess.run(
-            ["git", "clone", ACADOS_REPO, str(acados_src)],
-            cwd=git_root,
-            check=True,
+            ["git", "-C", str(git_root), "clone", ACADOS_REPO, str(acados_src)], check=True
         )
-        subprocess.run(
-            ["git", "checkout", ACADOS_COMMIT],
-            cwd=acados_src,
-            check=True,
-        )
-        subprocess.run(
-            ["git", "submodule", "update", "--init", "--recursive"],
-            cwd=acados_src,
-            check=True,
-        )
+        git("checkout", ACADOS_COMMIT)
+        git("submodule", "update", "--init", "--recursive")
         return
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=acados_src,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
+    head = git("rev-parse", "HEAD").stdout.strip()
     if head != ACADOS_COMMIT:
         typer.echo(f"Syncing acados {head[:10]} -> {ACADOS_COMMIT[:10]}...")
-        subprocess.run(["git", "fetch", "origin"], cwd=acados_src, check=True)
-        subprocess.run(
-            ["git", "checkout", ACADOS_COMMIT], cwd=acados_src, check=True
-        )
-        subprocess.run(
-            ["git", "submodule", "update", "--init", "--recursive"],
-            cwd=acados_src,
-            check=True,
-        )
+        git("fetch", "origin")
+        git("checkout", ACADOS_COMMIT)
+        git("submodule", "update", "--init", "--recursive")
 
 
 def _build_acados_c() -> None:
@@ -68,13 +51,13 @@ def _build_acados_c() -> None:
     build_dir = install_prefix / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        ["cmake", str(acados_src),
+        ["cmake", "-S", str(acados_src), "-B", str(build_dir),
          "-DCMAKE_INSTALL_PREFIX=" + str(install_prefix)],
         cwd=build_dir,
         check=True,
     )
-    subprocess.run(["make", "-j4"], cwd=build_dir, check=True)
-    subprocess.run(["make", "install"], cwd=build_dir, check=True)
+    subprocess.run(["cmake", "--build", str(build_dir), "-j4"], check=True)
+    subprocess.run(["cmake", "--install", str(build_dir)], check=True)
 
     # acados CMake writes these metadata files into the source tree only;
     # acados_template reads them from ACADOS_SOURCE_DIR/lib, so stage copies.
@@ -125,7 +108,7 @@ def _install_acados_template() -> None:
 def install() -> None:
     """Install everything: venv, acados C libs (shared + static), t_renderer, acados_template."""
     git_root = get_git_root()
-    subprocess.run(["uv", "sync", "--group", "dev"], cwd=git_root, check=True)
+    subprocess.run(["uv", "sync", "--project", str(git_root), "--group", "dev"], cwd=git_root, check=True)
     _fetch_acados_source()
     setup_env()
     _build_acados_c()

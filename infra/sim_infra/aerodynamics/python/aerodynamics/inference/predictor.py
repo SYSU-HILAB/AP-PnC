@@ -10,6 +10,7 @@ import jax.numpy as jnp
 
 from aerodynamics.models.aerodynamics_mlp import AerodynamicsMLP
 from aerodynamics.training.checkpoints import load_safetensors
+from ap_pnc.env import project_path
 
 
 class AerodynamicsMLPPredictor:
@@ -51,7 +52,7 @@ class AerodynamicsMLPPredictor:
         Returns:
             AerodynamicsMLPPredictor instance
         """
-        checkpoint_path = Path(checkpoint_path)
+        checkpoint_path = project_path(checkpoint_path)
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
@@ -145,7 +146,7 @@ def load_aerodynamics_mlp(
         # Auto-detect from parquet dataset
         from aerodynamics.data.dataset import AeroMLDataset
 
-        dataset = AeroMLDataset.from_parquet("artifacts/simulations/aero_ml_dataset.parquet")
+        dataset = AeroMLDataset.from_parquet(".artifacts/aerodynamics/aero_ml_dataset.parquet")
         filtered = dataset.filter_by_type(aero_type)
         weight_path = filtered.df["weight_path"].iloc[0]
 

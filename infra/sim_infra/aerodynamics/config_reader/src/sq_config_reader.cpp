@@ -1,4 +1,4 @@
-#include <cstdlib>     // For std::getenv
+#include <aerodynamics/project_paths.hpp>
 #include <filesystem>  // For std::filesystem (C++17 and later)
 #include <iostream>
 #include <sq_config_reader/sq_config_reader.hpp>
@@ -42,14 +42,7 @@ namespace sq_config_reader
           database_name(db_name),
           table_name(tbl_name)
     {
-        const char *AERO_SIM_DATA_DIR = std::getenv("AERO_SIM_DATA_DIR");
-        if (!AERO_SIM_DATA_DIR)
-        {
-            throw std::runtime_error(
-                "AERO_SIM_DATA_DIR environment variable is not set.");
-        }
-
-        db_file = std::string(AERO_SIM_DATA_DIR) + "/" + database_name;
+        db_file = aerodynamics::paths::database(database_name).string();
 
         if (!std::filesystem::exists(db_file))
         {
@@ -72,7 +65,7 @@ namespace sq_config_reader
 
     bool SQLiteConfigReader::connect()
     {
-        if (sqlite3_open(db_file.c_str(), &db) != SQLITE_OK)
+        if (sqlite3_open_v2(db_file.c_str(), &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
         {
             std::cerr << "Can't open database: " << sqlite3_errmsg(db)
                       << std::endl;

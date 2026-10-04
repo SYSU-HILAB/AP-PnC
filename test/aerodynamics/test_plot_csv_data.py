@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Direct CSV aerodynamics data visualization.
 
-Reads and plots aerodynamics CSV data directly from artifacts/simulations/ml_aero_data/
+Reads and plots aerodynamics CSV data directly from <AP_PNC_DIR>/.artifacts/aerodynamics/
 
 NOTE: Pybind11 verification is DISABLED due to a known bug in the pybind11
 cleanup code that causes segfault during object destruction.
@@ -12,6 +12,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from ap_pnc.env import project_path
 
 # Pybind11 verification is disabled due to cleanup code segfault
 HAS_PYBIND = False
@@ -35,7 +37,7 @@ def plot_all_csv_aero_data(git_root: Path | None = None) -> None:
     if git_root is None:
         git_root = Path(__file__).parent.parent.parent
 
-    aero_data_dir = git_root / "artifacts/simulations/ml_aero_data"
+    aero_data_dir = project_path(".artifacts/aerodynamics")
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 

@@ -9,21 +9,26 @@
 # Paper:
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
-import os
+from pathlib import Path
+
+from ap_pnc.env import artifact_path, get_git_root
+
+
+def figure_path(filename):
+    """Resolve a figure filename inside the artifact-owned figure directory."""
+    path = artifact_path(Path(".artifacts/paper/figures") / filename)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
 
 
 def root_dir():
-    """Specify the directories for the figures."""
-    return os.getenv('AP_PNC_DIR')
+    """Return the absolute project root, never an optional cwd fallback."""
+    return str(get_git_root())
 
 
 def tracking_plots_dir():
     """Specify the directories for the tracking data."""
 
-    root_dir = os.getenv('AP_PNC_DIR')
-    tracking_dir = os.path.join(root_dir, 'scripts', 'paper_plots', 'tracking_plots')
-
-    if not os.path.exists(tracking_dir):
-        os.makedirs(tracking_dir)
-
-    return tracking_dir
+    tracking_dir = artifact_path(".artifacts/paper/figures/tracking")
+    tracking_dir.mkdir(parents=True, exist_ok=True)
+    return str(tracking_dir)

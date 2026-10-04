@@ -26,15 +26,14 @@ Usage:
 from dataclasses import dataclass
 from pathlib import Path
 
-import jax
-import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.optimize import root_scalar
-
 from aerodynamics.inference.derivatives import load_aero_derivatives
 from aerodynamics.inference.predictor import load_aerodynamics_mlp
+from scipy.optimize import root_scalar
+
+from ap_pnc.env import artifact_path
 
 
 @dataclass
@@ -90,7 +89,7 @@ def compute_trim_two_branches(
         TrimResults containing both solution branches merged at threshold.
     """
     # Pass 1: Descending (high→low) with low initial guess
-    print(f"  Pass 1: Descending velocity (low-AoA branch)...")
+    print("  Pass 1: Descending velocity (low-AoA branch)...")
     results_low = compute_trim_continuation(
         velocities, aero_type, mass, g,
         alpha_initial_guess_deg=10.0,
@@ -99,7 +98,7 @@ def compute_trim_two_branches(
     )
 
     # Pass 2: Ascending (low→high) with high initial guess
-    print(f"  Pass 2: Ascending velocity (high-AoA branch)...")
+    print("  Pass 2: Ascending velocity (high-AoA branch)...")
     results_high = compute_trim_continuation(
         velocities, aero_type, mass, g,
         alpha_initial_guess_deg=70.0,
@@ -119,7 +118,6 @@ def compute_trim_two_branches(
     residual_vals_merged = np.full(n_points, np.nan)
 
     for i in range(n_points):
-        V = velocities[i]
         has_low = not np.isnan(results_low.alphas[i])
         has_high = not np.isnan(results_high.alphas[i])
 
@@ -266,9 +264,6 @@ def compute_trim_continuation(
     alpha_history = []  # Track valid solutions for computing mean
     alpha_mean = alpha_guess  # Running mean of valid solutions
 
-    # Track if we have found at least one valid solution
-    has_valid_solution = False
-
     # Continuation loop: iterate through velocities in specified direction
     if direction == "descending":
         # HIGH to LOW velocity - good for finding low-AoA branch
@@ -286,7 +281,11 @@ def compute_trim_continuation(
             continue
 
         # Define residual function for this velocity with penalty term
-        def residual(alpha: float) -> float:
+        def residual(
+            alpha: float,
+            V: float = V,
+            alpha_mean: float = alpha_mean,
+        ) -> float:
             cx_jax, cz_jax = predictor.predict(alpha)  # Returns (cx, cz)
             cz_val = float(cz_jax.item() if hasattr(cz_jax, 'item') else cz_jax)
             # Add penalty term to favor one branch
@@ -343,7 +342,6 @@ def compute_trim_continuation(
 
                 # Valid solution found in [0, 90 deg]
                 alphas[i] = alpha_sol
-                has_valid_solution = True
 
                 # Update running mean for penalty term
                 alpha_history.append(alpha_sol)
@@ -419,18 +417,18 @@ def run_trim_analysis_all_types(
 
 def save_trim_results_to_csv(
     results: TrimResults,
-    output_dir: Path = Path("artifacts/simulations"),
+    output_dir: Path = Path(".artifacts/aerodynamics"),
 ) -> Path:
     """Save trim results to CSV file.
 
     Args:
         results: TrimResults to save
-        output_dir: Output directory path (default: artifacts/simulations)
+        output_dir: Output directory path (project-relative; default .artifacts/aerodynamics)
 
     Returns:
         Path to the saved CSV file
     """
-    output_dir = Path(output_dir)
+    output_dir = artifact_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     filename = f"trim_analysis_{results.aero_type}_mass{results.mass}kg.csv"
@@ -532,20 +530,20 @@ def plot_trim_results_2x2(
 
 def plot_all_trim_results(
     results_dict: dict[str, TrimResults],
-    output_dir: Path = Path("artifacts/simulations"),
+    output_dir: Path = Path(".artifacts/aerodynamics"),
     show: bool = False,
 ) -> list[Path]:
     """Generate plots for all aerodynamic types.
 
     Args:
         results_dict: Dictionary mapping aero_type -> TrimResults
-        output_dir: Output directory path (default: artifacts/simulations)
+        output_dir: Output directory path (project-relative; default .artifacts/aerodynamics)
         show: Whether to display plots interactively (default: False)
 
     Returns:
         List of paths to saved plot files
     """
-    output_dir = Path(output_dir)
+    output_dir = artifact_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     saved_paths = []
@@ -635,7 +633,7 @@ def plot_trim_comparison_2x2(
             ("cz", "Lift Coefficient vs AoA"),
             ("∂fx/mass ∂α", "X-Force Derivative vs AoA"),
             ("∂fz/mass ∂α", "Z-Force Derivative vs AoA"),
-        ],
+        ], strict=False,
     ):
         ax.set_xlabel("Angle of Attack (degrees)")
         ax.set_ylabel(ylabel)
@@ -820,13 +818,13 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="artifacts/simulations",
-        help="Output directory for results (default: artifacts/simulations)",
+        default=".artifacts/aerodynamics",
+        help="Output directory for results (default: .artifacts/aerodynamics)",
     )
 
     args = parser.parse_args()
 
-    output_dir = Path(args.output_dir)
+    output_dir = artifact_path(Path(args.output_dir))
 
     if args.plot_only:
         # Load existing CSV files and generate plots

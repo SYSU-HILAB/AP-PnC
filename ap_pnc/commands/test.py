@@ -4,7 +4,7 @@ import sys
 
 import typer
 
-from ap_pnc.env import get_git_root, setup_env
+from ap_pnc.env import get_git_root, project_path, setup_env
 
 app = typer.Typer()
 
@@ -14,16 +14,27 @@ def _pytest(path: str, plugin_disable: bool = True) -> None:
     env = os.environ.copy()
     if plugin_disable:
         env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
-    subprocess.run([sys.executable, "-m", "pytest", path], env=env, check=True)
+    root = get_git_root()
+    outputs = root / ".artifacts" / "tests"
+    outputs.mkdir(parents=True, exist_ok=True)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    subprocess.run(
+        [sys.executable, "-m", "pytest", str(project_path(path)),
+         "--basetemp", str(outputs / "pytest_tmp"),
+         "-o", f"cache_dir={outputs / 'pytest_cache'}"],
+        cwd=root, env=env, check=True,
+    )
 
 
 def _run_script(rel_path: str, extra_env: dict | None = None) -> None:
     setup_env()
-    git_root = get_git_root()
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)
-    subprocess.run([sys.executable, str(git_root / rel_path)], env=env, check=True)
+    subprocess.run(
+        [sys.executable, str(project_path(rel_path))],
+        cwd=get_git_root(), env=env, check=True,
+    )
 
 
 @app.command()
@@ -54,7 +65,8 @@ def casadi() -> None:
 def frame_conversion() -> None:
     """Run frame conversion test."""
     code = "from ap_pnc.paper.methods.lu.gd_model_casadi import test_frame_conversion; test_frame_conversion()"
-    subprocess.run([sys.executable, "-c", code], check=True)
+    setup_env()
+    subprocess.run([sys.executable, "-c", code], cwd=get_git_root(), check=True)
 
 
 @app.command(name="colcon")
@@ -64,7 +76,7 @@ def colcon() -> None:
     git_root = get_git_root()
     base = git_root / ".artifacts" / "colcon"
     subprocess.run(
-        ["colcon", "test", "--merge-install",
+        ["colcon", "--log-base", str(base / "log"), "test", "--merge-install",
          "--build-base", str(base / "build"),
          "--install-base", str(base / "install")],
         cwd=git_root,
@@ -79,7 +91,7 @@ def colcon_result() -> None:
     git_root = get_git_root()
     base = git_root / ".artifacts" / "colcon"
     subprocess.run(
-        ["colcon", "test-result", "--test-result-base", str(base / "build")],
+        ["colcon", "--log-base", str(base / "log"), "test-result", "--test-result-base", str(base / "build")],
         cwd=git_root,
         check=True,
     )

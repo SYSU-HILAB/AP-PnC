@@ -11,14 +11,13 @@ from pathlib import Path
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 # Initialize JAX CPU backend
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 jax.config.update("jax_platform_name", "cpu")
 
-from aerodynamics.data.dataset import AeroMLDataset
-from aerodynamics.inference.predictor import AerodynamicsMLPPredictor
+from aerodynamics.data.dataset import AeroMLDataset  # noqa: E402 -- after JAX backend pin
+from aerodynamics.inference.predictor import AerodynamicsMLPPredictor  # noqa: E402
 
 # Aero type configuration
 AERO_TYPES = ["lyu", "bspline", "phi", "advanced"]

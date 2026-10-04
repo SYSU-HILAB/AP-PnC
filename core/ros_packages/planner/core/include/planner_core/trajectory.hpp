@@ -61,6 +61,9 @@ class ReferenceTrajectory
   /// Exact evaluation at time t (flatness: p, v, a, yb, omega, thrust).
   ReferencePoint sample(double t) const;
 
+  /// Read-only access for exact trajectory serialization/replay (coefficients remain planner-owned).
+  const TrajectoryRepresentation<5> &representation() const { return traj_; }
+
  private:
   TrajectoryRepresentation<5> traj_;
   double          duration_ = 0.0;

@@ -20,6 +20,10 @@ import pandas as pd
 from scipy.spatial import geometric_slerp
 from scipy.spatial.transform import Rotation as R
 
+from ap_pnc.env import project_path
+
+from .specify_figure_dirs import figure_path
+
 colors = {
     "red": "#B43734",
     "cyan": "#397E77",
@@ -95,7 +99,7 @@ def normalize_quaternions(quaternions):
 def read_csv_by_topic(directory, topic_name, start_time=None, end_time=None):
     """Read a CSV file by topic name and filter by time range if specified."""
     # Use current directory's output_csv folder
-    directory = 'output_csv'
+    directory = str(project_path('.artifacts/paper/exp/output_csv'))
     pattern = re.compile(fr'{topic_name}')
 
     # Find the relevant CSV file
@@ -125,7 +129,7 @@ def read_csv_by_topic_timeline_align(directory, topic_name, new_timestamps):
     quaternion_columns = ['q[1]', 'q[2]', 'q[3]', 'q[0]']
 
     # Use current directory's output_csv folder
-    directory = 'output_csv'
+    directory = str(project_path('.artifacts/paper/exp/output_csv'))
     pattern = re.compile(fr'{topic_name}')
 
     # Convert new_timestamps to numpy array if it's a pandas Series
@@ -346,10 +350,9 @@ def plot_angles(ax, main_time, odometry_time, ref_yb, actual_euler_angles):
     ref_angles = extract_yaw_roll_from_yb(ref_yb)  # Shape: (N1, 2)
 
     # Define y-axis limits dynamically based on the data range
-    pitch_min, pitch_max = np.min(actual_euler_angles[:, 2]) * 180/np.pi , np.max(actual_euler_angles[:, 2]) * 180/np.pi
-    yaw_min, yaw_max = np.min(actual_euler_angles[:, 0]), np.max(actual_euler_angles[:, 0])
-    roll_max = np.max(actual_euler_angles[:, 1])
-    border_more = 0.5  # Add buffer to axis limits
+    pitch_min, _pitch_max = np.min(actual_euler_angles[:, 2]) * 180/np.pi , np.max(actual_euler_angles[:, 2]) * 180/np.pi
+    _yaw_min, _yaw_max = np.min(actual_euler_angles[:, 0]), np.max(actual_euler_angles[:, 0])
+    np.max(actual_euler_angles[:, 1])
 
     yaw_diff = ref_angles[0, 0] - actual_euler_angles[0, 0]
     actual_euler_angles[:, 0] = actual_euler_angles[:, 0] - yaw_diff
@@ -533,7 +536,7 @@ def main_plotting_pipeline(directory=None):
 
 
     # Save figure
-    save_plot(fig, "traj-view.pdf")
+    save_plot(fig, figure_path("traj-view.pdf"))
     plt.show()
 
 # Execute pipeline

@@ -5,15 +5,19 @@ Build with: uv run ap-pnc build bindings
 (requires colcon-built aerodynamics/utils libs under .artifacts/colcon/build/)
 """
 
+import os
 from pathlib import Path
-
-# Find directories
-git_root = Path(__file__).parent.parent.parent.parent
-colcon_build = git_root / ".artifacts" / "colcon" / "build"
-src_dir = Path(__file__).parent.parent
 
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
+
+# Build frontends pass absolute AP_PNC_DIR; fallback is anchored to this file, not cwd.
+git_root = Path(os.environ.get("AP_PNC_DIR", Path(__file__).resolve().parents[4]))
+if not git_root.is_absolute():
+    raise ValueError("AP_PNC_DIR must be absolute")
+git_root = git_root.resolve()
+colcon_build = git_root / ".artifacts" / "colcon" / "build"
+src_dir = git_root / "infra" / "sim_infra" / "aerodynamics"
 
 ext_modules = [
     Pybind11Extension(

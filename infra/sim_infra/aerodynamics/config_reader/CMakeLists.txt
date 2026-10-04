@@ -14,6 +14,7 @@ target_include_directories(aerodynamics_config_common INTERFACE
 )
 
 add_library(aerodynamics_config_reader STATIC src/sq_config_reader.cpp)
+target_include_directories(aerodynamics_config_reader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 target_link_libraries(aerodynamics_config_reader aerodynamics_config_common)
 
 add_library(aerodynamics_config_reader_phi STATIC src/phi_aero_config_reader.cpp)

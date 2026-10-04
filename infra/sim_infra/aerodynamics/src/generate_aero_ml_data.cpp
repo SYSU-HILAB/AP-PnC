@@ -18,6 +18,7 @@
 #include <aerodynamics/advanced_lift_drag.hpp>
 #include <aerodynamics/bspline_aerodynamics.hpp>
 #include <aerodynamics/phi_aerodynamics.hpp>
+#include <aerodynamics/project_paths.hpp>
 #include <aerodynamics/zhang_lyu_aerodynamics.hpp>
 #include <fstream>
 #include <iomanip>
@@ -56,10 +57,11 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
   constexpr double alpha_step = (alpha_max - alpha_min) / (num_points - 1);
 
   // Create output file
-  std::ofstream outfile(filename);
+  const auto output_path = paths::output(filename);
+  std::ofstream outfile(output_path);
   if (!outfile.is_open())
   {
-    spdlog::error("Failed to open file: {}", filename);
+    spdlog::error("Failed to open file: {}", output_path.string());
     return false;
   }
 
@@ -99,7 +101,7 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
     }
 
     outfile.close();
-    spdlog::info("Data written to {} ({} points)", filename, num_points);
+    spdlog::info("Data written to {} ({} points)", output_path.string(), num_points);
     return true;
   }
   catch (const std::exception& e)

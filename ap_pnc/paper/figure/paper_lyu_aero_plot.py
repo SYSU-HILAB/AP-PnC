@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import MultipleLocator
 
-
 colors = dict(enumerate(plt.get_cmap("tab10").colors))
 
 def read_aero_data(filename):
@@ -59,7 +58,7 @@ def plot_aero_coefficients(data_files):
       ax.tick_params(axis='y', pad=2)  # Also adjust y-axis for consistency
     with plt.style.context("default"):
 
-        for i, (name, file) in enumerate(data_files.items()):
+        for _i, (name, file) in enumerate(data_files.items()):
             data = read_aero_data(file)
             cz_30 = data[data['alpha_deg'] == 30]['cz'].values[0]
             scale_factor = cz_30_baseline / cz_30

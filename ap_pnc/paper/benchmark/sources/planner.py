@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from ap_pnc.env import get_git_root
+from ap_pnc.env import get_git_root, project_path
 
 from ..reference import Reference
 
@@ -36,7 +36,7 @@ def plan(yaml_path: str | Path) -> Reference:
             "`uv run ap-pnc build planner-bindings`."
         ) from exc
 
-    data = planner_bindings.plan(str(yaml_path))
+    data = planner_bindings.plan(str(project_path(yaml_path)))
     return Reference(
         t=data["t"],
         p=data["p"],

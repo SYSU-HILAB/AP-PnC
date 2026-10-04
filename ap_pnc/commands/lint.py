@@ -3,7 +3,7 @@ import sys
 
 import typer
 
-from ap_pnc.env import setup_env
+from ap_pnc.env import get_git_root, setup_env
 
 app = typer.Typer()
 
@@ -12,11 +12,21 @@ app = typer.Typer()
 def lint() -> None:
     """Run ruff linter on tests."""
     setup_env()
-    subprocess.run([sys.executable, "-m", "ruff", "check", "test"], check=True)
+    root = get_git_root()
+    subprocess.run(
+        [sys.executable, "-m", "ruff", "check", str(root / "test"),
+         "--cache-dir", str(root / ".artifacts" / "ruff_cache")],
+        cwd=root, check=True,
+    )
 
 
 @app.command()
 def fmt() -> None:
     """Run ruff formatter on tests."""
     setup_env()
-    subprocess.run([sys.executable, "-m", "ruff", "format", "test"], check=True)
+    root = get_git_root()
+    subprocess.run(
+        [sys.executable, "-m", "ruff", "format", str(root / "test"),
+         "--cache-dir", str(root / ".artifacts" / "ruff_cache")],
+        cwd=root, check=True,
+    )

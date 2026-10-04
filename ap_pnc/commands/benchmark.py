@@ -4,7 +4,7 @@ import typer
 import yaml
 
 from ap_pnc.commands import stack
-from ap_pnc.env import get_git_root
+from ap_pnc.env import project_path
 from ap_pnc.paper.benchmark import runner
 from ap_pnc.paper.benchmark.runner import TRAJ_TYPES
 
@@ -12,13 +12,14 @@ app = typer.Typer(help="Trajectory-tracking benchmark experiments (planner -> co
 
 
 def _sync_planning_config(v_max: float, traj_type: int, radius: float) -> Path:
-    """Write experiment parameters into bringup/config/planning.yaml (flight path)."""
-    git_root = get_git_root()
-    yaml_path = git_root / "core" / "bringup" / "config" / "planning.yaml"
+    """Write experiment parameters into the flight planning config (tracked source).
+
+    The gazebo stack bind-mounts ``core/bringup``; this intentionally edits that
+    configuration in place. Run-local overrides (simple_sim) never touch it.
+    """
+    yaml_path = project_path("core/bringup/config/planning.yaml")
     if not yaml_path.exists():
-        yaml_path = git_root / "bringup" / "config" / "planning.yaml"
-    if not yaml_path.exists():
-        typer.echo("Planning config not found", err=True)
+        typer.echo(f"Planning config not found: {yaml_path}", err=True)
         raise typer.Exit(1)
 
     data = yaml.safe_load(yaml_path.read_text()) or {}

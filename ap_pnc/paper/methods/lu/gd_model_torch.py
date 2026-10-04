@@ -35,7 +35,7 @@ def logistic_func_batch(
 
 def deg2rad_batch(deg):
     """Batched degree to radian conversion"""
-    if isinstance(deg, (int, float)):
+    if isinstance(deg, int | float):
         # Handle scalar input
         return torch.tensor(deg * (math.pi / 180.0))
     else:
@@ -572,7 +572,7 @@ def generate_mesh_data_torch(
     CN_np = CN.cpu().numpy()
 
     # Save data using data utilities
-    data_path = save_mesh_data(
+    save_mesh_data(
         ALPHA_DEG_np,
         BETA_DEG_np,
         CL_np,

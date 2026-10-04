@@ -10,23 +10,20 @@
 # Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
 
-import os
-from pathlib import Path
-
 import numpy as np
 import yaml
+
+from ap_pnc.env import get_git_root
 
 
 def _nmpc_namespace() -> dict:
     """Read the `nmpc:` section of the nmpc config (single source of truth)."""
-    root = os.environ.get("AP_PNC_DIR")
-    if not root:
-        return {}
+    root = get_git_root()
     for rel in ("bringup/config/nmpc.yaml", "core/bringup/config/nmpc.yaml"):
-        path = Path(root) / rel
+        path = root / rel
         if path.exists():
             return (yaml.safe_load(path.read_text()) or {}).get("nmpc", {}) or {}
-    return {}
+    raise FileNotFoundError(f"NMPC configuration missing under {root}")
 
 
 _NMPC = _nmpc_namespace()
