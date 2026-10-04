@@ -105,7 +105,7 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ${AP_PNC_DIR}/.artifacts/nmpc_solver/libnmpc_bundle.a:/workspace/.artifacts/nmpc_solver/libnmpc_bundle.a
+      - ${AP_PNC_DIR}/.artifacts/nmpc_solver/libnmpc_bundle_x86_64.a:/workspace/.artifacts/nmpc_solver/libnmpc_bundle.a
       - ${AP_PNC_DIR}/core/ros_packages:/workspace/src
       - ${AP_PNC_DIR}/core/bringup:/workspace/bringup
     command: bash

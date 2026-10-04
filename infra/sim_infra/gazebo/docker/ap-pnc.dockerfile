@@ -5,7 +5,9 @@ WORKDIR /workspace
 COPY core/ros_packages/ /workspace/src/
 COPY core/bringup/ /workspace/bringup/
 COPY infra/sim_infra/aerodynamics/ /workspace/infra/sim_infra/aerodynamics/
-COPY .artifacts/nmpc_solver/libnmpc_bundle.a /workspace/.artifacts/nmpc_solver/
+# Build prerequisite: arch-tagged bundle produced by the builder image
+# (core/docker/nmpc-builder.dockerfile; ap-pnc targets amd64).
+COPY .artifacts/nmpc_solver/libnmpc_bundle_x86_64.a /workspace/.artifacts/nmpc_solver/libnmpc_bundle.a
 
 RUN . /opt/ros/humble/setup.sh && \
     colcon --log-base ${AP_PNC_DIR}/.artifacts/colcon/log build --symlink-install \

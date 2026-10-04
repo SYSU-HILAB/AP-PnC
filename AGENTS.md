@@ -46,7 +46,7 @@ never inside a source tree:
 | colcon build / install / log | `<AP_PNC_DIR>/.artifacts/colcon/` |
 | acados staging source + build | `<AP_PNC_DIR>/.artifacts/acados_src/`, `<AP_PNC_DIR>/.artifacts/acados/`, `<AP_PNC_DIR>/.artifacts/acados_static/` |
 | generated OCP code | `<AP_PNC_DIR>/.artifacts/c_generated_code/` |
-| NMPC static bundle | `<AP_PNC_DIR>/.artifacts/nmpc_solver/libnmpc_bundle.a` |
+| NMPC static bundle | `<AP_PNC_DIR>/.artifacts/nmpc_solver/libnmpc_bundle_<arch>.a` (host-native alias: `libnmpc_bundle.a`) |
 | pybind11 modules (+ their build temp) | `<AP_PNC_DIR>/.artifacts/bindings/` |
 | benchmark runs | `<AP_PNC_DIR>/.artifacts/benchmark/<name>/` |
 | aerodynamics CSV datasets / ML weights | `<AP_PNC_DIR>/.artifacts/aerodynamics/` |
@@ -70,10 +70,21 @@ Rules:
 
 ## Host
 
-The development host is **Linux**. macOS is not a supported development host:
-the acados codegen and the static bundle (`libnmpc_bundle.a`) are Linux-only
-(t_renderer publishes no macOS build). On macOS the Python CLI still imports and
-runs its non-acados paths; `ap-pnc install` / `gen-nmpc-lib` require Linux.
+The development host is **Linux**; macOS hosts drive the Linux toolchain
+through Docker:
+
+- Native acados codegen still requires Linux (t_renderer publishes no macOS
+  build). On any Docker-capable host (including macOS),
+  `uv run ap-pnc gen-nmpc-lib` automatically builds inside the pinned
+  builder image (`core/docker/nmpc-builder.dockerfile`); toolchain versions
+  (acados commit, t_renderer, acados_template) are baked into the image and
+  must stay in sync with `ap_pnc/commands/install.py:ACADOS_COMMIT`.
+- Bundles are arch-tagged: `libnmpc_bundle_<arch>.a` (`aarch64` | `x86_64`).
+  The unsuffixed `libnmpc_bundle.a` is only the host-native alias — images
+  pinned to a platform (e.g. `ap-pnc` targets amd64) must consume the
+  arch-tagged file (`libnmpc_bundle_x86_64.a`).
+- Host colcon builds (`ap-pnc build ...`) and `ap-pnc install` still assume
+  a Linux host with ROS2/colcon installed.
 
 ## Code style: lint after every change
 
