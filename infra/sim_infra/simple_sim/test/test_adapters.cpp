@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdexcept>
+#include <tailsitter_df/flu_reference.hpp>
 #include <tailsitter_df/tailsitter_df.hpp>
 
 #include "simple_sim/adapters/aero_model.hpp"
@@ -44,6 +45,19 @@ namespace
     check(w.force.isApprox(Eigen::Vector3d(3, -2, 1)), "wing FRD -> FLU force");
     check(w.moment.isApprox(Eigen::Vector3d(6, -5, 4)),
           "wing FRD -> FLU moment");
+    s.attitude = Eigen::Quaterniond(
+        Eigen::AngleAxisd(0.7, Eigen::Vector3d(1, 2, 3).normalized()));
+    const auto expected_body =
+        (s.attitude.conjugate() * (s.velocity - cfg.wind_world)).eval();
+    force(s);
+    check(model->input.isApprox(Eigen::Vector3d(
+              expected_body.z(), -expected_body.y(), expected_body.x())),
+          "rotated body/world wind frame");
+    s.attitude.coeffs() *= -1;
+    force(s);
+    check(model->input.isApprox(Eigen::Vector3d(
+              expected_body.z(), -expected_body.y(), expected_body.x())),
+          "quaternion double cover changed physical frame");
     model->success = false;
     bool caught    = false;
     try
@@ -92,6 +106,21 @@ int main()
 {
   try
   {
+    const auto hover = tailsitter_df::flu_reference(Eigen::Vector3d::Zero(),
+                                                    Eigen::Vector3d::Zero(),
+                                                    Eigen::Vector3d::Zero());
+    check(hover.rotation.isApprox(Eigen::Matrix3d::Identity()) &&
+              std::abs(hover.specific_thrust - 9.81) < 1e-12,
+          "+Z FLU hover reference");
+    for (double speed : {0.0, 0.499999, 0.500001, 1.0, 6.0})
+    {
+      const auto r =
+          tailsitter_df::flu_reference({speed, 0, 0}, {0, 0, 0}, {0, 0, 0});
+      check(r.rotation.col(1).isApprox(Eigen::Vector3d::UnitY()),
+            "yb flipped across speed guard");
+      check(std::abs(r.rotation.determinant() - 1) < 1e-12,
+            "reference reflection");
+    }
     aero_frames();
     std::cout << "PASS aerodynamic frame mapping/failure\n";
     tracking();

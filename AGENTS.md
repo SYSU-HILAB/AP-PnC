@@ -170,6 +170,28 @@ Lint rules are agent-enforced, not README-documented:
 - Fix the code instead of silencing or downgrading lint findings; new lint
   errors must never be committed.
 
+## OpenTelemetry: project-wide observability
+
+- Follow `docs/observability.md` for the full coverage and rollout contract.
+  The user requests deep CLI/dora/planner/NMPC/plant/actuator/ROS/artifact
+  observability, not just generic process logs. State implemented coverage
+  separately from planned hooks and synthetic probes.
+- Reuse dora's existing Rust tracing/OTLP, metrics and reserved metadata context
+  before adding a parallel subscriber or custom trace envelope. Prefer public
+  node APIs; `dora-tracing` itself is explicitly internal/unstable. The C++ node
+  API is a Rust-backed CXX bridge, not automatic numerical-function tracing.
+- Preserve scientific data and transactional control behavior. Do not use
+  telemetry as a replacement for saved reference/CSV/manifest/Rerun validation.
+- OTel span time is wall clock; simulation time is an explicit attribute.
+  Keep future NMPC reference knots distinct from current plant state.
+- No network/file export or force-flush on real-time numerical paths. Use
+  bounded queues, aggregate metrics and measured diagnostic sampling.
+- Filter sensitive attributes; no raw argv/environment/private model content
+  or exception text. Run IDs/ticks/hashes are not metric labels. Local-only
+  Collector is the default; remote telemetry export needs explicit authorization.
+- Each newly instrumented layer needs off/on numerical identity and overhead/
+  outage tests. Do not claim full coverage from a Collector health check.
+
 ## Runtime configuration
 
 Nodes read their yaml from, by convention:

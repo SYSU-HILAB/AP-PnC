@@ -11,12 +11,14 @@ namespace nmpc
 
   struct TrackingConfig
   {
-    double horizon_s  = 1.0;
-    double traj_res_s = 0.1;
-    double ctrl_frq   = 50.0;
-    double u_hover    = 2.4525;  // N/kg per rotor, not N
-    double cz_rate    = 0.1;
-    void   validate() const;
+    double                horizon_s  = 1.0;
+    double                traj_res_s = 0.1;
+    double                ctrl_frq   = 50.0;
+    double                u_hover    = 9.81;  // collective N/kg, not per rotor
+    double                cz_rate    = 0.1;
+    double                thrust_tau_s = 0.076;
+    std::array<double, 3> rate_tau_s{0.1, 0.1, 0.1};
+    void                  validate() const;
   };
 
   using CostReference = std::array<double, NMPC_NY>;  // NMPC objective layout,
@@ -32,6 +34,16 @@ namespace nmpc
     int                   status         = 0;
   };
 
+  struct TrackingTrace
+  {
+    std::vector<CostReference>   references;
+    std::array<double, NMPC_NYN> terminal{};
+    std::array<double, NMPC_NX>  state{};
+    std::array<double, NMPC_NP>  parameters{};
+    int                          status    = -1;
+    bool                         submitted = false;
+  };
+
   // ROS-free controller shared by the flight node and simple_sim.
   class TrackingController
   {
@@ -44,13 +56,16 @@ namespace nmpc
                                   const std::vector<CostReference> &horizon);
     const TrackingConfig &config() const { return config_; }
     double                cz() const { return cz_; }
+    const TrackingTrace  &trace() const { return trace_; }
 
    private:
     TrackingConfig                                                 config_;
     std::unique_ptr<nmpc_solver_t, decltype(&nmpc_solver_destroy)> solver_{
         nullptr, nmpc_solver_destroy};
-    std::array<double, 4> rotor_specific_force_{};
-    double                cz_ = 0.0;
+    TrackingTrace trace_;
+    double        specific_force_estimate_    = 9.81;
+    double        previous_specific_force_sp_ = 9.81;
+    double        cz_                         = 0.0;
   };
 
 }  // namespace nmpc

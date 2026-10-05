@@ -53,8 +53,9 @@ class MpcConfig:
     lb_r = np.array([-1.5, -2.5, -1.5])
     ub_r = np.array([1.5, 2.5, 1.5])
 
-    lb_u = np.array([0.05, 0.05, 0.05, 0.05]) * 0
-    ub_u = np.array([10., 10., 10., 10.]) * 0.55
+    # Command bounds: collective N/kg, followed by FLU body-rate setpoints.
+    lb_u = np.concatenate(([0.0], lb_r))
+    ub_u = np.concatenate(([22.0], ub_r))
     drag_est = 0.00
     # 1e1 15 15 20 OK
     qPos = np.array([ 15,  15,  10]) * 1 * 1.0

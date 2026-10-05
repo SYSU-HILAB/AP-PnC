@@ -6,18 +6,22 @@ extern "C"
 {
 #endif
 
-#define NMPC_NX 18
+/* x = [p(3), v(3), omega(3), q_wxyz(4), collective N/kg, cz].
+ * u = [collective specific_force_sp, rates_sp_xyz]. No rotor states. */
+#define NMPC_SOLVER_ABI 2
+#define NMPC_NX 15
 #define NMPC_NU 4
-#define NMPC_NP 3
+#define NMPC_NP 7
 #define NMPC_NY 16
 #define NMPC_NYN 12
 
   typedef struct nmpc_solver nmpc_solver_t;
 
+  int            nmpc_solver_abi_version(void);
   nmpc_solver_t *nmpc_solver_create(void);
   void           nmpc_solver_destroy(nmpc_solver_t *s);
 
-  int nmpc_solver_horizon(const nmpc_solver_t *s);
+  int    nmpc_solver_horizon(const nmpc_solver_t *s);
   double nmpc_solver_stage_dt(const nmpc_solver_t *s, int stage);
 
   void nmpc_solver_set_state(nmpc_solver_t *s, const double x_cur[NMPC_NX]);

@@ -78,6 +78,48 @@ namespace simple_sim
     cfg.rate_loop.max_specific_force =
         n["rate_loop"]["max_specific_force"].as<double>();
     cfg.rate_loop.validate();
+    if (n["actuator"])
+      cfg.actuator_model = n["actuator"]["model"].as<std::string>();
+    if (cfg.actuator_model != "ideal_rate_loop" &&
+        cfg.actuator_model != "matlab_vtol")
+      throw std::invalid_argument("unknown actuator model");
+    if (cfg.actuator_model == "matlab_vtol")
+    {
+      const auto m    = n["actuator"];
+      auto       four = [](const YAML::Node &node)
+      {
+        if (!node.IsSequence() || node.size() != 4)
+          throw std::invalid_argument("expected four-vector");
+        Eigen::Vector4d v;
+        for (int i = 0; i < 4; ++i)
+          v[i] = node[i].as<double>();
+        return v;
+      };
+      auto &c        = cfg.motor_model;
+      c.arms         = four(m["arms_m"]);
+      c.arm_angles   = four(m["arm_angles_rad"]);
+      c.tilts        = four(m["tilts_rad"]);
+      c.thrust_poly  = vector3(m["thrust_poly"]);
+      c.torque_poly  = vector3(m["torque_poly"]);
+      c.esc_poly     = vector3(m["esc_poly"]);
+      c.damping_wing = vector3(m["damping_wing"]);
+      c.kp           = vector3(m["kp"]);
+      c.ki           = vector3(m["ki"]);
+      c.kd           = vector3(m["kd"]);
+      c.tau          = m["motor_tau_s"].as<double>();
+      c.diameter     = m["diameter_m"].as<double>();
+      c.ct           = m["ct"].as<double>();
+      c.cq           = m["cq"].as<double>();
+      c.jm           = m["jm"].as<double>();
+      c.pwm_min      = m["pwm_min"].as<double>();
+      c.pwm_max      = m["pwm_max"].as<double>();
+      c.inner_dt_ns  = m["inner_dt_ns"].as<std::int64_t>();
+      if (m["mixer"].size() != 4)
+        throw std::invalid_argument("expected 4x4 mixer");
+      for (int i = 0; i < 4; ++i)
+        c.mixer.row(i) = four(m["mixer"][i]).transpose();
+      c.validate();
+    }
     cfg.se3.position    = vector3(n["se3"]["position_gain"]);
     cfg.se3.velocity    = vector3(n["se3"]["velocity_gain"]);
     cfg.se3.attitude    = vector3(n["se3"]["attitude_gain"]);
@@ -86,8 +128,8 @@ namespace simple_sim
     cfg.aero.scale      = n["aero"]["scale"].as<double>();
     // Canonical model names, shared with the aerodynamics factory
     // (sim::gazebo::<model> and sim::simple::<model> use the same set).
-    static const std::set<std::string> aero_models{
-        "lyu", "phi", "ma", "advanced", "none"};
+    static const std::set<std::string> aero_models{"lyu", "phi", "ma",
+                                                   "advanced", "none"};
     if (!aero_models.count(cfg.aero_model) || !std::isfinite(cfg.aero.scale) ||
         cfg.aero.scale < 0.0)
       throw std::invalid_argument(

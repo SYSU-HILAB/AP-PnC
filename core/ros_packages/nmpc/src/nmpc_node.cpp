@@ -37,11 +37,14 @@ class NMPC : public rclcpp::Node
       path = std::filesystem::path(root) / "core/bringup/config/nmpc.yaml";
     const auto           n = YAML::LoadFile(path.string())["nmpc"];
     nmpc::TrackingConfig cfg;
-    cfg.horizon_s  = n["horizon_s"].as<double>();
-    cfg.traj_res_s = n["traj_res_s"].as<double>();
-    cfg.ctrl_frq   = n["ctrl_frq"].as<double>();
-    cfg.u_hover    = n["u_hover"].as<double>();
-    cfg.cz_rate    = n["cz_rate"].as<double>();
+    cfg.horizon_s    = n["horizon_s"].as<double>();
+    cfg.traj_res_s   = n["traj_res_s"].as<double>();
+    cfg.ctrl_frq     = n["ctrl_frq"].as<double>();
+    cfg.u_hover      = n["u_hover"].as<double>();
+    cfg.cz_rate      = n["cz_rate"].as<double>();
+    cfg.thrust_tau_s = n["thrust_tau_s"].as<double>();
+    for (int i = 0; i < 3; ++i)
+      cfg.rate_tau_s[i] = n["rate_tau_s"][i].as<double>();
     controller_    = std::make_unique<nmpc::TrackingController>(cfg);
     const auto qos = rclcpp::QoS(1).reliable();
     control_pub_ =

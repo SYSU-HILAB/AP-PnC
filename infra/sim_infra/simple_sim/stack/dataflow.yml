@@ -1,0 +1,20 @@
+# Runtime inputs and executables are absolute paths under container AP_PNC_DIR.
+# Only finished-run references cross node boundaries, not RK4 substeps.
+nodes:
+  - id: simulate
+    path: /workspace/.artifacts/bin/ap-pnc-offline
+    args: simulate /workspace/.artifacts/simple-stack/job/config/simple_sim.yaml
+    outputs:
+      - run
+  - id: record
+    path: /workspace/.artifacts/bin/ap-pnc-offline
+    args: record
+    inputs:
+      run: simulate/run
+    outputs:
+      - recording
+  - id: verify
+    path: /workspace/.artifacts/bin/ap-pnc-offline
+    args: verify
+    inputs:
+      recording: record/recording

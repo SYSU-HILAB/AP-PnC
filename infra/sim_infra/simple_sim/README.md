@@ -4,6 +4,15 @@ A lightweight, ROS-free C++ simulation kernel with optional ROS observation.
 **No collision, ground contact, LiDAR, scene generation, PX4 or MAVROS.**
 It verifies trajectory tracking, not the SITL/offboard flight procedure.
 
+## Offline dora / Rerun stack
+
+The new [Docker-only offline stack](stack/README.md) runs the existing real-NMPC
+experiment through Rust dora nodes, then exports and independently verifies a
+Rerun recording. Rerun is opened after completion, not connected to a live
+simulator. The ROS adapter below remains a baseline/legacy entry point.
+The stack documentation includes native ARM64 evidence, the build-only
+CasADi-to-C backward-gradient prototype, and the Rust migration roadmap.
+
 ## Ownership
 
 - `core/bringup/` owns **all runtime YAML, launch and RViz resources**.

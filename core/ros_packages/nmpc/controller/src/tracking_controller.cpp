@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <numeric>
 #include <stdexcept>
 
 namespace nmpc
@@ -13,10 +12,13 @@ namespace nmpc
         !std::isfinite(traj_res_s) || traj_res_s <= 0.0 ||
         !std::isfinite(ctrl_frq) || ctrl_frq <= 0.0 ||
         !std::isfinite(u_hover) || u_hover <= 0.0 || !std::isfinite(cz_rate) ||
-        cz_rate < 0.0 ||
+        cz_rate < 0.0 || !std::isfinite(thrust_tau_s) || thrust_tau_s <= 0.0 ||
         std::abs(horizon_s / traj_res_s - std::round(horizon_s / traj_res_s)) >
             1e-9)
       throw std::invalid_argument("invalid NMPC horizon/control configuration");
+    for (double tau : rate_tau_s)
+      if (!std::isfinite(tau) || tau <= 0.0)
+        throw std::invalid_argument("invalid NMPC rate time constant");
   }
   CostReference cost_reference(const std::array<double, 3> &p,
                                const std::array<double, 3> &v,
@@ -26,13 +28,15 @@ namespace nmpc
     std::copy(p.begin(), p.end(), y.begin());
     std::copy(v.begin(), v.end(), y.begin() + 3);
     std::copy(yb.begin(), yb.end(), y.begin() + 9);
-    std::fill(y.begin() + 12, y.end(), hover);
+    y[12] = hover;  // collective command reference; rate setpoints default zero
     return y;
   }
   TrackingController::TrackingController(TrackingConfig config)
       : config_(config)
   {
     config_.validate();
+    if (nmpc_solver_abi_version() != NMPC_SOLVER_ABI)
+      throw std::runtime_error("stale NMPC bundle ABI; regenerate and relink");
     reset();
   }
   void TrackingController::reset()
@@ -49,13 +53,16 @@ namespace nmpc
                    config_.traj_res_s) > 1e-9)
         throw std::runtime_error(
             "NMPC bundle grid differs from nmpc.yaml; regenerate bundle");
-    rotor_specific_force_.fill(config_.u_hover);
-    cz_ = 0.0;
+    specific_force_estimate_    = config_.u_hover;
+    previous_specific_force_sp_ = config_.u_hover;
+    cz_                         = 0.0;
+    trace_                      = {};
   }
   TrackingResult TrackingController::compute(
       const std::array<double, 13> &state, double specific_force_x,
       const std::vector<CostReference> &horizon)
   {
+    trace_      = {};
     const int n = nmpc_solver_horizon(solver_.get());
     if (horizon.size() != static_cast<std::size_t>(n + 1))
       throw std::invalid_argument("NMPC requires exactly N+1 reference points");
@@ -88,12 +95,23 @@ namespace nmpc
         alpha > 0.0 && alpha < pi / 2
             ? config_.cz_rate
             : (alpha >= pi / 2 && alpha < pi ? -config_.cz_rate : 0.0);
-    double                      parameters[NMPC_NP] = {cz_, alpha, rate};
+    double                      parameters[NMPC_NP] = {cz_,
+                                                       alpha,
+                                                       rate,
+                                                       config_.thrust_tau_s,
+                                                       config_.rate_tau_s[0],
+                                                       config_.rate_tau_s[1],
+                                                       config_.rate_tau_s[2]};
     std::array<double, NMPC_NX> x{};
     std::copy(state.begin(), state.end(), x.begin());
-    std::copy(rotor_specific_force_.begin(), rotor_specific_force_.end(),
-              x.begin() + 13);
-    x[17] = cz_;
+    // Estimate the lagged collective over the actual controller period,
+    // never use x_1 at the solver's (potentially different) horizon spacing.
+    const double estimate =
+        previous_specific_force_sp_ +
+        (specific_force_estimate_ - previous_specific_force_sp_) *
+            std::exp(-1.0 / (config_.ctrl_frq * config_.thrust_tau_s));
+    x[13] = estimate;
+    x[14] = cz_;
     nmpc_solver_set_state(solver_.get(), x.data());
     for (int i = 0; i < n; ++i)
       nmpc_solver_set_ref_stage(solver_.get(), i, horizon[i].data(),
@@ -101,10 +119,16 @@ namespace nmpc
     std::array<double, NMPC_NYN> terminal{};
     std::copy_n(horizon.back().begin(), NMPC_NYN, terminal.begin());
     nmpc_solver_set_ref_terminal(solver_.get(), terminal.data());
-    std::array<double, NMPC_NU> du{};
+    trace_.references = horizon;
+    trace_.terminal   = terminal;
+    trace_.state      = x;
+    std::copy_n(parameters, NMPC_NP, trace_.parameters.begin());
+    trace_.submitted = true;
+    std::array<double, NMPC_NU> command{};
     std::array<double, NMPC_NX> predicted{};
     const int                   status =
-        nmpc_solver_solve(solver_.get(), du.data(), predicted.data());
+        nmpc_solver_solve(solver_.get(), command.data(), predicted.data());
+    trace_.status = status;
     // Status 2 is the existing controller's accepted max-iteration result;
     // record it explicitly.
     if (status != 0 && status != 2)
@@ -113,13 +137,15 @@ namespace nmpc
     for (double value : predicted)
       if (!std::isfinite(value))
         throw std::runtime_error("non-finite NMPC prediction");
-    std::copy_n(predicted.begin() + 13, 4, rotor_specific_force_.begin());
+    for (double value : command)
+      if (!std::isfinite(value))
+        throw std::runtime_error("non-finite NMPC command");
+    specific_force_estimate_    = estimate;
+    previous_specific_force_sp_ = command[0];
     TrackingResult result;
-    result.rates = {predicted[6], predicted[7], predicted[8]};
-    // The generated model's rotor states are already N/kg. No division by
-    // vehicle mass.
-    result.specific_force = std::accumulate(rotor_specific_force_.begin(),
-                                            rotor_specific_force_.end(), 0.0);
+    // Publish u_0 itself: desired collective and body rates, not future x_1.
+    result.rates          = {command[1], command[2], command[3]};
+    result.specific_force = command[0];
     result.status         = status;
     return result;
   }

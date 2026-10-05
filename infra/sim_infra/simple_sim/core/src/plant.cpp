@@ -13,17 +13,17 @@ namespace simple_sim
       if (!w.force.allFinite() || !w.moment.allFinite())
         throw std::runtime_error("non-finite applied wrench");
     }
-    using Vector = Eigen::Matrix<double, 13, 1>;
+    using Vector = Eigen::Matrix<double, 17, 1>;
     Vector pack(const State &s)
     {
       Vector x;
       x << s.position, s.velocity, s.attitude.w(), s.attitude.x(),
-          s.attitude.y(), s.attitude.z(), s.angular_velocity;
+          s.attitude.y(), s.attitude.z(), s.angular_velocity, s.motors.rpm;
       return x;
     }
-    State unpack(const Vector &x)
+    State unpack(const Vector &x, const State &held)
     {
-      State s;
+      State s    = held;
       s.position = x.segment<3>(0);
       s.velocity = x.segment<3>(3);
       s.attitude = Eigen::Quaterniond(x[6], x[7], x[8], x[9]);
@@ -31,13 +31,17 @@ namespace simple_sim
         throw std::runtime_error("invalid integration quaternion");
       s.attitude.normalize();
       s.angular_velocity = x.segment<3>(10);
+      s.motors.rpm       = x.segment<4>(13);
       validate_state(s);
       return s;
     }
   }  // namespace
 
-  Plant::Plant(PlantConfig config, ForceModel aerodynamic)
-      : config_(std::move(config)), aerodynamic_(std::move(aerodynamic))
+  Plant::Plant(PlantConfig config, ForceModel aerodynamic,
+               MotorDerivative motors)
+      : config_(std::move(config)),
+        aerodynamic_(std::move(aerodynamic)),
+        motors_(std::move(motors))
   {
     config_.validate();
   }
@@ -56,6 +60,7 @@ namespace simple_sim
     f.aerodynamic        = aero(s);
     const Wrench applied = act(s, c);
     validate_wrench(applied);
+    f.applied        = applied;
     f.specific_force = (applied.force + f.aerodynamic.force) / config_.mass;
     return f;
   }
@@ -68,7 +73,7 @@ namespace simple_sim
       throw std::invalid_argument("invalid integration step or actuation");
     const auto derivative = [&](const Vector &x) -> Vector
     {
-      const State  stage = unpack(x);
+      const State  stage = unpack(x, s);
       const Wrench a     = act(stage, c);
       const Wrench air   = aero(stage);
       validate_wrench(a);
@@ -85,6 +90,8 @@ namespace simple_sim
       d.segment<3>(10) =
           (a.moment + air.moment - w.cross(config_.inertia.cwiseProduct(w)))
               .cwiseQuotient(config_.inertia);
+      if (motors_)
+        d.segment<4>(13) = motors_(stage);
       if (!d.allFinite())
         throw std::runtime_error("non-finite integration derivative");
       return d;
@@ -94,6 +101,6 @@ namespace simple_sim
     const Vector k2 = derivative(x + 0.5 * dt * k1);
     const Vector k3 = derivative(x + 0.5 * dt * k2);
     const Vector k4 = derivative(x + dt * k3);
-    return unpack(x + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4));
+    return unpack(x + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4), s);
   }
 }  // namespace simple_sim

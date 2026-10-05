@@ -13,7 +13,7 @@
  */
 
 #include <planner_core/trajectory.hpp>
-#include <tailsitter_df/tailsitter_df.hpp>
+#include <tailsitter_df/flu_reference.hpp>
 
 namespace planner::core
 {
@@ -31,17 +31,13 @@ namespace planner::core
     rp.v = traj_.getVel(t);
     rp.a = traj_.getAcc(t);
 
-    // Flatness: body axis + rates from (v, a, jerk).
-    double          thrust = 0.0;
-    Eigen::Vector3d omega  = Eigen::Vector3d::Zero();
-    auto &          data   = tailsitter_df::Data::getInstance();
-    data.df_backward_auto(rp.v, rp.a, traj_.getJer(t), thrust, omega);
-    rp.thrust = thrust;
-    rp.omega  = omega;
-
-    // reference trajectory uses quad FLU body frame, so negate yb
-    const Eigen::Vector3d yb = data.getYb();
-    rp.yb = Eigen::Vector3d(-yb(0), -yb(1), -yb(2));
+    const auto flatness =
+        tailsitter_df::flu_reference(rp.v, rp.a, traj_.getJer(t));
+    rp.rotation = flatness.rotation;
+    rp.yb = rp.rotation.col(1);  // world representation of +Y_FLU, no sign fix
+    rp.omega             = flatness.omega;
+    rp.thrust            = flatness.specific_thrust;
+    rp.flatness_fallback = flatness.fallback;
     return rp;
   }
 

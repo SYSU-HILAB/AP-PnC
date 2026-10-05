@@ -46,7 +46,12 @@ namespace simple_sim
   {
     if (!s.position.allFinite() || !s.velocity.allFinite() ||
         !s.angular_velocity.allFinite() || !s.attitude.coeffs().allFinite() ||
-        std::abs(s.attitude.norm() - 1.0) > 1e-6)
+        std::abs(s.attitude.norm() - 1.0) > 1e-6 || !s.motors.rpm.allFinite() ||
+        !s.motors.rpm_sp.allFinite() || !s.motors.duty.allFinite() ||
+        !s.motors.integral.allFinite() ||
+        !s.motors.previous_error.allFinite() || s.motors.physics_ticks < 0 ||
+        (s.motors.rpm.array() < 0.0).any() ||
+        (s.motors.rpm_sp.array() < 0.0).any())
       throw std::runtime_error("non-finite state or non-unit quaternion");
   }
   void validate_command(const Command &c)

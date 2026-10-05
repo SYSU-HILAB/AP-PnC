@@ -7,6 +7,19 @@
 namespace simple_sim
 {
 
+  // All actuator/PID state lives in the transactional State, not in a mutable
+  // callback. Feedback and RK4 force evaluations must never advance it.
+  struct MotorState
+  {
+    Eigen::Vector4d rpm            = Eigen::Vector4d::Zero();
+    Eigen::Vector4d rpm_sp         = Eigen::Vector4d::Zero();
+    Eigen::Vector4d duty           = Eigen::Vector4d::Constant(-1.0);
+    Eigen::Vector3d integral       = Eigen::Vector3d::Zero();
+    Eigen::Vector3d previous_error = Eigen::Vector3d::Zero();
+    std::int64_t    physics_ticks  = 0;
+    bool            limited        = false;
+  };
+
   // World ENU; body FLU; attitude rotates body vectors into world.
   struct State
   {
@@ -14,6 +27,7 @@ namespace simple_sim
     Eigen::Vector3d    velocity         = Eigen::Vector3d::Zero();
     Eigen::Quaterniond attitude         = Eigen::Quaterniond::Identity();
     Eigen::Vector3d    angular_velocity = Eigen::Vector3d::Zero();
+    MotorState         motors;
   };
 
   struct Wrench
@@ -33,6 +47,7 @@ namespace simple_sim
     Eigen::Vector3d specific_force =
         Eigen::Vector3d::Zero();  // ideal IMU, no gravity
     Wrench aerodynamic;
+    Wrench applied;
   };
 
   struct StepContext

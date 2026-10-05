@@ -7,6 +7,10 @@
 #include "acados_c/ocp_nlp_interface.h"
 #include "acados_solver_tailsitter_flu.h"
 
+static_assert(TAILSITTER_FLU_NX == NMPC_NX,
+              "stale NMPC state ABI: regenerate bundle");
+static_assert(TAILSITTER_FLU_NU == NMPC_NU, "stale NMPC control ABI");
+static_assert(TAILSITTER_FLU_NP == NMPC_NP, "stale NMPC parameter ABI");
 struct nmpc_solver
 {
   tailsitter_flu_solver_capsule *capsule;
@@ -35,6 +39,11 @@ static void _get_nlp_out_u(void *u, ocp_nlp_config *config, ocp_nlp_dims *dims,
 
 static void _get_nlp_out_x_next(void *x, ocp_nlp_config *config,
                                 ocp_nlp_dims *dims, ocp_nlp_out *nlp_out);
+
+int nmpc_solver_abi_version(void)
+{
+  return NMPC_SOLVER_ABI;
+}
 
 nmpc_solver_t *nmpc_solver_create(void)
 {

@@ -17,6 +17,12 @@ dependencies = [
     "websockets>=16.1.1",
 ]
 
+[project.optional-dependencies]
+telemetry = [
+    "opentelemetry-sdk==1.45.0",
+    "opentelemetry-exporter-otlp-proto-http==1.45.0",
+]
+
 [project.scripts]
 ap-pnc = "ap_pnc.cli:main"
 

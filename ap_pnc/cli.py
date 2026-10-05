@@ -1,3 +1,5 @@
+import sys
+
 import typer
 
 from ap_pnc.commands import (
@@ -9,6 +11,7 @@ from ap_pnc.commands import (
     lint,
     sim,
     stack,
+    telemetry,
     test,
 )
 
@@ -25,6 +28,7 @@ app.add_typer(sim.app, name="sim", help="Simulation management (K3s ConfigMap-dr
 app.add_typer(stack.app, name="stack", help="Local ROS2 stack lifecycle")
 app.add_typer(docker.app, name="docker", help="Docker compose commands")
 app.add_typer(lint.app, name="lint", help="Lint and format")
+app.add_typer(telemetry.app, name="telemetry", help="Local OpenTelemetry collector and probes")
 
 
 @app.command(name="start")
@@ -53,4 +57,21 @@ def start(
 
 
 def main() -> None:
-    app()
+    from ap_pnc.observability import operation, session
+
+    commands = {
+        "start",
+        "install",
+        "gen-nmpc-lib",
+        "benchmark",
+        "test",
+        "build",
+        "sim",
+        "stack",
+        "docker",
+        "lint",
+        "telemetry",
+    }
+    command = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in commands else "ap-pnc"
+    with session(), operation("cli.command", {"ap.pnc.command": command}):
+        app()

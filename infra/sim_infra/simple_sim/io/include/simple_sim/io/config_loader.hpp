@@ -6,6 +6,7 @@
 #include "simple_sim/adapters/aero_model.hpp"
 #include "simple_sim/adapters/controllers.hpp"
 #include "simple_sim/config.hpp"
+#include "simple_sim/motor_model.hpp"
 
 namespace simple_sim
 {
@@ -18,6 +19,8 @@ namespace simple_sim
     std::filesystem::path nmpc_yaml;
     PlantConfig           plant;
     RateLoopConfig        rate_loop;
+    MotorModelConfig      motor_model;
+    std::string           actuator_model = "ideal_rate_loop";
     Se3Gains              se3;
     AeroConfig            aero;
     std::string           aero_model;

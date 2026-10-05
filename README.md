@@ -2,6 +2,23 @@
 
 Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
+## Numerical specifications
+
+- [Main ENU/FLU frames and simulation-only legacy wing boundary](docs/coordinate_frames.md)
+- [v_max=6 tracking acceptance and actual NMPC reference plots](docs/tracking_evaluation.md)
+
+These define the migration/acceptance contract. The direct FLU public reference
+and a five-model matched-reference simulation sweep are now implemented; the
+legacy optimization cost kernel and broader dynamic/frame acceptance remain pending.
+
+## Observability
+
+[Project-wide OpenTelemetry contract and rollout](docs/observability.md) covers
+traces, metrics, correlated events, real-time budgets, clocks and privacy.
+The local Collector, Python CLI and real dora simulate→record→verify trace chain
+are implemented. C++ subprocess/decoder boundaries and logged solver diagnostics
+are correlated; internal solver/plant function spans and ROS/SITL remain pending.
+
 ---
 
 ## Quick Start

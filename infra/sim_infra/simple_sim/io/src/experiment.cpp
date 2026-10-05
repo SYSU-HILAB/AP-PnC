@@ -198,21 +198,43 @@ namespace simple_sim
       else
       {
         nmpc::TrackingConfig cfg;
-        cfg.horizon_s  = n["horizon_s"].as<double>();
-        cfg.traj_res_s = n["traj_res_s"].as<double>();
-        cfg.ctrl_frq   = n["ctrl_frq"].as<double>();
-        cfg.u_hover    = n["u_hover"].as<double>();
-        cfg.cz_rate    = n["cz_rate"].as<double>();
-        controller_    = std::make_unique<NmpcController>(trajectory_, cfg);
+        cfg.horizon_s    = n["horizon_s"].as<double>();
+        cfg.traj_res_s   = n["traj_res_s"].as<double>();
+        cfg.ctrl_frq     = n["ctrl_frq"].as<double>();
+        cfg.u_hover      = n["u_hover"].as<double>();
+        cfg.cz_rate      = n["cz_rate"].as<double>();
+        cfg.thrust_tau_s = n["thrust_tau_s"].as<double>();
+        for (int i = 0; i < 3; ++i)
+          cfg.rate_tau_s[i] = n["rate_tau_s"][i].as<double>();
+        controller_ = std::make_unique<NmpcController>(
+            trajectory_, cfg, output_dir_ / "nmpc_reference.csv");
       }
 #endif
       // Any canonical model ("none" resolves to the null model, wrench = 0)
-      ForceModel aero =
-          tailsitter_aero(aerodynamics::make_aero(config_.aero_model),
-                          config_.aero);
-      runner_ = std::make_unique<Runner>(
-          runner_cfg, Plant(config_.plant, std::move(aero)),
-          RateLoop(config_.plant, config_.rate_loop), *controller_);
+      ForceModel aero = tailsitter_aero(
+          aerodynamics::make_aero(config_.aero_model), config_.aero);
+      if (config_.actuator_model == "matlab_vtol")
+      {
+        config_.motor_model.wind_world = config_.aero.wind_world;
+        const auto model               = std::make_shared<const MotorModel>(
+            config_.motor_model, config_.plant.mass,
+            config_.rate_loop.max_specific_force, config_.rate_loop.max_rate,
+            config_.physics_dt_ns);
+        runner_ = std::make_unique<Runner>(
+            runner_cfg,
+            Plant(config_.plant, std::move(aero),
+                  [model](const State &s) { return model->derivative(s); }),
+            [model](const State &s, const Command &)
+            { return model->wrench(s); }, *controller_,
+            [model](const State &s, const Command &c)
+            { return model->initialize(s, c); },
+            [model](const State &s, const Command &c)
+            { return model->prepare(s, c); });
+      }
+      else
+        runner_ = std::make_unique<Runner>(
+            runner_cfg, Plant(config_.plant, std::move(aero)),
+            RateLoop(config_.plant, config_.rate_loop), *controller_);
       const auto    ref0    = trajectory_->sample(0.0);
       const State   initial = initial_state(ref0, config_.plant.gravity);
       const Command command{
@@ -229,8 +251,13 @@ namespace simple_sim
            << ",ref_p_x,ref_p_y,ref_p_z,ref_v_x,ref_v_y,ref_v_z,ref_yb_x,ref_"
               "yb_y,ref_yb_z"
            << ",specific_force_sp,rate_x_sp,rate_y_sp,rate_z_sp,imu_x,imu_y,"
-              "imu_z,aero_fx,aero_fy,aero_fz,aero_mx,aero_my,aero_mz,solver_"
-              "status,solve_time_ms\n";
+              "imu_z,aero_fx,aero_fy,aero_fz,aero_mx,aero_my,aero_mz,"
+              "rpm_1,rpm_2,rpm_3,rpm_4,next_rpm_1,next_rpm_2,next_rpm_3,next_"
+              "rpm_4,"
+              "rpm_sp_1,rpm_sp_2,rpm_sp_3,rpm_sp_4,duty_1,duty_2,duty_3,duty_4,"
+              "applied_fx,applied_fy,applied_fz,applied_mx,applied_my,applied_"
+              "mz,"
+              "solver_status,solve_time_ms\n";
       finish("running");
       finished_ = false;
     }
@@ -284,6 +311,13 @@ namespace simple_sim
       vector_csv(row, record.feedback_before.specific_force);
       vector_csv(row, record.feedback_before.aerodynamic.force);
       vector_csv(row, record.feedback_before.aerodynamic.moment);
+      for (const auto &v :
+           {record.before.motors.rpm, record.after.motors.rpm,
+            record.before.motors.rpm_sp, record.before.motors.duty})
+        for (int i = 0; i < 4; ++i)
+          row << ',' << v[i];
+      vector_csv(row, record.feedback_before.applied.force);
+      vector_csv(row, record.feedback_before.applied.moment);
       row << ',' << record.control.solver_status << ',' << record.solve_time_ms
           << '\n';
       log_ << row.str();
@@ -322,6 +356,9 @@ namespace simple_sim
              << ",\n  \"platform\": " << json_string(AP_PNC_BUILD_PLATFORM)
              << ",\n  \"nmpc_bundle_sha256\": "
              << json_string(AP_PNC_NMPC_BUNDLE_SHA256)
+             << ",\n  \"actuator_model\": "
+             << json_string(config_.actuator_model)
+             << ",\n  \"nmpc_prediction_model\": \"first_order_thrust_rates\""
              << ",\n  \"integrator\": \"rk4\",\n  \"physics_dt_ns\": "
              << config_.physics_dt_ns << ",\n  \"control_dt_ns\": "
              << (runner_ ? runner_->control_dt_ns() : 0)

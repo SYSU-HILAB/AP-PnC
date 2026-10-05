@@ -17,13 +17,17 @@ namespace simple_sim
     Failed
   };
 
+  using ActuatorTransition =
+      std::function<State(const State &, const Command &)>;
+
   // Single-thread-owned. ROS/headless callers schedule step(), never integrate
   // themselves.
   class Runner
   {
    public:
     Runner(RunnerConfig config, Plant plant, Actuation actuation,
-           Controller &controller);
+           Controller &controller, ActuatorTransition initialize = {},
+           ActuatorTransition prepare = {});
     void reset(const State &initial, const Command &initial_command);
     void pause();
     void resume();
@@ -38,15 +42,16 @@ namespace simple_sim
     const std::string &failure() const { return failure_; }
 
    private:
-    RunnerConfig config_;
-    Plant        plant_;
-    Actuation    actuation_;
-    Controller  &controller_;
-    State        state_;
-    Feedback     feedback_;
-    std::int64_t index_  = 0;
-    RunStatus    status_ = RunStatus::Failed;  // reset is mandatory
-    std::string  failure_;
+    RunnerConfig       config_;
+    Plant              plant_;
+    Actuation          actuation_;
+    Controller        &controller_;
+    ActuatorTransition initialize_, prepare_;
+    State              state_;
+    Feedback           feedback_;
+    std::int64_t       index_  = 0;
+    RunStatus          status_ = RunStatus::Failed;  // reset is mandatory
+    std::string        failure_;
   };
 
 }  // namespace simple_sim

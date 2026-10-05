@@ -39,7 +39,6 @@ def ocp_nls() -> AcadosOcp:
 
     ocp.model = model
     nx_aug = model.x.size()[0]
-    nx = nx_aug - model.u.size()[0]
     nu = model.u.size()[0]
     nparam = model.p.size()[0]
 
@@ -77,8 +76,9 @@ def ocp_nls() -> AcadosOcp:
     ocp.cost.yref_0 = np.zeros(ny)
     ocp.cost.yref = np.zeros(ny)
     ocp.cost.yref_e = np.zeros(cost_x_size)
-    ocp.parameter_values = np.zeros(nparam)
-    assert nx == 3 + 3 + 3 + 4 + 1
+    ocp.parameter_values = np.array([0., 0., 0., 0.076, 0.1, 0.1, 0.1])
+    assert nparam == 7
+    assert nx_aug == 3 + 3 + 3 + 4 + 1 + 1
     assert nu == 4
 
     Q_list = np.hstack((MpcConfig.qPos, MpcConfig.qVel, MpcConfig.qAngV, MpcConfig.qYB))
@@ -100,13 +100,13 @@ def ocp_nls() -> AcadosOcp:
 
     ocp.constraints.x0 = np.zeros(nx_aug)
     # bound part of x
-    ocp.constraints.idxbx = np.array([6, 7, 8, 13, 14, 15, 16])
-    ocp.constraints.lbx = np.concatenate((MpcConfig.lb_r, MpcConfig.lb_u))
-    ocp.constraints.ubx = np.concatenate((MpcConfig.ub_r, MpcConfig.ub_u))
+    ocp.constraints.idxbx = np.array([6, 7, 8, 13])
+    ocp.constraints.lbx = np.concatenate((MpcConfig.lb_r, MpcConfig.lb_u[:1]))
+    ocp.constraints.ubx = np.concatenate((MpcConfig.ub_r, MpcConfig.ub_u[:1]))
 
     ocp.constraints.Jbu = np.eye(nu)
-    ocp.constraints.ubu = np.array([10.0, 10.0, 10.0, 10.0]) * 1.0 * 0.8
-    ocp.constraints.lbu = -np.array([10.0, 10.0, 10.0, 10.0]) * 1.0 * 0.8
+    ocp.constraints.ubu = MpcConfig.ub_u
+    ocp.constraints.lbu = MpcConfig.lb_u
 
     # set options
     ocp.solver_options.qp_solver = "FULL_CONDENSING_HPIPM"
