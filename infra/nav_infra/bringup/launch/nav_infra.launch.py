@@ -95,7 +95,7 @@ def generate_launch_description():
     # soon as the sub-node appears (bounded retry, ~2 min).
     set_thrust_scaling = ExecuteProcess(
         cmd=[
-            "bash", "-lc",
+            "bash", "-c",
             "for _ in $(seq 1 240); do "
             "ros2 param set /mavros/setpoint_raw thrust_scaling 1.0 "
             ">/dev/null 2>&1 && exit 0; sleep 0.5; done; "

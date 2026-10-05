@@ -9,40 +9,30 @@ Flight loop: `px4-simulator` (stock PX4 v1.17.0, Gazebo Harmonic `gz_x500`)
 → `nav_infra` (mavros2 + `px4ctrl` with RLS/INDI + odometry adapter) →
 `ap-pnc` core (planner + `nmpc`). px4ctrl is the single
 `/mavros/setpoint_raw/attitude` publisher and owns arming/offboard; in
-`ctrl_mode=1` its PASS_THROUGH state consumes `/mpc_controls` internally
+`ctrl_mode=1` its PASS_THROUGH state consumes `/nmpc/control` internally
 (RLS eta + INDI thrust) instead of forwarding an external stream.
 
 ## Full flight runbook
 
 ```bash
-# 1) containers (skip qgc for headless runs)
-docker compose -f infra/sim_infra/gazebo/docker/docker-compose.yml up -d \
-  --no-deps px4-simulator nav_infra ap-pnc
-
-# 2) SITL inside the simulator container — GZ_IP is MANDATORY (see pitfalls)
-docker exec -d px4-simulator bash -c \
-  'cd /home/px4/PX4-Autopilot && export GZ_IP=127.0.0.1 && HEADLESS=1 make px4_sitl gz_x500 > /tmp/sitl.log 2>&1'
-# wait for "Startup script returned successfully" in /tmp/sitl.log
-
-# 3) GCS heartbeat — PX4 blocks arming without a GCS heartbeat
-#    (udp from port 14550 to 18570, MAV_TYPE_GCS, srcSystem=255)
-cd /tmp && uv run --with pymavlink python gcs_heartbeat.py   # any 1 Hz GCS heartbeat sender
-
-# 4) core stack (nmpc only; px4ctrl runs in the nav_infra container CMD,
-#    sim profile, px4ctrl.yaml hover_percentage 0.9)
-docker exec -d ap-pnc bash -c \
-  'cd /workspace && source /opt/ros/humble/setup.bash && source /workspace/.artifacts/colcon/install/setup.bash && \
-   ros2 launch bringup bringup.launch.py > /tmp/stack.log 2>&1'
+# 1-4) the Compose runtime now starts SITL, GCS heartbeat, nav and core itself.
+# Set absolute AP_PNC_DIR; default target is the host CPU (Mac Apple Silicon: ARM64).
+uv run --project "$AP_PNC_DIR" ap-pnc docker build
+uv run --project "$AP_PNC_DIR" ap-pnc docker up
+# Do NOT start a duplicate SITL/core process or an external heartbeat sender.
+docker exec nav_infra /entrypoint.sh python3 \
+  /workspace/infra/sim_infra/gazebo/scripts/verify_runtime.py
+# Continue with flight commands only in the confirmed simulator, after acceptance.
 
 # 5) takeoff → stable 1 m hover (px4ctrl AUTO_TAKEOFF arms + enters OFFBOARD).
 #    quadrotor_msgs now lives in nav_infra, publish from there.
-docker exec nav_infra bash -c 'source ... && ros2 topic pub -1 /px4ctrl/takeoff_land \
-  quadrotor_msgs/msg/TakeoffLand "{takeoff_land_cmd: 1}"'
+docker exec nav_infra /entrypoint.sh ros2 topic pub -1 /px4ctrl/takeoff_land \
+  quadrotor_msgs/msg/TakeoffLand "{takeoff_land_cmd: 1}"
 
 # 6) remote-rates handover (synchronous service; falls back to hover on loss).
-#    ctrl_mode=1: internal NMPC controls (/mpc_controls) + RLS/INDI thrust.
-docker exec ap-pnc bash -c 'ros2 service call /px4ctrl/toggle_pass_through \
-  std_srvs/srv/SetBool "{data: true}"'        # back: data: false
+#    ctrl_mode=1: internal NMPC controls (/nmpc/control) + RLS/INDI thrust.
+docker exec ap-pnc /entrypoint.sh ros2 service call /px4ctrl/toggle_pass_through \
+  std_srvs/srv/SetBool "{data: true}"        # back: data: false
 
 # throttle-estimator A/B (startup parameter, two flights):
 #   Flight A: throttle_estimator: 0 (thr2acc mapping)
@@ -90,9 +80,9 @@ origin locked in the px4ctrl log.
 7. **Hover throttle**: gz x500 needs `hover_percentage: 0.9` in the sim
    profile (real airframe: 0.5). Lower values leave the drone trembling on
    the ground while everything else looks green.
-8. **`~/.gz` mount ownership**: compose mounts `${HOME}/.gz/sim` which is
-   owned by the host user (1000) but the container user is px4 (1002) — the
-   gz server dies creating log dirs. chown in the image or drop the mount.
+8. **Gazebo home/log ownership**: simulator runs as px4 (1002), with an
+   artifact-owned home. Do not restore host `~/.gz`/X11 mounts; initialize
+   writable bind-mounted log directories for the runtime UID.
 9. **RLS throttle model**: px4ctrl seeds eta = g/hover_percentage
    (sim: 9.81/0.9 ≈ 10.9, real: ≈ 19.6). During `go` handover the estimate
    refines until `estimate_valid: true` (`/px4ctrl/throttle_model_status`);
@@ -105,7 +95,7 @@ origin locked in the px4ctrl log.
 ## Diagnostic toolbox
 
 - **ulg events**: `docker cp` the newest
-  `build/px4_sitl_default/rootfs/log/*/*.ulg`, parse with
+  `/workspace/.artifacts/px4_src/build/px4_sitl_default/rootfs/log/*/*.ulg`, parse with
   `uv run --with pyulog python` — topics `event` (id/log_levels/arguments)
   and `failsafe_flags` (offboard_control_signal_lost, gcs_connection_lost).
 - **Wire truth**: `sudo tcpdump -i lo -w x.pcap 'src port 14540 and dst port

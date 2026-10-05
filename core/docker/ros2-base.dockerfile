@@ -1,8 +1,8 @@
-FROM --platform=linux/arm64 ros:humble AS base
+# syntax=docker/dockerfile:1
+# One source for both linux/arm64 and linux/amd64. The caller selects --platform.
+FROM ros:humble AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Install core build tools, C++ dependencies, and ROS2 development packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -26,19 +26,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-mavros-msgs \
     && rm -rf /var/lib/apt/lists/*
 
-# Setup decoupled workspace layout
-# /workspace/src       <- host core/ros_packages/
-# /workspace/bringup   <- host core/bringup/
-# /workspace/.artifacts <- generated build/install/log and NMPC bundle
+ENV AP_PNC_DIR=/workspace \
+    COLCON_LOG_PATH=/workspace/.artifacts/colcon/log \
+    RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 WORKDIR /workspace
-ENV AP_PNC_DIR=/workspace
 RUN mkdir -p /workspace/src /workspace/bringup /workspace/.artifacts/nmpc_solver
-
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
-    && echo 'if [[ "${AP_PNC_DIR:-}" = /* && -f "${AP_PNC_DIR}/.artifacts/colcon/install/setup.bash" ]]; then source "${AP_PNC_DIR}/.artifacts/colcon/install/setup.bash"; fi' >> /root/.bashrc
-
-COPY core/docker/arm64/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
+COPY core/docker/entrypoint.sh /entrypoint.sh
+COPY core/docker/select-nmpc-bundle.sh /usr/local/bin/select-nmpc-bundle
+RUN chmod +x /entrypoint.sh /usr/local/bin/select-nmpc-bundle \
+    && echo 'source /entrypoint.sh true' >> /root/.bashrc
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bash"]

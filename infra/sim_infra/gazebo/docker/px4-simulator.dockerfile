@@ -1,98 +1,59 @@
-# PX4 SITL simulator container — stock upstream firmware (no forks).
-#
-# Mirrors the upstream v1.17 container recipe (ubuntu:24.04 +
-# Tools/setup/ubuntu.sh) and installs the SAME Gazebo version the script
-# and CI use: Harmonic (gz-sim8). The v1.17 gz_bridge is built and tested
-# against Harmonic; newer Gazebo releases (Jetty/gz-sim10) are nominally
-# supported but the actuator path was observed broken there. PX4 is pinned
-# to a release tag (ARG PX4_VERSION).
-#
-# Run the SITL inside with:  cd /home/px4/PX4-Autopilot && make px4_sitl gz_x500
-# MAVLink: TCP server on 4560 (nav-sidecar mavros fcu_url) plus the default
-# UDP broadcasters for QGC.
+# syntax=docker/dockerfile:1
+# Stock upstream PX4, native ARM64/AMD64; no host GPU or X server required.
 FROM ubuntu:24.04
-
 ARG DEBIAN_FRONTEND=noninteractive
-
-RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache_pxsitl,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    git \
-    wget \
-    curl \
-    sudo \
-    lsb-release \
-    gnupg \
-    vim \
-    file \
-    xz-utils \
-    locales \
-    python3-pip \
-    python3-venv \
-    && locale-gen en_US.UTF-8 \
-    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
-
-# Create px4 user with UID 1002; ubuntu.sh is invoked through sudo.
-RUN groupadd -r px4 && useradd -m -g px4 -u 1002 -s /bin/bash px4 \
-    && echo "px4 ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/px4
-
-USER px4
-WORKDIR /home/px4
-
-# Pin the upstream release so every image build produces the same firmware.
-# Shallow clone keeps the layer small; HTTP/1.1 avoids stream resets through
-# corporate/campus proxies (http_proxy build args are honored by git).
+ARG TARGETARCH
 ARG PX4_VERSION=v1.17.0
+ENV AP_PNC_DIR=/workspace
+WORKDIR /workspace
+
+RUN --mount=type=cache,target=/var/lib/apt/lists,id=ap-pnc-px4-${TARGETARCH},sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl git gnupg build-essential cmake ninja-build pkg-config \
+    python3-dev python3-pip python3-venv python3-setuptools \
+    libunwind-dev cppzmq-dev libeigen3-dev protobuf-compiler libxml2-utils \
+    gosu procps \
+    && curl -fsSL https://packages.osrfoundation.org/gazebo.gpg \
+        -o /usr/share/keyrings/gazebo.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gazebo.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable noble main" \
+        > /etc/apt/sources.list.d/gazebo.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    gz-sim8-cli libgz-sim8-plugins libgz-sim8-dev gz-transport13-cli \
+    libgz-physics7-dartsim libgz-physics7-dartsim-dev libgz-rendering8-ogre2 \
+    libgl1-mesa-dri libopencv-dev libgz-rendering8-core-dev libgz-rendering8-ogre2-dev \
+    libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+    qml-module-qtquick-controls qml-module-qtquick-controls2 qml-module-qtquick-layouts \
+    qml-module-qtquick-window2 qml-module-qtquick2 qml-module-qtgraphicaleffects \
+    qml-module-qtquick-dialogs qml-module-qt-labs-platform qml-module-qt-labs-folderlistmodel \
+    qml-module-qt-labs-settings libqt5svg5
+
+RUN useradd -m -u 1002 -s /bin/bash px4 \
+    && mkdir -p "$AP_PNC_DIR/.artifacts" \
+    && chown px4:px4 "$AP_PNC_DIR/.artifacts"
+USER px4
 RUN git -c http.version=HTTP/1.1 clone --depth 1 --branch "$PX4_VERSION" \
-        --recursive --shallow-submodules \
-        https://github.com/PX4/PX4-Autopilot.git /home/px4/PX4-Autopilot
-WORKDIR /home/px4/PX4-Autopilot
+    https://github.com/PX4/PX4-Autopilot.git "$AP_PNC_DIR/.artifacts/px4_src" \
+    && git -C "$AP_PNC_DIR/.artifacts/px4_src" -c http.version=HTTP/1.1 \
+       submodule update --init --recursive --depth 1 \
+       src/modules/mavlink/mavlink src/drivers/gps/devices src/lib/events/libevents \
+       src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client \
+       src/lib/cdrstream/cyclonedds src/lib/cdrstream/rosidl src/lib/heatshrink/heatshrink \
+       Tools/simulation/gz
+RUN python3 -m venv "$AP_PNC_DIR/.artifacts/px4_venv" \
+    && "$AP_PNC_DIR/.artifacts/px4_venv/bin/pip" install --no-cache-dir \
+       -r "$AP_PNC_DIR/.artifacts/px4_src/Tools/setup/requirements.txt" pymavlink==2.4.49
+ENV PATH="/workspace/.artifacts/px4_venv/bin:$PATH"
+WORKDIR /workspace/.artifacts/px4_src
+ARG BUILD_JOBS=2
+RUN make px4_sitl_default -j"$BUILD_JOBS"
+RUN printf '%s\n' 'param set COM_RCL_EXCEPT 12' 'param set COM_DLL_EXCEPT 4' 'param save' \
+    > "$AP_PNC_DIR/.artifacts/px4_src/build/px4_sitl_default/rootfs/etc/extras.txt"
 
-# Generous pip retry/timeout: ubuntu.sh installs PX4 python deps and the
-# default pip timeouts are too tight behind throttled proxies.
-ENV PIP_DEFAULT_TIMEOUT=120 \
-    PIP_RETRIES=10
-
-RUN sudo bash Tools/setup/ubuntu.sh --no-sim-tools --no-nuttx
-
-# Simulation dependencies: the v1.17 ubuntu.sh block verbatim (gz-harmonic).
-RUN --mount=type=cache,target=/var/lib/apt/lists,id=apt_cache_pxsitl,sharing=locked \
-    sudo wget -q https://packages.osrfoundation.org/gazebo.gpg \
-        -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
-        | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null \
-    && sudo apt-get update -y \
-    && sudo apt-get install -y --no-install-recommends \
-        gz-harmonic \
-        libunwind-dev \
-        cppzmq-dev \
-        dmidecode \
-        gstreamer1.0-plugins-bad \
-        gstreamer1.0-plugins-base \
-        gstreamer1.0-plugins-good \
-        gstreamer1.0-plugins-ugly \
-        gstreamer1.0-libav \
-        libeigen3-dev \
-        libgstreamer-plugins-base1.0-dev \
-        libimage-exiftool-perl \
-        libopencv-dev \
-        libxml2-utils \
-        pkg-config \
-        protobuf-compiler
-
-ENV PATH="/home/px4/PX4-Autopilot/Tools:$PATH"
-RUN make px4_sitl_default
-
-RUN echo "export GZ_SIM_RESOURCE_PATH=/home/px4/PX4-Autopilot/Tools/simulation/gz/models:/home/px4/PX4-Autopilot/Tools/simulation/gz/worlds" \
-        >> /home/px4/.bashrc \
-    && echo "# Offboard-only companion stack: exempt OFFBOARD from the RC and \
-datalink loss failsafes (no RC transmitter, GCS heartbeat only)." \
-        > /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt \
-    && echo "param set COM_RCL_EXCEPT 12" \
-        >> /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt \
-    && echo "param set COM_DLL_EXCEPT 4" \
-        >> /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt \
-    && echo "param save" \
-        >> /home/px4/PX4-Autopilot/build/px4_sitl_default/rootfs/etc/extras.txt
-
-CMD ["bash"]
+USER root
+COPY infra/sim_infra/gazebo/docker/px4-entrypoint.sh /usr/local/bin/px4-entrypoint
+COPY infra/sim_infra/gazebo/scripts/gcs_heartbeat.py /workspace/infra/sim_infra/gazebo/scripts/gcs_heartbeat.py
+RUN chmod +x /usr/local/bin/px4-entrypoint
+ENV GZ_IP=127.0.0.1 GZ_PARTITION=ap_pnc_sitl HEADLESS=1
+ENTRYPOINT ["/usr/local/bin/px4-entrypoint"]
+CMD ["server"]

@@ -68,23 +68,96 @@ Rules:
   absolute `AP_PNC_DIR` (`${AP_PNC_DIR:?...}`); `ap-pnc docker/sim` exports it.
 - Do not introduce cwd-relative paths for configs, artifacts, or build output.
 
-## Host
+## Host, target architecture, and iteration phases
 
-The development host is **Linux**; macOS hosts drive the Linux toolchain
-through Docker:
+The ROS2/acados toolchain runs on **Linux**; this does not mean the host
+must be Linux or the CPU must be AMD64. **On Apple Silicon Macs, the default
+iteration target is Linux ARM64 in Docker**, not emulated Linux AMD64.
 
-- Native acados codegen still requires Linux (t_renderer publishes no macOS
-  build). On any Docker-capable host (including macOS),
-  `uv run ap-pnc gen-nmpc-lib` automatically builds inside the pinned
-  builder image (`core/docker/nmpc-builder.dockerfile`); toolchain versions
-  (acados commit, t_renderer, acados_template) are baked into the image and
+| Development host | Default Docker target | ROS2 base image / service | NMPC bundle |
+|---|---|---|---|
+| macOS Apple Silicon (ARM64) | `linux/arm64` | `ap-pnc-ros2-base:arm64` / `ros2-dev-arm64` | `libnmpc_bundle_aarch64.a` |
+| Linux ARM64 | `linux/arm64` | `ap-pnc-ros2-base:arm64` / `ros2-dev-arm64` | `libnmpc_bundle_aarch64.a` |
+| Linux x86_64 / Intel Mac | `linux/amd64` | `ap-pnc-ros2-base:amd64` / `ros2-dev-amd64` | `libnmpc_bundle_x86_64.a` |
+
+`arm64` (Docker / macOS) and `aarch64` (Linux / bundle name) identify the
+same CPU architecture; likewise `amd64` and `x86_64`. macOS ARM64 binaries
+are not Linux ARM64 binaries: native dependencies must be built inside
+Linux, even when both sides use ARM64.
+
+### Phase 1 — select the target before building
+
+- Use the host-native CPU architecture by default. On Apple Silicon, select
+  `linux/arm64` and the ARM64 Compose service. Both architectures use the
+  same `core/docker/ros2-base.dockerfile`; do not restore duplicated
+  architecture-specific Dockerfiles.
+- AMD64 is a separate, explicitly requested deployment/cross-platform target,
+  not a fallback for Mac development. Do not silently switch to AMD64,
+  use emulation, or reuse x86_64 artifacts to work around an ARM64 failure.
+  Report the unsupported dependency or configuration instead.
+- Specify matching platforms for Docker build and run. A base-image tag alone
+  is not sufficient evidence of the actual image architecture.
+
+### Phase 2 — build Linux artifacts for that target
+
+- On Apple Silicon, generate the solver with
+  `uv run ap-pnc gen-nmpc-lib --arch aarch64`. The default
+  `uv run ap-pnc gen-nmpc-lib` also selects the host CPU architecture and
+  uses Docker on macOS. For an explicitly requested AMD64 target, use
+  `--arch x86_64` instead.
+- The pinned builder (`core/docker/nmpc-builder.dockerfile`) contains the
+  Linux toolchain; acados codegen needs a Linux t_renderer, not a macOS
+  binary. Toolchain versions (acados commit, t_renderer, acados_template)
   must stay in sync with `ap_pnc/commands/install.py:ACADOS_COMMIT`.
-- Bundles are arch-tagged: `libnmpc_bundle_<arch>.a` (`aarch64` | `x86_64`).
-  The unsuffixed `libnmpc_bundle.a` is only the host-native alias — images
-  pinned to a platform (e.g. `ap-pnc` targets amd64) must consume the
-  arch-tagged file (`libnmpc_bundle_x86_64.a`).
-- Host colcon builds (`ap-pnc build ...`) and `ap-pnc install` still assume
-  a Linux host with ROS2/colcon installed.
+- Keep the base image, builder platform, ROS2 compilation, and linked bundle
+  on the same target architecture. Consume the arch-tagged bundle;
+  `libnmpc_bundle.a` is only a host-native convenience alias, not a portable
+  or architecture-independent library.
+- Never reuse colcon/CMake caches, install trees, or compiled bindings from
+  another OS/architecture. Docker solver generation uses
+  `.artifacts/nmpc_build/<solver_arch>/`; dev containers use
+  `.artifacts/docker-dev/<docker_arch>/colcon/`. Do not mount all host
+  `.artifacts/` over an image's install tree.
+- `ap-pnc docker` and `ap-pnc sim build` select the native CPU by default;
+  `--arch arm64|amd64` is explicit. Raw Compose requires absolute
+  `AP_PNC_DIR` and `AP_PNC_ARCH=arm64|amd64`. These architecture settings
+  are not additional project-path variables.
+
+### Phase 3 — run and verify on the same target
+
+- Set `ipc: host` consistently on Docker services; ROS2 containers using
+  FastDDS must share the host IPC namespace so its SHM transport can access
+  the same `/dev/shm` segments. Host networking alone does not share IPC.
+  On macOS this host is Docker's Linux VM, not the macOS IPC namespace.
+  Keep DDS discovery/network configuration consistent as well: shared IPC
+  alone does not establish discovery across separate network namespaces.
+  Verify message delivery and shared SHM mappings, not just container startup;
+  do not silently disable SHM or make UDP-only transport the default workaround.
+- Verify the built image/container architecture and the bundle's object-file
+  architecture before claiming the ARM64 workflow works. Code generation
+  success alone does not prove ROS2 linking or runtime success.
+- Host `ap-pnc build ...` and `ap-pnc install` assume Linux with ROS2/colcon;
+  on macOS, perform those toolchain steps inside the target Linux container.
+- Gazebo defaults to headless PX4 + GCS heartbeat + nav_infra + core.
+  `--gui` adds a container Xvfb/Mesa desktop, QGC and Gazebo GUI via noVNC
+  on host loopback port 6088, without Mac NVIDIA/X11 assumptions. Every
+  service uses host IPC; ROS2 and SITL also share host networking.
+- `nav_infra` defaults to the lean `sim` build target; `--nav-target real`
+  adds the hardware/LIO packages. Gazebo still launches the sim profile.
+  A recipe supporting both architectures is not proof that both builds,
+  complex sensors, or the complete flight sequence have passed.
+- Current acceptance boundary (2026-10-05): ARM64 production core/nav
+  (MAVROS 2.15.1), real solver, FastDDS SHM and QGC/noVNC are verified;
+  see the Gazebo README for evidence and rate warnings. Complete flight
+  and native AMD64 runtime acceptance remain unverified.
+- **Temporarily do not finish the new production PX4 rebuild on this Mac.**
+  Its build was stopped for disk pressure; continue that acceptance on
+  native Linux ARM64/AMD64 runners. Do not silently retry a large Mac PX4
+  build or claim the tested SITL probe is the new production image.
+  QGC/desktop/probe images may be reclaimed after preserving evidence.
+- NMPC is statically linked: regenerating or mounting a bundle does not
+  update an existing executable. Rebuild the core/simple-sim image after
+  solver changes. Config-only core edits can use the read-only config mount.
 
 ## Code style: lint after every change
 

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from ap_pnc import env
+from ap_pnc import docker_runtime, env
 from ap_pnc.commands import docker, lint, test as test_command
 from ap_pnc.paper.benchmark import data
 from ap_pnc.paper.figure import data_utils, specify_figure_dirs
@@ -119,8 +119,8 @@ def test_ruff_operands_and_cache_are_absolute(roots, monkeypatch, command, opera
 def test_compose_has_explicit_project_environment(roots, monkeypatch):
     project, _ = roots
     calls = []
-    monkeypatch.setattr(docker.subprocess, "run", lambda args, **kw: calls.append((args, kw)))
-    docker._compose(["config"])
+    monkeypatch.setattr(docker_runtime.subprocess, "run", lambda args, **kw: calls.append((args, kw)))
+    docker._compose("config")
     args, options = calls[0]
     assert Path(args[3]).is_absolute()
     assert options["env"]["AP_PNC_DIR"] == str(project)

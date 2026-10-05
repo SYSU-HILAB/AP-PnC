@@ -1,97 +1,72 @@
-# nav_infra: the single navigation & interface gateway container.
-#
-# Base services, not research code — provides the generic flight interface
-# consumed by the core container (planner + nmpc) over the shared
-# host-network ROS 2 graph:
-#   - mavros2 (built from source; jammy repo ships mavros-msgs only)
-#   - px4ctrl: FCU interface + L2 control. Single
-#     /mavros/setpoint_raw/attitude publisher, owns arming/offboard.
-#     ctrl_mode=0 tracking controller, ctrl_mode=1 internal NMPC rates +
-#     RLS eta/INDI thrust (/nmpc/control). Hosts the odometry state adapter
-#     (/px4ctrl/state, /px4ctrl/state_odom, /px4ctrl/odom_world).
-#
-# One image for both profiles (ros2 launch bringup nav_infra.launch.py
-# profile:=sim|real):
-#   sim  : mavros only -> /mavros/local_position/odom (PX4 EKF2)
-#   real : + livox_ros_driver2 + fast_lio + ekf_quat -> /ekf_quat/ekf_odom
-FROM ros:humble-ros-base-jammy
-
+# syntax=docker/dockerfile:1
+# Both stages support native ARM64/AMD64. sim excludes hardware/LIO dependencies.
+FROM ros:humble-ros-base-jammy AS mavros-base
 ARG DEBIAN_FRONTEND=noninteractive
-
-# Runtime + build dependencies (PCL only lives in this image).
+ARG MAVROS_VERSION=2.15.1
+ENV AP_PNC_DIR=/workspace COLCON_LOG_PATH=/workspace/.artifacts/colcon/log \
+    RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+WORKDIR /workspace
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    git \
-    ros-dev-tools \
-    libeigen3-dev \
-    libyaml-cpp-dev \
-    ros-humble-pcl-ros \
-    ros-humble-pcl-conversions \
-    libpcl-dev \
-    ros-humble-tf2 \
-    ros-humble-tf2-ros \
-    ros-humble-rosidl-default-generators \
-    ros-humble-ament-cmake-gtest \
-    ros-humble-mavros-msgs \
-    geographiclib-tools \
-    libgeographic-dev \
+    build-essential cmake git ros-dev-tools libeigen3-dev libyaml-cpp-dev \
+    ros-humble-rmw-fastrtps-cpp ros-humble-tf2 ros-humble-tf2-ros \
+    ros-humble-rosidl-default-generators ros-humble-ament-cmake-gtest \
+    "ros-humble-mavros-msgs=${MAVROS_VERSION}-*" geographiclib-tools libgeographic-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Build mavros from source (tag aligned with the repo's mavros-msgs 2.15.1)
-# and install it under /opt/mavros. Lowercase proxy vars are exported for
-# python tooling (rosdep/urllib) when proxy build args are provided.
-WORKDIR /tmp/mavros_ws
-RUN export http_proxy="${HTTP_PROXY:-}" https_proxy="${HTTPS_PROXY:-}" no_proxy="${NO_PROXY:-}" \
-    && git -c http.version=HTTP/1.1 clone --depth 1 --branch 2.15.1 \
-        https://github.com/mavlink/mavros.git src/mavros \
-    && for i in 1 2 3; do rosdep update && break || sleep 5; done \
+RUN if [ -n "${HTTP_PROXY:-}" ]; then export http_proxy="$HTTP_PROXY"; fi \
+    && if [ -n "${HTTPS_PROXY:-}" ]; then export https_proxy="$HTTPS_PROXY"; fi \
+    && if [ -n "${NO_PROXY:-}" ]; then export no_proxy="$NO_PROXY"; fi \
+    && git -c http.version=HTTP/1.1 clone --depth 1 --branch "$MAVROS_VERSION" \
+        https://github.com/mavlink/mavros.git "$AP_PNC_DIR/.artifacts/mavros_src/src/mavros" \
+    && for attempt in 1 2 3; do \
+        if rosdep update --rosdistro humble; then break; fi; \
+        [ "$attempt" != 3 ] || exit 1; sleep 5; \
+       done \
     && apt-get update -qq \
-    && rosdep install -y --from-paths src --ignore-src \
-        --skip-keys "mavros_msgs" \
+    && rosdep install -y --from-paths "$AP_PNC_DIR/.artifacts/mavros_src/src" --ignore-src --skip-keys mavros_msgs \
     && rm -rf /var/lib/apt/lists/* \
     && . /opt/ros/humble/setup.sh \
-    && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
-    && cp -r install /opt/mavros \
-    && cd / && rm -rf /tmp/mavros_ws
-
-# MAVROS GeographicLib datasets (script from the source install; downloads
-# via the proxy when provided). The final check makes a silent skip fatal.
-RUN export http_proxy="${HTTP_PROXY:-}" https_proxy="${HTTPS_PROXY:-}" \
-    && (/opt/mavros/mavros/lib/mavros/install_geographiclib_datasets.sh \
+    && colcon --log-base "$AP_PNC_DIR/.artifacts/colcon/mavros/log" build \
+        --base-paths "$AP_PNC_DIR/.artifacts/mavros_src/src" \
+        --build-base "$AP_PNC_DIR/.artifacts/colcon/mavros/build" \
+        --install-base "$AP_PNC_DIR/.artifacts/colcon/mavros/install" \
+        --parallel-workers 2 --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+    && rm -rf "$AP_PNC_DIR/.artifacts/colcon/mavros/build"
+RUN if [ -n "${HTTP_PROXY:-}" ]; then export http_proxy="$HTTP_PROXY"; fi \
+    && if [ -n "${HTTPS_PROXY:-}" ]; then export https_proxy="$HTTPS_PROXY"; fi \
+    && ("$AP_PNC_DIR/.artifacts/colcon/mavros/install/mavros/lib/mavros/install_geographiclib_datasets.sh" \
         || geographiclib-get-geoids egm96-5) \
     && test -f /usr/share/GeographicLib/geoids/egm96-5.pgm
+COPY core/docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 
-# Build the nav_infra packages + the shared interface contract + bringup
-# (config/launch carrier). Plain install (no symlink-install) so the image
-# is self-contained; the build tree is dropped afterwards.
-WORKDIR /nav_ws
-COPY infra/nav_infra/ros_packages/livox_ros_driver2 src/livox_ros_driver2
-COPY infra/nav_infra/ros_packages/fast_lio src/fast_lio
-COPY infra/nav_infra/ros_packages/ekf_quat_pose src/ekf_quat_pose
-COPY infra/nav_infra/ros_packages/px4ctrl src/px4ctrl
-COPY infra/nav_infra/ros_packages/quadrotor_msgs src/quadrotor_msgs
-# The shared interface contract is defined by the core; nav_infra consumes it.
-COPY core/ros_packages/interface src/interface
-COPY infra/nav_infra/bringup src/bringup
-
-RUN bash -c ". /opt/ros/humble/setup.sh \
-    && . /opt/mavros/setup.bash \
-    && colcon build \
-        --packages-select interface quadrotor_msgs px4ctrl livox_ros_driver2 fast_lio ekf_quat_pose bringup \
-        --cmake-args -DCMAKE_BUILD_TYPE=Release \
-    && rm -rf build"
-
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
-    && echo "source /opt/mavros/setup.bash" >> /root/.bashrc \
-    && echo "source /nav_ws/install/setup.bash" >> /root/.bashrc
-
-# Nodes read configs from the cwd-relative bringup/ path (repo convention).
-# Default to the installed share; deployments can mount the real bringup/
-# over /workspace/bringup (compose does; k3s uses a ConfigMap overlay).
-RUN mkdir -p /workspace \
-    && ln -s /nav_ws/install/bringup/share/bringup /workspace/bringup
-WORKDIR /workspace
-
-ENTRYPOINT ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash && source /opt/mavros/setup.bash && source /nav_ws/install/setup.bash && exec \"$@\"", "--"]
+FROM mavros-base AS sim
+COPY infra/nav_infra/ros_packages/px4ctrl /workspace/src/px4ctrl
+COPY infra/nav_infra/ros_packages/quadrotor_msgs /workspace/src/quadrotor_msgs
+COPY core/ros_packages/interface /workspace/src/interface
+COPY infra/nav_infra/bringup /workspace/bringup
+RUN /entrypoint.sh bash -c 'colcon --log-base "$AP_PNC_DIR/.artifacts/colcon/log" build \
+    --base-paths "$AP_PNC_DIR/src" "$AP_PNC_DIR/bringup" \
+    --build-base "$AP_PNC_DIR/.artifacts/colcon/build" \
+    --install-base "$AP_PNC_DIR/.artifacts/colcon/install" \
+    --packages-select interface quadrotor_msgs px4ctrl bringup \
+    --parallel-workers 2 --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+    && rm -rf "$AP_PNC_DIR/.artifacts/colcon/build"'
+COPY infra/sim_infra/gazebo/scripts/verify_runtime.py /workspace/infra/sim_infra/gazebo/scripts/verify_runtime.py
 CMD ["ros2", "launch", "bringup", "nav_infra.launch.py", "profile:=sim"]
+
+FROM sim AS real
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-pcl-ros ros-humble-pcl-conversions libpcl-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY infra/nav_infra/ros_packages/livox_ros_driver2 /workspace/src/livox_ros_driver2
+COPY infra/nav_infra/ros_packages/fast_lio /workspace/src/fast_lio
+COPY infra/nav_infra/ros_packages/ekf_quat_pose /workspace/src/ekf_quat_pose
+RUN /entrypoint.sh bash -c 'colcon --log-base "$AP_PNC_DIR/.artifacts/colcon/log" build \
+    --base-paths "$AP_PNC_DIR/src" "$AP_PNC_DIR/bringup" \
+    --build-base "$AP_PNC_DIR/.artifacts/colcon/build" \
+    --install-base "$AP_PNC_DIR/.artifacts/colcon/install" \
+    --packages-select livox_ros_driver2 fast_lio ekf_quat_pose \
+    --parallel-workers 2 --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+    && rm -rf "$AP_PNC_DIR/.artifacts/colcon/build"'
+CMD ["ros2", "launch", "bringup", "nav_infra.launch.py", "profile:=real"]

@@ -8,8 +8,10 @@ Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sit
 
 ### 1. Install uv and git
 
-The only host prerequisites are [uv](https://docs.astral.sh/uv/) (Python
-package/environment manager) and git. Both are standard on Linux:
+Host prerequisites are [uv](https://docs.astral.sh/uv/), git and Docker
+with Compose/BuildKit. ROS2, PX4, Gazebo, QGC and the solver run in Linux
+containers. Apple Silicon defaults to native Linux ARM64, not AMD64 emulation.
+For macOS host-network requirements, see the [Gazebo guide](infra/sim_infra/gazebo/README.md).
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh   # install uv
@@ -21,8 +23,8 @@ Verify: `uv --version` and `git --version`.
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/WarriorHanamy/AP-PnC.git
-cd AP-PnC
+export AP_PNC_DIR=/absolute/path/to/AP-PnC
+git clone https://github.com/WarriorHanamy/AP-PnC.git "$AP_PNC_DIR"
 ```
 
 No recursive clone needed: `ap-pnc install` fetches acados automatically
@@ -34,20 +36,34 @@ Aerodynamics ships its own B-spline evaluator (`aero_utils` + a self-contained
 
 ### 3. Full-stack install
 
-The one-shot bootstrap (venv + acados + OCP bundle + Docker images), with a
-step-by-step log:
+Build/start the host-native all-Docker simulation, headless by default:
 
 ```bash
-uv run ap-pnc stack full-install          # everything, ap-pnc + nav_infra images
-uv run ap-pnc stack full-install --docker-all   # + px4-simulator + qground_control (slow)
+uv run --project "$AP_PNC_DIR" ap-pnc docker build
+uv run --project "$AP_PNC_DIR" ap-pnc docker up
+# Optional QGC + Gazebo container desktop (http://127.0.0.1:6088/vnc.html):
+uv run --project "$AP_PNC_DIR" ap-pnc docker build --gui
+uv run --project "$AP_PNC_DIR" ap-pnc docker up --gui
+uv run --project "$AP_PNC_DIR" ap-pnc docker down
 ```
 
-Or step-by-step, for a C++/ROS2-only pipeline:
+Build/up accept `--arch arm64|amd64`; default is the host CPU. A missing
+arch-tagged bundle is generated in the pinned Docker builder with isolated
+caches. Every service uses host IPC; ROS2 and SITL also use host networking.
+Startup automatically launches the processes, but does not request takeoff.
+Current exception: the new production PX4 rebuild is **temporarily deferred on
+Mac**; complete it on native Linux runners. ARM64 core/nav, solver, SHM and QGC
+results are recorded in the [validation table](infra/sim_infra/gazebo/README.md#validation-status-2026-10-05).
+Those results are not full-flight or native AMD64 acceptance.
+`stack full-install` is now Docker-only (core/nav by default; `--docker-all`
+includes SITL and GUI), with no host ROS/acados installation.
+
+Optional **native Linux** toolchain/research setup, not the Mac runtime path:
 
 ```bash
-uv sync --group dev --group extra   # Python env: dev + ML/compute extras
-uv run ap-pnc install               # acados C libs (shared+static), t_renderer, acados_template
-uv run ap-pnc gen-nmpc-lib          # acados codegen → self-contained libnmpc_bundle.a
+uv sync --project "$AP_PNC_DIR" --group dev --group extra
+uv run --project "$AP_PNC_DIR" ap-pnc install
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib
 ```
 
 - `uv sync` creates the project `.venv`; `--group extra` pulls the ML/compute
@@ -62,8 +78,8 @@ uv run ap-pnc gen-nmpc-lib          # acados codegen → self-contained libnmpc_
 Sanity check:
 
 ```bash
-uv run ap-pnc --help
-ls -lh .artifacts/nmpc_solver/libnmpc_bundle.a
+uv run --project "$AP_PNC_DIR" ap-pnc --help
+ls -lh "$AP_PNC_DIR/.artifacts/nmpc_solver/"libnmpc_bundle_*.a
 ```
 
 For a fresh Linux host the full dependency checklist is in the
@@ -178,7 +194,7 @@ uv run ap-pnc --help
 | `build`        | `all`, `nmpc` (nmpc + px4ctrl), `planner`, `planner-bindings`, `aero`, `simple-sim`, `bindings` | C++ colcon builds + pybind |
 | `sim`          | `simple`, `gazebo`, `stop`, `status`, `logs` | K3s ConfigMap-driven simulation |
 | `stack`        | `full-install`, `start`, `trigger go\|back` | Full bootstrap (venv+acados+bundle+Docker) / local ROS2 stack lifecycle (go/back = PASS_THROUGH service) |
-| `docker`       | `build`, `up`, `down` | Docker compose commands |
+| `docker`       | `build`, `up`, `down`, `config`, `dev` | Native-target Docker simulation; optional `--gui` |
 
 ### Examples
 
@@ -280,7 +296,7 @@ core/                # C++/ROS research code
   ros_packages/      #   planner (core/ pure C++ + node/ ROS adapter + python/ pybind),
                      #   nmpc, interface (the message contract)
   bringup/           #   core config/launch: planning, nmpc
-  docker/            #   amd64/arm64 ros2-base dev images
+  docker/            #   one multiarch ROS2 base; isolated native-target dev caches
 infra/               # Infrastructure — each unit self-contained
   nav_infra/         #   ros_packages/ (px4ctrl tracking+NMPC/INDI, quadrotor_msgs,
                      #   livox, fast_lio, ekf_quat_pose)

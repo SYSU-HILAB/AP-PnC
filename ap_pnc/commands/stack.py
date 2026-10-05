@@ -1,10 +1,11 @@
 import os
 import signal
 import subprocess
+from typing import Annotated
 
 import typer
 
-from ap_pnc.env import get_git_root, source_ros2_workspace
+from ap_pnc.env import source_ros2_workspace
 
 app = typer.Typer(help="Local ROS2 stack lifecycle (no containers).")
 
@@ -36,63 +37,24 @@ def _step(n: int, title: str) -> None:
 
 
 def _build_docker_images(services: list[str]) -> None:
-    git_root = get_git_root()
-    compose_file = git_root / "infra" / "sim_infra" / "gazebo" / "docker" / "docker-compose.yml"
-    for svc in services:
-        typer.echo(f"\n--- docker build {svc} ---")
-        subprocess.run(
-            [
-                "docker",
-                "compose",
-                "-f",
-                str(compose_file),
-                "build",
-                "--progress=plain",
-                svc,
-            ],
-            check=True,
-        )
+    from ap_pnc.commands import docker
+
+    docker.build(services=services)
 
 
 @app.command(name="full-install")
 def full_install(
-    docker_all: bool = typer.Option(
-        False,
-        "--docker-all",
-        help="Also build the slow images px4-simulator + qground_control "
-        "(default: ap-pnc + nav_infra only)",
-    ),
+    docker_all: Annotated[
+        bool, typer.Option("--docker-all", help="Include PX4 and the optional container GUI")
+    ] = False,
+    arch: Annotated[str, typer.Option("--arch", help="native | arm64 | amd64")] = "native",
 ) -> None:
-    """Bootstrap everything: venv, acados, OCP codegen + bundle, Docker images.
+    """Build the Docker toolchain and images without installing ROS/acados on the host."""
+    from ap_pnc.commands import docker
 
-    Chains `ap-pnc install` -> `uv sync` (dev + extra) -> `gen-nmpc-lib` ->
-    `docker compose build`, with a step-by-step log. Equivalent to the
-    Quick-Start section of the README in one command.
-    """
-    from ap_pnc.commands import gen_nmpc_lib, install
-
-    git_root = get_git_root()
-
-    _step(1, "Python env + acados C libs (ap-pnc install)")
-    install.install()
-
-    _step(2, "ML/compute extras (uv sync --group dev --group extra)")
-    subprocess.run(
-        ["uv", "sync", "--group", "dev", "--group", "extra"],
-        cwd=git_root,
-        check=True,
-    )
-
-    _step(3, "acados OCP codegen + libnmpc_bundle.a (gen-nmpc-lib)")
-    gen_nmpc_lib.cocp()
-
-    _step(4, "Docker images")
-    services = ["ap-pnc", "nav_infra"]
-    if docker_all:
-        services = ["px4-simulator", "qground_control"] + services
-    _build_docker_images(services)
-
-    typer.echo("\nFull install complete.")
+    services = None if docker_all else ["ap-pnc", "nav_infra"]
+    docker.build(services=services, arch=arch, gui=docker_all)
+    typer.echo("\nDocker installation complete (flight acceptance is a separate step).")
 
 
 @app.command()

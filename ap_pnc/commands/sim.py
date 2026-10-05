@@ -8,6 +8,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
+from ap_pnc.docker_runtime import compose, compose_env, ensure_bundle
 from ap_pnc.env import get_git_root
 
 app = typer.Typer(help="Lockstep tracking runs and K3s simulation management")
@@ -193,33 +194,31 @@ def logs(
 
 @app.command()
 def build(
-    target: str = typer.Option("all", "--target", "-t", help="Target: simple, gazebo, or all"),
+    target: Annotated[str, typer.Option("--target", "-t", help="simple, gazebo, or all")] = "all",
+    arch: Annotated[str, typer.Option("--arch", help="native | arm64 | amd64")] = "native",
+    gui: Annotated[bool, typer.Option("--gui", help="Build the optional Gazebo desktop")] = False,
+    nav_target: Annotated[str, typer.Option("--nav-target", help="sim or real nav image")] = "sim",
 ) -> None:
-    """Rebuild simulation Docker images."""
-    git_root = get_git_root()
+    """Build images for one selected Linux target, using isolated solver generation."""
+    if target not in ("simple", "simple-sim", "gazebo", "all"):
+        raise typer.BadParameter("--target must be simple, gazebo or all")
+    root = get_git_root()
+    compose_env(root, arch, nav_target)
     if target in ("simple", "simple-sim", "all"):
-        console.print("[bold cyan]Building simple-sim Docker image...[/bold cyan]")
-        subprocess.run(
-            [
-                "docker",
-                "compose",
-                "-f",
-                str(git_root / "infra/sim_infra/simple_sim/docker/docker-compose.yml"),
-                "build",
-            ],
-            env={**os.environ, "AP_PNC_DIR": str(git_root)},
-            check=True,
+        ensure_bundle(root, arch)
+        compose(
+            root,
+            root / "infra/sim_infra/simple_sim/docker/docker-compose.yml",
+            ["build", "--progress=plain", "ros2-base"],
+            arch=arch,
+        )
+        compose(
+            root,
+            root / "infra/sim_infra/simple_sim/docker/docker-compose.yml",
+            ["build", "--progress=plain", "simple-sim"],
+            arch=arch,
         )
     if target in ("gazebo", "all"):
-        console.print("[bold cyan]Building Gazebo Docker images...[/bold cyan]")
-        subprocess.run(
-            [
-                "docker",
-                "compose",
-                "-f",
-                str(git_root / "infra/sim_infra/gazebo/docker/docker-compose.yml"),
-                "build",
-            ],
-            env={**os.environ, "AP_PNC_DIR": str(git_root)},
-            check=True,
-        )
+        from ap_pnc.commands import docker
+
+        docker.build(arch=arch, gui=gui, nav_target=nav_target)

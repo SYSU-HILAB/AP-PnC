@@ -25,6 +25,17 @@ def _host_arch() -> str:
     }.get(machine, machine)
 
 
+def _publish_bundle(source: Path, destination: Path) -> None:
+    """Atomic replacement keeps concurrent image builds from reading partial archives."""
+    with tempfile.NamedTemporaryFile(dir=destination.parent, suffix=".a", delete=False) as file:
+        temporary = Path(file.name)
+    try:
+        shutil.copy2(source, temporary)
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def _docker_build_bundle(git_root: Path, target_arch: str) -> None:
     """Build the bundle inside the pinned Docker builder image.
 
@@ -55,23 +66,32 @@ def _docker_build_bundle(git_root: Path, target_arch: str) -> None:
         ],
         check=True,
     )
+    # Codegen and CMake caches are target-specific. Never let a Docker build
+    # overwrite host-native (possibly macOS) or another Linux arch's artifacts.
+    artifacts = git_root / ".artifacts"
+    workspace = artifacts / "nmpc_build" / target_arch
+    workspace.mkdir(parents=True, exist_ok=True)
     run_cmd = [
         "docker", "run", "--rm", "--platform", docker_platform,
-        "-v", f"{git_root}:/ws",
+        "--ipc=host",
+        "-v", f"{git_root}:/ws:ro",
+        "-v", f"{workspace}:/ws/.artifacts:rw",
         "-e", "AP_PNC_DIR=/ws",
+        "-e", "NMPC_BUNDLE_ALIAS=1",
     ]
     env = {**os.environ, "AP_PNC_DIR": str(git_root)}
-    run_cmd += ["-e", f"NMPC_HOST_ARCH={_host_arch()}"]
-    if target_arch == _host_arch():
-        # Target matches the host: refresh the unsuffixed alias.
-        run_cmd += ["-e", "NMPC_BUNDLE_ALIAS=1"]
     subprocess.run(run_cmd + [tag], check=True, env=env)
 
-    tagged = (
-        git_root / ".artifacts" / "nmpc_solver" / f"libnmpc_bundle_{target_arch}.a"
-    )
-    if not tagged.is_file():
-        raise RuntimeError(f"builder container finished but {tagged} is missing")
+    name = f"libnmpc_bundle_{target_arch}.a"
+    built = workspace / "nmpc_solver" / name
+    if not built.is_file():
+        raise RuntimeError(f"builder container finished but {built} is missing")
+    solver_dir = artifacts / "nmpc_solver"
+    solver_dir.mkdir(parents=True, exist_ok=True)
+    tagged = solver_dir / name
+    _publish_bundle(built, tagged)
+    if target_arch == _host_arch():
+        _publish_bundle(tagged, solver_dir / "libnmpc_bundle.a")
     typer.echo(f"Bundle: {tagged}")
 
 

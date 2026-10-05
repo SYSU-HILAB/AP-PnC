@@ -1,4 +1,14 @@
 *
 !core/
+!core/**
 !infra/
-!.artifacts/nmpc_solver/libnmpc_bundle.a
+!infra/**
+!ap_pnc/
+!ap_pnc/**
+!.artifacts/
+.artifacts/*
+!.artifacts/nmpc_solver/
+.artifacts/nmpc_solver/*
+!.artifacts/nmpc_solver/libnmpc_bundle_*.a
+**/__pycache__/
+**/*.pyc

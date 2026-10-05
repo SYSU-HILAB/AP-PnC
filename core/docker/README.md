@@ -1,51 +1,49 @@
-# AP-PnC ROS 2 Base Images
+# ROS2 Linux development images
 
-This directory provides architecture-specific base images (`amd64` and `arm64`) for AP-PnC ROS 2 development and deployment.
+One Dockerfile, `core/docker/ros2-base.dockerfile`, serves both architectures.
+Do not use separate ARM64/AMD64 source recipes or mix their build trees.
 
-## Architecture
+| Host-native target | Docker platform | Bundle |
+|---|---|---|
+| Apple Silicon / Linux ARM64 | linux/arm64 | libnmpc_bundle_aarch64.a |
+| Intel Mac / Linux x86_64 | linux/amd64 | libnmpc_bundle_x86_64.a |
 
-The container environment cleanly decouples runtime dependencies from source code:
+Set an absolute checkout root. The CLI discovers this root from its module or
+`AP_PNC_DIR`, not the shell cwd:
 
-- `/workspace/src`: Mapped to host `core/ros_packages/` (planner line, `nmpc`, `interface`; `px4ctrl` and `quadrotor_msgs` moved to `infra/nav_infra/ros_packages/`).
-- `/workspace/bringup`: Mapped to host `core/bringup/` (contains launch files and configurations).
-- `/workspace/.artifacts/nmpc_solver`: Mapped to host `.artifacts/nmpc_solver/` (contains compiled `libnmpc_bundle.a`).
-
-`AP_PNC_DIR=/workspace` is the only project path variable inside the image;
-build, install and log trees live under `/workspace/.artifacts/colcon/`.
-
-## Building Base Images
-
-### amd64
 ```bash
-# Build base image
-docker build -f core/docker/amd64/ros2-base.dockerfile --target base -t ap-pnc-ros2-base:amd64 .
-
-# Or build self-contained runner image with precompiled packages
-docker build -f core/docker/amd64/ros2-base.dockerfile --target runner -t ap-pnc:amd64 .
+export AP_PNC_DIR=/absolute/path/to/AP-PnC
+uv run --project "$AP_PNC_DIR" ap-pnc docker dev
+# Explicit cross/deployment target, never an automatic fallback:
+uv run --project "$AP_PNC_DIR" ap-pnc docker dev --arch amd64
 ```
 
-### arm64
+`dev` creates a missing matching solver archive in the pinned Linux builder
+and builds/reuses the corresponding base image. To build only the base:
+
 ```bash
-# Build base image (using buildx or on Apple Silicon / arm64 Linux)
-docker buildx build --platform linux/arm64 -f core/docker/arm64/ros2-base.dockerfile --target base -t ap-pnc-ros2-base:arm64 .
+export AP_PNC_ARCH=arm64  # amd64 on an x86 host
+# Selecting a service explicitly activates its architecture profile.
+docker compose -f "$AP_PNC_DIR/core/docker/docker-compose.yml" build ros2-dev-arm64
 ```
 
-## Running Dev Container
+The runtime mounts `core/ros_packages` at `/workspace/src`, bringup at
+`/workspace/bringup`, and the selected archive at the container-local alias.
+Colcon output is isolated on the host under
+`.artifacts/docker-dev/<arm64|amd64>/colcon/`, not the host's native install tree.
+Both services use host network and host IPC; bare `up` starts neither profile.
 
-Using docker-compose (export an absolute `AP_PNC_DIR` first — every context
-and volume resolves against it, never against the current directory):
+Inside the development shell:
+
 ```bash
-export AP_PNC_DIR="$(cd "$(dirname "$0")/../.." && pwd)"  # repository root
-docker compose -f "$AP_PNC_DIR/core/docker/docker-compose.yml" run --rm ros2-dev-amd64
-
-docker compose -f "$AP_PNC_DIR/core/docker/docker-compose.yml" run --rm ros2-dev-arm64
-```
-
-Inside the container, compile all packages (build/install/log stay under
-`$AP_PNC_DIR/.artifacts/colcon/`):
-```bash
-colcon --log-base "$AP_PNC_DIR/.artifacts/colcon/log" build --symlink-install \
+colcon --log-base "$AP_PNC_DIR/.artifacts/colcon/log" build \
+  --base-paths "$AP_PNC_DIR/src" "$AP_PNC_DIR/bringup" \
   --build-base "$AP_PNC_DIR/.artifacts/colcon/build" \
   --install-base "$AP_PNC_DIR/.artifacts/colcon/install" \
-  --cmake-args -DCMAKE_BUILD_TYPE=Release
+  --packages-select interface nmpc planner bringup \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+source "$AP_PNC_DIR/.artifacts/colcon/install/setup.bash"
 ```
+
+For self-contained simulation images, use `ap-pnc docker build` instead.
+See [Gazebo deployment](../../infra/sim_infra/gazebo/README.md).

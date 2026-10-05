@@ -182,11 +182,20 @@ Build/install/log output stays under `.artifacts/colcon/`. No generated files
 belong in the source tree. NMPC is Linux-only; `SIMPLE_SIM_WITH_NMPC=OFF` permits
 non-acados baseline/core checks but does not make macOS a supported flight host.
 
-Docker build uses the existing Linux-generated bundle as a prerequisite:
+Docker build selects the native Linux CPU target (Apple Silicon: ARM64),
+creates a missing arch-tagged bundle in Docker and verifies its ELF members:
 
 ```bash
-docker compose -f "$AP_PNC_DIR/infra/sim_infra/simple_sim/docker/docker-compose.yml" build
+uv run --project "$AP_PNC_DIR" ap-pnc sim build --target simple
+# Explicit alternate target:
+uv run --project "$AP_PNC_DIR" ap-pnc sim build --target simple --arch amd64
 ```
+
+Raw Compose requires `AP_PNC_ARCH=arm64|amd64` and `--profile build` while
+building the shared ROS base first, then the simple-sim service. The image is `simple-sim:<docker_arch>`.
+All services use host IPC; simple-sim uses host networking/FastDDS. The default
+ROS launch is headless (`rviz:=false`), with no host X11 mounts.
+K3s image tags must be updated independently before switching that backend.
 
 Compose mounts only benchmark data and canonical bringup configs, not all artifacts
 (which would hide the image's install tree). K3s selects the image via `SIM_TYPE`;

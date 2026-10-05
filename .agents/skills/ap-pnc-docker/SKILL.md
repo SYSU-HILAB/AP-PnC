@@ -1,70 +1,79 @@
 ---
 name: ap-pnc-docker
-description: Build and run the AP-PnC gazebo Docker stack (px4-simulator, nav_infra, ap-pnc). Covers prerequisites, building, running, and hot-update of the NMPC solver bundle. Use when working with the ROS2 stack or when the user mentions Docker/container build/run/up.
+description: Build and run the AP-PnC all-Docker, native ARM64/AMD64 gazebo stack. Covers target selection, host IPC, headless/default and noVNC GUI profiles, and static solver rebuilds.
 ---
 
 # AP-PnC Docker
 
-## Prerequisites
+Read `infra/sim_infra/gazebo/README.md` from absolute `AP_PNC_DIR` for the
+current deployment contract. No host ROS/acados install is required.
 
-- Host bootstrap must be done: `uv run ap-pnc install`
-- NMPC bundle must exist: `ls .artifacts/nmpc_solver/libnmpc_bundle.a`
-  If not, run `uv run ap-pnc gen-nmpc-lib` first.
+## Target and build
 
-## Build
-
-From repo root (compose handles all services):
+Apple Silicon defaults to Linux ARM64, never silent AMD64 emulation.
+The CLI exports absolute AP_PNC_DIR and normalized AP_PNC_ARCH.
 
 ```bash
-uv run ap-pnc gen-nmpc-lib
-# compose resolves every path against an absolute AP_PNC_DIR
-export AP_PNC_DIR="$(git rev-parse --show-toplevel)"
-docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" build ap-pnc nav_infra
+uv run --project "$AP_PNC_DIR" ap-pnc docker build
+uv run --project "$AP_PNC_DIR" ap-pnc docker build --gui
+# Explicit non-native deployment target only when requested:
+uv run --project "$AP_PNC_DIR" ap-pnc docker build --arch amd64
 ```
 
-`px4-simulator` builds from upstream PX4 v1.17.0 (pinned by
-`ARG PX4_VERSION`, Gazebo Harmonic) and is slow — only rebuild when bumping
-the firmware. Behind a proxy pass
-`--build-arg https_proxy=http://<docker0-ip>:<port>` (see
-`infra/sim_infra/gazebo/README.md`).
+A missing arch-tagged solver is generated in Docker. To regenerate deliberately:
+
+```bash
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch aarch64
+uv run --project "$AP_PNC_DIR" ap-pnc docker build ap-pnc
+```
+
+Caches live under `.artifacts/nmpc_build/<solver_arch>/`. Core/simple-sim image
+builds check every archive member's ELF target. Never consume the host alias
+as a portable build input. NMPC is statically linked: regeneration requires an
+image rebuild, not a bind-mounted archive or merely restarting an old node.
 
 ## Run
 
 ```bash
-# all services (add --scale qground_control=0 for headless)
-docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" up -d
-
-# core subset
-docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" up -d \
-  --no-deps px4-simulator nav_infra ap-pnc
+uv run --project "$AP_PNC_DIR" ap-pnc docker up
+uv run --project "$AP_PNC_DIR" ap-pnc docker up --gui
+uv run --project "$AP_PNC_DIR" ap-pnc docker down
 ```
 
-Containers are interactive (`command: bash`) — the SITL and the control
-stack are started inside them per the `ap-pnc-gazebo-e2e` skill.
+Default services automatically start headless gz_x500 SITL, GCS heartbeat,
+MAVROS/px4ctrl and planner/NMPC. Do not launch duplicate processes with exec.
+No takeoff/arming is issued by startup. The optional GUI is served at
+http://127.0.0.1:6088/vnc.html?autoconnect=1&resize=scale.
 
-## Hot Update
+All services share host IPC. ROS/SITL share host networking and FastDDS SHM.
+On Mac, host means Docker's Linux VM. Desktop HTTP is bridge-published on
+host loopback only; no host X11 or NVIDIA is assumed.
 
-The bundle is bind-mounted at runtime, so most solver updates need no
-rebuild:
+## Verification
 
 ```bash
-uv run ap-pnc gen-nmpc-lib     # rewrites .artifacts/nmpc_solver/libnmpc_bundle.a
-docker exec ap-pnc bash -c 'pkill -f nmpc' && ...   # restart the node/stack
+docker exec nav_infra /entrypoint.sh python3 \
+  /workspace/infra/sim_infra/gazebo/scripts/verify_runtime.py
 ```
 
-Rebuild `ap-pnc` only when C++ sources or dependencies change; core config
-(`core/bringup/`) is live through the symlink-install mount. `px4ctrl`
-(FCU interface/controller) lives in the `nav_infra` image — source or
-config changes there require `docker compose ... build nav_infra` (the
-image is self-contained, no bind mounts).
+This read-only probe checks connected/unarmed PX4, actual sensor/state messages,
+core nodes and thrust_scaling. Full flight acceptance remains separate in the
+gazebo-e2e skill. A recipe, image manifest or process healthcheck alone is not
+proof of runtime/flight success.
 
-## Tips
+## Updates and scope
 
-- The bundle is staged at `<AP_PNC_DIR>/.artifacts/nmpc_solver/libnmpc_bundle.a`;
-  CMake derives that path from `AP_PNC_DIR` (no per-file environment variable).
-  `nmpc_node` links acados statically — no `.so` dependencies. Regenerate the
-  bundle after solver-wrapper API changes.
-- Core image (`ap-pnc-ros2-base`) stays lean; PCL/tf2/mavros runtime
-  dependencies live only in the `nav_infra` image.
-- The install dir is root-owned after container builds — clean it via a
-  container, not host `rm`.
+- Core config is read-only mounted; C++/solver edits require core image rebuild.
+- nav config/C++ edits require nav image rebuild. sim is the default build target;
+  `--nav-target real` additionally compiles hardware/LIO packages.
+- Raw Compose requires AP_PNC_ARCH and the build profile for build dependencies.
+- Dev caches are isolated under `.artifacts/docker-dev/<docker_arch>/colcon/`.
+- Never mount all host artifacts over an image install tree.
+- K3s manifests and GPU sensor performance require their own migration/acceptance.
+- Current Mac exception: the new production PX4 rebuild is deferred to native
+  Linux runners. Do not invoke the all-image build on this Mac unless explicitly
+  resuming that work; core/nav and optional GUI can be selected separately.
+  Read the Gazebo README's validation table before making acceptance claims.
+- QGC/desktop/probe images and caches are disposable after retaining logs,
+  JSON and screenshots; their cleanup does not invalidate prior verification.
+- Watch disk usage. Do not remove unrelated Docker images/containers.
