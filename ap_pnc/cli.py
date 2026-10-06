@@ -7,7 +7,6 @@ from ap_pnc.commands import (
     build,
     docker,
     gen_nmpc_lib,
-    install,
     lint,
     sim,
     stack,
@@ -17,7 +16,6 @@ from ap_pnc.commands import (
 
 app = typer.Typer(no_args_is_help=True, help="AP-PnC tailsitter project CLI.")
 
-app.add_typer(install.app, name="install", help="Install everything (venv, acados, deps)")
 app.add_typer(
     gen_nmpc_lib.app, name="gen-nmpc-lib", help="Generate acados NMPC code and bundle lib"
 )
@@ -61,7 +59,6 @@ def main() -> None:
 
     commands = {
         "start",
-        "install",
         "gen-nmpc-lib",
         "benchmark",
         "test",

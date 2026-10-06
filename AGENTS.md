@@ -108,7 +108,7 @@ Linux, even when both sides use ARM64.
 - The pinned builder (`core/docker/nmpc-builder.dockerfile`) contains the
   Linux toolchain; acados codegen needs a Linux t_renderer, not a macOS
   binary. Toolchain versions (acados commit, t_renderer, acados_template)
-  must stay in sync with `ap_pnc/commands/install.py:ACADOS_COMMIT`.
+  must stay in sync with `ap_pnc/acados_setup.py:ACADOS_COMMIT`.
 - Keep the base image, builder platform, ROS2 compilation, and linked bundle
   on the same target architecture. Consume the arch-tagged bundle;
   `libnmpc_bundle.a` is only a host-native convenience alias, not a portable
@@ -136,7 +136,7 @@ Linux, even when both sides use ARM64.
 - Verify the built image/container architecture and the bundle's object-file
   architecture before claiming the ARM64 workflow works. Code generation
   success alone does not prove ROS2 linking or runtime success.
-- Host `ap-pnc build ...` and `ap-pnc install` assume Linux with ROS2/colcon;
+- Host `ap-pnc build ...` assumes Linux with ROS2/colcon;
   on macOS, perform those toolchain steps inside the target Linux container.
 - Gazebo defaults to headless PX4 + GCS heartbeat + nav_infra + core.
   `--gui` adds a container Xvfb/Mesa desktop, QGC and Gazebo GUI via noVNC

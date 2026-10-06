@@ -92,10 +92,9 @@ uv run --project "$AP_PNC_DIR" ap-pnc --help
 
 | Group | Purpose |
 |---|---|
-| `install`, `gen-nmpc-lib` | build acados and generate the static NMPC solver bundle |
+| `gen-nmpc-lib` | fetch and build acados on first use, then generate the static NMPC solver bundle |
 | `build` | colcon builds: `nmpc`, `planner`, `simple-sim`, `aero`, bindings |
 | `benchmark` | offline plan → track → metrics pipeline |
-| `test` | NMPC, L-MPC, colcon and unit test runners |
 | `docker` | container simulation: `build`, `up`, `down`, `config`, `dev` |
 | `stack` | full bootstrap and the local ROS2 stack lifecycle |
 
@@ -132,6 +131,8 @@ Not yet part of the supported path, and not validated by the quick start:
 - **Real hardware** — `nav_infra` carries the px4ctrl tracking/INDI controller,
   mavros profiles, Livox drivers and FAST-LIO. No hardware or flight acceptance
   is claimed.
-- **K3s orchestration** — ConfigMap-driven simulation switching for the above.
+- **K3s orchestration** — ConfigMap-driven simulation switching. It runs
+  against cri-dockerd and assumes the simulation images you built yourself, so it
+  adds scheduling on top of the same containers instead of a second runtime.
 - **Web visualization and benchmark sweeps** — browser views of trajectories and
   tracking error, and NMPC-vs-SE3 aggregation across runs.

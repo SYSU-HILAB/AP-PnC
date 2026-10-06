@@ -47,7 +47,7 @@ def _docker_build_bundle(git_root: Path, target_arch: str) -> None:
         raise typer.BadParameter(
             "docker is required to build the bundle for this arch on this host"
         )
-    from ap_pnc.commands.install import ACADOS_COMMIT  # single pin source
+    from ap_pnc.acados_setup import ACADOS_COMMIT  # single pin source
 
     docker_platform = {"aarch64": "linux/arm64", "x86_64": "linux/amd64"}[
         target_arch
@@ -212,9 +212,9 @@ def _ensure_prerequisites() -> None:
         return
 
     typer.echo("acados prerequisites missing, running install...")
-    from ap_pnc.commands import install
+    from ap_pnc import acados_setup
 
-    install.install()
+    acados_setup.install_acados_stack()
 
 
 @app.callback(invoke_without_command=True)

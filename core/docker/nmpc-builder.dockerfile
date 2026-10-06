@@ -2,7 +2,7 @@
 # NMPC bundle builder — produces libnmpc_bundle_<arch>.a (aarch64 | x86_64).
 #
 # All toolchain versions are pinned inside this image; the acados commit MUST
-# match ap_pnc/commands/install.py:ACADOS_COMMIT (single source of truth).
+# match ap_pnc/acados_setup.py:ACADOS_COMMIT (single source of truth).
 # Build per target arch (the compiled layers are arch-specific):
 #   docker build --platform linux/arm64  -t ap-pnc-nmpc-builder:<rev>-aarch64 .
 #   docker build --platform linux/amd64  -t ap-pnc-nmpc-builder:<rev>-x86_64 .

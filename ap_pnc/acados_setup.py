@@ -7,8 +7,10 @@ import typer
 
 from ap_pnc.env import ensure_t_renderer, get_git_root, setup_env
 
-app = typer.Typer()
-
+# Internal library, not a CLI command: `ap-pnc gen-nmpc-lib` calls
+# install_acados_stack() on first use, so a separate install step would only be
+# a second way to do the same thing.
+#
 # acados is fetched on demand into .artifacts/acados_src and locked to a pinned
 # commit (no submodule, nothing tracked at the repo top level).
 ACADOS_REPO = "https://github.com/acados/acados.git"
@@ -104,9 +106,8 @@ def _install_acados_template() -> None:
         )
 
 
-@app.callback(invoke_without_command=True)
-def install() -> None:
-    """Install everything: venv, acados C libs (shared + static), t_renderer, acados_template."""
+def install_acados_stack() -> None:
+    """Install the acados toolchain: venv, C libs (shared + static), t_renderer, acados_template."""
     git_root = get_git_root()
     subprocess.run(["uv", "sync", "--project", str(git_root), "--group", "dev"], cwd=git_root, check=True)
     _fetch_acados_source()
@@ -115,4 +116,4 @@ def install() -> None:
     _build_acados_static()
     _download_t_renderer()
     _install_acados_template()
-    typer.echo("Installation complete.")
+    typer.echo("acados toolchain ready.")
