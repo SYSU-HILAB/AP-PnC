@@ -69,7 +69,7 @@ simple_sim:
     # default) diverges there.
     position_gain: [8.0, 8.0, 8.0]
     velocity_gain: [6.0, 6.0, 6.0]
-    attitude_gain: [48.0, 48.0, 48.0]
+    attitude_gain: [10.0, 20.0, 10.0]
     # Body-rate output limit [rad/s, FLU]. The same numbers the NMPC already uses
     # as its command bounds: yaw is lower than pitch and roll because that is what
     # a real airframe will do. Measured without it, the SE3 asked for 14.9 rad/s of
