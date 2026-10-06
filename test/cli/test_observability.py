@@ -15,7 +15,7 @@ def telemetry(monkeypatch):
     from opentelemetry.sdk.metrics.export import InMemoryMetricReader
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-    monkeypatch.delenv("AP_PNC_EXPERIMENT_ID", raising=False)
+    monkeypatch.setattr(otel, "_settings", otel.TelemetrySettings())
     monkeypatch.delenv("TRACEPARENT", raising=False)
     monkeypatch.delenv("TRACESTATE", raising=False)
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
@@ -32,7 +32,7 @@ def telemetry(monkeypatch):
 
 
 def test_disabled_path_does_not_import_sdk(monkeypatch):
-    monkeypatch.setenv("AP_PNC_TELEMETRY", "0")
+    monkeypatch.setattr(otel, "_settings", otel.TelemetrySettings(enabled=False))
     before = set(sys.modules)
     with otel.session(), otel.operation("private raw name deliberately not inspected") as span:
         assert span is None and otel.carrier() == {}
@@ -74,7 +74,7 @@ def test_attributes_fail_closed():
 )
 def test_endpoint_blocks_unapproved_destinations(url, monkeypatch):
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", url)
-    monkeypatch.delenv("AP_PNC_TELEMETRY_ALLOW_REMOTE", raising=False)
+    monkeypatch.setattr(otel, "_settings", otel.TelemetrySettings(allow_remote=False))
     with pytest.raises(ValueError):
         otel.endpoint()
 

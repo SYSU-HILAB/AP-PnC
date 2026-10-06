@@ -12,6 +12,7 @@ import uuid
 import warnings
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
 from importlib.metadata import version
 from urllib.parse import urlparse
 
@@ -91,6 +92,30 @@ def attributes(values):
     return out
 
 
+@dataclass(frozen=True)
+class TelemetrySettings:
+    """Where the tooling's telemetry goes.
+
+    The module owns the defaults and callers override them explicitly: this is a
+    parameter of the tooling, not an environment variable. `AP_PNC_DIR` remains
+    the only environment variable the project defines.
+    """
+
+    enabled: bool = False
+    allow_remote: bool = False
+    sample_ratio: float = 1.0
+    experiment_id: str | None = None
+
+
+_settings = TelemetrySettings()
+
+
+def configure(settings: TelemetrySettings) -> None:
+    """Install the telemetry settings for this process."""
+    global _settings
+    _settings = settings
+
+
 def endpoint():
     base = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318").rstrip("/")
     url = urlparse(base)
@@ -106,7 +131,7 @@ def endpoint():
     ):
         raise ValueError("OTLP endpoint must be an HTTP(S) base URL without credentials/path/query")
     if url.hostname not in {"127.0.0.1", "localhost", "::1", "otel-collector"}:
-        if os.getenv("AP_PNC_TELEMETRY_ALLOW_REMOTE") != "1" or url.scheme != "https":
+        if not _settings.allow_remote or url.scheme != "https":
             raise ValueError("remote telemetry requires explicit opt-in and HTTPS")
     return base
 
@@ -135,17 +160,13 @@ class Telemetry:
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
         from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
-        ratio = (
-            float(os.getenv("AP_PNC_TELEMETRY_SAMPLE_RATIO", "1"))
-            if sample_ratio is None
-            else sample_ratio
-        )
+        ratio = _settings.sample_ratio if sample_ratio is None else sample_ratio
         if not 0 <= ratio <= 1:
             raise ValueError("trace sample ratio must be finite and in [0,1]")
         base = endpoint()
         self.id = (
-            str(uuid.UUID(os.environ["AP_PNC_EXPERIMENT_ID"]))
-            if os.getenv("AP_PNC_EXPERIMENT_ID")
+            str(uuid.UUID(_settings.experiment_id))
+            if _settings.experiment_id
             else str(uuid.uuid4())
         )
         if service not in {"ap-pnc-cli", "ap-pnc-smoke"}:
@@ -243,7 +264,7 @@ def session(service="ap-pnc-cli", *, telemetry=None):
     if existing is not None:
         yield existing
         return
-    enabled = os.getenv("AP_PNC_TELEMETRY", "0") in {"1", "on", "otlp"}
+    enabled = _settings.enabled
     if telemetry is None and not enabled:
         yield None
         return
