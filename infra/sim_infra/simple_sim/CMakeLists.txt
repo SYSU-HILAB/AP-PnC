@@ -38,7 +38,7 @@ endif()
 
 add_library(simple_sim_core STATIC
   core/src/config.cpp core/src/frames.cpp core/src/plant.cpp core/src/rate_loop.cpp
-  core/src/runner.cpp core/src/motor_model.cpp
+  core/src/runner.cpp core/src/motor_model.cpp core/src/throttle_model.cpp
 )
 target_include_directories(simple_sim_core PUBLIC core/include)
 target_link_libraries(simple_sim_core PUBLIC Eigen3::Eigen)
@@ -126,6 +126,9 @@ endif()
 
 if(BUILD_TESTING)
   find_package(Threads REQUIRED)
+  add_executable(simple_sim_throttle_model_test test/test_throttle_model.cpp)
+  target_link_libraries(simple_sim_throttle_model_test PRIVATE simple_sim_core)
+  add_test(NAME simple_sim_throttle_model COMMAND simple_sim_throttle_model_test)
   add_executable(simple_sim_motor_test test/test_motor.cpp)
   target_link_libraries(simple_sim_motor_test PRIVATE simple_sim_core)
   add_test(NAME simple_sim_motor COMMAND simple_sim_motor_test)
