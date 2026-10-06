@@ -10,9 +10,12 @@ a run's configuration.
 
 Variants
 --------
-``se3``      SE3 controller with the configured feedforward setting
-``se3-base`` SE3 controller with the aerodynamic feedforward forced off
-``nmpc``     NMPC baseline for reference
+``se3-aero-ff`` SE3 controller with the aerodynamic feedforward forced ON
+``se3-base``    the same controller with the feedforward forced OFF
+``nmpc``        NMPC baseline for reference
+
+Both SE3 variants force their setting, so the table means the same thing whatever
+the configured default happens to be.
 
 The table reports the change from ``se3-base`` to ``se3`` on every row, so the
 feedforward has to be better than its own baseline on all of them.
@@ -28,7 +31,7 @@ from pathlib import Path
 
 from tooling.env import artifact_path, project_path, setup_env
 
-VARIANTS = ("se3", "se3-base", "nmpc")
+VARIANTS = ("se3-aero-ff", "se3-base", "nmpc")
 AERO_MODELS = ("none", "lyu", "phi")
 
 _JOB_PREFIX = "JOB="
@@ -67,10 +70,11 @@ def _patch_config(text: str, variant: str) -> str:
         raise ValueError(f"unknown variant {variant!r}, expected one of {VARIANTS}")
     controller = "nmpc" if variant == "nmpc" else "se3"
     text = re.sub(r"^  controller: .*$", f"  controller: {controller}", text, flags=re.M)
-    if variant == "se3-base":
+    if variant != "nmpc":
+        enabled = "true" if variant == "se3-aero-ff" else "false"
         text = re.sub(
             r"^    aero_flatness_feedforward: .*$",
-            "    aero_flatness_feedforward: false",
+            f"    aero_flatness_feedforward: {enabled}",
             text,
             flags=re.M,
         )
@@ -231,7 +235,7 @@ def render_table(rows: list[Row]) -> str:
                 cells = [_cell(picked.get(v)) for v in present]
                 delta = ""
                 base = picked.get("se3-base")
-                feedforward = picked.get("se3")
+                feedforward = picked.get("se3-aero-ff")
                 if (
                     base is not None
                     and feedforward is not None

@@ -80,9 +80,12 @@ def stack_sweep_command(
     aero: str = typer.Option("lyu", "--aero", help="Comma list of aero models: none, lyu, phi"),
     vmax: str = typer.Option("8,10,12", "--vmax", help="Comma list of speed caps [m/s]"),
     variants: str = typer.Option(
-        "se3,se3-base,nmpc",
+        "se3-aero-ff,se3-base,nmpc",
         "--variants",
-        help="Controller variants: se3 (configured), se3-base (feedforward forced off), nmpc",
+        help=(
+            "Controller variants: se3-aero-ff (aerodynamic feedforward forced on), "
+            "se3-base (forced off), nmpc"
+        ),
     ),
     duration: float = typer.Option(0.0, "--duration", help="Run length [s]; 0 = whole trajectory"),
     profile: str = typer.Option(
