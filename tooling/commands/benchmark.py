@@ -79,11 +79,10 @@ def run(
 def stack_sweep_command(
     aero: str = typer.Option("lyu", "--aero", help="Comma list of aero models: none, lyu, phi"),
     vmax: str = typer.Option("8,10,12", "--vmax", help="Comma list of speed caps [m/s]"),
-    variants: str = typer.Option("se3,se3-ff,nmpc", "--variants", help="Controller variants"),
-    gain_scale: str = typer.Option(
-        "1.0",
-        "--gain-scale",
-        help="SE3 gain scales: entries separated by ';', each 'S' (all axes) or 'p,v,a'",
+    variants: str = typer.Option(
+        "se3,se3-base,nmpc",
+        "--variants",
+        help="Controller variants: se3 (configured), se3-base (feedforward forced off), nmpc",
     ),
     duration: float = typer.Option(0.0, "--duration", help="Run length [s]; 0 = whole trajectory"),
     profile: str = typer.Option("ideal", "--profile", help="Actuator profile: ideal | practical"),
@@ -91,17 +90,17 @@ def stack_sweep_command(
     mass: float = typer.Option(2.0, "--mass", help="Vehicle mass [kg]"),
     output: str = typer.Option("", "--output", "-o", help="Output directory"),
 ) -> None:
-    """Full stack sweep: one table over aero models, speeds, controllers and gains.
+    """Full stack sweep: one table over aero models, speeds and controllers.
 
     Runs the simple_sim stack (plan -> control -> plant) for every combination and
     prints the whole table at the end, including the per-row change from the SE3
-    baseline to the SE3 aerodynamic feedforward variant.
+    baseline to the SE3 aerodynamic feedforward variant. Controller gains come from
+    core/bringup/config/simple_sim.yaml.
     """
     rows = stack_sweep.run_matrix(
         aeros=tuple(a.strip() for a in aero.split(",") if a.strip()),
         v_maxs=tuple(float(v) for v in vmax.split(",") if v.strip()),
         variants=tuple(v.strip() for v in variants.split(",") if v.strip()),
-        gain_scales=stack_sweep.parse_gain_scales(gain_scale),
         duration_s=duration,
         profile=profile,
         hold_s=hold,

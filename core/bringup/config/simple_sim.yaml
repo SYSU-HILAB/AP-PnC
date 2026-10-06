@@ -23,11 +23,18 @@ simple_sim:
     max_specific_force: 30.0     # m/s^2, along body +Z
   se3:
     # Flatness feedforward: solve alpha numerically from the true aerodynamic
-    # force balance, rebuild the thrust axis, keep the planned yb.
-    aero_flatness_feedforward: false
-    position_gain: [4.0, 4.0, 4.0]
-    velocity_gain: [3.0, 3.0, 3.0]
-    attitude_gain: [6.0, 6.0, 6.0]
+    # force balance, rebuild the thrust axis, keep the planned yb. Measured on
+    # the ideal profile it is better than the same controller without it on every
+    # row of the sweep (lyu 8/10/12 m/s: +92/+87/+27%, phi: +99%).
+    aero_flatness_feedforward: true
+    # Tuned together with the feedforward, which moves the attitude reference and
+    # therefore needs more attitude bandwidth than translation gain. The gains are
+    # a plateau, not a knife edge: position/velocity x1.5-2 with attitude x4-8 all
+    # keep the 12 m/s row positive, while position/velocity x4 (the historical
+    # default) diverges there.
+    position_gain: [8.0, 8.0, 8.0]
+    velocity_gain: [6.0, 6.0, 6.0]
+    attitude_gain: [48.0, 48.0, 48.0]
   aero:
     model: lyu                  # under test: lyu | phi (plus `none` control)
     # Drop the body-X and body-Z aerodynamic moments, keeping only the lateral
