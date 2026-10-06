@@ -37,7 +37,7 @@ class Row:
     aero: str
     v_max: float
     variant: str
-    gain_scale: float
+    gain_scale: tuple[float, ...]
     status: str
     steps: int
     position_rmse: float
@@ -50,7 +50,7 @@ class Row:
             "aero": self.aero,
             "v_max": self.v_max,
             "variant": self.variant,
-            "gain_scale": self.gain_scale,
+            "gain_scale": list(self.gain_scale),
             "status": self.status,
             "steps": self.steps,
             "position_rmse_m": self.position_rmse,
@@ -61,7 +61,29 @@ class Row:
         return data
 
 
-def _patch_config(text: str, variant: str, gain_scale: float) -> str:
+def parse_gain_scales(text: str) -> tuple[tuple[float, ...], ...]:
+    """Parse ``--gain-scale``: entries separated by ``;``, each ``S`` or ``p,v,a``.
+
+    ``4`` scales every SE3 gain by 4; ``4,4,16`` scales position, velocity and
+    attitude separately. The feedforward moves the attitude reference, so the
+    attitude bandwidth is the term most likely to need its own value.
+    """
+    entries: list[tuple[float, ...]] = []
+    for chunk in text.split(";"):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        values = tuple(float(v) for v in chunk.split(",") if v.strip())
+        if len(values) == 1:
+            entries.append((values[0],) * 3)
+        elif len(values) == 3:
+            entries.append(values)
+        else:
+            raise ValueError(f"gain scale {chunk!r} must be S or p,v,a")
+    return tuple(entries)
+
+
+def _patch_config(text: str, variant: str, gain_scale: tuple[float, ...]) -> str:
     """Return the simple_sim.yaml text for one variant at one gain scale."""
     if variant not in VARIANTS:
         raise ValueError(f"unknown variant {variant!r}, expected one of {VARIANTS}")
@@ -78,11 +100,13 @@ def _patch_config(text: str, variant: str, gain_scale: float) -> str:
     )
 
     # Gains: scale the configured SE3 gains so that both SE3 variants share it.
-    for key in ("position_gain", "velocity_gain", "attitude_gain"):
+    for key, scale in zip(
+        ("position_gain", "velocity_gain", "attitude_gain"), gain_scale, strict=True
+    ):
         match = re.search(rf"^    {key}: \[(.*)\]$", text, flags=re.M)
         if match is None:
             raise ValueError(f"simple_sim.yaml has no se3.{key}")
-        values = [float(v) * gain_scale for v in match.group(1).split(",")]
+        values = [float(v) * scale for v in match.group(1).split(",")]
         rendered = ", ".join(f"{v:.6g}" for v in values)
         text = re.sub(
             rf"^    {key}: \[.*\]$",
@@ -139,7 +163,7 @@ def run_matrix(
     aeros: tuple[str, ...] = ("lyu",),
     v_maxs: tuple[float, ...] = (8.0, 10.0, 12.0),
     variants: tuple[str, ...] = VARIANTS,
-    gain_scales: tuple[float, ...] = (1.0,),
+    gain_scales: tuple[tuple[float, ...], ...] = ((1.0, 1.0, 1.0),),
     duration_s: float = 0.0,
     profile: str = "ideal",
     hold_s: float = 2.0,
@@ -158,7 +182,8 @@ def run_matrix(
                 config.write_text(_patch_config(original, variant, gain_scale))
                 for aero in aeros:
                     for v_max in v_maxs:
-                        tag = f"{profile}-{aero}-v{v_max:g}-{variant}-g{gain_scale:g}"
+                        label = "x".join(f"{v:g}" for v in gain_scale)
+                        tag = f"{profile}-{aero}-v{v_max:g}-{variant}-g{label}"
                         job, _ = _run_once(
                             aero=aero,
                             v_max=v_max,
@@ -178,7 +203,7 @@ def run_matrix(
                                 aero=aero,
                                 v_max=v_max,
                                 variant=variant,
-                                gain_scale=gain_scale,
+                                gain_scale=tuple(gain_scale),
                                 status=manifest["status"],
                                 steps=int(manifest["committed_steps"]),
                                 position_rmse=float(metrics["position_rmse_m"]),
@@ -201,7 +226,9 @@ def render_table(rows: list[Row]) -> str:
     for gain_scale in sorted({r.gain_scale for r in rows}):
         selected = [r for r in rows if r.gain_scale == gain_scale]
         present = [v for v in VARIANTS if any(r.variant == v for r in selected)]
-        lines.append(f"### SE3 gain scale {gain_scale:g}\n")
+        label = "/".join(f"{v:g}" for v in gain_scale)
+        lines.append(f"### SE3 gains x position {gain_scale[0]:g} / velocity {gain_scale[1]:g}"
+                     f" / attitude {gain_scale[2]:g}\n")
         header = "| aero | v_max | " + " | ".join(f"{v} posRMSE" for v in present)
         header += " | feedforward |"
         lines.append(header)
