@@ -13,8 +13,11 @@ simple_sim:
   # position-based moments. 2.0 doubles that lever; the profile file itself is
   # never modified and the value is recorded in every manifest.
   arm_length_scale: 2.0
+  # Ideal inner loop: the entire actuation model for the `ideal` profile, so a run
+  # here isolates the guidance and control law from the motor/mixer/PID chain.
   rate_loop:
-    gain: [100.0, 100.0, 100.0]     # rate error -> angular acceleration, 1/s
+    gain: [100.0, 100.0, 100.0]     # 1/tau: tau = 10 ms per angular-rate channel (1/5 of 50 ms)
+    thrust_tau_s: 0.02            # collective specific-force loop, tau = 20 ms (1/5 of 100 ms)
     max_rate: [8.0, 8.0, 8.0]    # rad/s, FLU
     max_moment: [2.0, 2.0, 1.0]  # N m, FLU
     max_specific_force: 30.0     # m/s^2, along body +Z

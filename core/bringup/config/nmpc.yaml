@@ -8,7 +8,7 @@ nmpc:
   # SIGNED d(cx)/d(alpha). Negative for this airframe:
   # measured -0.044 (phi) / -0.011 (lyu) over the 45..110 deg operating band.
   # There is no per-quadrant sign flip any more.
-  cx_alpha_slope: 0.0
+  cx_alpha_slope: 0.0    # baseline; see the local (untracked) hypotheses note
   # Online estimation of d(cx)/d(alpha), replacing a fixed tuned gain:
   #   recursive least squares on the measured (alpha, cx) pairs, fitting
   #   cx ~ a + b*alpha, with kappa = b. `cx_alpha_slope` above is then only the
@@ -24,7 +24,7 @@ nmpc:
   # where kappa hits the limit and the command thrust collapses to zero. lyu's cx
   # is not a valid single-parameter signal, so it stays off until that is fixed.
   cx_slope_estimation: false
-  cx_slope_forgetting: 0.9999  # 100 s memory; 0.995 flipped lyu's sign at 12 m/s
+  cx_slope_forgetting: 0.98    # 1 s window at 50 Hz: the look-ahead accuracy criterion
   cx_slope_limit: 0.06  # tuned against both polars; 0.2 let lyu run away
   cx_slope_covariance_limit: 1.0
   # High-frequency gate: only update while |d(alpha)/dt| exceeds this [rad/s].

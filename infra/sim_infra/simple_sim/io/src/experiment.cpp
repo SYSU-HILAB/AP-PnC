@@ -235,6 +235,20 @@ namespace simple_sim
       // Any canonical model ("none" resolves to the null model, wrench = 0)
       ForceModel aero = tailsitter_aero(
           aerodynamics::make_aero(config_.aero_model), config_.aero);
+      if (config_.actuator_model == "ideal_rate_loop")
+      {
+        // The ideal profile's first-order thrust loop IS the closed loop on the
+        // thrust axis, so the aerodynamic force is not injected along that axis
+        // a second time. This also matches the prediction model, which carries
+        // the aerodynamic force only along body X.
+        auto inner = std::move(aero);
+        aero       = [inner](const State &state)
+        {
+          Wrench wrench    = inner(state);
+          wrench.force.z() = 0.0;  // body +Z is the thrust axis in FLU
+          return wrench;
+        };
+      }
       if (config_.actuator_model == "practical")
       {
         config_.motor_model.wind_world = config_.aero.wind_world;
@@ -254,14 +268,26 @@ namespace simple_sim
             { return model->prepare(s, c); });
       }
       else
+      {
+        // Ideal inner loop: the rate loop is the actuation, and the thrust lag
+        // is a plant state driven through the same command.
+        auto rate_loop =
+            std::make_shared<RateLoop>(config_.plant, config_.rate_loop, true);
         runner_ = std::make_unique<Runner>(
-            runner_cfg, Plant(config_.plant, std::move(aero)),
-            RateLoop(config_.plant, config_.rate_loop), *controller_);
-      const auto    ref0    = trajectory_->sample(0.0);
-      const State   initial = initial_state(ref0, config_.plant.gravity);
+            runner_cfg,
+            Plant(config_.plant, std::move(aero), {},
+                  [rate_loop](const State &state, const Command &command)
+                  { return rate_loop->derivative(state, command); }),
+            *rate_loop, *controller_);
+      }
+      const auto    ref0 = trajectory_->sample(0.0);
       const Command command{
           (ref0.a + config_.plant.gravity * Eigen::Vector3d::UnitZ()).norm(),
           ref0.omega};
+      State initial = initial_state(ref0, config_.plant.gravity);
+      // Start the specific-force loop already at the commanded thrust, so the
+      // run begins in trim instead of spending the first 100 ms catching up.
+      initial.motors.specific_force = command.specific_force;
       runner_->reset(initial, command);
       log_.exceptions(std::ios::failbit | std::ios::badbit);
       log_.open(output_dir_ / "steps.csv");

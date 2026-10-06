@@ -102,6 +102,8 @@ namespace simple_sim
     config.rate_loop.max_moment = read_vector3(sim["rate_loop"]["max_moment"]);
     config.rate_loop.max_specific_force =
         sim["rate_loop"]["max_specific_force"].as<double>();
+    config.rate_loop.thrust_tau_s =
+        sim["rate_loop"]["thrust_tau_s"].as<double>();
     config.rate_loop.validate();
 
     if (sim["actuator"])

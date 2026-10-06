@@ -13,12 +13,13 @@ namespace simple_sim
       if (!w.force.allFinite() || !w.moment.allFinite())
         throw std::runtime_error("non-finite applied wrench");
     }
-    using Vector = Eigen::Matrix<double, 17, 1>;
+    using Vector = Eigen::Matrix<double, 18, 1>;
     Vector pack(const State &s)
     {
       Vector x;
       x << s.position, s.velocity, s.attitude.w(), s.attitude.x(),
-          s.attitude.y(), s.attitude.z(), s.angular_velocity, s.motors.rpm;
+          s.attitude.y(), s.attitude.z(), s.angular_velocity, s.motors.rpm,
+          s.motors.specific_force;
       return x;
     }
     State unpack(const Vector &x, const State &held)
@@ -30,18 +31,20 @@ namespace simple_sim
       if (!s.attitude.coeffs().allFinite() || s.attitude.norm() < 1e-12)
         throw std::runtime_error("invalid integration quaternion");
       s.attitude.normalize();
-      s.angular_velocity = x.segment<3>(10);
-      s.motors.rpm       = x.segment<4>(13);
+      s.angular_velocity      = x.segment<3>(10);
+      s.motors.rpm            = x.segment<4>(13);
+      s.motors.specific_force = x[17];
       validate_state(s);
       return s;
     }
   }  // namespace
 
   Plant::Plant(PlantConfig config, ForceModel aerodynamic,
-               MotorDerivative motors)
+               MotorDerivative motors, ThrustDerivative thrust)
       : config_(std::move(config)),
         aerodynamic_(std::move(aerodynamic)),
-        motors_(std::move(motors))
+        motors_(std::move(motors)),
+        thrust_(std::move(thrust))
   {
     config_.validate();
   }
@@ -98,6 +101,8 @@ namespace simple_sim
               .cwiseQuotient(config_.inertia);
       if (motors_)
         state_rate.segment<4>(13) = motors_(stage);
+      if (thrust_)
+        state_rate[17] = thrust_(stage, command);
       if (!state_rate.allFinite())
         throw std::runtime_error("non-finite integration derivative");
       return state_rate;

@@ -18,6 +18,10 @@ namespace simple_sim
     Eigen::Vector3d previous_error = Eigen::Vector3d::Zero();
     std::int64_t    physics_ticks  = 0;
     bool            limited        = false;
+    // Ideal inner loop only: the filtered collective specific force [m/s^2]
+    // driven by the command through a first-order lag. Zero for the practical
+    // plant, whose thrust comes out of the motor model instead.
+    double specific_force = 0.0;
   };
 
   // World ENU; body FLU; attitude rotates body vectors into world.

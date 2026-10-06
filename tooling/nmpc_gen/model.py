@@ -73,9 +73,10 @@ def create_tailsitter_model() -> AcadosModel:
     rotation_world_from_body = rotation_matrix_from_quaternion(attitude_wxyz)
     velocity_body = rotation_world_from_body.T @ velocity_world
     speed_squared = cs.dot(velocity_world, velocity_world)
-    # Keep the existing regularized definition so stability does not change.
-    angle_offset = 0.1
-    angle_of_attack = cs.atan2(velocity_body[0], velocity_body[2] + angle_offset)
+    # Paper Eq. 1: alpha = atan2(v_z^B, v_x^B) in the paper's body frame, which is
+    # atan2(v_x, v_z) in ours. No offset: the regularised version shifted alpha and
+    # its rate exactly where the vehicle operates (alpha near 90 deg).
+    angle_of_attack = cs.atan2(velocity_body[0], velocity_body[2])
     aerodynamic_acceleration_body = cs.vertcat(aero_coefficient_x * speed_squared, 0, 0)
     acceleration_world = rotation_world_from_body @ (
         cs.vertcat(0, 0, specific_thrust_command) + aerodynamic_acceleration_body
@@ -86,10 +87,11 @@ def create_tailsitter_model() -> AcadosModel:
     # in the legacy wing frame). Differentiate the exact atan2 above instead of
     # re-deriving a separate approximation.
     velocity_body_rate = acceleration_body - cs.cross(body_rate_command, velocity_body)
-    numerator = (velocity_body[2] + angle_offset) * velocity_body_rate[0] - velocity_body[
-        0
-    ] * velocity_body_rate[2]
-    denominator = velocity_body[0] ** 2 + (velocity_body[2] + angle_offset) ** 2
+    # Paper Eq. 28: alpha_dot = Omega_by + (a_z cos(alpha) - a_x sin(alpha)) / V,
+    # expressed in our axes. This is the exact chain rule of the atan2 above, so
+    # the sign and the -omega x v rotating-frame term are both implied.
+    numerator = velocity_body[2] * velocity_body_rate[0] - velocity_body[0] * velocity_body_rate[2]
+    denominator = velocity_body[0] ** 2 + velocity_body[2] ** 2
     angle_of_attack_rate = numerator / denominator
     coefficient_derivative = cs.if_else(
         speed_squared > 1.0, cx_alpha_slope * angle_of_attack_rate, 0.0

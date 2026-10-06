@@ -33,6 +33,9 @@ namespace simple_sim
     if (!std::isfinite(max_specific_force) || max_specific_force <= 0.0)
       throw std::invalid_argument(
           "specific-force limit must be positive and finite");
+    if (!std::isfinite(thrust_tau_s) || thrust_tau_s <= 0.0)
+      throw std::invalid_argument(
+          "thrust time constant must be positive and finite");
   }
   void RunnerConfig::validate() const
   {
