@@ -36,6 +36,7 @@ _JOB_PREFIX = "JOB="
 
 @dataclass(frozen=True)
 class Row:
+    profile: str
     aero: str
     v_max: float
     variant: str
@@ -123,7 +124,7 @@ def run_matrix(
     v_maxs: tuple[float, ...] = (8.0, 10.0, 12.0),
     variants: tuple[str, ...] = VARIANTS,
     duration_s: float = 0.0,
-    profile: str = "ideal",
+    profiles: tuple[str, ...] = ("ideal",),
     hold_s: float = 2.0,
     mass_kg: float = 2.0,
     output_dir: Path | None = None,
@@ -137,36 +138,60 @@ def run_matrix(
     try:
         for variant in variants:
             config.write_text(_patch_config(original, variant))
-            for aero in aeros:
-                for v_max in v_maxs:
-                    tag = f"{profile}-{aero}-v{v_max:g}-{variant}"
-                    job, _ = _run_once(
-                        aero=aero,
-                        v_max=v_max,
-                        duration_s=duration_s,
-                        profile=profile,
-                        hold_s=hold_s,
-                        mass_kg=mass_kg,
-                        log_dir=out,
-                        tag=tag,
-                    )
-                    benchmark_dir = Path(job) / "benchmark"
-                    run_dir = next(benchmark_dir.glob("simple_sim_*"))
-                    manifest = json.loads((run_dir / "manifest.json").read_text())
-                    metrics = json.loads((run_dir / "metrics.json").read_text())
-                    rows.append(
-                        Row(
-                            aero=aero,
-                            v_max=v_max,
-                            variant=variant,
-                            status=manifest["status"],
-                            steps=int(manifest["committed_steps"]),
-                            position_rmse=float(metrics["position_rmse_m"]),
-                            position_max=float(metrics["position_max_m"]),
-                            velocity_rmse=float(metrics["velocity_rmse_mps"]),
-                            run_dir=run_dir,
+            for profile in profiles:
+                for aero in aeros:
+                    for v_max in v_maxs:
+                        tag = f"{profile}-{aero}-v{v_max:g}-{variant}"
+                        # One bad run must not destroy the table: a failure is a
+                        # row, not an exception. A real crash of the stack still
+                        # raises out of _run_once and is reported as an error row.
+                        try:
+                            job, _ = _run_once(
+                                aero=aero,
+                                v_max=v_max,
+                                duration_s=duration_s,
+                                profile=profile,
+                                hold_s=hold_s,
+                                mass_kg=mass_kg,
+                                log_dir=out,
+                                tag=tag,
+                            )
+                            benchmark_dir = Path(job) / "benchmark"
+                            run_dir = next(benchmark_dir.glob("simple_sim_*"))
+                            manifest = json.loads((run_dir / "manifest.json").read_text())
+                            metrics = json.loads((run_dir / "metrics.json").read_text())
+                            row = Row(
+                                profile=profile,
+                                aero=aero,
+                                v_max=v_max,
+                                variant=variant,
+                                status=manifest["status"],
+                                steps=int(manifest["committed_steps"]),
+                                position_rmse=float(metrics["position_rmse_m"]),
+                                position_max=float(metrics["position_max_m"]),
+                                velocity_rmse=float(metrics["velocity_rmse_mps"]),
+                                run_dir=run_dir,
+                            )
+                        except Exception as error:  # noqa: BLE001 - keep sweeping
+                            print(f"{tag}: {error}")
+                            row = Row(
+                                profile=profile,
+                                aero=aero,
+                                v_max=v_max,
+                                variant=variant,
+                                status="error",
+                                steps=0,
+                                position_rmse=float("nan"),
+                                position_max=float("nan"),
+                                velocity_rmse=float("nan"),
+                                run_dir=out,
+                            )
+                        rows.append(row)
+                        print(
+                            f"{profile:9s} {aero:5s} v{v_max:<3g} {variant:8s} "
+                            f"{row.status:9s} {row.position_rmse:.4f}",
+                            flush=True,
                         )
-                    )
     finally:
         config.write_text(original)
 
@@ -175,33 +200,54 @@ def run_matrix(
     return rows
 
 
+def _cell(row: Row | None) -> str:
+    if row is None:
+        return "-"
+    if row.status == "error" or row.position_rmse != row.position_rmse:  # NaN
+        return "error"
+    mark = "" if row.status == "finished" else " (failed)"
+    return f"{row.position_rmse:.4f}{mark}"
+
+
 def render_table(rows: list[Row]) -> str:
-    """Markdown table: one row per (aero, v_max), one column per variant."""
+    """Markdown tables: one per profile, one row per (aero, v_max)."""
     present = [v for v in VARIANTS if any(r.variant == v for r in rows)]
-    lines = [
-        "| aero | v_max | " + " | ".join(f"{v} posRMSE" for v in present) + " | feedforward |",
-        "|---|---:|" + "---:|" * len(present) + "---|",
-    ]
-    for aero in sorted({r.aero for r in rows}):
-        for v_max in sorted({r.v_max for r in rows}):
-            picked = {r.variant: r for r in rows if r.aero == aero and r.v_max == v_max}
-            cells = []
-            for variant in present:
-                row = picked.get(variant)
-                if row is None:
-                    cells.append("-")
-                    continue
-                mark = "" if row.status == "finished" else " (failed)"
-                cells.append(f"{row.position_rmse:.4f}{mark}")
-            delta = ""
-            base = picked.get("se3-base")
-            feedforward = picked.get("se3")
-            if base is not None and feedforward is not None and base.position_rmse > 0.0:
-                change = (
-                    (base.position_rmse - feedforward.position_rmse) / base.position_rmse * 100.0
+    lines: list[str] = []
+    for profile in sorted({r.profile for r in rows}):
+        selected = [r for r in rows if r.profile == profile]
+        lines.append(f"### actuator profile: {profile}\n")
+        lines.append(
+            "| aero | v_max | " + " | ".join(f"{v} posRMSE" for v in present)
+            + " | feedforward |"
+        )
+        lines.append("|---|---:|" + "---:|" * len(present) + "---|")
+        for aero in sorted({r.aero for r in selected}):
+            for v_max in sorted({r.v_max for r in selected}):
+                picked = {
+                    r.variant: r
+                    for r in selected
+                    if r.aero == aero and r.v_max == v_max
+                }
+                cells = [_cell(picked.get(v)) for v in present]
+                delta = ""
+                base = picked.get("se3-base")
+                feedforward = picked.get("se3")
+                if (
+                    base is not None
+                    and feedforward is not None
+                    and base.position_rmse > 0.0
+                    and feedforward.position_rmse == feedforward.position_rmse
+                ):
+                    change = (
+                        (base.position_rmse - feedforward.position_rmse)
+                        / base.position_rmse
+                        * 100.0
+                    )
+                    delta = f"{change:+.1f}%"
+                    if feedforward.status != "finished":
+                        delta += " (failed)"
+                lines.append(
+                    f"| {aero} | {v_max:g} | " + " | ".join(cells) + f" | {delta} |"
                 )
-                delta = f"{change:+.1f}%"
-                if feedforward.status != "finished":
-                    delta += " (failed)"
-            lines.append(f"| {aero} | {v_max:g} | " + " | ".join(cells) + f" | {delta} |")
+        lines.append("")
     return "\n".join(lines)

@@ -85,7 +85,9 @@ def stack_sweep_command(
         help="Controller variants: se3 (configured), se3-base (feedforward forced off), nmpc",
     ),
     duration: float = typer.Option(0.0, "--duration", help="Run length [s]; 0 = whole trajectory"),
-    profile: str = typer.Option("ideal", "--profile", help="Actuator profile: ideal | practical"),
+    profile: str = typer.Option(
+        "ideal", "--profile", help="Comma list of actuator profiles: ideal | practical"
+    ),
     hold: float = typer.Option(2.0, "--hold", help="Terminal dwell [s]"),
     mass: float = typer.Option(2.0, "--mass", help="Vehicle mass [kg]"),
     output: str = typer.Option("", "--output", "-o", help="Output directory"),
@@ -102,7 +104,7 @@ def stack_sweep_command(
         v_maxs=tuple(float(v) for v in vmax.split(",") if v.strip()),
         variants=tuple(v.strip() for v in variants.split(",") if v.strip()),
         duration_s=duration,
-        profile=profile,
+        profiles=tuple(p.strip() for p in profile.split(",") if p.strip()),
         hold_s=hold,
         mass_kg=mass,
         output_dir=Path(output) if output else None,
