@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from jaxopt import LevenbergMarquardt
 
-from ap_pnc.env import project_path
+from tooling.env import project_path
 
 # Use pgf backend for publication-quality plots
 plt.rcParams.update({
@@ -17,7 +17,7 @@ plt.rcParams.update({
     "pgf.preamble": r"\usepackage{amsmath}",
 })
 
-from ap_pnc.paper.methods.lu.gd_model_jax import (  # noqa: E402 -- after rcParams/pgf setup
+from tooling.paper.methods.lu.gd_model_jax import (  # noqa: E402 -- after rcParams/pgf setup
     aerodynamics_B_vb,
 )
 

@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from ap_pnc.paper.methods.lu.aero_coefficients import (
+from tooling.paper.methods.lu.aero_coefficients import (
     get_jax_coefficients,
     get_numpy_coefficients,
 )
-from ap_pnc.paper.methods.lu.gd_model_casadi import SymbolicGdModel
+from tooling.paper.methods.lu.gd_model_casadi import SymbolicGdModel
 
 
 def test_numpy_and_jax_coefficients_match_values():

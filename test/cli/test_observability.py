@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from ap_pnc import observability as otel
+from tooling import observability as otel
 
 
 @pytest.fixture
@@ -163,7 +163,7 @@ def test_nested_session_lifecycle(telemetry):
 
 
 def test_collector_command_is_scoped_and_paths_absolute(monkeypatch, tmp_path):
-    from ap_pnc.commands import telemetry as cli
+    from tooling.commands import telemetry as cli
 
     monkeypatch.setenv("AP_PNC_DIR", str(tmp_path))
     calls = []

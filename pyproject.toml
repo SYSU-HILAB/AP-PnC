@@ -24,7 +24,7 @@ telemetry = [
 ]
 
 [project.scripts]
-ap-pnc = "ap_pnc.cli:main"
+ap-pnc = "tooling.cli:main"
 
 [dependency-groups]
 dev = [
@@ -51,13 +51,13 @@ package = true
 
 [tool.setuptools.packages.find]
 where = [".", "infra/sim_infra/aerodynamics/python"]
-include = ["ap_pnc*", "aerodynamics*"]
+include = ["tooling*", "aerodynamics*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 required-version = "0.5.4"
-src = ["ap_pnc", "ros_packages", "tests"]
+src = ["tooling", "ros_packages", "tests"]
 extend-exclude = [
     "artifacts",
     "docs",
@@ -82,7 +82,7 @@ ignore = [
 fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["ap_pnc", "ros_packages"]
+known-first-party = ["tooling", "ros_packages"]
 combine-as-imports = true
 
 [tool.ruff.format]

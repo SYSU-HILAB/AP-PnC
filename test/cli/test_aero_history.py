@@ -6,7 +6,7 @@ import importlib.util
 import numpy as np
 import pytest
 
-from ap_pnc.env import get_git_root
+from tooling.env import get_git_root
 
 
 def module():

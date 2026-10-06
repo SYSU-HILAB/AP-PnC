@@ -7,10 +7,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from ap_pnc import docker_runtime, env
-from ap_pnc.commands import docker, lint, test as test_command
-from ap_pnc.paper.benchmark import data
-from ap_pnc.paper.figure import data_utils, specify_figure_dirs
+from tooling import docker_runtime, env
+from tooling.commands import docker, lint, test as test_command
+from tooling.paper.benchmark import data
+from tooling.paper.figure import data_utils, specify_figure_dirs
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def test_worktree_discovery_is_module_anchored(roots, monkeypatch):
     git_dir.mkdir(parents=True)
     (git_dir / "commondir").write_text("../..\n")
     monkeypatch.delenv("AP_PNC_DIR")
-    monkeypatch.setattr(env, "__file__", str(foreign / "ap_pnc" / "env.py"))
+    monkeypatch.setattr(env, "__file__", str(foreign / "tooling" / "env.py"))
 
     def git(args, **kwargs):
         assert args[:3] == ["git", "-C", str(foreign)]

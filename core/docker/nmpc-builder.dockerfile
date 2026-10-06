@@ -2,7 +2,7 @@
 # NMPC bundle builder — produces libnmpc_bundle_<arch>.a (aarch64 | x86_64).
 #
 # All toolchain versions are pinned inside this image; the acados commit MUST
-# match ap_pnc/acados_setup.py:ACADOS_COMMIT (single source of truth).
+# match tooling/acados_setup.py:ACADOS_COMMIT (single source of truth).
 # Build per target arch (the compiled layers are arch-specific):
 #   docker build --platform linux/arm64  -t ap-pnc-nmpc-builder:<rev>-aarch64 .
 #   docker build --platform linux/amd64  -t ap-pnc-nmpc-builder:<rev>-x86_64 .
@@ -45,7 +45,7 @@ RUN case "$(uname -m)" in \
  && chmod +x /opt/acados/bin/t_renderer
 
 # Python codegen deps; acados_template version == the acados commit above.
-# typer: the entrypoint reuses ap_pnc.commands.gen_nmpc_lib bundle logic.
+# typer: the entrypoint reuses tooling.commands.gen_nmpc_lib bundle logic.
 RUN python3 -m pip install --no-cache-dir casadi numpy pyyaml typer \
  && python3 -m pip install --no-cache-dir /opt/acados_src/interfaces/acados_template
 

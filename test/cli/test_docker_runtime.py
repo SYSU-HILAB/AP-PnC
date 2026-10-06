@@ -10,9 +10,9 @@ import pytest
 import typer
 import yaml
 
-from ap_pnc import docker_runtime as runtime
-from ap_pnc.commands import docker, gen_nmpc_lib, sim, stack
-from ap_pnc.env import get_git_root
+from tooling import docker_runtime as runtime
+from tooling.commands import docker, gen_nmpc_lib, sim, stack
+from tooling.env import get_git_root
 
 ROOT = get_git_root()
 

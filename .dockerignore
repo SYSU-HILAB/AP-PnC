@@ -3,8 +3,8 @@
 !core/**
 !infra/
 !infra/**
-!ap_pnc/
-!ap_pnc/**
+!tooling/
+!tooling/**
 !.artifacts/
 .artifacts/*
 !.artifacts/nmpc_solver/

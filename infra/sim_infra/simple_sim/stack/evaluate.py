@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from ap_pnc.env import artifact_path, get_git_root, project_path
+from tooling.env import artifact_path, get_git_root, project_path
 
 # Only models marked under_test (plus the null control) may appear in a campaign.
 # See infra/sim_infra/aerodynamics/include/aerodynamics/aero_models.hpp.

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ap_pnc.env import project_path
+from tooling.env import project_path
 
 
 def _dataset_path() -> str:

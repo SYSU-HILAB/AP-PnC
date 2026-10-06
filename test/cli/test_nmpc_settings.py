@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ap_pnc.nmpc_gen.create_ocp import load_nmpc_settings
+from tooling.nmpc_gen.create_ocp import load_nmpc_settings
 
 
 def test_yaml_is_the_only_tuning_source():

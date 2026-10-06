@@ -33,7 +33,7 @@ from aerodynamics.inference.derivatives import load_aero_derivatives
 from aerodynamics.inference.predictor import load_aerodynamics_mlp
 from scipy.optimize import root_scalar
 
-from ap_pnc.env import artifact_path
+from tooling.env import artifact_path
 
 
 @dataclass

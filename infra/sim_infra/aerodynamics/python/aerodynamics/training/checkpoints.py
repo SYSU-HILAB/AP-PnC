@@ -9,7 +9,7 @@ from flax.core import FrozenDict
 from safetensors.flax import save_file
 from safetensors.numpy import load_file
 
-from ap_pnc.env import artifact_path, project_path
+from tooling.env import artifact_path, project_path
 
 
 def save_safetensors(

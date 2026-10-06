@@ -10,7 +10,7 @@ import pytest
 import tomllib
 import yaml
 
-from ap_pnc.env import get_git_root
+from tooling.env import get_git_root
 
 ROOT = get_git_root()
 STACK = ROOT / "infra/sim_infra/simple_sim/stack"

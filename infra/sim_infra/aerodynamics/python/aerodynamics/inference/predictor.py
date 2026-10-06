@@ -10,7 +10,7 @@ import jax.numpy as jnp
 
 from aerodynamics.models.aerodynamics_mlp import AerodynamicsMLP
 from aerodynamics.training.checkpoints import load_safetensors
-from ap_pnc.env import project_path
+from tooling.env import project_path
 
 
 class AerodynamicsMLPPredictor:

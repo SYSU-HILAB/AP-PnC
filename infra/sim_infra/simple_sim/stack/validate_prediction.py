@@ -5,9 +5,9 @@ import json
 import casadi as ca
 import numpy as np
 
-from ap_pnc.env import artifact_path, get_git_root
-from ap_pnc.nmpc_gen.create_ocp import load_nmpc_settings, ocp_nls
-from ap_pnc.nmpc_gen.model import create_tailsitter_model, rotation_matrix_from_quaternion
+from tooling.env import artifact_path, get_git_root
+from tooling.nmpc_gen.create_ocp import load_nmpc_settings, ocp_nls
+from tooling.nmpc_gen.model import create_tailsitter_model, rotation_matrix_from_quaternion
 
 
 def main():

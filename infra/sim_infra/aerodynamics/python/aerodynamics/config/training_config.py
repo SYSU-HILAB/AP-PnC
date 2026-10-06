@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from ap_pnc.env import artifact_path
+from tooling.env import artifact_path
 
 
 @dataclass(frozen=True)

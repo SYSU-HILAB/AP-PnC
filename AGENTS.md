@@ -10,7 +10,7 @@ For project navigation, file access, runtime resources, and generated output,
 - Use an absolute path, or explicitly anchor the path at `AP_PNC_DIR`
   (for example, `$AP_PNC_DIR/core/bringup/config/planning.yaml`).
 - `AP_PNC_DIR` itself must be an absolute project-root path. In Python, obtain
-  that root through `ap_pnc.env.get_git_root()` and join paths to it.
+  that root through `tooling.env.get_git_root()` and join paths to it.
 - Never rely on the current working directory. Bare paths such as `core/...`,
   `./config/...`, `../...`, and `Path.cwd() / ...` are not permitted for project
   navigation or resource/output lookup, even when the current directory happens
@@ -58,11 +58,11 @@ Rules:
 - No `build/`, `install/`, `log/`, or generated files inside `core/`, at the
   project root, or in any tracked source directory.
 - colcon log/install/build bases all point under `.artifacts/colcon/`
-  (`COLCON_LOG_PATH` is set by `ap_pnc.env.setup_env`).
+  (`COLCON_LOG_PATH` is set by `tooling.env.setup_env`).
 - Resolve paths **absolutely**, anchored at the project root
-  (`ap_pnc.env.get_git_root()` in Python, `AP_PNC_DIR` in C++/containers).
-- Python code resolves root-relative inputs via `ap_pnc.env.project_path()` and
-  confines generated outputs via `ap_pnc.env.artifact_path()`; C++ aerodynamics
+  (`tooling.env.get_git_root()` in Python, `AP_PNC_DIR` in C++/containers).
+- Python code resolves root-relative inputs via `tooling.env.project_path()` and
+  confines generated outputs via `tooling.env.artifact_path()`; C++ aerodynamics
   code uses `aerodynamics/paths` from `aerodynamics/project_paths.hpp`.
 - Docker Compose files resolve every context, dockerfile, and volume against an
   absolute `AP_PNC_DIR` (`${AP_PNC_DIR:?...}`); `ap-pnc docker/sim` exports it.
@@ -108,7 +108,7 @@ Linux, even when both sides use ARM64.
 - The pinned builder (`core/docker/nmpc-builder.dockerfile`) contains the
   Linux toolchain; acados codegen needs a Linux t_renderer, not a macOS
   binary. Toolchain versions (acados commit, t_renderer, acados_template)
-  must stay in sync with `ap_pnc/acados_setup.py:ACADOS_COMMIT`.
+  must stay in sync with `tooling/acados_setup.py:ACADOS_COMMIT`.
 - Keep the base image, builder platform, ROS2 compilation, and linked bundle
   on the same target architecture. Consume the arch-tagged bundle;
   `libnmpc_bundle.a` is only a host-native convenience alias, not a portable

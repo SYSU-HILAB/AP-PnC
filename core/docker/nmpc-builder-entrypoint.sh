@@ -27,12 +27,12 @@ export LD_LIBRARY_PATH="/opt/acados/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 # 1) OCP codegen (rendered C + json land under .artifacts/c_generated_code)
 gen_dir="$root/.artifacts/c_generated_code"
 mkdir -p "$gen_dir"
-( cd "$gen_dir" && PYTHONPATH="$root" python3 "$root/ap_pnc/nmpc_gen/create_ocp.py" )
+( cd "$gen_dir" && PYTHONPATH="$root" python3 "$root/tooling/nmpc_gen/create_ocp.py" )
 
 # 2) Wrapper .a + merge with static acados (repo logic; reads NMPC_ACADOS_*)
 PYTHONPATH="$root" python3 -c "\
 from pathlib import Path
-from ap_pnc.commands.gen_nmpc_lib import _build_wrapper_and_bundle
+from tooling.commands.gen_nmpc_lib import _build_wrapper_and_bundle
 _build_wrapper_and_bundle(Path('$root'))"
 
 # 3) Arch-tagged output; keep the unsuffixed alias == HOST-native arch.

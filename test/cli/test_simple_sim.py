@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 import typer
 
-from ap_pnc.commands import build, sim
+from tooling.commands import build, sim
 
 
 def test_build_selects_sim_and_bringup_once(tmp_path, monkeypatch):
