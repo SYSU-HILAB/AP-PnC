@@ -61,10 +61,16 @@ simple_sim:
     # force balance, rebuild the thrust axis, keep the planned yb. Enabled by
     # default; measured better than the same controller without it on every row.
     aero_flatness_feedforward: true
-    # Halved from the measured values (8 and 6) by owner request, for a gentler
-    # translation loop. Measured cost on practical + indi / lyu / se3-aero-ff:
-    # +105/+111/+140% position RMSE (0.0444/0.1187/0.2297 against
-    # 0.0217/0.0563/0.0959 with the previous values and the same attitude gain).
+    # Tuning path, chosen by the project owner and measured on practical + indi /
+    # lyu / se3-aero-ff, position RMSE [m] at 8/10/12 m/s:
+    #   position 8   velocity 6   attitude 48        -> 0.0154 / 0.0470 / 0.0512
+    #   position 8   velocity 6   attitude [10,20,10] -> 0.0217 / 0.0563 / 0.0959
+    #   position 4   velocity 3   attitude [10,20,10] -> 0.0444 / 0.1187 / 0.2297
+    #   position 4   velocity 3   attitude [5,10,5]   -> 0.0707 / 0.1740 / 0.8813
+    #   position 2   velocity 1.5 attitude [5,10,5]   -> 0.1536 / 0.4690 / 1.6686
+    # Each halving roughly doubles the error. In the last row the rate commands no
+    # longer saturate (0.21/0.46/0.62 rad/s at 8 m/s), so se3.max_rate has stopped
+    # being the binding constraint and the translation gains are.
     position_gain: [2.0, 2.0, 2.0]
     velocity_gain: [1.5, 1.5, 1.5]
     # Per-axis: yaw low (its rate limit is the lowest), pitch high because it
