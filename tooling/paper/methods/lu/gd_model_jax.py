@@ -3,8 +3,8 @@
 # Copyright (c) 2023 SYSU
 # Authors:
 # Erchao Rong: rongerch@outlook.com
-# Zihao Liu
-# Junning Liang
+# Zihao Liu: liuzh297@gmail.com
+# Junning Liang: gordonliang27@foxmail.com
 #
 # JAX batched implementation for efficient aerodynamic coefficient calculations
 #

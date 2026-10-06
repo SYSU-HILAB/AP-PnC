@@ -6,8 +6,8 @@
  *
  * Authors:
  * Erchao Rong: rongerch@outlook.com
- * Zihao Liu
- * Junning Liang
+ * Zihao Liu: liuzh297@gmail.com
+ * Junning Liang: gordonliang27@foxmail.com
  *
  * Description:
  * Pybind11 Python bindings for aerodynamics classes.

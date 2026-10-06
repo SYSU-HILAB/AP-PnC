@@ -57,8 +57,8 @@ setup(
     version="0.1.0",
     Authors:
     Erchao Rong: rongerch@outlook.com
-    Zihao Liu
-    Junning Liang
+    Zihao Liu: liuzh297@gmail.com
+    Junning Liang: gordonliang27@foxmail.com
     description="Python bindings for AP-PnC aerodynamics models",
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},
