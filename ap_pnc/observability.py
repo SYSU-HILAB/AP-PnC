@@ -187,9 +187,9 @@ class Telemetry:
                 export_timeout_millis=1500,
             )
         )
-        self.tracer = self.traces.get_tracer("ap_pnc", version("ap-pnc"))
-        self.logger = self.logs.get_logger("ap_pnc", version("ap-pnc"))
-        meter = self.metrics.get_meter("ap_pnc", version("ap-pnc"))
+        self.tracer = self.traces.get_tracer("ap-pnc", version("ap-pnc"))
+        self.logger = self.logs.get_logger("ap-pnc", version("ap-pnc"))
+        meter = self.metrics.get_meter("ap-pnc", version("ap-pnc"))
         self.calls = meter.create_counter("ap.pnc.operation.calls", unit="{operation}")
         self.duration = meter.create_histogram(
             "ap.pnc.operation.duration",
