@@ -29,7 +29,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from tooling.env import artifact_path, project_path, setup_env
+from tooling import simple_stack
+from tooling.env import artifact_path
 
 VARIANTS = ("se3-aero-ff", "se3-base", "nmpc")
 AERO_MODELS = ("none", "lyu", "phi")
@@ -91,35 +92,27 @@ def _run_once(
     mass_kg: float,
     log_dir: Path,
     tag: str,
-) -> tuple[str, Path]:
-    stack = project_path("infra/sim_infra/simple_sim/stack/stack.sh")
-    log = log_dir / f"{tag}.log"
-    command = [
-        "bash",
-        str(stack),
-        "run",
-        str(duration_s),
-        profile,
-        aero,
-        str(v_max),
-        str(hold_s),
-        str(mass_kg),
-    ]
-    with log.open("w") as handle:
-        process = subprocess.run(  # noqa: S603
-            command,
-            env=setup_env(),
-            stdout=handle,
-            stderr=subprocess.STDOUT,
-            check=False,
+) -> tuple[Path, Path]:
+    """One job, driven through the tooling rather than through the shell.
+
+    The whole lifecycle (job directory, configuration overrides, containerised
+    dora run, receipt check) is `tooling.simple_stack`; the shell keeps only the
+    build and the optional services.
+    """
+    job = simple_stack.run_job(
+        simple_stack.JobRequest(
+            profile=profile,
+            aero=aero,
+            v_max=v_max,
+            hold_s=hold_s,
+            mass_kg=mass_kg,
+            duration_s=duration_s,
         )
-    text = log.read_text()
-    if process.returncode != 0:
-        raise RuntimeError(f"{tag} failed ({process.returncode}); see {log}")
-    jobs = [line[len(_JOB_PREFIX) :] for line in text.splitlines() if line.startswith(_JOB_PREFIX)]
-    if not jobs:
-        raise RuntimeError(f"{tag} produced no JOB= line; see {log}")
-    return jobs[-1], log
+    )
+    log = log_dir / f"{tag}.log"
+    log.write_text(str(job / "stack.log"))
+    (log_dir / f"{tag}.job").write_text(str(job))
+    return job, log
 
 
 def run_matrix(
@@ -160,10 +153,10 @@ def run_matrix(
                                 log_dir=out,
                                 tag=tag,
                             )
-                            benchmark_dir = Path(job) / "benchmark"
-                            run_dir = next(benchmark_dir.glob("simple_sim_*"))
-                            manifest = json.loads((run_dir / "manifest.json").read_text())
-                            metrics = json.loads((run_dir / "metrics.json").read_text())
+                            summary = simple_stack.run_summary(Path(job))
+                            run_dir = summary["run_dir"]
+                            manifest = summary["manifest"]
+                            metrics = summary["metrics"]
                             row = Row(
                                 profile=profile,
                                 aero=aero,
