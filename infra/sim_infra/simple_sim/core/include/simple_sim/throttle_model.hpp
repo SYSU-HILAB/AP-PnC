@@ -71,8 +71,7 @@ namespace simple_sim
   class ThrottleModel
   {
    public:
-    ThrottleModel(const ThrottleModelConfig &config,
-                  double                     hover_specific_force);
+    ThrottleModel(const ThrottleModelConfig &config, double seed_effectiveness);
 
     /**
      * @brief One inner-loop tick.

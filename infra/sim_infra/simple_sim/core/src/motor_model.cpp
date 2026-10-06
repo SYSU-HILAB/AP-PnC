@@ -186,6 +186,11 @@ namespace simple_sim
 
   double MotorModel::throttle(double specific_force) const
   {
+    // The inner loop (400 Hz) may have realized the throttle from the measured
+    // thrust-axis specific force; if so it replaces the static inversion and
+    // the model error is absorbed by the estimator instead of being ignored.
+    if (realized_throttle_)
+      return *realized_throttle_;
     // New interface adapter: NMPC provides N/kg, MATLAB expects [0,1].
     // Invert the STATIC balanced-motor thrust curve. Inflow remains in plant.
     double projection = 0.0;

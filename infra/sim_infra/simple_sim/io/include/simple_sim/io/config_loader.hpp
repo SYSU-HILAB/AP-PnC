@@ -7,6 +7,7 @@
 #include "simple_sim/adapters/controllers.hpp"
 #include "simple_sim/config.hpp"
 #include "simple_sim/motor_model.hpp"
+#include "simple_sim/throttle_model.hpp"
 
 namespace simple_sim
 {
@@ -20,6 +21,7 @@ namespace simple_sim
     PlantConfig           plant;
     RateLoopConfig        rate_loop;
     MotorModelConfig      motor_model;
+    ThrottleModelConfig   throttle;
     std::string           actuator_model = "ideal_rate_loop";
     Se3Gains              se3;
     AeroConfig            aero;

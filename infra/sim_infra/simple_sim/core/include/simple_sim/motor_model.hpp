@@ -2,6 +2,7 @@
 
 #include <Eigen/Core>
 #include <array>
+#include <optional>
 
 #include "simple_sim/types.hpp"
 
@@ -49,7 +50,23 @@ namespace simple_sim
     State initialize(const State &state, const Command &command) const;
     State prepare(const State &state, const Command &command) const;
 
+    /**
+     * @brief Use a throttle realized by the inner loop instead of inverting the
+     * modelled curve here. Const because the plant holds a const motor model;
+     * the realized value is runtime state, not configuration.
+     */
+    void set_realized_throttle(double throttle) const
+    {
+      realized_throttle_ = throttle;
+    }
+    void clear_realized_throttle() const { realized_throttle_.reset(); }
+    bool has_realized_throttle() const
+    {
+      return realized_throttle_.has_value();
+    }
+
    private:
+    mutable std::optional<double>  realized_throttle_;
     MotorModelConfig               cfg_;
     double                         mass_, max_force_;
     Eigen::Vector3d                max_rate_;

@@ -265,6 +265,20 @@ namespace simple_sim
             config_.motor_model, config_.plant.mass,
             config_.rate_loop.max_specific_force, config_.rate_loop.max_rate,
             config_.physics_dt_ns);
+        if (config_.motor_model.inner_dt_ns % config_.physics_dt_ns != 0)
+          throw std::invalid_argument(
+              "actuator inner period must divide the physics step");
+        const std::int64_t stride =
+            config_.motor_model.inner_dt_ns / config_.physics_dt_ns;
+        const double inner_dt =
+            static_cast<double>(config_.motor_model.inner_dt_ns) * 1e-9;
+        // Effectiveness seed: the configured value, or the standard hover
+        // assumption of one half throttle when it is left at zero.
+        const double seed = config_.throttle.eta_seed > 0.0
+                                ? config_.throttle.eta_seed
+                                : 2.0 * config_.plant.gravity;
+        auto         realization =
+            std::make_shared<ThrottleModel>(config_.throttle, seed);
         runner_ = std::make_unique<Runner>(
             runner_cfg,
             Plant(config_.plant, std::move(aero),
@@ -273,8 +287,20 @@ namespace simple_sim
             { return model->wrench(s); }, *controller_,
             [model](const State &s, const Command &c)
             { return model->initialize(s, c); },
-            [model](const State &s, const Command &c)
-            { return model->prepare(s, c); });
+            [model, realization, inner_dt, stride](const State   &s,
+                                                   const Command &c)
+            {
+              // Bottom control layer at the actuator inner rate (400 Hz):
+              // realize a normalized throttle from the thrust-axis specific
+              // force. Held across the physics sub-steps, and only for the
+              // online realization; ideal_invert keeps the model's static
+              // inversion.
+              if (realization->config().realization == "indi" &&
+                  s.motors.physics_ticks % stride == 0)
+                model->set_realized_throttle(realization->command(
+                    c.specific_force, s.motors.specific_force, inner_dt));
+              return model->prepare(s, c);
+            });
       }
       else
       {
@@ -432,6 +458,8 @@ namespace simple_sim
                                                     : "not_applicable")
         << ",\n  \"arm_length_scale\": " << config_.arm_length_scale
         << ",\n  \"aero_model\": " << json_string(config_.aero_model)
+        << ",\n  \"thrust_realization\": "
+        << json_string(config_.throttle.realization)
         << ",\n  \"aero_validation\": " << json_string(config_.aero_validation)
 #ifdef SIMPLE_SIM_WITH_NMPC
         << ",\n  \"nmpc_solver_abi\": " << NMPC_SOLVER_ABI

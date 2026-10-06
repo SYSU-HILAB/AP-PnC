@@ -12,9 +12,10 @@ namespace simple_sim
       throw std::invalid_argument(
           "thrust realization must be ideal_invert or indi, got '" +
           realization + "'");
-    if (!std::isfinite(eta_seed) || eta_seed <= 0.0 ||
-        !std::isfinite(eta_min) || !std::isfinite(eta_max) || eta_min <= 0.0 ||
-        eta_max < eta_min)
+    // eta_seed == 0 means "derive the seed from the hover assumption"; it is
+    // filled in by the constructor, so it is not an error here.
+    if (!std::isfinite(eta_seed) || eta_seed < 0.0 || !std::isfinite(eta_min) ||
+        !std::isfinite(eta_max) || eta_min <= 0.0 || eta_max < eta_min)
       throw std::invalid_argument("invalid throttle effectiveness bounds");
     if (!std::isfinite(forgetting_factor) || forgetting_factor <= 0.0 ||
         forgetting_factor > 1.0 || !std::isfinite(p_init) || p_init <= 0.0 ||
@@ -36,16 +37,17 @@ namespace simple_sim
   }
 
   ThrottleModel::ThrottleModel(const ThrottleModelConfig &config,
-                               double                     hover_specific_force)
+                               double                     seed_effectiveness)
       : config_(config)
   {
     config_.validate();
-    if (!std::isfinite(hover_specific_force) || hover_specific_force <= 0.0)
-      throw std::invalid_argument("hover specific force must be positive");
+    if (!std::isfinite(seed_effectiveness) || seed_effectiveness <= 0.0)
+      throw std::invalid_argument(
+          "throttle effectiveness seed must be positive");
     // The vehicle seeds the estimator from grav / hover_throttle; the simulator
     // knows the same quotient, so the two start from the same place.
-    if (config_.realization == "ideal_invert")
-      config_.eta_seed = hover_specific_force;
+    if (config_.eta_seed <= 0.0 || config_.realization == "ideal_invert")
+      config_.eta_seed = seed_effectiveness;
     reset();
   }
 

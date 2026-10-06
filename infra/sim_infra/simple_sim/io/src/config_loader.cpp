@@ -173,6 +173,32 @@ namespace simple_sim
         config.aero.scale < 0.0)
       throw std::invalid_argument("invalid aero model name or scale");
     config.aero_validation = aerodynamics::validation_label(entry->status);
+    if (sim["throttle"])
+    {
+      const YAML::Node &t = sim["throttle"];
+      config.throttle.realization =
+          t["realization"].as<std::string>("ideal_invert");
+      config.throttle.eta_seed = t["eta_seed"].as<double>(0.0);
+      config.throttle.eta_min  = t["eta_min"].as<double>(9.81);
+      config.throttle.eta_max  = t["eta_max"].as<double>(60.0);
+      config.throttle.forgetting_factor =
+          t["forgetting_factor"].as<double>(0.999);
+      config.throttle.p_init = t["p_init"].as<double>(100.0);
+      config.throttle.measurement_variance =
+          t["measurement_variance"].as<double>(0.2);
+      config.throttle.innovation_gate = t["innovation_gate"].as<double>(3.0);
+      config.throttle.var_valid_threshold =
+          t["var_valid_threshold"].as<double>(0.01);
+      config.throttle.min_throttle_update =
+          t["min_throttle_update"].as<double>(0.05);
+      config.throttle.specific_force_p = t["specific_force_p"].as<double>(2.0);
+      config.throttle.throttle_min     = t["throttle_min"].as<double>(0.05);
+      config.throttle.throttle_max     = t["throttle_max"].as<double>(1.0);
+      config.throttle.measurement_tau_s =
+          t["measurement_tau_s"].as<double>(0.02);
+      config.throttle.setpoint_tau_s = t["setpoint_tau_s"].as<double>(0.02);
+      config.throttle.validate();
+    }
     if (config.physics_dt_ns <= 0 || !std::isfinite(config.duration_s) ||
         config.duration_s < 0.0 || !std::isfinite(config.terminal_hold_s) ||
         config.terminal_hold_s < 0.0)

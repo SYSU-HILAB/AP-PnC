@@ -2,7 +2,7 @@
 # Reference belongs to planner; horizon/outer-loop period belong to nmpc.yaml.
 simple_sim:
   controller: se3
-  physics_dt_ns: 1000000         # fixed RK4 step; must divide the control period
+  physics_dt_ns: 500000          # 2000 Hz fixed RK4 step; must divide the control period
   duration_s: 0.0                # 0: run until the full prediction horizon no longer fits
   plant:
     mass: 2.0                   # must agree with the planner's flatness.mass
@@ -15,6 +15,28 @@ simple_sim:
   arm_length_scale: 2.0
   # Ideal inner loop: the entire actuation model for the `ideal` profile, so a run
   # here isolates the guidance and control law from the motor/mixer/PID chain.
+  # Bottom control layer: how a thrust-axis specific force setpoint becomes a
+  # normalized collective throttle, ticked at the actuator inner rate
+  # (actuator.inner_dt_ns = 400 Hz, physics 2000 Hz, guidance 50 Hz).
+  throttle:
+    # ideal_invert: exact static inverse of the modelled thrust curve. No
+    # estimation, so plant/model mismatch stays uncorrected.
+    # indi: the vehicle's law (pxctrl ThrottleManager): RLS effectiveness
+    # estimate on the measured thrust-axis specific force + INDI increment.
+    realization: ideal_invert
+    eta_seed: 0.0            # <=0: seed from the modelled hover effectiveness
+    eta_min: 9.81
+    eta_max: 60.0
+    forgetting_factor: 0.999
+    measurement_variance: 0.2
+    innovation_gate: 3.0
+    var_valid_threshold: 0.01
+    min_throttle_update: 0.05
+    specific_force_p: 2.0
+    throttle_min: 0.05
+    throttle_max: 1.0
+    measurement_tau_s: 0.02
+    setpoint_tau_s: 0.02
   rate_loop:
     gain: [100.0, 100.0, 100.0]     # 1/tau: tau = 10 ms per angular-rate channel (1/5 of 50 ms)
     thrust_tau_s: 0.02            # collective specific-force loop, tau = 20 ms (1/5 of 100 ms)
