@@ -46,8 +46,12 @@ def _switch_sim(target: str, namespace: str = "sim") -> None:
 
 @app.command()
 def simple(
-    namespace: str = typer.Option("sim", "--namespace", "-n", help="Kubernetes namespace"),
-    follow: bool = typer.Option(False, "--follow", "-f", help="Follow logs after starting"),
+    namespace: Annotated[
+        str, typer.Option("--namespace", "-n", help="Kubernetes namespace")
+    ] = "sim",
+    follow: Annotated[
+        bool, typer.Option("--follow", "-f", help="Follow logs after starting")
+    ] = False,
 ) -> None:
     """Start the tracking-only lockstep simulator via K3s ConfigMap (initially paused)."""
     console.print("[bold cyan]Switching simulation to simple-sim via K3s ConfigMap...[/bold cyan]")
@@ -86,8 +90,12 @@ def track(
 
 @app.command()
 def gazebo(
-    namespace: str = typer.Option("sim", "--namespace", "-n", help="Kubernetes namespace"),
-    follow: bool = typer.Option(False, "--follow", "-f", help="Follow logs after starting"),
+    namespace: Annotated[
+        str, typer.Option("--namespace", "-n", help="Kubernetes namespace")
+    ] = "sim",
+    follow: Annotated[
+        bool, typer.Option("--follow", "-f", help="Follow logs after starting")
+    ] = False,
 ) -> None:
     """Start Gazebo layer (PX4-VTOL SITL + Gazebo Garden) via K3s ConfigMap."""
     console.print("[bold cyan]Switching simulation to gazebo via K3s ConfigMap...[/bold cyan]")
@@ -100,7 +108,9 @@ def gazebo(
 
 @app.command()
 def stop(
-    namespace: str = typer.Option("sim", "--namespace", "-n", help="Kubernetes namespace"),
+    namespace: Annotated[
+        str, typer.Option("--namespace", "-n", help="Kubernetes namespace")
+    ] = "sim",
 ) -> None:
     """Stop all active simulation instances via K3s ConfigMap (scale to 0)."""
     console.print("[bold yellow]Stopping simulations via K3s ConfigMap...[/bold yellow]")
