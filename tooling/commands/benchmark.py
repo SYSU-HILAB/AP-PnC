@@ -89,7 +89,9 @@ def benchmark(
     ),
     duration: float = typer.Option(0.0, "--duration", help="Run length [s]; 0 = whole trajectory"),
     profile: str = typer.Option(
-        "ideal", "--profile", help="Comma list of actuator profiles: ideal | practical"
+        "practical",
+        "--profile",
+        help="Comma list of actuator profiles: practical (the tested one) | ideal",
     ),
     hold: float = typer.Option(2.0, "--hold", help="Terminal dwell [s]"),
     mass: float = typer.Option(2.0, "--mass", help="Vehicle mass [kg]"),

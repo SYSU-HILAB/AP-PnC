@@ -136,7 +136,7 @@ def run_matrix(
     v_maxs: tuple[float, ...] = (8.0, 10.0, 12.0),
     variants: tuple[str, ...] = VARIANTS,
     duration_s: float = 0.0,
-    profiles: tuple[str, ...] = ("ideal",),
+    profiles: tuple[str, ...] = ("practical",),
     hold_s: float = 2.0,
     mass_kg: float = 2.0,
     output_dir: Path | None = None,
