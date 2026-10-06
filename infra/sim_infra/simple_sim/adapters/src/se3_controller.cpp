@@ -52,9 +52,11 @@ namespace simple_sim
       if (lateral.norm() < 1e-6)
         return false;
       const Eigen::Vector3d z_s      = lateral.normalized();
+      const Eigen::Vector3d y_s      = z_s.cross(x_s);
       const auto            residual = [&](double a)
       {
         const Eigen::Vector3d x_b = std::sin(a) * x_s + std::cos(a) * z_s;
+        const Eigen::Vector3d z_b = -std::cos(a) * x_s + std::sin(a) * z_s;
         Eigen::Vector3d       force;
         Eigen::Vector3d       moment;
         double                aero_alpha = 0.0;
@@ -69,7 +71,13 @@ namespace simple_sim
         force = aero_config->scale * flu_from_wing(force_wing);
         if (zero_thrust_axis_aero_)
           force.z() = 0.0;
-        return eta.dot(x_b) - force.dot(x_b) / mass;
+        // eta and x_b live in the world frame, the model returns the wrench in
+        // the body frame; rotate before projecting or the components are mixed.
+        Eigen::Matrix3d r_wb;
+        r_wb.col(0) = x_b;
+        r_wb.col(1) = y_s;
+        r_wb.col(2) = z_b;
+        return eta.dot(x_b) - (r_wb * force).dot(x_b) / mass;
       };
       // Scan for sign changes and bisect. A bare Newton step is unusable here:
       // the operating band (40-60 deg) sits on the shoulder of the lift polar,

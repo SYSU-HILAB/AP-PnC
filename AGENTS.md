@@ -202,8 +202,5 @@ Nodes read their yaml from, by convention:
 <AP_PNC_DIR>/bringup/config/nmpc.yaml       (nmpc_node)
 ```
 
-The aerodynamics alpha-solver config lives with its owner:
-`<AP_PNC_DIR>/infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml`.
-
 `AP_PNC_DIR` is the **only** path environment variable; no per-file env vars
 (`AERO_SIM_DATA_DIR` and `NMPC_BUNDLE_PATH` were removed for this reason).

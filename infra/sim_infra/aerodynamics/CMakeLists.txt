@@ -76,15 +76,6 @@ target_link_libraries(${PROJECT_NAME}_aero_factory
   ${PROJECT_NAME}_non
 )
 
-# AeroAlphaSolver: Force balance equation solver using Newton-Raphson
-ament_auto_add_library(${PROJECT_NAME}_alpha_solver
-    src/aero_alpha_solver.cpp
-)
-target_link_libraries(${PROJECT_NAME}_alpha_solver
-    yaml-cpp
-    ${PROJECT_NAME}_lyu
-    ${PROJECT_NAME}_aerodynamics_lib
-)
 
 # Testing for aerodynamics
 ament_auto_add_executable(aero_comparison src/aero_comparison.cpp)
@@ -107,19 +98,9 @@ target_link_libraries(generate_aero_ml_data
   ${PROJECT_NAME}_bspline
 )
 
-# GTest for AeroAlphaSolver
+
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-
-  ament_add_gtest(test_aero_alpha_solver
-    test/test_aero_alpha_solver.cpp
-  )
-  target_link_libraries(test_aero_alpha_solver
-    ${PROJECT_NAME}_alpha_solver
-  )
-  ament_target_dependencies(test_aero_alpha_solver
-    rclcpp
-  )
 
   ament_add_gtest(test_bspline_basis
     test/test_bspline_basis.cpp

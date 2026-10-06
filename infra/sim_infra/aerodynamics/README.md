@@ -12,14 +12,12 @@ This module implements multiple aerodynamics models with varying levels of fidel
 src/aerodynamics/
 ├── include/aerodynamics/         # Public headers
 │   ├── aero_interface.hpp        # Abstract base interface
-│   ├── aero_alpha_solver.hpp     # Newton-Raphson solver
 │   ├── zhang_lyu_aerodynamics.hpp   # MATLAB-generated model
 │   ├── bspline_aerodynamics.hpp  # B-spline interpolation model
 │   ├── phi_aerodynamics.hpp      # Linear phi-theory model
 │   ├── advanced_lift_drag.hpp    # Advanced lift-drag model
 │   └── non_aerodynamics.hpp      # Null model for testing
 ├── src/                          # Implementation files
-│   ├── aero_alpha_solver.cpp
 │   ├── *_aerodynamics.cpp
 │   ├── gazebo_plugins/           # ROS2/Gazebo integration
 │   └── MatlabGenerated/          # Auto-generated MATLAB code
@@ -27,7 +25,6 @@ src/aerodynamics/
 │   ├── bspline_fit_results/      # B-spline fit results (npz)
 │   └── *.py                      # Data generation scripts (ma_params_writer.py)
 ├── config/
-│   ├── aero_alpha_solver.yaml    # Alpha-solver configuration
 │   └── aero/                     # Per-model parameters (the single source
 │       ├── phi.yaml              #   of truth; loaded at runtime by name)
 │       ├── ma.yaml
@@ -35,7 +32,6 @@ src/aerodynamics/
 ├── scripts/
 │   └── generate_aero_lookup_table.cpp
 └── test/
-    └── test_aero_alpha_solver.cpp
 ```
 
 ## Core Architecture
@@ -164,77 +160,6 @@ aerodynamics::NonAerodynamicsCreator creator;
 creator.createAerodynamics();
 ```
 
-## Key Algorithm: AeroAlphaSolver
-
-The `AeroAlphaSolver` class is the key innovation of this module. It solves for the angle of attack (alpha) from a force balance equation, which is essential for trajectory planning.
-
-### Newton-Raphson Solver
-
-Solves the aerodynamic force balance equation:
-
-```
-S_ap_z * cos(alpha) + S_ap_x * sin(alpha) = F_aero_z([V*cos(alpha), 0, V*sin(alpha)]) / mass
-```
-
-where `V_b = [V*cos(alpha), 0, V*sin(alpha)]` is the body velocity vector.
-
-### Usage Example
-
-```cpp
-#include <aerodynamics/aero_alpha_solver.hpp>
-
-// Create solver with aerodynamics model
-auto aero_model = std::make_shared<aerodynamics::LyuAerodynamics>();
-aerodynamics::AeroAlphaSolver solver(aero_model);
-
-// Optional: Configure solver parameters
-aerodynamics::AeroAlphaSolver::Config config;
-config.max_iterations = 50;
-config.tolerance = 1e-8;
-config.damping_factor = 1.0;
-solver.setConfig(config);
-
-// Solve for alpha
-double V = 20.0;           // Velocity magnitude (m/s)
-double S_ap_x = 0.5;       // Specific force x-component (m/s^2)
-double S_ap_z = 9.81;      // Specific force z-component (m/s^2)
-double mass = 2.5;         // Vehicle mass (kg)
-
-double alpha = solver.solve(V, S_ap_x, S_ap_z, mass);
-```
-
-### Configuration
-
-The solver supports configuration via `infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml`:
-
-```yaml
-max_iterations: 1000
-tolerance: 1e-6
-damping_factor: 0.5
-derivative_epsilon: 1e-3
-initial_alpha_deg: 90.0
-```
-
-### Solver Methods
-
-1. **Lookup Table**: Binary search with linear interpolation (robust, always converges)
-   - Used when `solver_method = "lookup_table"`
-   - Data: `artifacts/infra/sim_infra/aero_lookup_table.csv`
-
-2. **Newton-Raphson**: Iterative solver with temporal coherence
-   - Used when `solver_method = "newton_raphson"`
-   - Fast convergence for smooth trajectories
-   - Uses previous alpha value as initial guess
-
-3. **Auto**: Automatically chooses the best method (recommended)
-   - Used when `solver_method = "auto"`
-
-### Features
-
-- **Temporal Coherence**: Uses previous alpha value as initial guess for fast convergence
-- **Angle Unwrapping**: Handles alpha continuity across trajectories
-- **Stateful**: Non-thread-safe by design (each trajectory instance should have its own solver)
-- **Diagnostics**: Returns iteration count for performance monitoring
 
 ## Integration Points
 
