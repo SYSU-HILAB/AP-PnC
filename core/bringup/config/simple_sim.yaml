@@ -62,19 +62,13 @@ simple_sim:
     # the ideal profile it is better than the same controller without it on every
     # row of the sweep (lyu 8/10/12 m/s: +92/+87/+27%, phi: +99%).
     aero_flatness_feedforward: true
-    # Tuned together with the feedforward, which moves the attitude reference and
-    # therefore needs more attitude bandwidth than translation gain. The gains are
-    # a plateau, not a knife edge: position/velocity x1.5-2 with attitude x4-8 all
-    # keep the 12 m/s row positive, while position/velocity x4 (the historical
-    # default) diverges there.
-    position_gain: [8.0, 8.0, 8.0]
-    velocity_gain: [6.0, 6.0, 6.0]
-    # Tuned together with the rate limit below, which is the binding constraint on
-    # the command: once it is in place, lowering these gains only costs tracking
-    # (measured [10,20,10]: +41/+20/+87%; a uniform 10 diverges at 10 m/s). The
-    # per-axis part of that experiment is the useful finding: yaw can be low
-    # because its limit is, while pitch carries the tracking.
-    attitude_gain: [48.0, 48.0, 48.0]
+    # Per-axis: yaw low (its rate limit is the lowest), pitch high because it
+    # carries the tracking, roll in between. Selected by the project owner over the
+    # uniform 48 measured better on RMSE -- see the table in the commit log: on
+    # practical + indi / lyu / se3-aero-ff this costs +41/+20/+87% position RMSE
+    # (0.0217/0.0563/0.0959 against 0.0154/0.0470/0.0512) and does not lower the
+    # command peaks, because the rate limit below is the binding constraint.
+    attitude_gain: [10.0, 20.0, 10.0]
     # Body-rate output limit [rad/s, FLU]. The same numbers the NMPC already uses
     # as its command bounds: yaw is lower than pitch and roll because that is what
     # a real airframe will do. Measured without it, the SE3 asked for 14.9 rad/s of
