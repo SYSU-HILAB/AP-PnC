@@ -69,7 +69,12 @@ simple_sim:
     # default) diverges there.
     position_gain: [8.0, 8.0, 8.0]
     velocity_gain: [6.0, 6.0, 6.0]
-    attitude_gain: [10.0, 20.0, 10.0]
+    # Tuned together with the rate limit below, which is the binding constraint on
+    # the command: once it is in place, lowering these gains only costs tracking
+    # (measured [10,20,10]: +41/+20/+87%; a uniform 10 diverges at 10 m/s). The
+    # per-axis part of that experiment is the useful finding: yaw can be low
+    # because its limit is, while pitch carries the tracking.
+    attitude_gain: [48.0, 48.0, 48.0]
     # Body-rate output limit [rad/s, FLU]. The same numbers the NMPC already uses
     # as its command bounds: yaw is lower than pitch and roll because that is what
     # a real airframe will do. Measured without it, the SE3 asked for 14.9 rad/s of
