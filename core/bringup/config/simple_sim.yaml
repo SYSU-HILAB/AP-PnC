@@ -68,6 +68,7 @@ simple_sim:
     #   position 4   velocity 3   attitude [10,20,10] -> 0.0444 / 0.1187 / 0.2297
     #   position 4   velocity 3   attitude [5,10,5]   -> 0.0707 / 0.1740 / 0.8813
     #   position 2   velocity 1.5 attitude [5,10,5]   -> 0.1536 / 0.4690 / 1.6686
+    #   position 2   velocity 1.5 attitude [6,12,6]   -> 0.1319 / 0.3811 / 0.9834
     # Each halving roughly doubles the error. In the last row the rate commands no
     # longer saturate (0.21/0.46/0.62 rad/s at 8 m/s), so se3.max_rate has stopped
     # being the binding constraint and the translation gains are.
@@ -82,7 +83,7 @@ simple_sim:
     # [10,20,10] = 0.0217/0.0563/0.0959; with p4/v3 = 0.0444/0.1187/0.2297;
     # [5,10,5] with p4/v3 = 0.0707/0.1740/0.8813, where the rate limits saturate on
     # all three axes at 12 m/s.
-    attitude_gain: [5.0, 10.0, 5.0]
+    attitude_gain: [6.0, 12.0, 6.0]
     # Body-rate output limit [rad/s, FLU], the same numbers the NMPC uses as its
     # command bounds: yaw lower than pitch and roll, as a real airframe does.
     max_rate: [1.5, 2.5, 1.5]
