@@ -58,21 +58,20 @@ simple_sim:
     max_specific_force: 30.0 # m/s^2, along body +Z
   se3:
     # Flatness feedforward: solve alpha numerically from the true aerodynamic
-    # force balance, rebuild the thrust axis, keep the planned yb. Measured on
-    # the ideal profile it is better than the same controller without it on every
-    # row of the sweep (lyu 8/10/12 m/s: +92/+87/+27%, phi: +99%).
+    # force balance, rebuild the thrust axis, keep the planned yb. Enabled by
+    # default; measured better than the same controller without it on every row.
     aero_flatness_feedforward: true
+    # Tuned with the feedforward, which moves the attitude reference and therefore
+    # needs more attitude bandwidth than translation gain.
+    position_gain: [8.0, 8.0, 8.0]
+    velocity_gain: [6.0, 6.0, 6.0]
     # Per-axis: yaw low (its rate limit is the lowest), pitch high because it
-    # carries the tracking, roll in between. Selected by the project owner over the
-    # uniform 48 measured better on RMSE -- see the table in the commit log: on
-    # practical + indi / lyu / se3-aero-ff this costs +41/+20/+87% position RMSE
-    # (0.0217/0.0563/0.0959 against 0.0154/0.0470/0.0512) and does not lower the
-    # command peaks, because the rate limit below is the binding constraint.
+    # carries the tracking, roll in between. Owner-selected; on practical + indi /
+    # lyu / se3-aero-ff this costs +41/+20/+87% position RMSE against the uniform
+    # 48 (0.0217/0.0563/0.0959 vs 0.0154/0.0470/0.0512).
     attitude_gain: [10.0, 20.0, 10.0]
-    # Body-rate output limit [rad/s, FLU]. The same numbers the NMPC already uses
-    # as its command bounds: yaw is lower than pitch and roll because that is what
-    # a real airframe will do. Measured without it, the SE3 asked for 14.9 rad/s of
-    # yaw at the reference's guard crossing and 4.8 rad/s at 10 m/s.
+    # Body-rate output limit [rad/s, FLU], the same numbers the NMPC uses as its
+    # command bounds: yaw lower than pitch and roll, as a real airframe does.
     max_rate: [1.5, 2.5, 1.5]
   aero:
     model: lyu # under test: lyu | phi (plus `none` control)
