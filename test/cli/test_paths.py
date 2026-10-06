@@ -118,6 +118,9 @@ def test_ruff_operands_and_cache_are_absolute(roots, monkeypatch, command, opera
 
 def test_compose_has_explicit_project_environment(roots, monkeypatch):
     project, _ = roots
+    compose_file = project / "infra/sim_infra/gazebo/docker/docker-compose.yml"
+    compose_file.parent.mkdir(parents=True)
+    compose_file.write_text("services:\n  ap-pnc:\n    image: ap-pnc:arm64\n")
     calls = []
     monkeypatch.setattr(docker_runtime.subprocess, "run", lambda args, **kw: calls.append((args, kw)))
     docker._compose("config")

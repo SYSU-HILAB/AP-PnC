@@ -114,22 +114,22 @@ def _build_acados_static(git_root: Path) -> None:
         typer.echo("acados static libs already built, skipping.")
 
 
-def _build_wrapper_and_bundle(git_root: Path) -> None:
+def _build_wrapper_and_bundle(
+    git_root: Path,
+    staging_root: Path | None = None,
+    static_dir: Path | None = None,
+) -> None:
     """Build libnmpc_solver.a, then merge with static acados into libnmpc_bundle.a.
 
-    Staging locations can be overridden via NMPC_ACADOS_STAGING and
-    NMPC_ACADOS_STATIC (the Docker builder image points them at /opt).
+    The staging locations are arguments: the Docker builder image points them
+    at /opt, a host run takes the .artifacts defaults.
     """
     wrapper_src = git_root / "core" / "ros_packages" / "nmpc" / "solver"
     build_dir = git_root / ".artifacts" / "nmpc_solver"
-    staging_root = Path(
-        os.environ.get("NMPC_ACADOS_STAGING", str(git_root / ".artifacts" / "acados"))
-    )
-    static_dir = Path(
-        os.environ.get(
-            "NMPC_ACADOS_STATIC", str(git_root / ".artifacts" / "acados_static")
-        )
-    )
+    # Arguments, not variables: the builder image passes /opt paths, a host run
+    # takes the .artifacts defaults. AP_PNC_DIR stays the only variable.
+    staging_root = staging_root or (git_root / ".artifacts" / "acados")
+    static_dir = static_dir or (git_root / ".artifacts" / "acados_static")
     bundle = build_dir / "libnmpc_bundle.a"
     build_dir.mkdir(parents=True, exist_ok=True)
 

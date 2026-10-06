@@ -6,7 +6,6 @@ is imported only when enabled. Domain callers use operation()/event()/carrier().
 
 import os
 import re
-import subprocess
 import time
 import uuid
 import warnings
@@ -16,7 +15,6 @@ from dataclasses import dataclass
 from importlib.metadata import version
 from urllib.parse import urlparse
 
-from tooling.docker_runtime import compose_env
 from tooling.env import artifact_path, get_git_root
 
 OPERATIONS = frozenset(
@@ -353,17 +351,21 @@ def carrier():
     return out
 
 
-def collector(args: list[str], arch: str = "native") -> list[str]:
+def collector(args: list[str], arch: str = "native") -> None:
+    """Run the local OpenTelemetry collector compose file.
+
+    Goes through the Compose layer in :mod:`tooling.docker_runtime`, so the arch and
+    the container user come from its generated override rather than the
+    environment.
+    """
+    from tooling import docker_runtime  # - keeps the import graph flat
+
     root = get_git_root()
     artifact_path(root / ".artifacts/telemetry/local").mkdir(
         parents=True, exist_ok=True, mode=0o700
     )
-    subprocess.run(
-        ["docker", "compose", "-f", str(root / "infra/observability/docker-compose.yaml"), *args],
-        env={
-            **compose_env(root, arch),
-            "AP_PNC_UID": str(os.getuid()),
-            "AP_PNC_GID": str(os.getgid()),
-        },
-        check=True,
+    docker_runtime.compose(
+        root, root / "infra/observability/docker-compose.yaml", args, arch=arch
     )
+
+

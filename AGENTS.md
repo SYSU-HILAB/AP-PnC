@@ -121,7 +121,8 @@ Linux, even when both sides use ARM64.
   `.artifacts/` over an image's install tree.
 - the Compose layer (`tooling.docker_runtime`) and `ap-pnc sim build` select the native CPU by default;
   `--arch arm64|amd64` is explicit. Raw Compose requires absolute
-  `AP_PNC_DIR` and `AP_PNC_ARCH=arm64|amd64`. These architecture settings
+  `AP_PNC_DIR`. The architecture is a tooling argument (see
+  `tooling/docker_runtime.py`), not a variable; these architecture settings
   are not additional project-path variables.
 
 ### Phase 3 — run and verify on the same target

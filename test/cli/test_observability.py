@@ -2,6 +2,7 @@
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -163,16 +164,29 @@ def test_nested_session_lifecycle(telemetry):
 
 
 def test_collector_command_is_scoped_and_paths_absolute(monkeypatch, tmp_path):
-    from tooling import observability as cli
+    from tooling import docker_runtime, observability as cli
 
     monkeypatch.setenv("AP_PNC_DIR", str(tmp_path))
+    compose_file = tmp_path / "infra/observability/docker-compose.yaml"
+    compose_file.parent.mkdir(parents=True)
+    compose_file.write_text(
+        "services:\n  collector:\n    image: otel/opentelemetry-collector:arm64\n"
+        "    u,ser: \"1000:1000\"\n".replace("u,ser", "user")
+    )
     calls = []
     monkeypatch.setattr(
-        cli.subprocess, "run", lambda command, **kwargs: calls.append((command, kwargs))
+        docker_runtime.subprocess,
+        "run",
+        lambda command, **kwargs: calls.append((command, kwargs)),
     )
-    cli.collector(["up", "-d"], arch="arm64")
+    cli.collector(["up", "-d"], arch="amd64")
     command, kwargs = calls[0]
-    assert command[3] == str(tmp_path / "infra/observability/docker-compose.yaml")
-    assert kwargs["env"]["AP_PNC_ARCH"] == "arm64" and kwargs["check"]
+    assert command[3] == str(compose_file)
+    assert "AP_PNC_ARCH" not in kwargs["env"]
+    assert kwargs["env"]["AP_PNC_DIR"] == str(tmp_path) and kwargs["check"]
+    override = Path(command[command.index("-f") + 3])
+    assert ":amd64" in override.read_text()
     assert (tmp_path / ".artifacts/telemetry/local").is_dir()
     assert "PX4" not in json.dumps(command)
+
+

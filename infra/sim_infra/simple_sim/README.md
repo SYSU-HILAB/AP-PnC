@@ -200,7 +200,8 @@ uv run --project "$AP_PNC_DIR" ap-pnc sim build --target simple
 uv run --project "$AP_PNC_DIR" ap-pnc sim build --target simple --arch amd64
 ```
 
-Raw Compose requires `AP_PNC_ARCH=arm64|amd64` and `--profile build` while
+Raw Compose works as-is (`--profile build` is what the tooling adds); the
+architecture comes from the generated override, while
 building the shared ROS base first, then the simple-sim service. The image is `simple-sim:<docker_arch>`.
 All services use host IPC; simple-sim uses host networking/FastDDS. The default
 ROS launch is headless (`rviz:=false`), with no host X11 mounts.

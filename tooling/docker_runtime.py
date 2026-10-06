@@ -2,13 +2,14 @@
 
 import os
 import platform
+import re
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
 import typer
 
-from tooling.env import get_git_root
+from tooling.env import artifact_path, get_git_root
 
 ARCH_ALIASES = {
     "arm64": "arm64",
@@ -32,12 +33,120 @@ def compose_env(root: Path, arch: str = "native", nav_target: str = "sim") -> di
         raise ValueError("Project root must be absolute")
     if nav_target not in ("sim", "real"):
         raise typer.BadParameter("--nav-target must be sim or real")
-    return {
-        **os.environ,
-        "AP_PNC_DIR": str(root),
-        "AP_PNC_ARCH": target_arch(arch),
-        "AP_PNC_NAV_TARGET": nav_target,
+    _ = target_arch(arch)  # unknown architectures are rejected before anything runs
+    # The host-dependent values live in the generated override, not here: this
+    # project defines one environment variable.
+    return {**os.environ, "AP_PNC_DIR": str(root)}
+
+
+# Host-dependent literals in the base Compose files. They carry plain defaults so
+# the files stay valid on their own; the tooling rewrites them for the host and
+# writes the differing keys as an override. No variable is involved, which is why
+# AP_PNC_DIR remains the project's only environment variable.
+_HOST_LITERALS: tuple[tuple[str, str], ...] = (
+    (r"linux/arm64", "linux/{arch}"),
+    (r":arm64\b", ":{arch}"),
+    (r"-sim\b", "-{nav_target}"),
+    (r'"1000:1000"', '"{uid}:{gid}"'),
+)
+
+
+def _resolve(text: str, replacements: dict[str, str]) -> str:
+    for pattern, template in _HOST_LITERALS:
+        text = re.sub(pattern, template.format(**replacements), text)
+    return text
+
+
+def _diff(base, resolved, out: dict) -> None:
+    """Collect the leaves where the resolved document differs from the base.
+
+    Compose merges an override by key, so the override only carries the keys whose
+    value depends on the host: platform, image tags, build target and container
+    user.
+    """
+    if isinstance(base, dict) and isinstance(resolved, dict):
+        for key, value in resolved.items():
+            if key not in base:
+                out[key] = value
+            elif isinstance(base[key], dict) and isinstance(value, dict):
+                child: dict = {}
+                _diff(base[key], value, child)
+                if child:
+                    out[key] = child
+            elif base[key] != value:
+                out[key] = value
+        return
+    if isinstance(base, list) and isinstance(resolved, list) and len(base) == len(resolved):
+        for index, value in enumerate(resolved):
+            previous = base[index]
+            if isinstance(previous, dict) and isinstance(value, dict):
+                child = {}
+                _diff(previous, value, child)
+                if child:
+                    out[index] = child
+            elif previous != value:
+                out[index] = value
+
+
+def compose_command(
+    root: Path,
+    compose_file: Path,
+    args: Sequence[str],
+    *,
+    arch: str = "native",
+    gui: bool = False,
+    nav_target: str = "sim",
+) -> list[str]:
+    """The Compose argv for one call, including the generated override."""
+    if not compose_file.is_absolute():
+        raise ValueError("Compose file must be absolute")
+    override = compose_override(root, compose_file, arch, nav_target)
+    command = ["docker", "compose", "-f", str(compose_file), "-f", str(override)]
+    rest = [arg for arg in args if arg != "--progress=plain"]
+    if args and args[0] == "build":
+        command += ["--profile", "build"]
+    if "--progress=plain" in args:
+        command += ["--progress", "plain"]
+    if gui or (rest and rest[0] == "down"):
+        command += ["--profile", "gui"]
+    return [*command, *rest]
+
+
+def compose_override(
+    root: Path, compose_file: Path, arch: str = "native", nav_target: str = "sim"
+) -> Path:
+    """Resolve the host-dependent Compose keys into an override file.
+
+    The base files name one variable only, ``AP_PNC_DIR``, and carry literal
+    defaults for everything host-dependent. This resolves those keys from the
+    arguments, diffs them against the base and writes exactly the differing keys,
+    so `AP_PNC_DIR` stays the project's only environment variable. Compose merges
+    the result over the base by key.
+    """
+    import yaml  # - imported only on this path
+
+    if not compose_file.is_absolute():
+        raise ValueError("Compose file must be absolute")
+    replacements = {
+        "arch": target_arch(arch),
+        "nav_target": nav_target,
+        "uid": str(os.getuid()) if hasattr(os, "getuid") else "1000",
+        "gid": str(os.getgid()) if hasattr(os, "getgid") else "1000",
     }
+    text = compose_file.read_text()
+    resolved_text = _resolve(text, replacements)
+    override: dict = {}
+    if resolved_text != text:
+        _diff(yaml.safe_load(text), yaml.safe_load(resolved_text), override)
+    out_dir = artifact_path(f".artifacts/docker/{replacements["arch"]}-{nav_target}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{compose_file.stem}.override.yml"
+    header = (
+        "# Generated by tooling.docker_runtime; do not edit.\n"
+        "# Arch, nav target and container user are tooling arguments, not variables.\n"
+    )
+    path.write_text(header + yaml.safe_dump(override or {"services": {}}, sort_keys=False))
+    return path
 
 
 def compose(
@@ -49,18 +158,10 @@ def compose(
     gui: bool = False,
     nav_target: str = "sim",
 ) -> None:
-    if not compose_file.is_absolute():
-        raise ValueError("Compose file must be absolute")
-    command = ["docker", "compose", "-f", str(compose_file)]
-    if args and args[0] == "build":
-        command += ["--profile", "build"]
-    if "--progress=plain" in args:
-        command += ["--progress", "plain"]
-        args = [arg for arg in args if arg != "--progress=plain"]
-    if gui or (args and args[0] == "down"):
-        command += ["--profile", "gui"]
     subprocess.run(
-        [*command, *args],
+        compose_command(
+            root, compose_file, args, arch=arch, gui=gui, nav_target=nav_target
+        ),
         env=compose_env(root, arch, nav_target),
         cwd=root,
         check=True,

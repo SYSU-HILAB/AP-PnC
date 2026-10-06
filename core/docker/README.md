@@ -22,7 +22,8 @@ uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from to
 and builds/reuses the corresponding base image. To build only the base:
 
 ```bash
-export AP_PNC_ARCH=arm64  # amd64 on an x86 host
+The architecture is a tooling argument: `tooling.docker_runtime` resolves it and
+writes it into the generated Compose override. Nothing is exported.
 # Selecting a service explicitly activates its architecture profile.
 docker compose -f "$AP_PNC_DIR/core/docker/docker-compose.yml" build ros2-dev-arm64
 ```

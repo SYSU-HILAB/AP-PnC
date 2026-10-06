@@ -70,7 +70,7 @@ container() {
     sim_bind=(-v "$base/cpp/install/lib/simple_sim/simple_sim_run:/workspace/.artifacts/colcon/install/lib/simple_sim/simple_sim_run:ro")
   fi
   local telemetry_args=(--network none)
-  if [[ "${AP_PNC_TELEMETRY:-0}" = 1 ]]; then
+  if [[ "${1:-}" = --telemetry ]]; then
     local endpoint="${DORA_OTLP_ENDPOINT:-http://otel-collector:4317}"
     [[ "$endpoint" = http://otel-collector:4317 || "$endpoint" = http://otel-collector:9 ]] || { echo 'only local Collector supported' >&2; exit 2; }
     docker network inspect ap-pnc-observability_default >/dev/null

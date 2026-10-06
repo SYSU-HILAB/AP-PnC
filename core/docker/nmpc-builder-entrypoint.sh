@@ -20,8 +20,6 @@ esac
 export AP_PNC_DIR="$root"
 export ACADOS_SOURCE_DIR=/opt/acados
 export ACADOS_PYTHON_INTERFACE_PATH=/opt/acados_src/interfaces/acados_template
-export NMPC_ACADOS_STAGING=/opt/acados
-export NMPC_ACADOS_STATIC=/opt/acados_static
 export LD_LIBRARY_PATH="/opt/acados/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # 1) OCP codegen (rendered C + json land under .artifacts/c_generated_code)
@@ -29,8 +27,9 @@ gen_dir="$root/.artifacts/c_generated_code"
 mkdir -p "$gen_dir"
 ( cd "$gen_dir" && PYTHONPATH="$root" python3 "$root/tooling/nmpc_gen/create_ocp.py" )
 
-# 2) Wrapper .a + merge with static acados (repo logic; reads NMPC_ACADOS_*)
+# 2) Wrapper .a + merge with static acados (paths as arguments)
 PYTHONPATH="$root" python3 -c "\
+from pathlib import Path
 from pathlib import Path
 from tooling.commands.gen_nmpc_lib import _build_wrapper_and_bundle
 _build_wrapper_and_bundle(Path('$root'))"

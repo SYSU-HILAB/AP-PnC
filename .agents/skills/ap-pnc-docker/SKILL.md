@@ -17,7 +17,8 @@ current deployment contract. No host ROS/acados install is required.
 ## Target and build
 
 Apple Silicon defaults to Linux ARM64, never silent AMD64 emulation.
-The CLI exports absolute AP_PNC_DIR and normalized AP_PNC_ARCH.
+The CLI resolves the architecture from the host and writes it into the generated
+Compose override; AP_PNC_DIR is the only variable involved.
 
 ```bash
 uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"
@@ -72,7 +73,8 @@ proof of runtime/flight success.
 - Core config is read-only mounted; C++/solver edits require core image rebuild.
 - nav config/C++ edits require nav image rebuild. sim is the default build target;
   `--nav-target real` additionally compiles hardware/LIO packages.
-- Raw Compose requires AP_PNC_ARCH and the build profile for build dependencies.
+- Raw Compose works as-is: the base files carry literal defaults and the tooling
+generates the host-specific override.
 - Dev caches are isolated under `.artifacts/docker-dev/<docker_arch>/colcon/`.
 - Never mount all host artifacts over an image install tree.
 - K3s manifests and GPU sensor performance require their own migration/acceptance.

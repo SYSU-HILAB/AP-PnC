@@ -68,9 +68,9 @@ pub fn inject_environment(command: &mut std::process::Command) {
         if let Some(parent) = carrier.get("traceparent") {
             command.env("TRACEPARENT", parent);
         }
-        if let Some(experiment) = Context::current().get::<ExperimentId>() {
-            command.env("AP_PNC_EXPERIMENT_ID", &experiment.0);
-        }
+        // The experiment id travels as a span attribute, not as an environment
+        // variable: this project defines one variable, and the simulator child
+        // does not read any.
         // No arbitrary environment or baggage is serialized into telemetry.
     }
 }

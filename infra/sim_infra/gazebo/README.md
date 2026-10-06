@@ -140,7 +140,8 @@ The CLI supplies the environment and profiles. For raw Compose, explicitly set
 both root and target. Build the shared base first with the `build` profile:
 
 ```bash
-export AP_PNC_ARCH=arm64  # explicitly amd64 for x86 deployment
+The architecture is a tooling argument: `tooling.docker_runtime` resolves it and
+writes it into the generated Compose override. Nothing is exported.
 # Paths remain absolute regardless of cwd.
 docker compose -f "$AP_PNC_DIR/infra/sim_infra/gazebo/docker/docker-compose.yml" \
   --profile build build ros2-base

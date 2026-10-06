@@ -1,7 +1,7 @@
 name: ap-pnc-gazebo
 
 x-target: &target
-  platform: linux/${AP_PNC_ARCH:?Set AP_PNC_ARCH=arm64|amd64 (tooling.docker_runtime exports it)}
+  platform: linux/arm64
   init: true
   ipc: host
 
@@ -25,21 +25,21 @@ services:
       context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
       dockerfile: ${AP_PNC_DIR}/core/docker/ros2-base.dockerfile
       target: base
-    image: ap-pnc-ros2-base:${AP_PNC_ARCH}
+    image: ap-pnc-ros2-base:arm64
 
   px4-simulator:
     <<: *target
     build:
       context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
       dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/px4-simulator.dockerfile
-    image: px4-simulator:${AP_PNC_ARCH}
+    image: px4-simulator:arm64
     container_name: px4-simulator
     network_mode: host
     environment: *gz-env
     # Keep the PX4 console open: closed stdin otherwise causes prompt spam.
     stdin_open: true
     volumes:
-      - ${AP_PNC_DIR}/.artifacts/benchmark/gazebo/${AP_PNC_ARCH}/ulgs:/workspace/.artifacts/px4_src/build/px4_sitl_default/rootfs/log
+      - ${AP_PNC_DIR}/.artifacts/benchmark/gazebo/arm64/ulgs:/workspace/.artifacts/px4_src/build/px4_sitl_default/rootfs/log
     healthcheck:
       test: [CMD-SHELL, "pgrep -x px4 >/dev/null"]
       interval: 5s
@@ -48,7 +48,7 @@ services:
 
   gcs-heartbeat:
     <<: *target
-    image: px4-simulator:${AP_PNC_ARCH}
+    image: px4-simulator:arm64
     network_mode: host
     environment: *gz-env
     command: [heartbeat]
@@ -61,8 +61,8 @@ services:
     build:
       context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
       dockerfile: ${AP_PNC_DIR}/infra/nav_infra/docker/Dockerfile
-      target: ${AP_PNC_NAV_TARGET:-sim}
-    image: nav_infra:${AP_PNC_ARCH}-${AP_PNC_NAV_TARGET:-sim}
+      target: sim
+    image: nav_infra:arm64-sim
     container_name: nav_infra
     network_mode: host
     environment: *ros-env
@@ -76,13 +76,13 @@ services:
     build:
       context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
       dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/ap-pnc.dockerfile
-    image: ap-pnc:${AP_PNC_ARCH}
+    image: ap-pnc:arm64
     container_name: ap-pnc
     network_mode: host
     environment: *ros-env
     volumes:
       - ${AP_PNC_DIR}/core/bringup/config:/workspace/bringup/config:ro
-      - ${AP_PNC_DIR}/.artifacts/benchmark/gazebo/${AP_PNC_ARCH}/core:/workspace/.artifacts/benchmark
+      - ${AP_PNC_DIR}/.artifacts/benchmark/gazebo/arm64/core:/workspace/.artifacts/benchmark
     depends_on:
       nav_infra:
         condition: service_started
@@ -93,15 +93,15 @@ services:
     build:
       context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
       dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/desktop.dockerfile
-    image: ap-pnc-desktop:${AP_PNC_ARCH}
+    image: ap-pnc-desktop:arm64
     environment:
       AP_PNC_DIR: /workspace
       DISPLAY: :99
     # GUI-only bridge service: no DDS/Gazebo discovery occurs here.
     ports: ["127.0.0.1:6088:6080"]
     volumes:
-      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/X11:/tmp/.X11-unix
-      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/state:/workspace/.artifacts/desktop
+      - ${AP_PNC_DIR}/.artifacts/desktop/arm64/X11:/tmp/.X11-unix
+      - ${AP_PNC_DIR}/.artifacts/desktop/arm64/state:/workspace/.artifacts/desktop
     healthcheck:
       test: [CMD-SHELL, "xdpyinfo -display :99 >/dev/null 2>&1"]
       interval: 2s
@@ -113,7 +113,7 @@ services:
     build:
       context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
       dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/qgc.dockerfile
-    image: qground_control:${AP_PNC_ARCH}
+    image: qground_control:arm64
     container_name: qground_control
     network_mode: host
     environment:
@@ -121,7 +121,7 @@ services:
       LIBGL_ALWAYS_SOFTWARE: "1"
       QT_QUICK_BACKEND: software
     volumes:
-      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/X11:/tmp/.X11-unix:ro
+      - ${AP_PNC_DIR}/.artifacts/desktop/arm64/X11:/tmp/.X11-unix:ro
     depends_on:
       desktop:
         condition: service_healthy
@@ -129,14 +129,14 @@ services:
   gazebo-gui:
     <<: *target
     profiles: [gui]
-    image: px4-simulator:${AP_PNC_ARCH}
+    image: px4-simulator:arm64
     network_mode: host
     environment:
       <<: *gz-env
       DISPLAY: :99
       LIBGL_ALWAYS_SOFTWARE: "1"
     volumes:
-      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/X11:/tmp/.X11-unix:ro
+      - ${AP_PNC_DIR}/.artifacts/desktop/arm64/X11:/tmp/.X11-unix:ro
     command: [gui]
     depends_on:
       desktop:

@@ -49,10 +49,14 @@ def test_compose_native_environment_and_profiles(tmp_path, monkeypatch):
     runtime.compose(ROOT, file, ["build", "ap-pnc"], gui=True)
     args = run.call_args.args[0]
     assert args[:4] == ["docker", "compose", "-f", str(file)]
-    assert args[4:] == ["--profile", "build", "--profile", "gui", "build", "ap-pnc"]
+    assert args[-6:] == ["--profile", "build", "--profile", "gui", "build", "ap-pnc"]
     options = run.call_args.kwargs
     assert options["env"]["AP_PNC_DIR"] == str(ROOT)
-    assert options["env"]["AP_PNC_ARCH"] == "arm64"
+    # The arch is an argument, not an environment variable: it lives in the
+    # generated override (empty when the request equals the base's default).
+    assert "AP_PNC_ARCH" not in options["env"]
+    override = Path(args[args.index("-f") + 3])
+    assert override.is_file() and "services:" in override.read_text()
     assert options["cwd"] == ROOT
     assert options["check"]
 
@@ -62,8 +66,12 @@ def test_down_includes_gui_but_not_build_profile(monkeypatch):
     monkeypatch.setattr(runtime.subprocess, "run", run)
     docker.down(arch="amd64")
     args = run.call_args.args[0]
-    assert args[4:] == ["--profile", "gui", "down"]
-    assert run.call_args.kwargs["env"]["AP_PNC_ARCH"] == "amd64"
+    assert args[-3:] == ["--profile", "gui", "down"]
+    # The arch is an argument, not an environment variable: it lands in the
+    # generated override that Compose merges over the base file.
+    assert "AP_PNC_ARCH" not in run.call_args.kwargs["env"]
+    override = Path(args[args.index("-f") + 3])
+    assert "linux/amd64" in override.read_text()
 
 
 def test_build_validates_before_generating_solver(monkeypatch):
@@ -179,11 +187,10 @@ def test_compose_runtime_profiles_resolve_without_build_service(arch, gui):
     # Real parser regression: service: build contexts referencing a disabled
     # build-only profile can pass all-profile config but break normal `up`.
     file = ROOT / "infra/sim_infra/gazebo/docker/docker-compose.yml"
-    command = ["docker", "compose", "-f", str(file)]
-    if gui:
-        command += ["--profile", "gui"]
     output = subprocess.run(
-        [*command, "config", "--format", "json"],
+        runtime.compose_command(
+            ROOT, file, ["config", "--format", "json"], arch=arch, gui=gui
+        ),
         env=runtime.compose_env(ROOT, arch),
         capture_output=True,
         text=True,
@@ -201,7 +208,7 @@ def test_compose_runtime_profiles_resolve_without_build_service(arch, gui):
 def test_simple_runtime_profile_resolves(arch):
     file = ROOT / "infra/sim_infra/simple_sim/docker/docker-compose.yml"
     output = subprocess.run(
-        ["docker", "compose", "-f", str(file), "config", "--format", "json"],
+        runtime.compose_command(ROOT, file, ["config", "--format", "json"], arch=arch),
         env=runtime.compose_env(ROOT, arch),
         capture_output=True,
         text=True,
