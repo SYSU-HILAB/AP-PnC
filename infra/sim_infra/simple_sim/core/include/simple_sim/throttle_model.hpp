@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace simple_sim
 {
@@ -63,6 +64,15 @@ namespace simple_sim
     double measurement_tau_s = 0.02;
     double setpoint_tau_s    = 0.02;
 
+    /// Command/measurement pairing delay [s] and the low-pass on the applied
+    /// command [s]. The measured force lags the command through the motor and
+    /// ESC, so pairing simultaneous samples biases the effectiveness estimate.
+    /// px4ctrl's INDI path uses the current command through this filter (lag 0)
+    /// and its legacy path uses a delayed command queue; the lag is
+    /// configurable so the two can be compared instead of assumed.
+    double lag_s          = 0.0;
+    double throttle_tau_s = 0.02;
+
     void validate() const;
   };
 
@@ -73,6 +83,10 @@ namespace simple_sim
    * to be called once per inner-loop tick (400 Hz); the caller owns the tick
    * and the rate, this class only owns the law.
    */
+  /// Ring capacity for the delayed-command pairing: 256 ticks covers 2.5 s at
+  /// the 100 Hz INDI rate, far more lag than any actuator.
+  inline constexpr std::size_t kCommandRing = 256;
+
   class ThrottleModel
   {
    public:
@@ -115,8 +129,11 @@ namespace simple_sim
     bool                valid_                 = false;
     double              throttle_              = 0.0;
     double              measurement_lpf_       = 0.0;
-    double              setpoint_lpf_          = 0.0;
-    bool                filters_initialised_   = false;
+    double              throttle_lpf_          = 0.0;
+    std::vector<double> command_ring_  = std::vector<double>(kCommandRing, 0.0);
+    std::size_t         command_write_ = 0;
+    double              setpoint_lpf_  = 0.0;
+    bool                filters_initialised_ = false;
   };
 
 }  // namespace simple_sim

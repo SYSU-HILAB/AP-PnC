@@ -40,6 +40,11 @@ simple_sim:
     throttle_min: 0.05
     throttle_max: 1.0
     measurement_tau_s: 0.02
+    # Pairing of the estimator's sample: the applied command is filtered with
+    # throttle_tau_s and taken lag_s in the past, because the measured force lags
+    # the command through the motor and ESC. lag_s: 0 is px4ctrl's INDI path.
+    lag_s: 0.0
+    throttle_tau_s: 0.02
     setpoint_tau_s: 0.02
   rate_loop:
     gain: [100.0, 100.0, 100.0]     # 1/tau: tau = 10 ms per angular-rate channel (1/5 of 50 ms)

@@ -178,10 +178,12 @@ namespace simple_sim
       const YAML::Node &t = sim["throttle"];
       config.throttle.realization =
           t["realization"].as<std::string>("ideal_invert");
-      config.throttle.frq      = t["frq"].as<double>(100.0);
-      config.throttle.eta_seed = t["eta_seed"].as<double>(0.0);
-      config.throttle.eta_min  = t["eta_min"].as<double>(9.81);
-      config.throttle.eta_max  = t["eta_max"].as<double>(60.0);
+      config.throttle.frq            = t["frq"].as<double>(100.0);
+      config.throttle.lag_s          = t["lag_s"].as<double>(0.0);
+      config.throttle.throttle_tau_s = t["throttle_tau_s"].as<double>(0.02);
+      config.throttle.eta_seed       = t["eta_seed"].as<double>(0.0);
+      config.throttle.eta_min        = t["eta_min"].as<double>(9.81);
+      config.throttle.eta_max        = t["eta_max"].as<double>(60.0);
       config.throttle.forgetting_factor =
           t["forgetting_factor"].as<double>(0.999);
       config.throttle.p_init = t["p_init"].as<double>(100.0);

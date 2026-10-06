@@ -41,12 +41,13 @@ namespace
   ThrottleModelConfig indi_config()
   {
     ThrottleModelConfig config;
-    config.realization          = "indi";
-    config.eta_seed             = 2.0 * kHoverForce;  // deliberately wrong seed
-    config.eta_min              = kHoverForce;
-    config.eta_max              = 60.0;
-    config.measurement_tau_s    = 0.0;  // deterministic
-    config.setpoint_tau_s       = 0.0;
+    config.realization       = "indi";
+    config.eta_seed          = 2.0 * kHoverForce;  // deliberately wrong seed
+    config.eta_min           = kHoverForce;
+    config.eta_max           = 60.0;
+    config.measurement_tau_s = 0.0;  // deterministic
+    config.throttle_tau_s = 0.0;  // the pairing filter is not under test here
+    config.setpoint_tau_s = 0.0;
     config.measurement_variance = 1.0e-4;
     config.var_valid_threshold  = 1.0;
     return config;

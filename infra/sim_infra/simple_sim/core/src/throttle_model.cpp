@@ -33,6 +33,9 @@ namespace simple_sim
       throw std::invalid_argument("invalid INDI throttle configuration");
     if (!std::isfinite(frq) || frq <= 0.0)
       throw std::invalid_argument("invalid INDI tick rate");
+    if (!std::isfinite(lag_s) || lag_s < 0.0 ||
+        !std::isfinite(throttle_tau_s) || throttle_tau_s < 0.0)
+      throw std::invalid_argument("invalid throttle pairing configuration");
     if (!std::isfinite(measurement_tau_s) || measurement_tau_s < 0.0 ||
         !std::isfinite(setpoint_tau_s) || setpoint_tau_s < 0.0)
       throw std::invalid_argument("invalid throttle filter time constant");
@@ -130,7 +133,21 @@ namespace simple_sim
     // INDI: estimate the effectiveness on the applied throttle, then take one
     // increment from the previous throttle proportional to the specific-force
     // error. This is px4ctrl's computeIndiThrottle.
-    step_estimator(throttle_, measurement_lpf_);
+    // Record the throttle applied during the last tick and pair the estimator
+    // with the command from `lag_s` ago, filtered. Pairing the held command
+    // with a force that lags through the motor and ESC biases the effectiveness
+    // estimate; lag 0 with the filter is px4ctrl's INDI path.
+    command_ring_[command_write_] = throttle_;
+    command_write_                = (command_write_ + 1) % command_ring_.size();
+    const std::size_t lag_ticks =
+        static_cast<std::size_t>(std::llround(config_.lag_s / dt_s)) %
+        command_ring_.size();
+    const std::size_t index =
+        (command_write_ + command_ring_.size() - 1 - lag_ticks) %
+        command_ring_.size();
+    throttle_lpf_ = low_pass(command_ring_[index], throttle_lpf_,
+                             config_.throttle_tau_s, dt_s);
+    step_estimator(throttle_lpf_, measurement_lpf_);
     const double error = setpoint_lpf_ - measurement_lpf_;
     throttle_ =
         std::clamp(throttle_ + config_.specific_force_p * error / eta_ * dt_s,
