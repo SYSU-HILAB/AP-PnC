@@ -1,0 +1,113 @@
+# Tracking-only simulation. No collision, ground contact, LiDAR, PX4 or MAVROS.
+# Reference belongs to planner; horizon/outer-loop period belong to nmpc.yaml.
+simple_sim:
+  controller: se3
+  physics_dt_ns: 500000 # 2000 Hz fixed RK4 step; must divide the control period
+  duration_s: 0.0 # 0: run until the full prediction horizon no longer fits
+  plant:
+    mass: 2.0 # must agree with the planner's flatness.mass
+    gravity: 9.81
+    inertia: [0.01715066, 0.01818037, 0.01987597] # diagonal, kg m^2
+  # Study override of the extracted private geometry, NOT a re-extraction.
+  # `arms_m` in the profile is the motor-to-CoM lever that scales the
+  # position-based moments. 2.0 doubles that lever; the profile file itself is
+  # never modified and the value is recorded in every manifest.
+  arm_length_scale: 2.0
+  # Ideal inner loop: the entire actuation model for the `ideal` profile, so a run
+  # here isolates the guidance and control law from the motor/mixer/PID chain.
+  # INDI layer: how a thrust-axis specific force setpoint becomes a normalized
+  # collective throttle. Rates: this INDI law 100 Hz, the actuator inner loop
+  # (throttle/mixer/ESC and the rate loop) 400 Hz, physics 2000 Hz, guidance
+  # 50 Hz. The rate belongs to the law, not to the physics step.
+  throttle:
+    # indi: the vehicle's law (px4ctrl ThrottleManager): RLS effectiveness
+    # estimate on the measured thrust-axis specific force + INDI increment. This
+    # is the realisation the project tests against; measured on practical/lyu it
+    # beats the static inverse at every speed.
+    # ideal_invert: exact static inverse of the modelled thrust curve, kept as the
+    # control that isolates the online estimate.
+    realization: indi
+    frq: 100.0 # INDI tick [Hz]; must divide into the physics step
+    eta_seed: 0.0 # <=0: seed from the modelled hover effectiveness
+    eta_min: 9.81
+    eta_max: 60.0
+    forgetting_factor: 0.999
+    measurement_variance: 0.2
+    innovation_gate: 3.0
+    var_valid_threshold: 0.01
+    min_throttle_update: 0.05
+    # Loop bandwidth [rad/s]: the increment is kp * error / eta * dt, so kp is the
+    # closed-loop rate of the thrust loop. Measured on practical/lyu with the
+    # NMPC: 20 -> 40 rad/s gains 1.5-2.1% of position RMSE and 60 is marginal, so
+    # the tighter of the two useful values is the default.
+    specific_force_p: 40.0
+    throttle_min: 0.05
+    throttle_max: 1.0
+    measurement_tau_s: 0.02
+    # Pairing of the estimator's sample: the applied command is filtered with
+    # throttle_tau_s and taken lag_s in the past, because the measured force lags
+    # the command through the motor and ESC. lag_s: 0 is px4ctrl's INDI path.
+    lag_s: 0.0
+    throttle_tau_s: 0.02
+    setpoint_tau_s: 0.02
+  rate_loop:
+    gain: [100.0, 100.0, 100.0] # 1/tau: tau = 10 ms per angular-rate channel (1/5 of 50 ms)
+    thrust_tau_s: 0.02 # collective specific-force loop, tau = 20 ms (1/5 of 100 ms)
+    max_rate: [8.0, 8.0, 8.0] # rad/s, FLU
+    max_moment: [2.0, 2.0, 1.0] # N m, FLU
+    max_specific_force: 30.0 # m/s^2, along body +Z
+  se3:
+    # Flatness feedforward: solve alpha numerically from the true aerodynamic
+    # force balance, rebuild the thrust axis, keep the planned yb. Enabled by
+    # default; measured better than the same controller without it on every row.
+    aero_flatness_feedforward: true
+    # Tuning is set for the airframe, not for this simulator. The vehicle is a VTOL
+    # with no fast inner rate loop: on hardware, gains near the simulator's optimum
+    # (position 8, velocity 6, attitude 48) oscillate. The rows below are therefore
+    # deliberately gentler, and the simulator's low-error rows are not the target --
+    # they are what an unrealistically capable inner loop rewards.
+    #
+    # Position RMSE [m] at 8/10/12 m/s, practical + indi / lyu / se3-aero-ff:
+    #   position 8   velocity 6    attitude 48         -> 0.0154 / 0.0470 / 0.0512
+    #   position 8   velocity 6    attitude [10,20,10] -> 0.0217 / 0.0563 / 0.0959
+    #   position 4   velocity 3    attitude [10,20,10] -> 0.0444 / 0.1187 / 0.2297
+    #   position 4   velocity 3    attitude [5,10,5]   -> 0.0707 / 0.1740 / 0.8813
+    #   position 2   velocity 1.5  attitude [5,10,5]   -> 0.1536 / 0.4690 / 1.6686
+    #   position 2   velocity 1.5  attitude [6,12,6]   -> 0.1319 / 0.3811 / 0.9834
+    #   position 1   velocity 0.75 attitude [6,12,6]   -> 0.2982 / 0.8415 / 1.7700
+    #     (peak position error 0.68 / 1.63 / 4.00 m -- the last row follows the
+    #      reference loosely rather than tracking it)
+    #
+    # To tune against hardware rather than against this plant, first slow the inner
+    # loop down to what the airframe has (rate_loop.gain, throttle.specific_force_p),
+    # because a fast inner loop is exactly what makes the high-gain rows look good.
+    position_gain: [1.0, 1.0, 1.0]
+    velocity_gain: [0.75, 0.75, 0.75]
+    # Per-axis because the axes differ: pitch carries the tracking, yaw can be low
+    # (its rate limit is the lowest), roll in between. Set by hardware behaviour,
+    # not by the simulator sweep -- see the tuning note below.
+    # Halved again by owner request ([5,10,5]). Tuning path, practical + indi / lyu /
+    # se3-aero-ff, position RMSE [m]: attitude [48] with p8/v6 = 0.0154/0.0470/0.0512;
+    # [10,20,10] = 0.0217/0.0563/0.0959; with p4/v3 = 0.0444/0.1187/0.2297;
+    # [5,10,5] with p4/v3 = 0.0707/0.1740/0.8813, where the rate limits saturate on
+    # all three axes at 12 m/s.
+    attitude_gain: [6.0, 12.0, 6.0]
+    # Body-rate output limit [rad/s, FLU], the same numbers the NMPC uses as its
+    # command bounds: yaw lower than pitch and roll, as a real airframe does.
+    max_rate: [1.5, 2.5, 1.5]
+  aero:
+    model: lyu # under test: lyu | phi (plus `none` control)
+    # Drop the body-X and body-Z aerodynamic moments, keeping only the lateral
+    # (pitching) one, matching the paper's neglect of the roll/yaw aerodynamic
+    # moment. The plant aero models still compute all three; this is an explicit
+    # boundary choice, recorded in every run's simple_sim.yaml snapshot.
+    lateral_moment_only: true
+    # Inject the aerodynamic force along the thrust axis? auto = the profile rule
+    # (the ideal profile's first-order thrust loop already closes that axis).
+    # The controller's flatness feedforward uses the same value.
+    inject_thrust_axis: auto
+    scale: 1.0
+    wind_world: [0.0, 0.0, 0.0] # ENU, m/s
+  ros:
+    publish_stride: 5 # visualization every N control steps
+    realtime_factor: 1.0 # scheduler pacing only; 0 = unpaced

@@ -1,0 +1,14 @@
+# Advanced lift-drag model parameters ("advanced").
+# Migrated bit-exact from the retired aero_sim_params.db
+# (advanced_lift_drag_config, id=1). Baseline: PX4-gazebo-models quadtailsitter.
+# Source of truth: this file. Regeneration only via code review (no writer).
+sigmoid_blend: 15.0 # pre/post-stall sigmoid blending sharpness
+cl_alpha_0: 0.15188 # zero-angle lift coefficient
+cl_alpha: 5.015 # lift curve slope, 1/rad
+alpha_stall: 0.2617993877991494 # stall angle, rad (15 deg)
+eff: 25.902431428847844 # Oswald efficiency term (includes AR and pi)
+cd_0: 0.15 # zero-lift drag coefficient
+cd_flat_plate: 1.28 # flat-plate drag coefficient
+cy_beta: -0.05 # side-force derivative, 1/rad
+cl_beta_loss: 0.0 # lift loss factor with sideslip
+scale_factor: 0.19813253126336233 # 0.5 * rho * S
