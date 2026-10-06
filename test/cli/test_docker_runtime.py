@@ -10,8 +10,8 @@ import pytest
 import typer
 import yaml
 
-from tooling import docker_runtime as runtime
-from tooling.commands import docker, gen_nmpc_lib, sim
+from tooling import docker_runtime as docker, docker_runtime as runtime
+from tooling.commands import gen_nmpc_lib, sim
 from tooling.env import get_git_root
 
 ROOT = get_git_root()

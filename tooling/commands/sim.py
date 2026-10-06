@@ -229,6 +229,6 @@ def build(
             arch=arch,
         )
     if target in ("gazebo", "all"):
-        from tooling.commands import docker
+        from tooling import docker_runtime
 
-        docker.build(arch=arch, gui=gui, nav_target=nav_target)
+        docker_runtime.build(arch=arch, gui=gui, nav_target=nav_target)

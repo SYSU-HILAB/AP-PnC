@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from tooling import docker_runtime, env
-from tooling.commands import docker, lint, test as test_command
+from tooling import docker_runtime, docker_runtime as docker, env
+from tooling.commands import lint, test as test_command
 from tooling.paper.benchmark import data
 from tooling.paper.figure import data_utils, specify_figure_dirs
 

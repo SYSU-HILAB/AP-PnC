@@ -5,11 +5,9 @@ import typer
 from tooling.commands import (
     benchmark,
     build,
-    docker,
     gen_nmpc_lib,
     lint,
     sim,
-    telemetry,
     test,
 )
 

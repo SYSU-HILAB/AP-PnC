@@ -163,7 +163,7 @@ def test_nested_session_lifecycle(telemetry):
 
 
 def test_collector_command_is_scoped_and_paths_absolute(monkeypatch, tmp_path):
-    from tooling.commands import telemetry as cli
+    from tooling import observability as cli
 
     monkeypatch.setenv("AP_PNC_DIR", str(tmp_path))
     calls = []
