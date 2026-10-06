@@ -272,12 +272,20 @@ namespace simple_sim
             config_.motor_model.inner_dt_ns / config_.physics_dt_ns;
         const double inner_dt =
             static_cast<double>(config_.motor_model.inner_dt_ns) * 1e-9;
-        // Effectiveness seed: the configured value, or the standard hover
-        // assumption of one half throttle when it is left at zero.
-        const double seed = config_.throttle.eta_seed > 0.0
-                                ? config_.throttle.eta_seed
-                                : 2.0 * config_.plant.gravity;
-        auto         realization =
+        // Effectiveness seed: the configured value, or the modelled hover
+        // quotient g / u_hover. The simulator can invert its own thrust curve
+        // exactly, so the online estimate starts from the right number and INDI
+        // only has to correct model error, which is what it is for. Seeding
+        // from an assumed hover throttle instead leaves the increment
+        // integrating a large initial error at a bandwidth of
+        // `specific_force_p` rad/s.
+        const double hover_throttle =
+            model->static_throttle(config_.plant.gravity);
+        const double seed =
+            config_.throttle.eta_seed > 0.0
+                ? config_.throttle.eta_seed
+                : config_.plant.gravity / std::max(hover_throttle, 1e-3);
+        auto realization =
             std::make_shared<ThrottleModel>(config_.throttle, seed);
         runner_ = std::make_unique<Runner>(
             runner_cfg,
@@ -287,8 +295,8 @@ namespace simple_sim
             { return model->wrench(s); }, *controller_,
             [model](const State &s, const Command &c)
             { return model->initialize(s, c); },
-            [model, realization, inner_dt, stride](const State   &s,
-                                                   const Command &c)
+            [model, realization, inner_dt, stride, this](const State   &s,
+                                                         const Command &c)
             {
               // Bottom control layer at the actuator inner rate (400 Hz):
               // realize a normalized throttle from the thrust-axis specific
@@ -297,8 +305,19 @@ namespace simple_sim
               // inversion.
               if (realization->config().realization == "indi" &&
                   s.motors.physics_ticks % stride == 0)
-                model->set_realized_throttle(realization->command(
-                    c.specific_force, s.motors.specific_force, inner_dt));
+              {
+                // Measure the thrust-axis specific force the motors actually
+                // produce (body +Z is the thrust axis). Reading
+                // `motors.specific_force` instead would pair a constant with a
+                // varying throttle: that state slot only has dynamics on the
+                // ideal profile, where a first-order thrust loop drives it, so
+                // on this path its derivative is identically zero and the
+                // effectiveness estimate is meaningless.
+                const double measured =
+                    model->wrench(s).force.z() / config_.plant.mass;
+                model->set_realized_throttle(
+                    realization->command(c.specific_force, measured, inner_dt));
+              }
               return model->prepare(s, c);
             });
       }

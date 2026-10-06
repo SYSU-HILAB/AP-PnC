@@ -51,6 +51,17 @@ namespace simple_sim
     State prepare(const State &state, const Command &command) const;
 
     /**
+     * @brief The model's own static inverse: the throttle it would use for a
+     * thrust-axis specific force. Exposed so the effectiveness seed of the
+     * online realization starts from the modelled hover quotient instead of an
+     * assumed hover throttle.
+     */
+    double static_throttle(double specific_force) const
+    {
+      return throttle(specific_force);
+    }
+
+    /**
      * @brief Use a throttle realized by the inner loop instead of inverting the
      * modelled curve here. Const because the plant holds a const motor model;
      * the realized value is runtime state, not configuration.
