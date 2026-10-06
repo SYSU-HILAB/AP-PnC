@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sim-dispatcher
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+    app.kubernetes.io/component: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sim-dispatcher
+  template:
+    metadata:
+      labels:
+        app: sim-dispatcher
+        app.kubernetes.io/name: sim-dispatcher
+        app.kubernetes.io/part-of: ap-pnc
+    spec:
+      serviceAccountName: sim-dispatcher-sa
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: dispatcher
+          image: alpine:3.19
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBECONFIG
+              value: /etc/rancher/k3s/k3s.yaml
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "[sim-dispatcher] Starting AP-PnC Simulation Dispatcher in namespace '$NAMESPACE'..."
+
+              LAST_APPLIED=""
+              while true; do
+                TARGET=$(kubectl get cm sim-config -n "$NAMESPACE" -o jsonpath='{.data.SIM_TYPE}' 2>/dev/null || true)
+                if [ -n "$TARGET" ] && [ "$TARGET" != "$LAST_APPLIED" ]; then
+                  echo "[sim-dispatcher] [$(date +'%Y-%m-%d %H:%M:%S')] Detected SIM_TYPE change: '${LAST_APPLIED}' -> '${TARGET}'"
+                  case "$TARGET" in
+                    simple|simple-sim|simple_sim)
+                      echo "[sim-dispatcher] Activating simple-sim (scale: ap-pnc-simple-sim=1, ap-pnc-gazebo=0)..."
+                      kubectl scale deployment ap-pnc-simple-sim -n "$NAMESPACE" --replicas=1 || true
+                      kubectl scale deployment ap-pnc-gazebo -n "$NAMESPACE" --replicas=0 || true
+                      LAST_APPLIED="$TARGET"
+                      ;;
+                    gazebo|gz)
+                      echo "[sim-dispatcher] Activating gazebo (scale: ap-pnc-gazebo=1, ap-pnc-simple-sim=0)..."
+                      kubectl scale deployment ap-pnc-gazebo -n "$NAMESPACE" --replicas=1 || true
+                      kubectl scale deployment ap-pnc-simple-sim -n "$NAMESPACE" --replicas=0 || true
+                      LAST_APPLIED="$TARGET"
+                      ;;
+                    stop|none|off)
+                      echo "[sim-dispatcher] Stopping all simulations (scale: ap-pnc-simple-sim=0, ap-pnc-gazebo=0)..."
+                      kubectl scale deployment ap-pnc-simple-sim -n "$NAMESPACE" --replicas=0 || true
+                      kubectl scale deployment ap-pnc-gazebo -n "$NAMESPACE" --replicas=0 || true
+                      LAST_APPLIED="$TARGET"
+                      ;;
+                    *)
+                      echo "[sim-dispatcher] Warning: Unknown SIM_TYPE '$TARGET'. Expected 'simple-sim', 'gazebo', or 'stop'."
+                      ;;
+                  esac
+                fi
+                sleep 3
+              done
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          volumeMounts:
+            - mountPath: /bin/kubectl
+              name: k3s-bin
+              readOnly: true
+            - mountPath: /var/lib/rancher/k3s/data
+              name: k3s-data
+              readOnly: true
+            - mountPath: /etc/rancher/k3s/k3s.yaml
+              name: k3s-yaml
+              readOnly: true
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+      volumes:
+        - name: k3s-bin
+          hostPath:
+            path: /usr/local/bin/k3s
+            type: File
+        - name: k3s-data
+          hostPath:
+            path: /var/lib/rancher/k3s/data
+            type: Directory
+        - name: k3s-yaml
+          hostPath:
+            path: /etc/rancher/k3s/k3s.yaml
+            type: File
+        - name: host-localtime
+          hostPath:
+            path: /etc/localtime
+            type: File

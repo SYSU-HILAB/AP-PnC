@@ -1,0 +1,145 @@
+name: ap-pnc-gazebo
+
+x-target: &target
+  platform: linux/${AP_PNC_ARCH:?Use ap-pnc docker or set AP_PNC_ARCH=arm64|amd64}
+  init: true
+  ipc: host
+
+x-ros-env: &ros-env
+  AP_PNC_DIR: /workspace
+  RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+  ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+
+x-gz-env: &gz-env
+  AP_PNC_DIR: /workspace
+  GZ_IP: 127.0.0.1
+  GZ_PARTITION: ap_pnc_sitl
+  HEADLESS: "1"
+
+services:
+  # Build-only context dependency. Never starts with the normal runtime profiles.
+  ros2-base:
+    <<: *target
+    profiles: [build]
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/core/docker/ros2-base.dockerfile
+      target: base
+    image: ap-pnc-ros2-base:${AP_PNC_ARCH}
+
+  px4-simulator:
+    <<: *target
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/px4-simulator.dockerfile
+    image: px4-simulator:${AP_PNC_ARCH}
+    container_name: px4-simulator
+    network_mode: host
+    environment: *gz-env
+    # Keep the PX4 console open: closed stdin otherwise causes prompt spam.
+    stdin_open: true
+    volumes:
+      - ${AP_PNC_DIR}/.artifacts/benchmark/gazebo/${AP_PNC_ARCH}/ulgs:/workspace/.artifacts/px4_src/build/px4_sitl_default/rootfs/log
+    healthcheck:
+      test: [CMD-SHELL, "pgrep -x px4 >/dev/null"]
+      interval: 5s
+      start_period: 30s
+      retries: 12
+
+  gcs-heartbeat:
+    <<: *target
+    image: px4-simulator:${AP_PNC_ARCH}
+    network_mode: host
+    environment: *gz-env
+    command: [heartbeat]
+    depends_on:
+      px4-simulator:
+        condition: service_healthy
+
+  nav_infra:
+    <<: *target
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/infra/nav_infra/docker/Dockerfile
+      target: ${AP_PNC_NAV_TARGET:-sim}
+    image: nav_infra:${AP_PNC_ARCH}-${AP_PNC_NAV_TARGET:-sim}
+    container_name: nav_infra
+    network_mode: host
+    environment: *ros-env
+    command: [ros2, launch, bringup, nav_infra.launch.py, "profile:=sim"]
+    depends_on:
+      px4-simulator:
+        condition: service_healthy
+
+  ap-pnc:
+    <<: *target
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/ap-pnc.dockerfile
+    image: ap-pnc:${AP_PNC_ARCH}
+    container_name: ap-pnc
+    network_mode: host
+    environment: *ros-env
+    volumes:
+      - ${AP_PNC_DIR}/core/bringup/config:/workspace/bringup/config:ro
+      - ${AP_PNC_DIR}/.artifacts/benchmark/gazebo/${AP_PNC_ARCH}/core:/workspace/.artifacts/benchmark
+    depends_on:
+      nav_infra:
+        condition: service_started
+
+  desktop:
+    <<: *target
+    profiles: [gui]
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/desktop.dockerfile
+    image: ap-pnc-desktop:${AP_PNC_ARCH}
+    environment:
+      AP_PNC_DIR: /workspace
+      DISPLAY: :99
+    # GUI-only bridge service: no DDS/Gazebo discovery occurs here.
+    ports: ["127.0.0.1:6088:6080"]
+    volumes:
+      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/X11:/tmp/.X11-unix
+      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/state:/workspace/.artifacts/desktop
+    healthcheck:
+      test: [CMD-SHELL, "xdpyinfo -display :99 >/dev/null 2>&1"]
+      interval: 2s
+      retries: 30
+
+  qground_control:
+    <<: *target
+    profiles: [gui]
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/infra/sim_infra/gazebo/docker/qgc.dockerfile
+    image: qground_control:${AP_PNC_ARCH}
+    container_name: qground_control
+    network_mode: host
+    environment:
+      DISPLAY: :99
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      QT_QUICK_BACKEND: software
+    volumes:
+      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/X11:/tmp/.X11-unix:ro
+    depends_on:
+      desktop:
+        condition: service_healthy
+
+  gazebo-gui:
+    <<: *target
+    profiles: [gui]
+    image: px4-simulator:${AP_PNC_ARCH}
+    network_mode: host
+    environment:
+      <<: *gz-env
+      DISPLAY: :99
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    volumes:
+      - ${AP_PNC_DIR}/.artifacts/desktop/${AP_PNC_ARCH}/X11:/tmp/.X11-unix:ro
+    command: [gui]
+    depends_on:
+      desktop:
+        condition: service_healthy
+      px4-simulator:
+        condition: service_healthy

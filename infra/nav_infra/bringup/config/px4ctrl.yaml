@@ -1,0 +1,96 @@
+# px4ctrl parameters — gazebo gz_x500 simulation profile.
+# Vendored from agent_am_demo l2-px4ctrl bringup (ROS2 parameter style).
+/**:
+  ros__parameters:
+    mass: 2.0 # gz x500 airframe [kg]
+    gra: 9.81
+    pose_solver: 0
+    enable_body_rate_ctrl: true
+    ctrl_freq_max: 200.0
+    max_manual_vel: 1.0
+    max_yaw_target_mode_rate_max: 1.0
+    yaw_target_kp: 1.0
+    yaw_target_deadband: 0.034906585
+    rc_cmd_vel_bias_scale: 0.5
+    max_angle: 80.0
+    low_voltage: 21.0
+
+    rc_reverse:
+      roll: false
+      pitch: true
+      yaw: false
+      throttle: true
+
+    auto_takeoff_land:
+      enable: true
+      no_RC: true # simulation has no RC transmitter
+      takeoff_height: 1.0
+      takeoff_land_speed: 0.5
+
+    planner_reset:
+      enable: false
+      service: "/planner/reset"
+
+    thrust_model:
+      print_value: false
+      accurate_thrust_model: false
+      noisy_imu: false
+      K1: 0.7583
+      K2: 1.6942
+      K3: 0.6786
+      hover_percentage: 0.9 # gz x500 needs a high normalized hover throttle
+
+    # Controller mode: 0 = px4ctrl tracking (position/hover), 1 = internal
+    # NMPC controller (rates_sp + specific_force_sp from /nmpc/control via
+    # RLS + INDI). PASS_THROUGH still gates when the NMPC source takes over.
+    ctrl_mode: 0
+    # Throttle estimation: 0 = thr2acc mapping, 1 = RLS eta + INDI
+    # incremental law (both tracking and NMPC mode use the RLS eta model).
+    throttle_estimator: 0
+    # mavros local_position/odom twist is body-frame; convert to world.
+    odom_twist_is_body: true
+
+    rls: # RLS throttle model (eta = specific force per throttle unit)
+      lambda: 0.999
+      eta_min: 9.81
+      eta_max: 40.0
+      u_min: 0.10 # no RLS update below this throttle (low SNR)
+      p_init: 10.0
+      var_valid_thr: 0.01
+      innovation_gate: 5.0
+
+    indi: # INDI incremental thrust law
+      specific_force_p: 2.0 # specific-force feedback gain [1/s]
+      throttle_min: 0.05
+      throttle_max: 1.0
+      throttle_lpf_cutoff_hz: 20.0
+      setpoint_lpf_cutoff_hz: 20.0
+      meas_lpf_cutoff_hz: 20.0
+
+    gain:
+      Kp0: 1.666666667
+      Kp1: 1.666666667
+      Kp2: 1.666666667
+      Kv0: 2.0
+      Kv1: 2.0
+      Kv2: 2.0
+      Kvi0: 0.0
+      Kvi1: 0.0
+      Kvi2: 0.0
+      KAngR: 13.333333333
+      KAngP: 13.333333333
+      KAngY: 2.666666667
+
+    rotor_drag:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      k_thrust_horz: 0.0
+
+    msg_timeout:
+      odom: 0.5
+      rc: 0.5
+      cmd: 0.5
+      imu: 0.5
+      bat: 0.5
+      pass_through: 0.2 # stale external rates stream falls back to AUTO_HOVER

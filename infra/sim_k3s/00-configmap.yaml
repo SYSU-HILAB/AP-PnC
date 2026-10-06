@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sim-config
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-config
+    app.kubernetes.io/part-of: ap-pnc
+data:
+  # Selection only. Flight/simulation configuration belongs to core/bringup.
+  # simple-sim: tracking-only lockstep C++; gazebo: PX4 SITL; stop: scale to zero.
+  SIM_TYPE: "simple-sim"
+  HEADLESS: "true"
+  DISPLAY: ":0"

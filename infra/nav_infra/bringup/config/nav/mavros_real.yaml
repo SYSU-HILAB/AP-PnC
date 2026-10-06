@@ -1,0 +1,45 @@
+# MAVROS ROS 2 Humble configuration for PX4 Autopilot
+/**:
+  ros__parameters:
+    fcu_url: "/dev/fcu:921600"
+    gcs_url: ""
+    target_system_id: 1
+    target_component_id: 1
+    fcu_protocol: "v2.0"
+
+    # Startup & Connection
+    conn:
+      heartbeat_rate: 1.0
+      timeout: 10.0
+      timesync_rate: 10.0
+
+    # Stream rates configuration (Hz)
+    stream_rates:
+      raw_sens: 200.0   # IMU
+      extended_sys_state: 5.0
+      position: 50.0    # Local position
+      extra1: 100.0     # Attitude / body rates
+      extra2: 20.0
+      extra3: 10.0
+
+    # Plugin allowlisting (ROS2 mavros uses plugin_allowlist; the ROS1-era
+    # plugin_whitelist key is silently ignored and loads ALL plugins, which
+    # crashes mavros_node with a duplicate ParamPull service registration)
+    plugin_allowlist:
+      - sys_status
+      - imu
+      - setpoint_raw
+      - setpoint_attitude
+      - local_position
+      - vision_pose
+      - command
+
+    # Time sync
+    time:
+      time_ref_source: "fcu"
+      timesync_mode: "MAVLINK"
+
+# NOTE: the setpoint_raw plugin parameter (thrust_scaling) cannot be set
+# from this file: mavros 2.15 plugin sub-nodes disable global arguments
+# (src/lib/plugin.cpp), so the params file never reaches them. The launch
+# file sets /mavros/setpoint_raw/thrust_scaling once the sub-node appears.

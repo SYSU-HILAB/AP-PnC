@@ -1,0 +1,52 @@
+# L1 FAST-LIO profile — production semantics (default: j30v2).
+#
+# Flattened ROS 2 dot-parameter form for the vendored fast_lio fork.
+# Mirrors diff-dockers drone_projects/auto_deployer/bringup/l1:
+#   config/fastlio_mid360.yaml  (imu/lidar topics + per-device anchors)
+#   launch/includes/fastlio.launch.xml  (node + tuning overrides)
+# j30v2 anchor = LiDAR -> PX4 IMU (R_y(+15 deg), t=[0.094614,-0.012512,0.043731]).
+# Other devices: fastlio_mid360_c5-tilt.yaml / fastlio_mid360_c5-flatten.yaml.
+/**:
+    ros__parameters:
+        feature_extract_enable: false
+        point_filter_num: 3
+        max_iteration: 3
+        filter_size_surf: 0.5
+        filter_size_map: 0.5
+        cube_side_length: 1000.0
+        runtime_pos_log_enable: false
+        map_file_path: "/workspace/maps/mid360/fast_lio_map.pcd"
+
+        common.lid_topic: "/livox/lidar"
+        common.imu_topic: "/mavros/imu/data"
+        common.time_sync_en: false
+        common.time_offset_lidar_to_imu: 0.0
+
+        preprocess.lidar_type: 1
+        preprocess.scan_line: 4
+        preprocess.blind: 0.5
+        preprocess.timestamp_unit: 3
+        preprocess.scan_rate: 10
+
+        mapping.acc_cov: 0.1
+        mapping.gyr_cov: 0.1
+        mapping.b_acc_cov: 0.0001
+        mapping.b_gyr_cov: 0.0001
+        mapping.fov_degree: 360.0
+        mapping.det_range: 100.0
+        mapping.extrinsic_est_en: false
+        # j30v2 LiDAR -> PX4 IMU anchor (p_imu = R * p_lidar + t)
+        mapping.extrinsic_T: [0.094614, -0.012512, 0.043731]
+        mapping.extrinsic_R: [0.9659258, 0.0, 0.2588190,
+                              0.0, 1.0, 0.0,
+                              -0.2588190, 0.0, 0.9659258]
+
+        publish.path_en: true
+        publish.effect_map_en: false
+        publish.map_en: false
+        publish.scan_publish_en: true
+        publish.dense_publish_en: false
+        publish.scan_bodyframe_pub_en: true
+
+        pcd_save.pcd_save_en: false
+        pcd_save.interval: -1
