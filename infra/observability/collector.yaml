@@ -1,0 +1,75 @@
+# Development collector: local OTLP files, no remote/backend exporters.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+    spike_limit_mib: 32
+  transform/privacy:
+    error_mode: propagate
+    trace_statements:
+      - context: resource
+        statements:
+          - 'keep_keys(resource.attributes, ["service.name", "service.version", "service.instance.id", "deployment.environment.name", "telemetry.sdk.name", "telemetry.sdk.language", "telemetry.sdk.version"])'
+      - context: span
+        statements:
+          - 'keep_keys(span.attributes, ["ap.pnc.operation", "ap.pnc.result", "ap.pnc.experiment.id", "ap.pnc.command", "ap.pnc.error.type", "ap.pnc.arch", "ap.pnc.sim_time_ns", "ap.pnc.tick", "ap.pnc.stage", "ap.pnc.horizon.count", "ap.pnc.solver.status", "ap.pnc.nmpc.abi", "ap.pnc.model.aero", "ap.pnc.model.actuator", "ap.pnc.artifact.sha256", "ap.pnc.reference.sha256", "ap.pnc.solver.bundle.sha256", "ap.pnc.frame.world", "ap.pnc.frame.body"])'
+      - context: spanevent
+        statements:
+          - 'keep_keys(spanevent.attributes, ["ap.pnc.error.type"])'
+    log_statements:
+      - context: resource
+        statements:
+          - 'keep_keys(resource.attributes, ["service.name", "service.version", "service.instance.id", "deployment.environment.name", "telemetry.sdk.name", "telemetry.sdk.language", "telemetry.sdk.version"])'
+      - context: log
+        statements:
+          - 'set(log.body, "ap.pnc.event")'
+          - 'keep_keys(log.attributes, ["ap.pnc.operation", "ap.pnc.result", "ap.pnc.experiment.id", "ap.pnc.command", "ap.pnc.error.type", "ap.pnc.sim_time_ns", "ap.pnc.tick", "ap.pnc.solver.status"])'
+    metric_statements:
+      - context: resource
+        statements:
+          - 'keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "telemetry.sdk.name", "telemetry.sdk.language", "telemetry.sdk.version"])'
+      - context: datapoint
+        statements:
+          - 'keep_keys(datapoint.attributes, ["ap.pnc.operation", "ap.pnc.result"])'
+  batch:
+    timeout: 1s
+    send_batch_size: 256
+    send_batch_max_size: 512
+exporters:
+  file/traces:
+    path: /data/traces.jsonl
+    rotation: &rotation
+      max_megabytes: 32
+      max_backups: 3
+      max_days: 7
+  file/metrics:
+    path: /data/metrics.jsonl
+    rotation: *rotation
+  file/logs:
+    path: /data/logs.jsonl
+    rotation: *rotation
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [file/traces]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [file/metrics]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [file/logs]

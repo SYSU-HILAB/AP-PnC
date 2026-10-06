@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>simple_sim</name>
+  <version>0.2.0</version>
+  <description>Deterministic lockstep trajectory-tracking simulator, without collision.</description>
+  <maintainer email="rongerch@outlook.com">Erchao Rong</maintainer>
+  <license>BSD-3-Clause</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>eigen</depend>
+  <depend>yaml-cpp</depend>
+  <depend>rclcpp</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>rosgraph_msgs</depend>
+  <depend>std_srvs</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>rclpy</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>
