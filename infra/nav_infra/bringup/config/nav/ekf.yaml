@@ -1,0 +1,33 @@
+# L1 EKF profile (ekf_quat): fuses FAST-LIO /Odometry + /mavros/imu/data.
+#
+# Mirrors the production profile (diff-dockers auto_deployer/bringup/l1:
+# config/ekf.yaml + launch/includes/ekf.launch.xml). The odometry is already in
+# the PX4 IMU frame (FAST-LIO runs on /mavros/imu/data with the device anchor),
+# so Rr_i is identity and only the process noise / gravity scale are set.
+# Rl_i/tl_i stay unset (legacy calibrated lidar-in-IMU fallback, as in
+# production) unless a device needs explicit values.
+#
+# The ROS 2 port declares acc_rej_threshold / gyro_rej_threshold as 0.0, which
+# would reject every IMU sample; 55/20 match the reference ROS 2 launch.
+/**:
+  ros__parameters:
+    Rr_i: [1.0, 0.0, 0.0, 0.0]     # body in IMU frame (quaternion wxyz)
+    tr_i: [0.0, 0.0, 0.0]
+    scale_g: 1.00                   # /mavros/imu/data is already m/s^2
+    rotation_imu: [1.0, 0.0, 0.0,
+                   0.0, 1.0, 0.0,
+                   0.0, 0.0, 1.0]
+    offset_px: 0.0
+    offset_py: 0.0
+    offset_pz: 0.0
+    imu_trans_x: 0.0
+    imu_trans_y: 0.0
+    imu_trans_z: 0.0
+    gyro_cov: 0.05
+    acc_cov: 0.60
+    position_cov: 0.01
+    q_rp_cov: 0.01
+    q_yaw_cov: 0.01
+    cutoff_freq: 20.0
+    acc_rej_threshold: 55.0
+    gyro_rej_threshold: 20.0

@@ -1,0 +1,59 @@
+# editor / IDE
+.vscode/
+.idea/
+compile_commands.json
+.xmake/
+
+# AI assistant local files
+claude_temp/
+Claude.md
+CLAUDE.md
+.claude/
+.pi/
+
+# build / codegen / colcon outputs (canonical location, see AGENTS.md artifacts convention)
+.artifacts/
+
+# pybind11 in-tree build dir
+core/ros_packages/planner/python/build/
+
+# datasets (untracked pending keep/delete decision)
+/artifacts/
+
+# python
+__pycache__/
+*.pyc
+*egg-info/
+*.npy
+.env/
+.*venv/
+
+# clangd
+.cache/
+
+# experiment / sim outputs
+*.csv
+*.png
+*.eps
+*.pdf
+*.stl
+*.STL
+*.ulg
+*.pcap
+*.py.bak
+*warm_start*
+output_csv/
+plot_scripts/
+matlab_process/
+bags/
+*rosbag*
+
+# legacy source-tree ignores (no longer at these paths, kept for stray files)
+src/ompl
+src/spdlog
+
+# colcon logs must live under .artifacts/ (see AGENTS.md); catch stray ones
+/log/
+
+# Research notes and reports are local working material, not repository content.
+docs/

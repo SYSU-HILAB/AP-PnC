@@ -1,0 +1,6 @@
+# Newton-Raphson solver for the force-balance equation (read by aerodynamics).
+max_iterations: 1000
+tolerance: 1e-6
+damping_factor: 0.5
+derivative_epsilon: 1e-3
+initial_alpha_deg: 90.0

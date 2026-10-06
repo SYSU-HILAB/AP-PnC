@@ -1,0 +1,36 @@
+# Tracking-only simulation. No collision, ground contact, LiDAR, PX4 or MAVROS.
+# Reference belongs to planner; horizon/outer-loop period belong to nmpc.yaml.
+simple_sim:
+  controller: nmpc              # nmpc | se3
+  physics_dt_ns: 1000000         # fixed RK4 step; must divide the control period
+  duration_s: 0.0                # 0: run until the full prediction horizon no longer fits
+  plant:
+    mass: 2.0                   # must agree with the planner's flatness.mass
+    gravity: 9.81
+    inertia: [0.01715066, 0.01818037, 0.01987597] # diagonal, kg m^2
+  # Study override of the extracted private geometry, NOT a re-extraction.
+  # `arms_m` in the profile is the motor-to-CoM lever that scales the
+  # position-based moments. 2.0 doubles that lever; the profile file itself is
+  # never modified and the value is recorded in every manifest.
+  arm_length_scale: 2.0
+  rate_loop:
+    gain: [100.0, 100.0, 100.0]     # rate error -> angular acceleration, 1/s
+    max_rate: [8.0, 8.0, 8.0]    # rad/s, FLU
+    max_moment: [2.0, 2.0, 1.0]  # N m, FLU
+    max_specific_force: 30.0     # m/s^2, along body +Z
+  se3:
+    position_gain: [4.0, 4.0, 4.0]
+    velocity_gain: [3.0, 3.0, 3.0]
+    attitude_gain: [6.0, 6.0, 6.0]
+  aero:
+    model: lyu                  # under test: lyu | phi (plus `none` control)
+    # Drop the body-X and body-Z aerodynamic moments, keeping only the lateral
+    # (pitching) one, matching the paper's neglect of the roll/yaw aerodynamic
+    # moment. The plant aero models still compute all three; this is an explicit
+    # boundary choice, recorded in every run's simple_sim.yaml snapshot.
+    lateral_moment_only: true
+    scale: 1.0
+    wind_world: [0.0, 0.0, 0.0]  # ENU, m/s
+  ros:
+    publish_stride: 5           # visualization every N control steps
+    realtime_factor: 1.0        # scheduler pacing only; 0 = unpaced

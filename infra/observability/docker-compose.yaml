@@ -1,0 +1,21 @@
+name: ap-pnc-observability
+services:
+  otel-collector:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.162.0@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6
+    platform: linux/${AP_PNC_ARCH:?AP_PNC_ARCH required}
+    user: "${AP_PNC_UID:?AP_PNC_UID required}:${AP_PNC_GID:?AP_PNC_GID required}"
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ipc: host
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    mem_limit: 256m
+    cpus: 1.0
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:13133:13133"
+    volumes:
+      - "${AP_PNC_DIR:?absolute AP_PNC_DIR required}/infra/observability/collector.yaml:/etc/otelcol/config.yaml:ro"
+      - "${AP_PNC_DIR:?absolute AP_PNC_DIR required}/.artifacts/telemetry/local:/data:rw"

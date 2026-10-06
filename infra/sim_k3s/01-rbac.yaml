@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sim-dispatcher-sa
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sim-dispatcher-role
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    verbs: ["get", "watch", "list", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sim-dispatcher-rb
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+subjects:
+  - kind: ServiceAccount
+    name: sim-dispatcher-sa
+    namespace: sim
+roleRef:
+  kind: Role
+  name: sim-dispatcher-role
+  apiGroup: rbac.authorization.k8s.io

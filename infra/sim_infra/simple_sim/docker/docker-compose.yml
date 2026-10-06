@@ -1,0 +1,30 @@
+name: ap-pnc-simple-sim
+services:
+  ros2-base:
+    profiles: [build]
+    platform: linux/${AP_PNC_ARCH:?Use ap-pnc sim build or set AP_PNC_ARCH=arm64|amd64}
+    ipc: host
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/core/docker/ros2-base.dockerfile
+      target: base
+    image: ap-pnc-ros2-base:${AP_PNC_ARCH}
+
+  simple-sim:
+    platform: linux/${AP_PNC_ARCH}
+    init: true
+    ipc: host
+    network_mode: host
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/infra/sim_infra/simple_sim/docker/simple-sim.dockerfile
+    image: simple-sim:${AP_PNC_ARCH}
+    container_name: simple-sim
+    environment:
+      AP_PNC_DIR: /workspace
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+    volumes:
+      # Only run data is mounted; never hide the image's install or solver.
+      - ${AP_PNC_DIR}/.artifacts/benchmark/simple-sim/${AP_PNC_ARCH}:/workspace/.artifacts/benchmark
+      - ${AP_PNC_DIR}/core/bringup/config:/workspace/core/bringup/config:ro

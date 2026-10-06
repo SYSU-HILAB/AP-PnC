@@ -1,0 +1,45 @@
+# NMPC horizon/objective/command-bound configuration for codegen/runtime.
+# ENU world, FLU body, Hamilton wxyz. N = horizon_s / traj_res_s.
+nmpc:
+  horizon_s: 1.0                 # prediction horizon [s]
+  traj_res_s: 0.1                # prediction interval [s]
+  ctrl_frq: 50.0                 # actual command integration frequency [Hz]
+  initial_specific_thrust: 9.81  # initial command [N/kg], NOT a cost reference
+  # SIGNED d(cx)/d(alpha). Negative for this airframe:
+  # measured -0.044 (phi) / -0.011 (lyu) over the 45..110 deg operating band.
+  # There is no per-quadrant sign flip any more.
+  cx_alpha_slope: 0.0
+  # Online estimation of d(cx)/d(alpha), replacing a fixed tuned gain:
+  #   recursive least squares on the measured (alpha, cx) pairs, fitting
+  #   cx ~ a + b*alpha, with kappa = b. `cx_alpha_slope` above is then only the
+  #   initial value (and the fallback when estimation is disabled).
+  #   The forgetting factor keeps the fit local, matching the short prediction
+  #   horizon; the limit and covariance bound keep it from winding up.
+  # DEFAULT OFF, decided by the closed-loop runs (radius 25 m circle, 8/10/12 m/s,
+  # both models), not by the offline fit. Position RMSE [m]:
+  #           8 lyu   10 lyu   12 lyu  |  8 phi   10 phi  12 phi   |  sum
+  #   off     0.1770   0.4438   0.8761  | 0.6208   0.9896  1.3081  | 4.4154
+  #   on      0.1796   0.4477   3.4486  | 0.5991   0.9618  1.2292  | 6.8660
+  # The estimator helps phi by 3-6% everywhere but loses 4x on lyu at 12 m/s,
+  # where kappa hits the limit and the command thrust collapses to zero. lyu's cx
+  # is not a valid single-parameter signal, so it stays off until that is fixed.
+  cx_slope_estimation: false
+  cx_slope_forgetting: 0.9999  # 100 s memory; 0.995 flipped lyu's sign at 12 m/s
+  cx_slope_limit: 0.06  # tuned against both polars; 0.2 let lyu run away
+  cx_slope_covariance_limit: 1.0
+  # High-frequency gate: only update while |d(alpha)/dt| exceeds this [rad/s].
+  cx_slope_min_excitation: 0.0
+  # Regress cx(t) on alpha(t - lag) to compensate the motor time constant
+  # (0.076 s). 0 disables the delay.
+  cx_slope_lag_s: 0.0
+  objective:
+    position: [15.0, 15.0, 10.0]
+    velocity: [1.0, 1.0, 1.0]
+    body_y: [52.5, 52.5, 126.0]
+    # Cost on dc/dt only; c = [specific_thrust, body_rate_x/y/z].
+    # These numerical weights are retained, not claimed to be newly tuned.
+    command_derivative: [0.03, 0.03, 0.03, 0.03]
+  command_bounds:
+    # Absolute command/state bounds, NOT bounds on command derivatives.
+    lower: [0.0, -1.5, -2.5, -1.5]   # [N/kg, rad/s, rad/s, rad/s]
+    upper: [22.0, 1.5, 2.5, 1.5]
