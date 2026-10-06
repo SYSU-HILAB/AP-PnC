@@ -49,7 +49,9 @@ git clone https://github.com/WarriorHanamy/AP-PnC.git "$AP_PNC_DIR"
 
 # 1. Python environment + the self-contained acados solver bundle.
 #    On Linux this builds locally; on macOS it builds in the pinned container.
-uv sync --project "$AP_PNC_DIR" --group dev
+#    `--group extra` adds the plotting/ML stack used by the paper layer and by
+#    `evaluate.py plot` below; `--group dev` alone is enough for the stack itself.
+uv sync --project "$AP_PNC_DIR" --group dev --group extra
 uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib
 
 # 2. Build the offline stack: Rust dora nodes + the C++ simulator.
