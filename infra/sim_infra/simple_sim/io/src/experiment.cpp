@@ -400,6 +400,11 @@ namespace simple_sim
       }
     }
   }
+  namespace
+  {
+    //: Airspeed above which the sideslip statistic is meaningful [m/s].
+    constexpr double kSideslipSpeedGate = 2.0;
+  }  // namespace
   void Experiment::metrics_sample(const State &s, double t)
   {
     const auto   ref   = trajectory_->sample(t);
@@ -407,18 +412,19 @@ namespace simple_sim
     squared_position_error_ += error * error;
     squared_velocity_error_ += (s.velocity - ref.v).squaredNorm();
     max_position_error_ = std::max(max_position_error_, error);
-    // Sideslip. Computed from the same wing-frame airspeed the aerodynamics
-    // adapter hands the models, so the metric and the model cannot disagree
-    // about the body frame: v_L = wing_from_flu(R_BW (v - wind)), and beta is
-    // the angle between v_L and the wing x-z plane (the wing y axis is -body y
-    // in FLU). Wind is rejected by the configuration, so the ground speed is
-    // the airspeed.
+    // Sideslip samples. The statistic is finished in finalize(), where the gate
+    // is 0.8 of the run's own maximum airspeed: below that the vehicle is in
+    // transition or hover, where a small lateral velocity is a large angle and
+    // the trajectory passes through a standstill. The wing-frame airspeed is
+    // the same quantity the aerodynamics adapter gives the models, so the
+    // metric and the models cannot disagree about the body frame (wind is
+    // rejected by the configuration, so ground speed is airspeed).
     const Eigen::Vector3d air_wing =
         wing_from_flu(s.attitude.conjugate() * s.velocity);
-    const double beta =
-        std::atan2(air_wing.y(), std::hypot(air_wing.x(), air_wing.z()));
-    max_sideslip_rad_ = std::max(max_sideslip_rad_, std::abs(beta));
-    squared_sideslip_rad_ += beta * beta;
+    const double airspeed = air_wing.norm();
+    sideslip_rad_samples_.push_back(
+        std::atan2(air_wing.y(), std::hypot(air_wing.x(), air_wing.z())));
+    sideslip_speed_samples_.push_back(airspeed);
     ++samples_;
   }
   StepRecord Experiment::step()
@@ -524,15 +530,36 @@ namespace simple_sim
     metrics.exceptions(std::ios::failbit | std::ios::badbit);
     const double denominator =
         static_cast<double>(std::max<std::int64_t>(samples_, 1));
+    double       gate         = 0.0;
+    double       max_sideslip = 0.0;
+    double       sum_squared  = 0.0;
+    std::int64_t gated        = 0;
+    for (double speed : sideslip_speed_samples_)
+      gate = std::max(gate, speed);
+    gate *= 0.8;
+    for (std::size_t i = 0; i < sideslip_rad_samples_.size(); ++i)
+    {
+      if (sideslip_speed_samples_[i] < gate)
+        continue;
+      const double beta = sideslip_rad_samples_[i];
+      max_sideslip      = std::max(max_sideslip, std::abs(beta));
+      sum_squared += beta * beta;
+      ++gated;
+    }
+    auto degrees = [](double radians) { return radians * 180.0 / M_PI; };
     metrics << std::setprecision(17) << "{\n  \"samples\": " << samples_
             << ",\n  \"position_rmse_m\": "
             << std::sqrt(squared_position_error_ / denominator)
             << ",\n  \"velocity_rmse_mps\": "
             << std::sqrt(squared_velocity_error_ / denominator)
             << ",\n  \"position_max_m\": " << max_position_error_
-            << ",\n  \"max_sideslip_deg\": " << max_sideslip_rad_ * 180.0 / M_PI
+            << ",\n  \"max_sideslip_deg\": " << degrees(max_sideslip)
             << ",\n  \"sideslip_rms_deg\": "
-            << std::sqrt(squared_sideslip_rad_ / denominator) * 180.0 / M_PI
+            << degrees(std::sqrt(
+                   sum_squared /
+                   static_cast<double>(std::max<std::int64_t>(gated, 1))))
+            << ",\n  \"sideslip_gate_mps\": " << gate
+            << ",\n  \"sideslip_gated_samples\": " << gated
             << ",\n  \"solver_status_2_count\": " << status2_count_ << "\n}\n";
     metrics.close();
     fs::rename(output_dir_ / "metrics.json.tmp", output_dir_ / "metrics.json");

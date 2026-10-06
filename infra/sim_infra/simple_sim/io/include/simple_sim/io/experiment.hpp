@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <memory>
+#include <vector>
 
 #include "simple_sim/io/config_loader.hpp"
 #include "simple_sim/runner.hpp"
@@ -49,12 +50,17 @@ namespace simple_sim
     double max_position_error_     = 0.0;
     // Sideslip over the committed window: the body-frame lateral velocity
     // relative to the flight path, max |beta| and its RMS.
-    double       max_sideslip_rad_     = 0.0;
-    double       squared_sideslip_rad_ = 0.0;
-    std::int64_t samples_              = 0;
-    std::int64_t status2_count_        = 0;
-    bool         finished_             = false;
-    void         metrics_sample(const State &state, double t);
+    double max_sideslip_rad_ = 0.0;
+    // Sideslip samples, gated at the end on 0.8 of the run's own maximum
+    // airspeed: the transition and hover part of a trajectory is not what this
+    // metric is for.
+    std::vector<double> sideslip_rad_samples_;
+    std::vector<double> sideslip_speed_samples_;
+    double              squared_sideslip_rad_ = 0.0;
+    std::int64_t        samples_              = 0;
+    std::int64_t        status2_count_        = 0;
+    bool                finished_             = false;
+    void                metrics_sample(const State &state, double t);
   };
 
 }  // namespace simple_sim
