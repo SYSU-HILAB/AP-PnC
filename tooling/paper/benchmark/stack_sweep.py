@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -183,7 +182,7 @@ def run_matrix(
                             velocity_rmse=float(metrics["velocity_rmse_mps"]),
                             run_dir=run_dir,
                         )
-                    except Exception as error:  # noqa: BLE001 - keep sweeping
+                    except Exception as error:  # - keep sweeping
                         print(f"{tag}: {error}")
                         row = Row(
                             profile=profile,

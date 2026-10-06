@@ -158,7 +158,9 @@ mistaken for a host install that does not exist:
 | `build` | colcon builds: `nmpc`, `planner`, `simple-sim`, `aero`, bindings | host toolchain on Linux |
 | `benchmark` | offline plan → track → metrics pipeline | in-process Python |
 | `sim` | start, stop and follow the logs of the simulation stack | K3s, over the images you built |
-| `stack` | full bootstrap and the local ROS2 stack lifecycle | host ROS2; image builds go through Docker |
+
+The ROS/Gazebo lifecycle commands are gone until the roadmap reaches real
+hardware: the only runtime this repository claims today is the offline one.
 
 `ap-pnc docker` is the container layer underneath, not a separate workflow: use
 it to manage images directly (`build`, `up`, `down`, `config`, `dev`).

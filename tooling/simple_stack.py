@@ -148,7 +148,7 @@ def _container(job: Path, *args: str, with_simulator: bool = True) -> subprocess
         stack_image(),
         *args,
     ]
-    return subprocess.run(  # noqa: S603 - fixed argv, no shell
+    return subprocess.run(
         command, env=setup_env(), capture_output=True, text=True, check=False
     )
 
@@ -173,7 +173,7 @@ def _write_configuration(job: Path, request: JobRequest) -> None:
         if not profile_path.exists():
             raise FileNotFoundError(
                 f"the practical profile needs {profile_path}; run "
-                "'ap-pnc stack import-matlab' first"
+                "'stack.sh import-matlab' first"
             )
         profile = yaml.safe_load(profile_path.read_text())
         simple_sim["simple_sim"]["plant"].update(profile["plant"])
@@ -234,11 +234,11 @@ def _write_metadata(job: Path) -> None:
     offline = root / "target/release/ap-pnc-offline"
     simulator = root / "cpp/install/lib/simple_sim/simple_sim_run"
     if not offline.exists() or not simulator.exists():
-        raise FileNotFoundError("run 'ap-pnc stack build' (or stack.sh build) first")
+        raise FileNotFoundError("run 'stack.sh build' first")
 
     shutil.copy2(source_dir / "dataflow.yml", job / "dataflow.yml")
     shutil.copy2(source_dir / "Cargo.lock", job / "Cargo.lock")
-    inspect = subprocess.run(  # noqa: S603 - fixed argv
+    inspect = subprocess.run(
         ["docker", "image", "inspect", stack_image(), f"simple-sim:{native_arch()}"],
         env=setup_env(),
         capture_output=True,
@@ -255,10 +255,10 @@ def _write_metadata(job: Path) -> None:
         ).read_text()
     )
     git = get_git_root()
-    revision = subprocess.run(  # noqa: S603 - fixed argv
+    revision = subprocess.run(
         ["git", "-C", str(git), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
     ).stdout
-    status = subprocess.run(  # noqa: S603 - fixed argv
+    status = subprocess.run(
         ["git", "-C", str(git), "status", "--porcelain"],
         capture_output=True,
         text=True,

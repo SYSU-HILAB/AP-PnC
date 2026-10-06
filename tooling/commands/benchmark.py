@@ -3,7 +3,6 @@ from pathlib import Path
 import typer
 import yaml
 
-from tooling.commands import stack
 from tooling.env import project_path
 from tooling.paper.benchmark import runner, stack_sweep
 from tooling.paper.benchmark.runner import TRAJ_TYPES
@@ -117,17 +116,3 @@ def stack_sweep_command(
     typer.echo(f"rows: {len(rows)}")
 
 
-@app.command()
-def flight(
-    v_max: float = typer.Option(..., "--vmax", help="Max velocity [m/s]"),
-    traj_type: int = typer.Option(1, "--type", help=f"Trajectory type: {TRAJ_TYPES}"),
-    radius: float = typer.Option(4.0, "--radius", help="Trajectory radius [m]"),
-    launch: bool = typer.Option(True, "--launch/--no-launch", help="Start the stack afterwards"),
-) -> None:
-    """Configure the planning experiment, then start the full local ROS stack."""
-    if traj_type not in TRAJ_TYPES:
-        typer.echo(f"Unknown trajectory type {traj_type}. Choose from: {TRAJ_TYPES}", err=True)
-        raise typer.Exit(1)
-    _sync_planning_config(v_max, traj_type, radius)
-    if launch:
-        stack.start()

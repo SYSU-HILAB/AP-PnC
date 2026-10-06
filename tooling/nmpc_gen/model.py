@@ -78,7 +78,9 @@ def create_tailsitter_model() -> AcadosModel:
     # Paper Eq. 1: alpha = atan2(v_z^B, v_x^B) in the paper's body frame, which is
     # atan2(v_x, v_z) in ours. No offset: the regularised version shifted alpha and
     # its rate exactly where the vehicle operates (alpha near 90 deg).
-    angle_of_attack = cs.atan2(velocity_body[0], velocity_body[2])
+    # alpha itself is not materialised as a symbol: the coefficient rate below
+    # is the exact chain rule of atan2(v_x, v_z), so no separate expression is
+    # needed (and the regularised form shifted alpha where the vehicle flies).
     aerodynamic_acceleration_body = cs.vertcat(aero_coefficient_x * speed_squared, 0, 0)
     acceleration_world = rotation_world_from_body @ (
         cs.vertcat(0, 0, specific_thrust_command) + aerodynamic_acceleration_body
