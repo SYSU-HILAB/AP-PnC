@@ -31,6 +31,8 @@ namespace simple_sim
         throttle_min < 0.0 || throttle_max <= throttle_min ||
         throttle_max > 1.0)
       throw std::invalid_argument("invalid INDI throttle configuration");
+    if (!std::isfinite(frq) || frq <= 0.0)
+      throw std::invalid_argument("invalid INDI tick rate");
     if (!std::isfinite(measurement_tau_s) || measurement_tau_s < 0.0 ||
         !std::isfinite(setpoint_tau_s) || setpoint_tau_s < 0.0)
       throw std::invalid_argument("invalid throttle filter time constant");

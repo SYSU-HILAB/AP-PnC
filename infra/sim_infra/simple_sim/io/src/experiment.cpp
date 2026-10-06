@@ -265,13 +265,20 @@ namespace simple_sim
             config_.motor_model, config_.plant.mass,
             config_.rate_loop.max_specific_force, config_.rate_loop.max_rate,
             config_.physics_dt_ns);
-        if (config_.motor_model.inner_dt_ns % config_.physics_dt_ns != 0)
+        // The INDI layer has its own rate: the actuator inner loop
+        // (throttle/mixer/ESC and the rate loop) runs at actuator.inner_dt_ns
+        // and the physics step is finer than both, but the incremental law is
+        // ticked at throttle.frq (100 Hz by design).
+        const double       throttle_period_s = 1.0 / config_.throttle.frq;
+        const std::int64_t throttle_period_ns =
+            static_cast<std::int64_t>(std::llround(throttle_period_s * 1e9));
+        if (throttle_period_ns <= 0 ||
+            throttle_period_ns % config_.physics_dt_ns != 0)
           throw std::invalid_argument(
-              "actuator inner period must divide the physics step");
-        const std::int64_t stride =
-            config_.motor_model.inner_dt_ns / config_.physics_dt_ns;
-        const double inner_dt =
-            static_cast<double>(config_.motor_model.inner_dt_ns) * 1e-9;
+              "throttle period must be an integer multiple of the physics "
+              "step");
+        const std::int64_t stride = throttle_period_ns / config_.physics_dt_ns;
+        const double       inner_dt = throttle_period_s;
         // Effectiveness seed: the configured value, or the modelled hover
         // quotient g / u_hover. The simulator can invert its own thrust curve
         // exactly, so the online estimate starts from the right number and INDI
@@ -298,11 +305,11 @@ namespace simple_sim
             [model, realization, inner_dt, stride, this](const State   &s,
                                                          const Command &c)
             {
-              // Bottom control layer at the actuator inner rate (400 Hz):
-              // realize a normalized throttle from the thrust-axis specific
-              // force. Held across the physics sub-steps, and only for the
-              // online realization; ideal_invert keeps the model's static
-              // inversion.
+              // INDI layer (100 Hz): realize a normalized throttle from the
+              // thrust-axis specific force, held across the physics sub-steps.
+              // Only for the online realization; ideal_invert keeps the
+              // model's static inversion. The actuator inner loop stays at its
+              // own 400 Hz rate inside the motor model.
               if (realization->config().realization == "indi" &&
                   s.motors.physics_ticks % stride == 0)
               {

@@ -15,15 +15,17 @@ simple_sim:
   arm_length_scale: 2.0
   # Ideal inner loop: the entire actuation model for the `ideal` profile, so a run
   # here isolates the guidance and control law from the motor/mixer/PID chain.
-  # Bottom control layer: how a thrust-axis specific force setpoint becomes a
-  # normalized collective throttle, ticked at the actuator inner rate
-  # (actuator.inner_dt_ns = 400 Hz, physics 2000 Hz, guidance 50 Hz).
+  # INDI layer: how a thrust-axis specific force setpoint becomes a normalized
+  # collective throttle. Rates: this INDI law 100 Hz, the actuator inner loop
+  # (throttle/mixer/ESC and the rate loop) 400 Hz, physics 2000 Hz, guidance
+  # 50 Hz. The rate belongs to the law, not to the physics step.
   throttle:
     # ideal_invert: exact static inverse of the modelled thrust curve. No
     # estimation, so plant/model mismatch stays uncorrected.
     # indi: the vehicle's law (pxctrl ThrottleManager): RLS effectiveness
     # estimate on the measured thrust-axis specific force + INDI increment.
     realization: ideal_invert
+    frq: 100.0               # INDI tick [Hz]; must divide into the physics step
     eta_seed: 0.0            # <=0: seed from the modelled hover effectiveness
     eta_min: 9.81
     eta_max: 60.0

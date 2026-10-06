@@ -29,6 +29,11 @@ namespace simple_sim
   {
     std::string realization = "ideal_invert";  // "ideal_invert" | "indi"
 
+    /// Tick rate of the incremental law [Hz]. The INDI layer runs at 100 Hz by
+    /// design: the actuator inner loop (throttle/mixer/ESC and the rate loop)
+    /// runs at 400 Hz, the physics at 2000 Hz and the guidance at 50 Hz.
+    double frq = 100.0;
+
     /// Exact thrust-axis specific force per unit throttle at hover [m/s^2].
     /// Used as the static inverse in ``ideal_invert`` and as the RLS seed in
     /// ``indi`` (the vehicle seeds from grav / hover_throttle).
