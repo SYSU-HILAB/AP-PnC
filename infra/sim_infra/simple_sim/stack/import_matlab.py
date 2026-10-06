@@ -103,7 +103,7 @@ def main():
             "inertia": np.diag(inertia).tolist(),
         },
         "actuator": {
-            "model": "matlab_vtol",
+            "model": "practical",
             "arms_m": [float(data[f"d{i}"]) for i in range(1, 5)],
             "arm_angles_rad": [float(data[f"a1{i}"]) for i in range(1, 5)],
             "tilts_rad": [float(data[f"a2{i}"]) for i in range(1, 5)],

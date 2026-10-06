@@ -60,7 +60,7 @@ bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" build
 # 3. Plan, simulate and record one run. Prints the JOB path.
 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 ideal none 6 0
 #    run [duration_s | 0 = whole reference]
-#        [ideal | matlab-vtol]
+#        [ideal | practical]
 #        [aero model | configured]
 #        [v_max | configured]
 #        [terminal hold s]
@@ -87,10 +87,17 @@ viewing or exporting the recording never re-plans and never re-simulates.
 
 ### Two plant profiles
 
-| Profile | Plant | Needs |
+Both drive the same planner and the same NMPC; they differ only in how the
+commanded collective thrust and body rates become a wrench.
+
+| Profile | What it models | Needs |
 |---|---|---|
-| `ideal` | rate-loop plant | nothing extra — this is what the quick start uses |
-| `matlab-vtol` | four-motor plant with mixer, ESC, PID and propeller model | numeric parameters pre-extracted into `.artifacts/vtol-matlab/` |
+| `ideal` | an inner loop assumed to be fast: the collective thrust is applied directly and each body-rate channel follows its setpoint through a first-order response, with the moment and thrust saturated | nothing extra — this is what the quick start uses |
+| `practical` | the full actuation chain: mixer with desaturation, ESC/throttle curve, motor time constant, per-motor tilts, a PID rate loop with anti-windup, propeller inflow and reaction torque, and the aero forces and moments | numeric parameters extracted locally into `.artifacts/vtol-matlab/` — the profile only exists where that extraction has been run |
+
+The `ideal` profile is the control baseline: it isolates the guidance and control
+law from actuator behaviour. The `practical` profile is what to use when the
+question is about the vehicle rather than the guidance.
 
 ### Figures
 
@@ -128,13 +135,21 @@ truth — read the files, not a table that goes stale:
 uv run --project "$AP_PNC_DIR" ap-pnc --help
 ```
 
-| Group | Purpose |
-|---|---|
-| `gen-nmpc-lib` | fetch and build acados on first use, then generate the static NMPC solver bundle |
-| `build` | colcon builds: `nmpc`, `planner`, `simple-sim`, `aero`, bindings |
-| `benchmark` | offline plan → track → metrics pipeline |
-| `docker` | container simulation: `build`, `up`, `down`, `config`, `dev` |
-| `stack` | full bootstrap and the local ROS2 stack lifecycle |
+The "runs as" column says where each group actually executes, so nothing is
+mistaken for a host install that does not exist:
+
+| Group | Purpose | Runs as |
+|---|---|---|
+| `gen-nmpc-lib` | fetch and build acados on first use, then generate the static NMPC solver bundle | host toolchain on Linux; Docker otherwise, including on macOS |
+| `build` | colcon builds: `nmpc`, `planner`, `simple-sim`, `aero`, bindings | host toolchain on Linux |
+| `benchmark` | offline plan → track → metrics pipeline | in-process Python |
+| `sim` | start, stop and follow the logs of the simulation stack | K3s, over the images you built |
+| `stack` | full bootstrap and the local ROS2 stack lifecycle | host ROS2; image builds go through Docker |
+
+`ap-pnc docker` is the container layer underneath, not a separate workflow: use
+it to manage images directly (`build`, `up`, `down`, `config`, `dev`).
+`ap-pnc lint` and `ap-pnc telemetry` are local; the collector for the latter runs
+from a compose file.
 
 `uv` is the only Python entry point, and the CLI resolves every path it needs
 from `AP_PNC_DIR`.

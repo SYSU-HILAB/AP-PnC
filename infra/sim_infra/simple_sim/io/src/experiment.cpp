@@ -235,7 +235,7 @@ namespace simple_sim
       // Any canonical model ("none" resolves to the null model, wrench = 0)
       ForceModel aero = tailsitter_aero(
           aerodynamics::make_aero(config_.aero_model), config_.aero);
-      if (config_.actuator_model == "matlab_vtol")
+      if (config_.actuator_model == "practical")
       {
         config_.motor_model.wind_world = config_.aero.wind_world;
         const auto model               = std::make_shared<const MotorModel>(

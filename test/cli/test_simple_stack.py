@@ -80,7 +80,7 @@ def test_sweep_passes_actual_speed_and_terminal_hold(vmax, tmp_path, monkeypatch
     monkeypatch.setattr(
         module, "subprocess", SimpleNamespace(run=fake_run, STDOUT=subprocess.STDOUT)
     )
-    module.run(tmp_path, "matlab-vtol", 0.0, vmax, 2.0, 2.0)
+    module.run(tmp_path, "practical", 0.0, vmax, 2.0, 2.0)
     index = json.loads((tmp_path / "index.json").read_text())
     assert index["v_max_setting_mps"] == vmax
     assert index["terminal_hold_s"] == 2.0

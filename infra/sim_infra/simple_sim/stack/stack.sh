@@ -107,11 +107,11 @@ case "$command" in
     # Only models marked under_test (plus the null control) are accepted; see
     # infra/sim_infra/aerodynamics/include/aerodynamics/aero_models.hpp.
     [[ "$aero" =~ ^(configured|none|lyu|phi)$ ]] || exit 2
-    [[ "$profile" = ideal || "$profile" = matlab-vtol ]] || exit 2
+    [[ "$profile" = ideal || "$profile" = practical ]] || exit 2
     job="$base/runs/$(date -u +%Y%m%dT%H%M%SZ)-$$"
     mkdir -p "$job/benchmark" "$job/config"
     cp "$AP_PNC_DIR/core/bringup/config/"{simple_sim,planning,nmpc}.yaml "$job/config/"
-    if [[ "$profile" = matlab-vtol ]]; then
+    if [[ "$profile" = practical ]]; then
       cp "$AP_PNC_DIR/.artifacts/vtol-matlab/profile.yaml" "$job/profile.yaml"
       cp "$AP_PNC_DIR/.artifacts/vtol-matlab/provenance.json" "$job/upstream-provenance.json"
     fi
@@ -127,7 +127,7 @@ cfg["simple_sim"]["duration_s"] = n
 hold = float(sys.argv[5])
 assert math.isfinite(hold) and hold >= 0
 cfg["simple_sim"]["terminal_hold_s"] = hold
-if sys.argv[2] == "matlab-vtol":
+if sys.argv[2] == "practical":
     profile = yaml.safe_load((root / ".artifacts/simple-stack/job/profile.yaml").read_text())
     cfg["simple_sim"]["plant"].update(profile["plant"])
     cfg["simple_sim"]["actuator"] = profile["actuator"]
@@ -213,5 +213,5 @@ p.write_text(yaml.safe_dump(cfg, sort_keys=False))
       rerun --serve-web --bind 0.0.0.0 --web-viewer-port 9090 --port 9876 \
       "/workspace/.artifacts/benchmark/$run/replay.rrd"
     ;;
-  *) echo 'build | import-matlab | run [duration_s] [ideal|matlab-vtol] [aero|configured] [vmax|configured] [terminal_hold_s] [mass_kg|configured] | test-ffi | test JOB | export/verify/check-run/view JOB RUN_NAME' >&2; exit 2 ;;
+  *) echo 'build | import-matlab | run [duration_s] [ideal|practical] [aero|configured] [vmax|configured] [terminal_hold_s] [mass_kg|configured] | test-ffi | test JOB | export/verify/check-run/view JOB RUN_NAME' >&2; exit 2 ;;
 esac

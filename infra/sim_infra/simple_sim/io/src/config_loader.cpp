@@ -107,9 +107,9 @@ namespace simple_sim
     if (sim["actuator"])
       config.actuator_model = sim["actuator"]["model"].as<std::string>();
     if (config.actuator_model != "ideal_rate_loop" &&
-        config.actuator_model != "matlab_vtol")
+        config.actuator_model != "practical")
       throw std::invalid_argument("unknown actuator model");
-    if (config.actuator_model == "matlab_vtol")
+    if (config.actuator_model == "practical")
     {
       const YAML::Node  actuator = sim["actuator"];
       MotorModelConfig &motor    = config.motor_model;

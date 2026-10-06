@@ -373,7 +373,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=["run", "plot"])
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--profile", choices=["ideal", "matlab-vtol"], default="matlab-vtol")
+    parser.add_argument("--profile", choices=["ideal", "practical"], default="practical")
     parser.add_argument("--duration", type=float, default=0.0)
     parser.add_argument("--v-max", type=float, default=6.0)
     parser.add_argument("--hold-seconds", type=float, default=0.0)

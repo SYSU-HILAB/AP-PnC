@@ -48,7 +48,7 @@ The original path payload is unchanged; reserved dora metadata carries W3C conte
 
 ```bash
 uv run --project "$AP_PNC_DIR" --extra telemetry ap-pnc telemetry up
-AP_PNC_TELEMETRY=1 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 matlab-vtol lyu 6
+AP_PNC_TELEMETRY=1 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 practical lyu 6
 # Compare actual Collector spans AND scientific data with a telemetry-off job:
 uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/observability/verify_dora.py" "$ON_JOB" --baseline "$OFF_JOB"
 ```
@@ -78,7 +78,7 @@ control period. Optional `terminal_hold_s` adds dwell; explicit-duration short
 probes retain their complete-step floor. Example (full trajectory + 2 s dwell):
 
 ```bash
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 matlab-vtol lyu 8 2
+bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 practical lyu 8 2
 uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/evaluate.py" run \
   --v-max 8 --hold-seconds 2 --output "$AP_PNC_DIR/.artifacts/benchmark/NEW_V8"
 ```
@@ -129,7 +129,7 @@ PID, solver weights/bounds and timing are unchanged. Full reference plus 2 s hol
 
 ```bash
 uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/evaluate.py" run \
-  --profile matlab-vtol --v-max 8 --hold-seconds 2 --mass 2 --output ABSOLUTE_NEW_ARTIFACT_DIRECTORY
+  --profile practical --v-max 8 --hold-seconds 2 --mass 2 --output ABSOLUTE_NEW_ARTIFACT_DIRECTORY
 uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/plot_aero_history.py" \
   --output ABSOLUTE_SAVED_GROUP_DIRECTORY
 ```
@@ -180,7 +180,7 @@ surfaces**. Authorized private MATLAB numeric data is extracted only locally:
 
 ```bash
 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" import-matlab
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 1 matlab-vtol
+bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 1 practical
 # Default `run` is the ideal-rate-loop plant, available as the control baseline.
 ```
 
@@ -196,7 +196,7 @@ golden remains unverified. Scientific CSV now includes RPM/next-RPM, held
 RPM targets/duty and applied wrench, with offline Rerun actuator channels.
 
 **Historical ABI2** ARM64 acceptance used the direct FLU public reference: all five matched
-matlab-vtol plant aero models (none/lyu/phi/ma/advanced) finish 17.48 s / 874 ticks
+practical plant aero models (none/lyu/phi/ma/advanced) finish 17.48 s / 874 ticks
 at v_max setting 6 and pass independent replay verification. This is a soft speed
 constraint: reference peak is about 6.00201 m/s, not strictly ≤6.0000. Actual NMPC
 references are audited separately from planned rates/thrust; see

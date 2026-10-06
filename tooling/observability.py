@@ -36,7 +36,7 @@ ENUMS = {
     "ap.pnc.result": {"ok", "error", "cancelled"},
     "ap.pnc.arch": {"arm64", "amd64"},
     "ap.pnc.model.aero": {"none", "lyu", "phi", "ma", "advanced"},
-    "ap.pnc.model.actuator": {"ideal_rate_loop", "matlab_vtol"},
+    "ap.pnc.model.actuator": {"ideal_rate_loop", "practical"},
     "ap.pnc.frame.world": {"ENU"},
     "ap.pnc.frame.body": {"FLU"},
     "ap.pnc.error.type": {
