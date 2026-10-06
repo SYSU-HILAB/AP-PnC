@@ -1,5 +1,6 @@
 /* BSD-3-Clause. Copyright (c) 2026, Sun Yat-sen University.
- * Author: Erchao Rong <rongerch@outlook.com>, Zihao Liu <liuzh297@gmail.com>, Junning Liang <gordonliang27@foxmail.com>
+ * Author: Erchao Rong <rongerch@outlook.com>, Zihao Liu <liuzh297@gmail.com>,
+ * Junning Liang <gordonliang27@foxmail.com>
  */
 #include <yaml-cpp/yaml.h>
 

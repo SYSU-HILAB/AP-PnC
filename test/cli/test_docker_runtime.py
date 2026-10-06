@@ -11,7 +11,7 @@ import typer
 import yaml
 
 from tooling import docker_runtime as docker, docker_runtime as runtime
-from tooling.commands import gen_nmpc_lib, sim
+from tooling.commands import gen_nmpc_lib
 from tooling.env import get_git_root
 
 ROOT = get_git_root()
@@ -135,16 +135,6 @@ def test_cross_builder_caches_are_isolated_and_host_alias_preserved(tmp_path, mo
     assert alias.read_bytes() == b"host x86"
     assert not list(solver.glob("tmp*.a"))
 
-
-def test_simple_build_uses_same_targeting(monkeypatch):
-    compose, bundle = Mock(), Mock()
-    monkeypatch.setattr(sim, "compose", compose)
-    monkeypatch.setattr(sim, "ensure_bundle", bundle)
-    sim.build(target="simple", arch="arm64")
-    bundle.assert_called_once_with(ROOT, "arm64")
-    assert compose.call_args.kwargs["arch"] == "arm64"
-    with pytest.raises(typer.BadParameter):
-        sim.build(target="typo")
 
 
 def test_full_install_does_not_install_host_linux_toolchain(monkeypatch):

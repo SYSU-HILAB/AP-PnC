@@ -16,7 +16,7 @@
 
 #include <pybind11/eigen.h>  // For Eigen matrix conversions
 #include <pybind11/pybind11.h>
-#include <pybind11/stl.h>    // For STL conversions
+#include <pybind11/stl.h>  // For STL conversions
 
 #include <aerodynamics/advanced_lift_drag.hpp>
 #include <aerodynamics/bspline_aerodynamics.hpp>
@@ -50,7 +50,8 @@ class PyAerodynamicsModel
    * @param speed Airspeed magnitude in m/s (default: 12.0)
    * @return Tuple of (cx, cz) force coefficients
    */
-  std::tuple<double, double> compute_coefficients(double alpha, double speed = 12.0)
+  std::tuple<double, double> compute_coefficients(double alpha,
+                                                  double speed = 12.0)
   {
     // Compute body velocity from alpha
     Eigen::Vector3d body_speed;
@@ -65,7 +66,8 @@ class PyAerodynamicsModel
     double alpha_out = 0.0;
     double beta_out  = 0.0;
 
-    _creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b, alpha_out, beta_out);
+    _creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b, alpha_out,
+                            beta_out);
 
     // Normalize coefficients: force / (speed^2)
     const double cx = aero_force_b.x() / (speed * speed);
@@ -82,10 +84,9 @@ class PyAerodynamicsModel
    * @return Tuple of (cx_array, cz_array) force coefficients
    */
   std::tuple<Eigen::VectorXd, Eigen::VectorXd> compute_coefficients_array(
-      const Eigen::VectorXd& alphas,
-      double speed = 12.0)
+      const Eigen::VectorXd& alphas, double speed = 12.0)
   {
-    const int n = alphas.size();
+    const int       n = alphas.size();
     Eigen::VectorXd cx(n);
     Eigen::VectorXd cz(n);
 
@@ -104,7 +105,8 @@ class PyAerodynamicsModel
 // Factory functions for creating aerodynamics models
 std::shared_ptr<PyAerodynamicsModel> create_lyu_model()
 {
-  return std::make_shared<PyAerodynamicsModel>(std::make_unique<LyuAerodynamicsCreator>());
+  return std::make_shared<PyAerodynamicsModel>(
+      std::make_unique<LyuAerodynamicsCreator>());
 }
 
 std::shared_ptr<PyAerodynamicsModel> create_bspline_model()
@@ -115,7 +117,8 @@ std::shared_ptr<PyAerodynamicsModel> create_bspline_model()
 
 std::shared_ptr<PyAerodynamicsModel> create_phi_model()
 {
-  return std::make_shared<PyAerodynamicsModel>(std::make_unique<PhiAerodynamicsCreator>());
+  return std::make_shared<PyAerodynamicsModel>(
+      std::make_unique<PhiAerodynamicsCreator>());
 }
 
 std::shared_ptr<PyAerodynamicsModel> create_advanced_lift_drag_model()
@@ -126,7 +129,8 @@ std::shared_ptr<PyAerodynamicsModel> create_advanced_lift_drag_model()
 
 std::shared_ptr<PyAerodynamicsModel> create_non_aerodynamics_model()
 {
-  return std::make_shared<PyAerodynamicsModel>(std::make_unique<NonAerodynamicsCreator>());
+  return std::make_shared<PyAerodynamicsModel>(
+      std::make_unique<NonAerodynamicsCreator>());
 }
 
 PYBIND11_MODULE(aerodynamics_bindings, m)
@@ -135,42 +139,27 @@ PYBIND11_MODULE(aerodynamics_bindings, m)
 
   // Expose the PyAerodynamicsModel class
   py::class_<PyAerodynamicsModel>(m, "AerodynamicsModel")
-      .def(
-          "compute_coefficients",
-          &PyAerodynamicsModel::compute_coefficients,
-          py::arg("alpha"),
-          py::arg("speed") = 12.0,
-          "Compute force coefficients (cx, cz) for a single angle of attack")
-      .def(
-          "compute_coefficients_array",
-          &PyAerodynamicsModel::compute_coefficients_array,
-          py::arg("alphas"),
-          py::arg("speed") = 12.0,
-          "Compute force coefficients (cx, cz) for multiple angles of attack");
+      .def("compute_coefficients", &PyAerodynamicsModel::compute_coefficients,
+           py::arg("alpha"), py::arg("speed") = 12.0,
+           "Compute force coefficients (cx, cz) for a single angle of attack")
+      .def("compute_coefficients_array",
+           &PyAerodynamicsModel::compute_coefficients_array, py::arg("alphas"),
+           py::arg("speed") = 12.0,
+           "Compute force coefficients (cx, cz) for multiple angles of attack");
 
   // Factory functions
-  m.def(
-      "create_lyu_model",
-      &create_lyu_model,
-      "Create Lyu (Zhang-Lyu) aerodynamics model");
+  m.def("create_lyu_model", &create_lyu_model,
+        "Create Lyu (Zhang-Lyu) aerodynamics model");
 
-  m.def(
-      "create_bspline_model",
-      &create_bspline_model,
-      "Create B-spline aerodynamics model");
+  m.def("create_bspline_model", &create_bspline_model,
+        "Create B-spline aerodynamics model");
 
-  m.def(
-      "create_phi_model",
-      &create_phi_model,
-      "Create Phi-theory aerodynamics model");
+  m.def("create_phi_model", &create_phi_model,
+        "Create Phi-theory aerodynamics model");
 
-  m.def(
-      "create_advanced_lift_drag_model",
-      &create_advanced_lift_drag_model,
-      "Create Advanced Lift-Drag aerodynamics model");
+  m.def("create_advanced_lift_drag_model", &create_advanced_lift_drag_model,
+        "Create Advanced Lift-Drag aerodynamics model");
 
-  m.def(
-      "create_non_aerodynamics_model",
-      &create_non_aerodynamics_model,
-      "Create Non-aerodynamics (null) model");
+  m.def("create_non_aerodynamics_model", &create_non_aerodynamics_model,
+        "Create Non-aerodynamics (null) model");
 }

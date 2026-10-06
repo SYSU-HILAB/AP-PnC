@@ -7,7 +7,6 @@ from tooling.commands import (
     build,
     gen_nmpc_lib,
     lint,
-    sim,
     test,
 )
 
@@ -19,7 +18,6 @@ app.add_typer(
 app.add_typer(benchmark.app, name="benchmark", help="Planning benchmark experiments")
 app.add_typer(test.app, name="test", help="Test runners (pytest, colcon)")
 app.add_typer(build.app, name="build", help="C++ colcon builds")
-app.add_typer(sim.app, name="sim", help="Simulation management (K3s ConfigMap-driven)")
 app.add_typer(lint.app, name="lint", help="Lint and format")
 
 
@@ -32,7 +30,6 @@ def main() -> None:
         "benchmark",
         "test",
         "build",
-        "sim",
         "lint",
     }
     command = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in commands else "ap-pnc"

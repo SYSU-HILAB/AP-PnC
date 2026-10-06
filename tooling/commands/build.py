@@ -5,6 +5,7 @@ import sys
 
 import typer
 
+from tooling import simple_stack
 from tooling.env import get_git_root, setup_env
 
 app = typer.Typer()
@@ -89,16 +90,14 @@ def planner(
 
 
 @app.command(name="simple-sim")
-def simple_sim(
-    clean: bool = typer.Option(False, "--clean", "-c", help="Clean all build artifacts"),
-) -> None:
-    """Build lockstep simple_sim and its bringup resources (Linux + solver bundle)."""
-    _colcon_build(
-        ["simple_sim", "bringup"],
-        paths=["infra/sim_infra/simple_sim", "core/bringup"],
-        clean=clean,
-        cmake_args=["-DSIMPLE_SIM_WITH_ROS=ON", "-DSIMPLE_SIM_WITH_NMPC=ON"],
-    )
+def simple_sim() -> None:
+    """Build the whole offline stack: images, Rust dora nodes and the C++ simulator.
+
+    This is the build the quick start needs. It runs in Docker, so no host ROS,
+    Rust or acados installation is involved.
+    """
+    simple_stack.build()
+
 
 
 @app.command(name="nmpc")

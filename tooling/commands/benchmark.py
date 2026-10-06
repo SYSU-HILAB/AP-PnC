@@ -74,8 +74,9 @@ def run(
         typer.echo(f"  {key:12} {value:.6g}")
 
 
-@app.command(name="stack")
-def stack_sweep_command(
+@app.callback(invoke_without_command=True)
+def benchmark(
+    ctx: typer.Context,
     aero: str = typer.Option("lyu", "--aero", help="Comma list of aero models: none, lyu, phi"),
     vmax: str = typer.Option("8,10,12", "--vmax", help="Comma list of speed caps [m/s]"),
     variants: str = typer.Option(
@@ -94,13 +95,16 @@ def stack_sweep_command(
     mass: float = typer.Option(2.0, "--mass", help="Vehicle mass [kg]"),
     output: str = typer.Option("", "--output", "-o", help="Output directory"),
 ) -> None:
-    """Full stack sweep: one table over aero models, speeds and controllers.
+    """Run the whole matrix and print one table; this is what `ap-pnc benchmark` does.
 
     Runs the simple_sim stack (plan -> control -> plant) for every combination and
     prints the whole table at the end, including the per-row change from the SE3
     baseline to the SE3 aerodynamic feedforward variant. Controller gains come from
     core/bringup/config/simple_sim.yaml.
     """
+    if ctx.invoked_subcommand is not None:
+        return
+
     rows = stack_sweep.run_matrix(
         aeros=tuple(a.strip() for a in aero.split(",") if a.strip()),
         v_maxs=tuple(float(v) for v in vmax.split(",") if v.strip()),
@@ -114,5 +118,3 @@ def stack_sweep_command(
     table = stack_sweep.render_table(rows)
     typer.echo(table)
     typer.echo(f"rows: {len(rows)}")
-
-

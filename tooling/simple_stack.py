@@ -270,6 +270,87 @@ def _write_metadata(job: Path) -> None:
     (job / "simulator-binary.sha256").write_text(_sha256(simulator))
 
 
+RUST_STEPS = """
+set -euo pipefail
+manifest="$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/Cargo.toml"
+target="$AP_PNC_DIR/.artifacts/simple-stack/cache/target"
+if [[ ! -f "${manifest%/*}/Cargo.lock" ]]; then cargo generate-lockfile --manifest-path "$manifest"; fi
+cargo fmt --manifest-path "$manifest" -- --check
+cargo test --locked --release --jobs 2 --manifest-path "$manifest" --target-dir "$target"
+cargo build --locked --release --jobs 2 --manifest-path "$manifest" --target-dir "$target"
+cargo clippy --locked --release --jobs 2 --manifest-path "$manifest" --target-dir "$target" -- -D warnings
+"""
+
+CPP_STEPS = """
+set -euo pipefail
+dir="$AP_PNC_DIR/.artifacts/simple-stack/cache/cpp"
+solver_arch="$(uname -m)"
+cmake -S "$AP_PNC_DIR/infra/sim_infra/simple_sim" -B "$dir/build" \\
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$dir/install" \\
+  -DSIMPLE_SIM_WITH_ROS=OFF -DSIMPLE_SIM_WITH_NMPC=ON -DBUILD_TESTING=ON \\
+  -DNMPC_BUNDLE_PATH="$AP_PNC_DIR/.artifacts/nmpc_solver/libnmpc_bundle_${solver_arch}.a"
+cmake --build "$dir/build" --parallel 2
+ctest --test-dir "$dir/build" --output-on-failure -E acceptance
+cmake --install "$dir/build"
+"""
+
+
+def build() -> None:
+    """Build the offline stack: toolchain image, Rust nodes, C++ simulator, runtime image.
+
+    The five steps the shell used, owned by the tooling so `ap-pnc build simple-sim`
+    is the single entry point and no shell script is needed.
+    """
+    root = get_git_root()
+    base = stack_root()
+    source = project_path(_STACK_DIR)
+    arch = native_arch()
+    tool = f"ap-pnc-simple-toolchain:{arch}"
+    image = stack_image()
+    platform = f"linux/{arch}"
+    environment = setup_env()
+
+    def run(command: list[str], *, quiet: bool = False) -> None:
+        subprocess.run(
+            command,
+            env=environment,
+            check=True,
+            capture_output=quiet,
+            text=quiet,
+        )
+
+    run(["docker", "image", "inspect", f"simple-sim:{arch}"], quiet=True)
+    run([
+        "docker", "build", "--platform", platform, "--target", "toolchain",
+        "-t", tool, "-f", str(source / "Dockerfile"), str(root),
+    ])
+    run([
+        "docker", "run", "--rm", "--platform", platform, "--ipc=host",
+        "--entrypoint", "/bin/bash",
+        "-e", "AP_PNC_DIR=/workspace",
+        "-e", "CARGO_HOME=/workspace/.artifacts/simple-stack/cache/cargo",
+        "-v", f"{root}:/workspace:ro",
+        "-v", f"{source}:/workspace/infra/sim_infra/simple_sim/stack:rw",
+        "-v", f"{base}:/workspace/.artifacts/simple-stack/cache:rw",
+        tool, "-c", RUST_STEPS,
+    ])
+    run([
+        "docker", "run", "--rm", "--platform", platform, "--ipc=host",
+        "--network", "none", "--entrypoint", "/bin/bash",
+        "-e", "AP_PNC_DIR=/workspace",
+        "-e", "GIT_CONFIG_COUNT=1",
+        "-e", "GIT_CONFIG_KEY_0=safe.directory",
+        "-e", "GIT_CONFIG_VALUE_0=/workspace",
+        "-v", f"{root}:/workspace:ro",
+        "-v", f"{base}:/workspace/.artifacts/simple-stack/cache:rw",
+        tool, "-c", CPP_STEPS,
+    ])
+    run([
+        "docker", "build", "--platform", platform, "--target", "runtime",
+        "-t", image, "-f", str(source / "Dockerfile"), str(root),
+    ])
+
+
 def run_job(request: JobRequest | None = None, *, job: Path | None = None) -> Path:
     """Run one job and return its directory.
 

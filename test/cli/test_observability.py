@@ -188,5 +188,3 @@ def test_collector_command_is_scoped_and_paths_absolute(monkeypatch, tmp_path):
     assert ":amd64" in override.read_text()
     assert (tmp_path / ".artifacts/telemetry/local").is_dir()
     assert "PX4" not in json.dumps(command)
-
-

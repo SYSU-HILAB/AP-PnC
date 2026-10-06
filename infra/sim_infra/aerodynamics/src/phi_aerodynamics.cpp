@@ -10,15 +10,16 @@
  * Junning Liang: gordonliang27@foxmail.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 #include <Eigen/Dense>
 #include <aerodynamics/phi_aerodynamics.hpp>
 #include <aerodynamics/project_paths.hpp>
-#include <yaml-cpp/yaml.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -57,7 +58,7 @@ namespace aerodynamics
     {
       const YAML::Node config =
           YAML::LoadFile(paths::aero_config("phi").string());
-      const YAML::Node rows    = config["phi_coefs"];
+      const YAML::Node rows = config["phi_coefs"];
       if (!rows || !rows.IsSequence() || rows.size() != 3)
         throw std::runtime_error("phi_coefs must be a 3x3 matrix");
       for (std::size_t r = 0; r < 3; ++r)
@@ -69,7 +70,7 @@ namespace aerodynamics
           phi_matrix(r, c) = row[c].as<double>();
       }
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
       spdlog::error("phi aerodynamics: failed to load {}: {}",
                     paths::aero_config("phi").string(), e.what());

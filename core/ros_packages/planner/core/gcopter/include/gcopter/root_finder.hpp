@@ -10,13 +10,14 @@
  * Junning Liang: gordonliang27@foxmail.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 /*
     MIT License
 
-    Copyright (c) 2020 Zhepei Wang (wangzhepei@live.com)
+    // Copyright (c) 2020 Zhepei Wang (wangzhepei@live.com)
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to

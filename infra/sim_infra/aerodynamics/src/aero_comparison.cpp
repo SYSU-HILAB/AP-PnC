@@ -10,7 +10,8 @@
  * Junning Liang: gordonliang27@foxmail.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 #include <spdlog/spdlog.h>
@@ -49,9 +50,10 @@ bool test_aerodynamics(std::unique_ptr<AerodynamicsCreator> creator,
   constexpr double deg_to_rad      = M_PI / 180.0;
 
   // Create output file for this aerodynamics model
-  const auto output_path = paths::output("z" + name + ".csv");
+  const auto    output_path = paths::output("z" + name + ".csv");
   std::ofstream outfile(output_path);
-  if (!outfile) throw std::runtime_error("cannot write " + output_path.string());
+  if (!outfile)
+    throw std::runtime_error("cannot write " + output_path.string());
   outfile << "alpha_deg,cx,cz\n";  // CSV header
 
   try

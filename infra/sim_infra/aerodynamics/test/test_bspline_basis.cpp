@@ -10,7 +10,8 @@
  * Junning Liang: gordonliang27@foxmail.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 /**
@@ -25,17 +26,16 @@
 
 #include <gtest/gtest.h>
 
-#include <vector>
-
 #include <aerodynamics/bspline_basis.hpp>
+#include <vector>
 
 namespace
 {
-  const std::vector<double> kKnots = {0.0, 0.0, 0.0, 0.0, 0.25, 0.5,
+  const std::vector<double> kKnots = {0.0,  0.0, 0.0, 0.0, 0.25, 0.5,
                                       0.75, 1.0, 1.0, 1.0, 1.0};
   const std::vector<double> kCoefs = {1.0, 2.0, 0.5, -1.0, 3.0, 2.5, -0.5};
-  const std::vector<double> kX     = {0.0, 0.1, 0.25, 0.33, 0.5,
-                                      0.66, 0.75, 0.9, 1.0};
+  const std::vector<double> kX     = {0.0,  0.1,  0.25, 0.33, 0.5,
+                                      0.66, 0.75, 0.9,  1.0};
   const std::vector<double> kRef   = {
       1.0,
       1.4800000000000002,
@@ -59,8 +59,7 @@ TEST(BsplineBasis, PartitionOfUnity)
 {
   for (double x : kX)
   {
-    const std::vector<double> basis =
-        aerodynamics::bspline_basis(3, kKnots, x);
+    const std::vector<double> basis = aerodynamics::bspline_basis(3, kKnots, x);
     ASSERT_EQ(basis.size(), kCoefs.size());
     double sum = 0.0;
     for (double v : basis)

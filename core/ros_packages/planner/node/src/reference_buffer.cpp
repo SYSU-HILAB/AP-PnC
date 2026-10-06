@@ -17,14 +17,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-
 #include <planner_node/reference_buffer.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 namespace planner::node
 {
 
-  ReferenceBuffer::ReferenceBuffer(rclcpp::Node &node,
+  ReferenceBuffer::ReferenceBuffer(rclcpp::Node         &node,
                                    ReferenceBufferConfig config)
       : node_(node), config_(config)
   {
@@ -52,7 +51,7 @@ namespace planner::node
   }
 
   void ReferenceBuffer::to_point(const core::ReferencePoint &rp,
-                                 ReferencePoint &pt) const
+                                 ReferencePoint             &pt) const
   {
     for (int i = 0; i < 3; i++)
     {
@@ -167,7 +166,7 @@ namespace planner::node
 
     if (traj_type_ == RefTrajType::PLANNING)
     {
-      Segment &segment = segments_.front();
+      Segment     &segment  = segments_.front();
       const double duration = segment.traj.duration();
 
       if (segment.playhead > duration)
@@ -181,10 +180,9 @@ namespace planner::node
         out.points.resize(n);
         for (std::size_t k = 0; k < n; k++)
         {
-          const double t =
-              std::min(segment.playhead + static_cast<double>(k) *
-                                             config_.traj_res_s,
-                       duration);
+          const double t = std::min(
+              segment.playhead + static_cast<double>(k) * config_.traj_res_s,
+              duration);
           to_point(segment.traj.sample(t), out.points[k]);
         }
         segment.playhead += 1.0 / config_.ctrl_frq;

@@ -10,7 +10,8 @@
  * Junning Liang: gordonliang27@foxmail.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 // The original code is from
@@ -23,16 +24,16 @@
 // 4. simplify the to the minimal parameters for the aerodynamics invocatoin
 // The original parameters is from
 // https://github.com/PX4/PX4-gazebo-models/blob/230450cc817dd7675612ed5ec72ee59b6989d367/models/quadtailsitter/model.sdf
-Authors:
-Erchao Rong: rongerch@outlook.com
-Zihao Liu: liuzh297@gmail.com
-Junning Liang: gordonliang27@foxmail.com
+// Authors:
+// Erchao Rong: rongerch@outlook.com
+// Zihao Liu: liuzh297@gmail.com
+// Junning Liang: gordonliang27@foxmail.com
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 #include <aerodynamics/advanced_lift_drag.hpp>
 #include <aerodynamics/project_paths.hpp>
-#include <yaml-cpp/yaml.h>
 #include <algorithm>
 #include <cmath>
 #include <sstream>
@@ -74,7 +75,8 @@ namespace aerodynamics
       {
         const YAML::Node config =
             YAML::LoadFile(paths::aero_config("advanced").string());
-        const auto read_scalar = [&config](const char *key) {
+        const auto read_scalar = [&config](const char *key)
+        {
           const YAML::Node node = config[key];
           if (!node)
             throw std::runtime_error(std::string("advanced.yaml: '") + key +
@@ -130,7 +132,7 @@ namespace aerodynamics
       // sign(alpha) with a defined value at alpha == 0 (0/0 would be NaN
       // and poison the product even though sigma is small there).
       const double alpha_sign = (alpha > 0.0) - (alpha < 0.0);
-      double CL_poststall =
+      double       CL_poststall =
           sigma * 2.0 * alpha_sign * sinAlpha * sinAlpha * cosAlpha;
       spdlog::debug("CL_poststall: {}", CL_poststall);
 
@@ -194,8 +196,7 @@ namespace aerodynamics
       // Calculate alpha and beta. Clamp the asin argument: rounding can
       // push |y|/|v| marginally above 1 and NaN the evaluation.
       alpha = std::atan2(body_speed.z(), body_speed.x());
-      beta  = std::asin(
-          std::clamp(body_speed.y() / vNorm, -1.0, 1.0));
+      beta  = std::asin(std::clamp(body_speed.y() / vNorm, -1.0, 1.0));
 
       Eigen::Matrix3d s_R_b = Eigen::Matrix3d::Identity();
       s_R_b.col(0) << cos(alpha), 0, -sin(alpha);

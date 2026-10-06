@@ -59,14 +59,17 @@ uv sync --project "$AP_PNC_DIR" --group dev --group extra
 uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib
 
 # 2. Build the offline stack: Rust dora nodes + the C++ simulator.
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" build
+uv run --project "$AP_PNC_DIR" ap-pnc build simple-sim
 
-# 3. Plan, simulate and record the whole matrix, and print the table.
-uv run --project "$AP_PNC_DIR" ap-pnc benchmark stack \
+# 3. Run the whole matrix and print the table. Each run starts its own
+#    simulation in a container, records it, verifies the receipt and shuts down.
+uv run --project "$AP_PNC_DIR" ap-pnc benchmark \
     --profile ideal,practical --aero none,lyu,phi --vmax 8,10,12
 ```
 
-One command runs every combination, writes each run's data under
+One command runs every combination and manages the simulation itself: it starts a
+container per run, records it, verifies the receipt and shuts it down. It writes
+each run's data under
 `.artifacts/simple-stack/<os>-<arch>/runs/<job>/`, and prints one table at the
 end with the change from the SE3 baseline to the aerodynamic-feedforward variant
 on every row. The tooling owns this: the job directory, the configuration
@@ -157,7 +160,6 @@ mistaken for a host install that does not exist:
 | `gen-nmpc-lib` | fetch and build acados on first use, then generate the static NMPC solver bundle | host toolchain on Linux; Docker otherwise, including on macOS |
 | `build` | colcon builds: `nmpc`, `planner`, `simple-sim`, `aero`, bindings | host toolchain on Linux |
 | `benchmark` | offline plan → track → metrics pipeline | in-process Python |
-| `sim` | start, stop and follow the logs of the simulation stack | K3s, over the images you built |
 
 The command groups are the ones this repository can run today: generate the
 solver bundle, build the C++ packages, run the benchmark, run the tests, lint,

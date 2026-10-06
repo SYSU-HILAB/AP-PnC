@@ -11,8 +11,8 @@
  *
  * Description:
  * Generate CSV data for ML training from all aerodynamic types.
- * Outputs: lyu_across_AoAs.csv, bspline_across_AoAs.csv, phi_across_AoAs.csv, advanced_across_AoAs.csv
- * Format: alpha(rad),cx,cz
+ * Outputs: lyu_across_AoAs.csv, bspline_across_AoAs.csv, phi_across_AoAs.csv,
+ * advanced_across_AoAs.csv Format: alpha(rad),cx,cz
  */
 
 #include <spdlog/spdlog.h>
@@ -36,8 +36,7 @@ using namespace aerodynamics;
  * @return true if generation succeeded
  */
 bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
-                        const std::string&                   filename,
-                        const std::string&                   name)
+                        const std::string& filename, const std::string& name)
 {
   spdlog::info("Generating data for {}", name);
 
@@ -51,15 +50,15 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
   constexpr double speed_magnitude = 12.0;
 
   // High resolution for smooth ML training: 3601 points (~0.1 degree steps)
-  constexpr int    num_points = 3601;
+  constexpr int num_points = 3601;
 
   // Alpha range: -pi to +pi radians
-  constexpr double alpha_min = -M_PI;
-  constexpr double alpha_max = M_PI;
+  constexpr double alpha_min  = -M_PI;
+  constexpr double alpha_max  = M_PI;
   constexpr double alpha_step = (alpha_max - alpha_min) / (num_points - 1);
 
   // Create output file
-  const auto output_path = paths::output(filename);
+  const auto    output_path = paths::output(filename);
   std::ofstream outfile(output_path);
   if (!outfile.is_open())
   {
@@ -91,19 +90,21 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
       double alpha_out = 0.0;
       double beta_out  = 0.0;
 
-      creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b, alpha_out, beta_out);
+      creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b, alpha_out,
+                             beta_out);
 
       // Normalize coefficients: force / (speed^2)
       const double cx = aero_force_b.x() / (speed_magnitude * speed_magnitude);
       const double cz = aero_force_b.z() / (speed_magnitude * speed_magnitude);
 
       // Write: alpha_input(rad), cx, cz
-      outfile << std::setprecision(std::numeric_limits<double>::max_digits10) << alpha_input
-              << "," << cx << "," << cz << "\n";
+      outfile << std::setprecision(std::numeric_limits<double>::max_digits10)
+              << alpha_input << "," << cx << "," << cz << "\n";
     }
 
     outfile.close();
-    spdlog::info("Data written to {} ({} points)", output_path.string(), num_points);
+    spdlog::info("Data written to {} ({} points)", output_path.string(),
+                 num_points);
     return true;
   }
   catch (const std::exception& e)
@@ -127,20 +128,18 @@ int main()
 
   // Generate data for each aerodynamic type
   all_passed &= generate_aero_data(std::make_unique<LyuAerodynamicsCreator>(),
-                                   "lyu_across_AoAs.csv",
-                                   "LyuAerodynamics");
+                                   "lyu_across_AoAs.csv", "LyuAerodynamics");
 
-  all_passed &= generate_aero_data(std::make_unique<BsplineAerodynamicsCreator>(),
-                                   "bspline_across_AoAs.csv",
-                                   "BsplineAerodynamics");
+  all_passed &=
+      generate_aero_data(std::make_unique<BsplineAerodynamicsCreator>(),
+                         "bspline_across_AoAs.csv", "BsplineAerodynamics");
 
   all_passed &= generate_aero_data(std::make_unique<PhiAerodynamicsCreator>(),
-                                   "phi_across_AoAs.csv",
-                                   "PhiAerodynamics");
+                                   "phi_across_AoAs.csv", "PhiAerodynamics");
 
-  all_passed &= generate_aero_data(std::make_unique<AdvancedLiftDragCreator>(),
-                                   "advanced_across_AoAs.csv",
-                                   "AdvancedLiftDrag");
+  all_passed &=
+      generate_aero_data(std::make_unique<AdvancedLiftDragCreator>(),
+                         "advanced_across_AoAs.csv", "AdvancedLiftDrag");
 
   if (all_passed)
   {

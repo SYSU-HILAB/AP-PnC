@@ -367,5 +367,3 @@ def collector(args: list[str], arch: str = "native") -> None:
     docker_runtime.compose(
         root, root / "infra/observability/docker-compose.yaml", args, arch=arch
     )
-
-
