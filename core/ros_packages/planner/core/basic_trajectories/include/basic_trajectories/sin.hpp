@@ -5,7 +5,9 @@
  * All rights reserved.
  *
  * Authors:
- * Hanamy: rongerch@outlook.com
+ * Erchao Rong: rongerch@outlook.com
+ * Zihao Liu
+ * Junning Liang
  *
  * Paper:
  * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
@@ -15,7 +17,10 @@
  * Created on Wed Sep 13 2023
  *
  * Copyright (c) 2023 SYSU
- * author: WarriorHanamy ; email: rongerch@outlook.com
+ * Authors:
+ * Erchao Rong: rongerch@outlook.com
+ * Zihao Liu
+ * Junning Liang
  */
 
 #pragma once

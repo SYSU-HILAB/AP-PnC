@@ -58,7 +58,10 @@ ext_modules = [
 setup(
     name="planner_bindings",
     version="0.1.0",
-    author="Hanamy",
+    Authors:
+    Erchao Rong: rongerch@outlook.com
+    Zihao Liu
+    Junning Liang
     description="Python bindings for the AP-PnC pure planning core",
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},

@@ -1,6 +1,8 @@
 # BSD 3-Clause License
 # Copyright (c) 2025 Sun Yat-sen University. All rights reserved.
-# Authors: Hanamy: rongerch@outlook.com
+# Authors: Erchao Rong: rongerch@outlook.com
+# Authors: Zihao Liu
+# Authors: Junning Liang
 
 """Generate a command-integrator OCP; numerical tuning comes only from YAML."""
 

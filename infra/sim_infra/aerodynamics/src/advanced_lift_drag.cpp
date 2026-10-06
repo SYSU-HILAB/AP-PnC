@@ -5,7 +5,9 @@
  * All rights reserved.
  *
  * Authors:
- * Hanamy: rongerch@outlook.com
+ * Erchao Rong: rongerch@outlook.com
+ * Zihao Liu
+ * Junning Liang
  *
  * Paper:
  * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
@@ -21,7 +23,10 @@
 // 4. simplify the to the minimal parameters for the aerodynamics invocatoin
 // The original parameters is from
 // https://github.com/PX4/PX4-gazebo-models/blob/230450cc817dd7675612ed5ec72ee59b6989d367/models/quadtailsitter/model.sdf
-// Author: HanamyWarrior email: rongerch@outlook.com
+Authors:
+Erchao Rong: rongerch@outlook.com
+Zihao Liu
+Junning Liang
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
 

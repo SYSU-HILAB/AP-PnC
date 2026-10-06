@@ -1,7 +1,10 @@
 # Created on Wed Aug 16 2023
 #
 # Copyright (c) 2023 SYSU
-# author: WarriorHanamy ; email: rongerch@outlook.com
+# Authors:
+# Erchao Rong: rongerch@outlook.com
+# Zihao Liu
+# Junning Liang
 #
 # PyTorch batched implementation for efficient aerodynamic coefficient calculations
 #

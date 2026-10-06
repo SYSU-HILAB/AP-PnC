@@ -5,7 +5,9 @@
  * All rights reserved.
  *
  * Authors:
- * Hanamy: rongerch@outlook.com
+ * Erchao Rong: rongerch@outlook.com
+ * Zihao Liu
+ * Junning Liang
  *
  * Description:
  * Generate CSV data for ML training from all aerodynamic types.

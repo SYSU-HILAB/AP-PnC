@@ -55,7 +55,10 @@ ext_modules = [
 setup(
     name="aerodynamics_bindings",
     version="0.1.0",
-    author="Hanamy",
+    Authors:
+    Erchao Rong: rongerch@outlook.com
+    Zihao Liu
+    Junning Liang
     description="Python bindings for AP-PnC aerodynamics models",
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},
