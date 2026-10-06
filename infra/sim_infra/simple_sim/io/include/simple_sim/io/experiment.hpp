@@ -44,12 +44,16 @@ namespace simple_sim
     std::unique_ptr<Controller>                               controller_;
     std::unique_ptr<Runner>                                   runner_;
     std::ofstream                                             log_;
-    double       squared_position_error_ = 0.0;
-    double       squared_velocity_error_ = 0.0;
-    double       max_position_error_     = 0.0;
-    std::int64_t samples_                = 0;
-    std::int64_t status2_count_          = 0;
-    bool         finished_               = false;
+    double squared_position_error_ = 0.0;
+    double squared_velocity_error_ = 0.0;
+    double max_position_error_     = 0.0;
+    // Sideslip over the committed window: the body-frame lateral velocity
+    // relative to the flight path, max |beta| and its RMS.
+    double       max_sideslip_rad_     = 0.0;
+    double       squared_sideslip_rad_ = 0.0;
+    std::int64_t samples_              = 0;
+    std::int64_t status2_count_        = 0;
+    bool         finished_             = false;
     void         metrics_sample(const State &state, double t);
   };
 

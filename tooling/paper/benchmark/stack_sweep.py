@@ -48,6 +48,7 @@ class Row:
     position_rmse: float
     position_max: float
     velocity_rmse: float
+    max_sideslip_deg: float
     run_dir: Path
 
     def as_dict(self) -> dict:
@@ -60,6 +61,7 @@ class Row:
             "position_rmse_m": self.position_rmse,
             "position_max_m": self.position_max,
             "velocity_rmse_mps": self.velocity_rmse,
+            "max_sideslip_deg": self.max_sideslip_deg,
             "run_dir": str(self.run_dir),
         }
 
@@ -180,6 +182,9 @@ def run_matrix(
                             position_rmse=float(metrics["position_rmse_m"]),
                             position_max=float(metrics["position_max_m"]),
                             velocity_rmse=float(metrics["velocity_rmse_mps"]),
+                            max_sideslip_deg=float(
+                                metrics.get("max_sideslip_deg", float("nan"))
+                            ),
                             run_dir=run_dir,
                         )
                     except Exception as error:  # - keep sweeping
@@ -215,7 +220,9 @@ def _cell(row: Row | None) -> str:
     if row.status == "error" or row.position_rmse != row.position_rmse:  # NaN
         return "error"
     mark = "" if row.status == "finished" else " (failed)"
-    return f"{row.position_rmse:.4f}{mark}"
+    beta = row.max_sideslip_deg
+    sideslip = f" / {beta:.1f}" if beta == beta else ""  # NaN-tolerant
+    return f"{row.position_rmse:.4f}{sideslip}{mark}"
 
 
 def render_table(rows: list[Row]) -> str:

@@ -407,6 +407,18 @@ namespace simple_sim
     squared_position_error_ += error * error;
     squared_velocity_error_ += (s.velocity - ref.v).squaredNorm();
     max_position_error_ = std::max(max_position_error_, error);
+    // Sideslip. Computed from the same wing-frame airspeed the aerodynamics
+    // adapter hands the models, so the metric and the model cannot disagree
+    // about the body frame: v_L = wing_from_flu(R_BW (v - wind)), and beta is
+    // the angle between v_L and the wing x-z plane (the wing y axis is -body y
+    // in FLU). Wind is rejected by the configuration, so the ground speed is
+    // the airspeed.
+    const Eigen::Vector3d air_wing =
+        wing_from_flu(s.attitude.conjugate() * s.velocity);
+    const double beta =
+        std::atan2(air_wing.y(), std::hypot(air_wing.x(), air_wing.z()));
+    max_sideslip_rad_ = std::max(max_sideslip_rad_, std::abs(beta));
+    squared_sideslip_rad_ += beta * beta;
     ++samples_;
   }
   StepRecord Experiment::step()
@@ -518,6 +530,9 @@ namespace simple_sim
             << ",\n  \"velocity_rmse_mps\": "
             << std::sqrt(squared_velocity_error_ / denominator)
             << ",\n  \"position_max_m\": " << max_position_error_
+            << ",\n  \"max_sideslip_deg\": " << max_sideslip_rad_ * 180.0 / M_PI
+            << ",\n  \"sideslip_rms_deg\": "
+            << std::sqrt(squared_sideslip_rad_ / denominator) * 180.0 / M_PI
             << ",\n  \"solver_status_2_count\": " << status2_count_ << "\n}\n";
     metrics.close();
     fs::rename(output_dir_ / "metrics.json.tmp", output_dir_ / "metrics.json");
