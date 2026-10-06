@@ -4,7 +4,7 @@
   <name>planner</name>
   <version>0.1.0</version>
   <description>Prior-free trajectory generation (GCOPTER/MINCO) and reference buffering</description>
-  <maintainer email="rongerch@outlook.com">Warrior Hanamy</maintainer>
+  <maintainer email="rongerch@outlook.com">Erchao Rong</maintainer>
   <license>BSD</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
