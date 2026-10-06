@@ -13,9 +13,9 @@ Set an absolute checkout root. The CLI discovers this root from its module or
 
 ```bash
 export AP_PNC_DIR=/absolute/path/to/AP-PnC
-uv run --project "$AP_PNC_DIR" ap-pnc docker dev
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.dev()"
 # Explicit cross/deployment target, never an automatic fallback:
-uv run --project "$AP_PNC_DIR" ap-pnc docker dev --arch amd64
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.dev(arch='amd64')"
 ```
 
 `dev` creates a missing matching solver archive in the pinned Linux builder
@@ -45,5 +45,5 @@ colcon --log-base "$AP_PNC_DIR/.artifacts/colcon/log" build \
 source "$AP_PNC_DIR/.artifacts/colcon/install/setup.bash"
 ```
 
-For self-contained simulation images, use `ap-pnc docker build` instead.
+For self-contained simulation images, use `uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"` instead.
 See [Gazebo deployment](../../infra/sim_infra/gazebo/README.md).

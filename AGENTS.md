@@ -65,7 +65,8 @@ Rules:
   confines generated outputs via `tooling.env.artifact_path()`; C++ aerodynamics
   code uses `aerodynamics/paths` from `aerodynamics/project_paths.hpp`.
 - Docker Compose files resolve every context, dockerfile, and volume against an
-  absolute `AP_PNC_DIR` (`${AP_PNC_DIR:?...}`); `ap-pnc docker/sim` exports it.
+  absolute `AP_PNC_DIR` (`${AP_PNC_DIR:?...}`); the tooling exports it (`tooling.docker_runtime`, `tooling.simple_stack`, and the
+  K3s simulation management).
 - Do not introduce cwd-relative paths for configs, artifacts, or build output.
 
 ## Host, target architecture, and iteration phases
@@ -118,7 +119,7 @@ Linux, even when both sides use ARM64.
   `.artifacts/nmpc_build/<solver_arch>/`; dev containers use
   `.artifacts/docker-dev/<docker_arch>/colcon/`. Do not mount all host
   `.artifacts/` over an image's install tree.
-- `ap-pnc docker` and `ap-pnc sim build` select the native CPU by default;
+- the Compose layer (`tooling.docker_runtime`) and `ap-pnc sim build` select the native CPU by default;
   `--arch arm64|amd64` is explicit. Raw Compose requires absolute
   `AP_PNC_DIR` and `AP_PNC_ARCH=arm64|amd64`. These architecture settings
   are not additional project-path variables.

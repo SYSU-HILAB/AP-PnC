@@ -50,11 +50,11 @@ recipes and screenshots); cleanup is not a reversal of the recorded results.
 
 ```bash
 export AP_PNC_DIR=/absolute/path/to/AP-PnC
-uv run --project "$AP_PNC_DIR" ap-pnc docker config
-uv run --project "$AP_PNC_DIR" ap-pnc docker build
-uv run --project "$AP_PNC_DIR" ap-pnc docker up
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.config()"
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up()"
 # Stop only this Compose project (also stops its optional GUI services):
-uv run --project "$AP_PNC_DIR" ap-pnc docker down
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.down()"
 ```
 
 Build/up/config accept `--arch native|arm64|amd64` (aarch64/x86_64 aliases also
@@ -67,7 +67,7 @@ bundles must be regenerated after solver/API changes:
 
 ```bash
 uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch aarch64
-uv run --project "$AP_PNC_DIR" ap-pnc docker build ap-pnc
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(services=['ap-pnc'])"
 ```
 
 `arm64` selects `libnmpc_bundle_aarch64.a`; `amd64` selects
@@ -105,8 +105,8 @@ and C++ changes require an image rebuild. ROS logs are container artifact-owned.
 ## Optional container desktop
 
 ```bash
-uv run --project "$AP_PNC_DIR" ap-pnc docker build --gui
-uv run --project "$AP_PNC_DIR" ap-pnc docker up --gui
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(gui=True)"
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up(gui=True)"
 # Open http://127.0.0.1:6088/vnc.html?autoconnect=1&resize=scale
 ```
 
@@ -126,7 +126,7 @@ Linux GPU overlay; the default configuration never requests an NVIDIA runtime.
 The optional `real` target adds Livox, FAST-LIO and EKF packages:
 
 ```bash
-uv run --project "$AP_PNC_DIR" ap-pnc docker build nav_infra --nav-target real
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(services=['nav_infra'], nav_target='real')"
 ```
 
 The image tag includes both architecture and target, e.g. `nav_infra:arm64-sim`.

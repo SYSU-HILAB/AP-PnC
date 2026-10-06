@@ -5,6 +5,12 @@ description: End-to-end flight procedure and pitfall reference for the AP-PnC ga
 
 # AP-PnC Gazebo E2E
 
+> **The `ap-pnc docker` command group was removed.** The Compose layer it
+> wrapped is an internal API now: `tooling.docker_runtime` (`build`, `up`, `down`,
+> `config`, `dev`). The examples below call it directly. The stack itself is still
+> roadmap, so none of this is part of the accepted pipeline.
+
+
 Flight loop: `px4-simulator` (stock PX4 v1.17.0, Gazebo Harmonic `gz_x500`)
 → `nav_infra` (mavros2 + `px4ctrl` with RLS/INDI + odometry adapter) →
 `ap-pnc` core (planner + `nmpc`). px4ctrl is the single
@@ -17,8 +23,8 @@ Flight loop: `px4-simulator` (stock PX4 v1.17.0, Gazebo Harmonic `gz_x500`)
 ```bash
 # 1-4) the Compose runtime now starts SITL, GCS heartbeat, nav and core itself.
 # Set absolute AP_PNC_DIR; default target is the host CPU (Mac Apple Silicon: ARM64).
-uv run --project "$AP_PNC_DIR" ap-pnc docker build
-uv run --project "$AP_PNC_DIR" ap-pnc docker up
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up()"
 # Do NOT start a duplicate SITL/core process or an external heartbeat sender.
 docker exec nav_infra /entrypoint.sh python3 \
   /workspace/infra/sim_infra/gazebo/scripts/verify_runtime.py

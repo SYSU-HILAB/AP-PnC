@@ -5,6 +5,12 @@ description: Build and run the AP-PnC all-Docker, native ARM64/AMD64 gazebo stac
 
 # AP-PnC Docker
 
+> **The `ap-pnc docker` command group was removed.** The Compose layer it
+> wrapped is an internal API now: `tooling.docker_runtime` (`build`, `up`, `down`,
+> `config`, `dev`). The examples below call it directly. The stack itself is still
+> roadmap, so none of this is part of the accepted pipeline.
+
+
 Read `infra/sim_infra/gazebo/README.md` from absolute `AP_PNC_DIR` for the
 current deployment contract. No host ROS/acados install is required.
 
@@ -14,17 +20,17 @@ Apple Silicon defaults to Linux ARM64, never silent AMD64 emulation.
 The CLI exports absolute AP_PNC_DIR and normalized AP_PNC_ARCH.
 
 ```bash
-uv run --project "$AP_PNC_DIR" ap-pnc docker build
-uv run --project "$AP_PNC_DIR" ap-pnc docker build --gui
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(gui=True)"
 # Explicit non-native deployment target only when requested:
-uv run --project "$AP_PNC_DIR" ap-pnc docker build --arch amd64
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(arch='amd64')"
 ```
 
 A missing arch-tagged solver is generated in Docker. To regenerate deliberately:
 
 ```bash
 uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch aarch64
-uv run --project "$AP_PNC_DIR" ap-pnc docker build ap-pnc
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(services=['ap-pnc'])"
 ```
 
 Caches live under `.artifacts/nmpc_build/<solver_arch>/`. Core/simple-sim image
@@ -35,9 +41,9 @@ image rebuild, not a bind-mounted archive or merely restarting an old node.
 ## Run
 
 ```bash
-uv run --project "$AP_PNC_DIR" ap-pnc docker up
-uv run --project "$AP_PNC_DIR" ap-pnc docker up --gui
-uv run --project "$AP_PNC_DIR" ap-pnc docker down
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up()"
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up(gui=True)"
+uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.down()"
 ```
 
 Default services automatically start headless gz_x500 SITL, GCS heartbeat,

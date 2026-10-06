@@ -1,7 +1,7 @@
 name: ap-pnc-gazebo
 
 x-target: &target
-  platform: linux/${AP_PNC_ARCH:?Use ap-pnc docker or set AP_PNC_ARCH=arm64|amd64}
+  platform: linux/${AP_PNC_ARCH:?Set AP_PNC_ARCH=arm64|amd64 (tooling.docker_runtime exports it)}
   init: true
   ipc: host
 

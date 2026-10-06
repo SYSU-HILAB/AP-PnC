@@ -47,7 +47,7 @@ lifecycle. No second Rust subscriber/provider or new message envelope is install
 The original path payload is unchanged; reserved dora metadata carries W3C context.
 
 ```bash
-uv run --project "$AP_PNC_DIR" --extra telemetry ap-pnc telemetry up
+uv run --project "$AP_PNC_DIR" --extra telemetry python -c "from tooling import observability as o; o.collector(['up', '-d'])"
 AP_PNC_TELEMETRY=1 uv run --project "$AP_PNC_DIR" ap-pnc benchmark stack --aero lyu --vmax 8
 # Compare actual Collector spans AND scientific data with a telemetry-off job:
 uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/observability/verify_dora.py" "$ON_JOB" --baseline "$OFF_JOB"
