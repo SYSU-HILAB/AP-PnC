@@ -65,6 +65,29 @@ columns and actual solver-reference CSV (only solve wall time excluded). A real
 status4 failure produces ERROR spans and no successful replay marker. See the full
 [project observability contract](../../../../docs/observability.md) for scope/gates.
 
+## Terminal reference and speed sweeps
+
+Reference samples beyond the planned end repeat the complete last point, matching
+ROS ReferenceBuffer. No polynomial extrapolation; `sample_time_ns` is clamped,
+while `reference_time_ns` retains the requested prediction time. The serialized
+`terminal_policy: hold_last_point` enables the decoder rule explicitly; old
+artifacts without it retain strict coverage checks.
+
+Automatic duration now includes the whole trajectory, rounded up to a complete
+control period. Optional `terminal_hold_s` adds dwell; explicit-duration short
+probes retain their complete-step floor. Example (full trajectory + 2 s dwell):
+
+```bash
+bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 matlab-vtol lyu 8 2
+uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/evaluate.py" run \
+  --v-max 8 --hold-seconds 2 --output "$AP_PNC_DIR/.artifacts/benchmark/NEW_V8"
+```
+
+New matched sweep completion: 6 m/s 5/5, 8 m/s 4/5, 10/12 m/s 0/5. See the
+[current speed/hold report](../../../../docs/tracking_speed_report.md). Historical
+17.48 s v6 figures below exclude the last prediction tail and are not the new
+full-trajectory+dwell window. Do not compare failed partial RMSE with full runs.
+
 ## Independent export, verification, replay
 
 Substitute the printed absolute JOB and the actual simulator directory NAME:
@@ -98,31 +121,56 @@ Failed retries invalidate old markers. The acceptance script operates on copied
 fixtures and disables the simulator executable to prove independent export.
 It also checks a corrupt RRD even when its outer SHA256 is updated to match.
 
-## First-order NMPC prediction and separate physical plant
+## Current ABI3 speed campaign: four motors, 2 kg
+
+Run only none/lyu/ma, with an explicit mass override after the private profile
+is loaded. Original profile/provenance remains untouched; inertia, motor calibration,
+PID, solver weights/bounds and timing are unchanged. Full reference plus 2 s hold:
+
+```bash
+uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/evaluate.py" run \
+  --profile matlab-vtol --v-max 8 --hold-seconds 2 --mass 2 --output ABSOLUTE_NEW_ARTIFACT_DIRECTORY
+uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/plot_aero_history.py" \
+  --output ABSOLUTE_SAVED_GROUP_DIRECTORY
+```
+
+The second command only plots saved CSV. Model-returned wing-FRD alpha/beta and
+FLU aerodynamic force/moment are recorded at before/after states; curves include
+the final committed state. Low-speed angle guards remain model-owned.
+
+[Actual 6/8/10/12 results](../../../../docs/tracking_integrator_speed_report.md):
+11 status4 failures; ma/6 completes but position RMSE is 18.98 m and max error 69.36 m.
+Completion/verified RRD is scientific-record validation, **not tracking acceptance**.
+Do not test phi/advanced in this campaign.
+
+## Command-integrator NMPC prediction and separate physical plant
 
 The OCP contains **no rotor/PWM/mixer/inertia/torque allocation model**.
-Its 15 states are `[p(3), v(3), omega(3), q_wxyz(4), a, cz]`; `a` is
-collective specific thrust in N/kg. The four inputs are `[a_sp, omega_sp_xyz]`.
-Translation and attitude use `a` and `omega`; the response equations are:
+Its 15 states are `[p(3), v(3), rate_command(3), q_wxyz(4), thrust_command, k_aero]`.
+The four inputs are derivatives of `[collective specific thrust, body rates]`:
 
 ```
-da/dt     = (a_sp - a) / thrust_tau_s
-domega/dt = (omega_sp - omega) / rate_tau_s_xyz
+d(thrust_command)/dt = u[0]       # N/kg/s
+d(rate_command)/dt   = u[1:4]     # rad/s^2
 ```
 
-`core/bringup/config/nmpc.yaml` supplies positive time constants as runtime
-solver parameters. The initial values (76 ms and 100 ms per axis) are **tuning
-assumptions, not identified thrust or closed-loop rate dynamics**. The thrust
-reference is now collective `u_hover=9.81`, not 2.4525 per rotor. Bounds and cost
-units are collective N/kg and body rad/s. The existing adaptive signed body-X
-aero coefficient is retained; the old approximate wing-frame quaternion is
-removed so its force sign agrees with the IMU coefficient estimator.
+This assumes ideal inner-loop tracking, NOT first-order actuator response.
+The objective is only `[p, v, body_y]` tracking plus zero-reference command
+**derivative** regularization, including stage 0. Absolute command bounds are
+state constraints at future and terminal nodes. YAML owns horizon, objective and command-bound tuning;
+`config.py`, lag constants, zero-weight rate targets and hover cost targets are removed.
+The existing lumped body-X coefficient `cx` (IMU-calibrated) is retained; it is
+also the wing-normal axis because `+X_B = +Z_L`. Its d(alpha)/dt term now
+includes the missing `-omega x v` rotating-frame contribution.
 
-The controller publishes the optimized **u_0 setpoints**, not predicted x_1
-rates/thrust at a 100 ms horizon knot. Its unmeasured thrust state is estimated
-over the actual 20 ms control period. Solver ABI 2 is 15/4/7 (x/u/p); the new
-ABI symbol and generated-header static assertions reject old archives at link
-or startup. **Rebuilding the bundle alone does not update a statically linked
+The controller integrates the optimized derivative over the actual **20 ms**
+control period: `c_next = c_previous + dt_control * u0`. It publishes neither
+`u0` itself nor `x1` at the 100 ms prediction knot. Command memory is not
+replaced by measured motor/inner-loop response; reset can supply a known initial
+command. Solver ABI **3** is **15/4/1** (x/u/p), with **13/9** stage/terminal
+outputs. The ABI symbol and generated-header static assertions reject old archives
+at link or startup. The CSV persists actual u0 derivatives, integrated commands
+and acceptance, and the independent decoder checks every committed integration. **Rebuilding the bundle alone does not update a statically linked
 simulator/flight binary.** `stack.sh build` now also rebuilds/tests/installs C++
 and mounts that executable explicitly into the offline graph.
 
@@ -141,13 +189,13 @@ The importer expects the authorized checkout under
 provenance under `.artifacts/vtol-matlab/`; no raw source is uploaded or pushed.
 It uses the actual loaded MAT mass/inertia and transforms wing to FLU with a
 proper rotation, synchronizing planner/plant/controller runtime mass. The
-mass-normalized first-order OCP has **no fixed mass/inertia/rotor geometry** to
+mass-normalized command-integrator OCP has **no fixed mass/inertia/rotor geometry** to
 retune. RPM is a continuous RK4 state, unlike upstream's 4 ms Euler state; this
 is not a claim of whole-simulator tick equivalence. MATLAB/Octave execution
 golden remains unverified. Scientific CSV now includes RPM/next-RPM, held
 RPM targets/duty and applied wrench, with offline Rerun actuator channels.
 
-Current ARM64 acceptance uses the direct FLU public reference: all five matched
+**Historical ABI2** ARM64 acceptance used the direct FLU public reference: all five matched
 matlab-vtol plant aero models (none/lyu/phi/ma/advanced) finish 17.48 s / 874 ticks
 at v_max setting 6 and pass independent replay verification. This is a soft speed
 constraint: reference peak is about 6.00201 m/s, not strictly ≤6.0000. Actual NMPC
@@ -159,7 +207,7 @@ Lyu run. No hardware/flight acceptance is implied.
 **Historical pre-FLU-reference failures are preserved:** ideal Lyu failed at
 5.26 s / 263 ticks and motor Lyu at 4.68 s / 234 ticks with status4 and no replay
 success markers. High actual pitch rate was observed, but its mechanism was not
-independently resolved. Current v6 success does not explain every historical
+independently resolved. Historical v6 success does not explain every historical
 failure or establish high-speed robustness; a separate v12 case still fails.
 
 ## Build-time CasADi C kernel
@@ -204,7 +252,7 @@ attitude/force side effects or trajectory optimization.
 
 ## Frozen legacy-model native ARM64 results (2026-10-05)
 
-These results predate the first-order model above; they are not its acceptance.
+These results predate the current command-integrator model; they are not its acceptance.
 
 - dora graph: 1 s / 50 ticks and full supported horizon / 568 ticks / 11.36 s.
 - Independent Rerun decoder/footer validation and actual browser replay passed;

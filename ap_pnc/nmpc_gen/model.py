@@ -1,81 +1,113 @@
 # BSD 3-Clause License
 # Copyright (c) 2025 Sun Yat-sen University. All rights reserved.
 # Authors: Hanamy: rongerch@outlook.com
-# Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
-"""First-order collective-thrust/body-rate NMPC prediction, not a motor model."""
+"""ENU/FLU NMPC with ideal inner-loop tracking and command integrators.
+
+x = [position_W, velocity_W, body_rate_command, quaternion_WB_wxyz,
+     specific_thrust_command, cx] (15).
+
+cx is the LUMPED body-X specific-force coefficient [1/m]: it is scaled by |v|^2
+to give the body-X aerodynamic specific force. Because +X_B = +Z_L, this single
+axis is the legacy wing-normal (lift) direction. It intentionally also absorbs
+any actuator body-X component measured on the IMU.
+u = d[specific_thrust_command, body_rate_command]/dt (4).
+Motor dynamics, torque, the remaining wing axes and rate-loop lag belong to the
+plant, not this model. Ground speed only: zero wind is required.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import casadi as cs
-from casadi import SX, vertcat
 
-
-def skew(w):
-    return cs.vertcat(cs.horzcat(0, -w[2], w[1]),
-                      cs.horzcat(w[2], 0, -w[0]),
-                      cs.horzcat(-w[1], w[0], 0))
-
-
-def skew_symmetric(v):
-    return cs.vertcat(cs.horzcat(0, -v[0], -v[1], -v[2]),
-                      cs.horzcat(v[0], 0, v[2], -v[1]),
-                      cs.horzcat(v[1], -v[2], 0, v[0]),
-                      cs.horzcat(v[2], v[1], -v[0], 0))
-
-
-def Quat2RotMat(q):
-    qw, qx, qy, qz = q[0], q[1], q[2], q[3]
-    return cs.vertcat(
-        cs.horzcat(1 - 2 * (qy**2 + qz**2), 2 * (qx*qy - qw*qz), 2 * (qx*qz + qw*qy)),
-        cs.horzcat(2 * (qx*qy + qw*qz), 1 - 2 * (qx**2 + qz**2), 2 * (qy*qz - qw*qx)),
-        cs.horzcat(2 * (qx*qz - qw*qy), 2 * (qy*qz + qw*qx), 1 - 2 * (qx**2 + qy**2)))
-
-
-def q_oproduct_vec(v, q):
-    return cs.mtimes(Quat2RotMat(q), v)
-
-
-def q_inv_oproduct_vec(v, q):
-    return cs.mtimes(Quat2RotMat(q).T, v)
-
-
-def tailsitter_flu():
+if TYPE_CHECKING:
     from acados_template import AcadosModel
 
-    # World ENU, body FLU, Hamilton wxyz; mass-normalized collective thrust.
-    # Rotor geometry/PWM/mixer/rigid-body torque belong only to the plant.
-    p = SX.sym('p', 3)
-    v = SX.sym('v', 3)
-    rates = SX.sym('rates', 3)
-    q = SX.sym('q', 4)
-    thrust = SX.sym('specific_force', 1)
-    cz_state = SX.sym('cz_state', 1)
-    state = vertcat(p, v, rates, q, thrust, cz_state)
-    command = SX.sym('command', 4)  # specific_force_sp [N/kg], rates_sp [rad/s]
-    params = SX.sym('parameters', 7)  # cz, alpha, cz_rate, tau_thrust, tau_rates xyz
-    gravity = cs.vertcat(0, 0, -9.81)
-    vb = q_inv_oproduct_vec(v, q)
-    alpha = cs.atan2(vb[0], vb[2] + 0.1)
-    # Signed body-X specific-force coefficient, consistent with the IMU estimator.
-    # No approximate frame quaternion or per-rotor mass factor is needed.
-    aero = cs.vertcat(cz_state * cs.dot(v, v), 0, 0)
-    acceleration = q_oproduct_vec(cs.vertcat(0, 0, thrust) + aero, q) + gravity
-    body_acceleration = q_inv_oproduct_vec(acceleration, q)
-    alpha_dot = ((body_acceleration[2] * cs.cos(alpha) - body_acceleration[0] * cs.sin(alpha))
-                 / (cs.norm_2(v) + 0.1) + rates[1])
-    cz_dot = cs.if_else(cs.dot(v, v) > 1.0, -params[2] * alpha_dot, 0.0)
-    rate_dot = cs.vertcat(*[(command[i + 1] - rates[i]) / params[i + 4] for i in range(3)])
-    f_expl = vertcat(v, acceleration, rate_dot,
-                    0.5 * cs.mtimes(skew_symmetric(rates), q),
-                    (command[0] - thrust) / params[3], cz_dot)
+
+def quaternion_kinematics_matrix(body_rate: cs.SX) -> cs.SX:
+    """Hamilton right-product matrix Ω(ω), with q̇ = ½ Ω(ω) q (wxyz)."""
+    wx, wy, wz = body_rate[0], body_rate[1], body_rate[2]
+    return cs.vertcat(
+        cs.horzcat(0, -wx, -wy, -wz),
+        cs.horzcat(wx, 0, wz, -wy),
+        cs.horzcat(wy, -wz, 0, wx),
+        cs.horzcat(wz, wy, -wx, 0),
+    )
+
+
+def rotation_matrix_from_quaternion(quaternion_wxyz: cs.SX) -> cs.SX:
+    """R_WB ∈ SO(3): rotate FLU body vectors into ENU world coordinates."""
+    qw, qx, qy, qz = (quaternion_wxyz[i] for i in range(4))
+    return cs.vertcat(
+        cs.horzcat(1 - 2 * (qy**2 + qz**2), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy)),
+        cs.horzcat(2 * (qx * qy + qw * qz), 1 - 2 * (qx**2 + qz**2), 2 * (qy * qz - qw * qx)),
+        cs.horzcat(2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), 1 - 2 * (qx**2 + qy**2)),
+    )
+
+
+def create_tailsitter_model() -> AcadosModel:
+    """Construct the augmented command-rate control model (no actuator lag)."""
+    from acados_template import AcadosModel
+
+    position_world = cs.SX.sym("position_world", 3)
+    velocity_world = cs.SX.sym("velocity_world", 3)
+    body_rate_command = cs.SX.sym("body_rate_command", 3)
+    attitude_wxyz = cs.SX.sym("attitude_wxyz", 4)
+    specific_thrust_command = cs.SX.sym("specific_thrust_command")
+    aero_coefficient_x = cs.SX.sym("aero_coefficient_x")
+    state = cs.vertcat(
+        position_world,
+        velocity_world,
+        body_rate_command,
+        attitude_wxyz,
+        specific_thrust_command,
+        aero_coefficient_x,
+    )
+    command_derivative = cs.SX.sym("command_derivative", 4)  # N/kg/s, rad/s²
+    # SIGNED: d(cx)/d(alpha). Measured negative for this airframe, so the
+    # parameter itself carries the sign. There is no per-quadrant flip.
+    cx_alpha_slope = cs.SX.sym("cx_alpha_slope")
+
+    rotation_world_from_body = rotation_matrix_from_quaternion(attitude_wxyz)
+    velocity_body = rotation_world_from_body.T @ velocity_world
+    speed_squared = cs.dot(velocity_world, velocity_world)
+    # Keep the existing regularized definition so stability does not change.
+    angle_offset = 0.1
+    angle_of_attack = cs.atan2(velocity_body[0], velocity_body[2] + angle_offset)
+    aerodynamic_acceleration_body = cs.vertcat(aero_coefficient_x * speed_squared, 0, 0)
+    acceleration_world = rotation_world_from_body @ (
+        cs.vertcat(0, 0, specific_thrust_command) + aerodynamic_acceleration_body
+    ) + cs.vertcat(0, 0, -9.81)
+    acceleration_body = rotation_world_from_body.T @ acceleration_world
+    # d(v_B)/dt includes the rotating-frame term -omega_B x v_B. Without it the
+    # sign of d(alpha)/dt was wrong (a positive body-Y rotation INCREASES alpha
+    # in the legacy wing frame). Differentiate the exact atan2 above instead of
+    # re-deriving a separate approximation.
+    velocity_body_rate = acceleration_body - cs.cross(body_rate_command, velocity_body)
+    numerator = (velocity_body[2] + angle_offset) * velocity_body_rate[0] - velocity_body[
+        0
+    ] * velocity_body_rate[2]
+    denominator = velocity_body[0] ** 2 + (velocity_body[2] + angle_offset) ** 2
+    angle_of_attack_rate = numerator / denominator
+    coefficient_derivative = cs.if_else(
+        speed_squared > 1.0, cx_alpha_slope * angle_of_attack_rate, 0.0
+    )
+    state_derivative = cs.vertcat(
+        velocity_world,
+        acceleration_world,
+        command_derivative[1:4],
+        0.5 * quaternion_kinematics_matrix(body_rate_command) @ attitude_wxyz,
+        command_derivative[0],
+        coefficient_derivative,
+    )
     model = AcadosModel()
+    model.name = "tailsitter_flu"  # generated C symbol prefix, not mathematical notation
     model.x = state
-    model.xdot = SX.sym('xdot', 15)
-    model.u = command
-    model.p = params
-    model.f_expl_expr = f_expl
-    model.f_impl_expr = model.xdot - f_expl
-    model.name = 'tailsitter_flu'
+    model.xdot = cs.SX.sym("state_derivative", state.numel())
+    model.u = command_derivative
+    model.p = cx_alpha_slope
+    model.f_expl_expr = state_derivative
+    model.f_impl_expr = model.xdot - state_derivative
     return model
-
-
-if __name__ == '__main__':
-    tailsitter_flu()

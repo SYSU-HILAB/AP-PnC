@@ -26,12 +26,13 @@ namespace planner::core
    */
   struct BoxCfg
   {
-    double side_inside  = 0.1;
-    double side_outside = 1.0;
-    double up           = 0.5;
-    double down         = 0.1;
-    double front        = 1.5;
-    double back         = 1.5;
+    // Axis-aligned SFC half-extents [m]; left/right are -y/+y half-lengths.
+    double left  = 0.1;
+    double right = 1.0;
+    double up    = 0.5;
+    double down  = 0.1;
+    double front = 1.5;
+    double back  = 1.5;
   };
 
   /**
@@ -53,20 +54,25 @@ namespace planner::core
    */
   struct CostCfg
   {
-    double v_max      = 10.0;
-    double omg_x_max  = 3.0;
-    double omg_y_max  = 3.0;
-    double omg_z_max  = 3.0;
-    double acc_max    = 1.0;
-    double thrust_min = 1.0;
-    double thrust_max = 20.0;
+    double v_max              = 10.0;
+    double omg_x_max          = 3.0;
+    double omg_y_max          = 3.0;
+    double omg_z_max          = 3.0;
+    double acc_max            = 1.0;
+    double tangential_acc_min = 1.0;
+    double tangential_acc_max = 20.0;
+    // Collective specific thrust a_T [N/kg]; the real thrust, unlike the
+    // frame-free tangential acceleration above.
+    double thrust_min    = 2.0;
+    double thrust_max    = 22.0;
+    double thrust_weight = 1e4;
 
     double vel_weight            = 1e4;
     double acc_weight            = 1e4;
     double omg_x_weight          = 1e3;
     double omg_y_weight          = 1e3;
     double omg_z_weight          = 1e3;
-    double thrust_weight         = 1e5;
+    double tangential_acc_weight = 1e5;
     double time_weight           = 5e2;
     double omg_consistent_weight = 1e3;
   };
@@ -88,6 +94,8 @@ namespace planner::core
   {
     std::vector<double> phi  = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09408};
     double              mass = 2.0;
+    // ENU gravity used by the FLU flatness map, m/s^2.
+    double gravity = 9.81;
   };
 
   /**

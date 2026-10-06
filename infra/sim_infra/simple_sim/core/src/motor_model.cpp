@@ -48,37 +48,31 @@ namespace simple_sim
               .toRotationMatrix();
   }
 
-  Eigen::Matrix3d MotorModel::wing_from_flu()
-  {
-    Eigen::Matrix3d c;
-    c << 0, 0, 1, 0, -1, 0, 1, 0, 0;
-    return c;
-  }
-
   MixerResult MotorModel::mix(const Eigen::Vector4d &input) const
   {
     if (!input.allFinite())
       throw std::invalid_argument("nonfinite mixer input");
     const double          thrust = std::clamp(input[0], 0.0, 1.0);
-    const Eigen::Vector4d rp     = cfg_.mixer.rightCols<3>() * input.tail<3>();
-    Eigen::Vector4d       output = rp + thrust * cfg_.mixer.col(0);
+    const Eigen::Vector4d moment_output =
+        cfg_.mixer.rightCols<3>() * input.tail<3>();
+    Eigen::Vector4d output = moment_output + thrust * cfg_.mixer.col(0);
     // MATLAB <=/>= scans pick the LAST tied index. This affects desaturation.
-    int imin = 0, imax = 0;
+    int lowest = 0, highest = 0;
     for (int i = 0; i < 4; ++i)
     {
-      if (output[i] <= output[imin])
-        imin = i;
-      if (output[i] >= output[imax])
-        imax = i;
+      if (output[i] <= output[lowest])
+        lowest = i;
+      if (output[i] >= output[highest])
+        highest = i;
     }
-    const double lo = output[imin], hi = output[imax], span = hi - lo;
+    const double lo = output[lowest], hi = output[highest], span = hi - lo;
     double       increase = 0.3 * thrust, decrease = 0.3 * thrust;
     double       boost = 0.0, scale = 1.0;
-    auto         both = [&]()
+    auto         limit_both_ends = [&]()
     {
-      const double d = (0.0 - (thrust + boost)) / rp[imin];
-      const double u = (1.0 - (thrust + boost)) / rp[imax];
-      scale          = std::min(d, u);
+      const double to_lower = (0.0 - (thrust + boost)) / moment_output[lowest];
+      const double to_upper = (1.0 - (thrust + boost)) / moment_output[highest];
+      scale                 = std::min(to_lower, to_upper);
     };
     if (lo < 0.0 && hi < 1.0 && span <= 1.0)
     {
@@ -87,7 +81,7 @@ namespace simple_sim
       else
       {
         boost = increase;
-        scale = -(thrust + boost) / rp[imin];
+        scale = -(thrust + boost) / moment_output[lowest];
       }
     }
     else if (hi > 1.0 && lo > 0.0 && span <= 1.0)
@@ -97,20 +91,20 @@ namespace simple_sim
       else
       {
         boost = -decrease;
-        scale = (1.0 - thrust - boost) / rp[imax];
+        scale = (1.0 - thrust - boost) / moment_output[highest];
       }
     }
     else if (lo < 0.0 && hi < 1.0 && span > 1.0)
     {
       increase = std::clamp(increase, 0.0, 0.5 * (1.0 - thrust));
       boost    = std::clamp((hi - 1.0 - lo) / 2.0, 0.0, increase);
-      both();
+      limit_both_ends();
     }
     else if (hi > 1.0 && lo > 0.0 && span > 1.0)
     {
       decrease = std::clamp(decrease, 0.0, 0.5 * thrust);
       boost    = std::clamp(-(hi - 1.0 - lo) / 2.0, -decrease, 0.0);
-      both();
+      limit_both_ends();
     }
     else if (lo < 0.0 && hi > 1.0)
     {
@@ -124,10 +118,10 @@ namespace simple_sim
         increase = std::clamp(increase, 0.0, 0.5 * (1.0 - thrust));
         boost    = std::clamp((hi - 1.0 - lo) / 2.0, -decrease, increase);
       }
-      both();
+      limit_both_ends();
     }
     MixerResult result;
-    result.fraction = rp * scale + cfg_.mixer.col(0) * thrust +
+    result.fraction = moment_output * scale + cfg_.mixer.col(0) * thrust +
                       Eigen::Vector4d::Constant(boost);
     result.lower = lo < 0.0;
     result.upper = hi > 1.0;
@@ -146,43 +140,48 @@ namespace simple_sim
     // Polynomial expansion of RPM^2 * f(60 V / (D RPM)); avoids 0/0 at rest.
     // At zero RPM this is the algebraic limit, not a measured windmilling
     // model.
-    const double a    = 60.0 * axial / cfg_.diameter;
-    auto         eval = [a, rpm](const Eigen::Vector3d &p)
-    { return p[0] * a * a + p[1] * a * rpm + p[2] * rpm * rpm; };
-    return {cfg_.ct * eval(cfg_.thrust_poly), cfg_.cq * eval(cfg_.torque_poly)};
+    const double advance_ratio = 60.0 * axial / cfg_.diameter;
+    auto evaluate = [advance_ratio, rpm](const Eigen::Vector3d &polynomial)
+    {
+      return polynomial[0] * advance_ratio * advance_ratio +
+             polynomial[1] * advance_ratio * rpm + polynomial[2] * rpm * rpm;
+    };
+    return {cfg_.ct * evaluate(cfg_.thrust_poly),
+            cfg_.cq * evaluate(cfg_.torque_poly)};
   }
 
-  Wrench MotorModel::wrench(const State &s) const
+  Wrench MotorModel::wrench(const State &state) const
   {
-    const Eigen::Matrix3d c     = wing_from_flu();
-    const Eigen::Vector3d rates = c * s.angular_velocity;
-    const Eigen::Vector3d velocity =
-        c * (s.attitude.conjugate() * (s.velocity - cfg_.wind_world));
+    const Eigen::Vector3d rates    = wing_from_flu(state.angular_velocity);
+    const Eigen::Vector3d velocity = wing_from_flu(
+        state.attitude.conjugate() * (state.velocity - cfg_.wind_world));
     Eigen::Vector3d force  = Eigen::Vector3d::Zero(),
                     moment = cfg_.damping_wing.cwiseProduct(rates);
     constexpr double pi    = 3.14159265358979323846;
     for (int i = 0; i < 4; ++i)
     {
-      const auto &r = rotations_[i];
-      const auto  tq =
-          propeller(s.motors.rpm[i], (r.transpose() * velocity).x());
+      const auto &motor_rotation = rotations_[i];
+      const auto  propeller_load = propeller(
+          state.motors.rpm[i], (motor_rotation.transpose() * velocity).x());
       const double          reaction_sign = i % 2 == 0 ? -1.0 : 1.0;
-      const Eigen::Vector3d f(tq[0], 0.0, 0.0);
-      force += r * f;
-      moment += r * (Eigen::Vector3d(reaction_sign * tq[1], 0.0, 0.0) +
-                     Eigen::Vector3d(0.0, cfg_.arms[i], 0.0).cross(f));
-      const Eigen::Vector3d h =
-          r *
+      const Eigen::Vector3d thrust_local(propeller_load[0], 0.0, 0.0);
+      force += motor_rotation * thrust_local;
+      moment += motor_rotation *
+                (Eigen::Vector3d(reaction_sign * propeller_load[1], 0.0, 0.0) +
+                 Eigen::Vector3d(0.0, cfg_.arms[i], 0.0).cross(thrust_local));
+      const Eigen::Vector3d rotor_angular_momentum =
+          motor_rotation *
           Eigen::Vector3d(
-              -reaction_sign * cfg_.jm * s.motors.rpm[i] * 2 * pi / 60.0, 0, 0);
-      moment += h.cross(rates);
+              -reaction_sign * cfg_.jm * state.motors.rpm[i] * 2 * pi / 60.0, 0,
+              0);
+      moment += rotor_angular_momentum.cross(rates);
     }
-    return {c.transpose() * force, c.transpose() * moment};
+    return {flu_from_wing(force), flu_from_wing(moment)};
   }
 
-  Eigen::Vector4d MotorModel::derivative(const State &s) const
+  Eigen::Vector4d MotorModel::derivative(const State &state) const
   {
-    return (s.motors.rpm_sp - s.motors.rpm) / cfg_.tau;
+    return (state.motors.rpm_sp - state.motors.rpm) / cfg_.tau;
   }
 
   double MotorModel::throttle(double specific_force) const
@@ -195,67 +194,67 @@ namespace simple_sim
     const double target_rpm =
         std::sqrt(mass_ * std::clamp(specific_force, 0.0, max_force_) /
                   (projection * cfg_.ct * cfg_.thrust_poly[2]));
-    double lo = cfg_.pwm_min, hi = cfg_.pwm_max;
-    for (int k = 0; k < 60; ++k)
+    double pwm_low = cfg_.pwm_min, pwm_high = cfg_.pwm_max;
+    for (int iteration = 0; iteration < 60; ++iteration)
     {
-      const double mid = (lo + hi) / 2.0;
-      if (esc_rpm(mid) < target_rpm)
-        lo = mid;
+      const double pwm_mid = (pwm_low + pwm_high) / 2.0;
+      if (esc_rpm(pwm_mid) < target_rpm)
+        pwm_low = pwm_mid;
       else
-        hi = mid;
+        pwm_high = pwm_mid;
     }
-    return std::clamp(
-        ((lo + hi) / 2.0 - cfg_.pwm_min) / (cfg_.pwm_max - cfg_.pwm_min), 0.0,
-        1.0);
+    return std::clamp(((pwm_low + pwm_high) / 2.0 - cfg_.pwm_min) /
+                          (cfg_.pwm_max - cfg_.pwm_min),
+                      0.0, 1.0);
   }
 
   State MotorModel::initialize(const State   &initial,
                                const Command &command) const
   {
-    State s               = initial;
-    s.motors              = MotorState{};
+    State state           = initial;
+    state.motors          = MotorState{};
     const double fraction = throttle(command.specific_force);
-    s.motors.duty.setConstant(2.0 * fraction - 1.0);
-    s.motors.rpm.setConstant(
+    state.motors.duty.setConstant(2.0 * fraction - 1.0);
+    state.motors.rpm.setConstant(
         esc_rpm(cfg_.pwm_min + fraction * (cfg_.pwm_max - cfg_.pwm_min)));
-    s.motors.rpm_sp = s.motors.rpm;
-    return s;
+    state.motors.rpm_sp = state.motors.rpm;
+    return state;
   }
 
   State MotorModel::prepare(const State &state, const Command &command) const
   {
-    State s = state;
-    if (s.motors.physics_ticks % inner_stride_ == 0)
+    State result = state;
+    if (result.motors.physics_ticks % inner_stride_ == 0)
     {
       const double          dt = static_cast<double>(cfg_.inner_dt_ns) * 1e-9;
       const Eigen::Vector3d setpoint =
           command.rates.cwiseMax(-max_rate_).cwiseMin(max_rate_);
       const Eigen::Vector3d error =
-          wing_from_flu() * (setpoint - s.angular_velocity);
-      if (!s.motors.limited)
-        s.motors.integral += dt * cfg_.ki.cwiseProduct(error);
+          wing_from_flu(setpoint - result.angular_velocity);
+      if (!result.motors.limited)
+        result.motors.integral += dt * cfg_.ki.cwiseProduct(error);
       const Eigen::Vector3d action =
-          cfg_.kp.cwiseProduct(error) + s.motors.integral +
-          cfg_.kd.cwiseProduct(error - s.motors.previous_error) / dt;
-      s.motors.previous_error       = error;
+          cfg_.kp.cwiseProduct(error) + result.motors.integral +
+          cfg_.kd.cwiseProduct(error - result.motors.previous_error) / dt;
+      result.motors.previous_error  = error;
       const Eigen::Vector3d limited = action.cwiseMax(-Eigen::Vector3d::Ones())
                                           .cwiseMin(Eigen::Vector3d::Ones());
       Eigen::Vector4d input;
       input << throttle(command.specific_force), limited;
       const auto mixed = mix(input);
-      s.motors.limited =
+      result.motors.limited =
           mixed.lower || mixed.upper || (action.array().abs() > 1.0).any();
-      s.motors.duty =
+      result.motors.duty =
           (2.0 * mixed.fraction.array() - 1.0).max(-1.0).min(1.0).matrix();
       for (int i = 0; i < 4; ++i)
       {
         const double pwm =
-            s.motors.duty[i] * (cfg_.pwm_max - cfg_.pwm_min) / 2.0 +
+            result.motors.duty[i] * (cfg_.pwm_max - cfg_.pwm_min) / 2.0 +
             (cfg_.pwm_max + cfg_.pwm_min) / 2.0;
-        s.motors.rpm_sp[i] = esc_rpm(pwm);
+        result.motors.rpm_sp[i] = esc_rpm(pwm);
       }
     }
-    ++s.motors.physics_ticks;
-    return s;
+    ++result.motors.physics_ticks;
+    return result;
   }
 }  // namespace simple_sim

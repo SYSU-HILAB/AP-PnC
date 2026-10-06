@@ -71,6 +71,12 @@ namespace simple_sim
     {
       out << ',' << v.x() << ',' << v.y() << ',' << v.z();
     }
+    void observation_csv(std::ostream &out, const AeroObservation &a)
+    {
+      out << ',' << a.alpha_rad << ',' << a.beta_rad;
+      vector_csv(out, a.velocity_wing);
+      out << ',' << a.valid;
+    }
     void state_csv(std::ostream &out, const State &s)
     {
       vector_csv(out, s.position);
@@ -122,10 +128,14 @@ namespace simple_sim
       planning.load(config_.planning_yaml.string());
       if (std::abs(planning.problem.flatness.mass - config_.plant.mass) > 1e-9)
         throw std::invalid_argument("planner and plant mass differ");
-      const auto n = YAML::LoadFile(config_.nmpc_yaml.string())["nmpc"];
-      if (std::abs(n["mass"].as<double>() - config_.plant.mass) > 1e-9)
-        throw std::invalid_argument("NMPC and plant mass differ");
-      const auto             control_dt = ns_period(n["ctrl_frq"].as<double>());
+      const YAML::Node nmpc_settings =
+          YAML::LoadFile(config_.nmpc_yaml.string())["nmpc"];
+      // The NMPC is mass-normalized (specific thrust N/kg, cx in 1/m) and uses
+      // ground speed, so it needs no mass and only supports zero wind.
+      if (config_.controller == "nmpc" && !config_.aero.wind_world.isZero(0.0))
+        throw std::invalid_argument(
+            "NMPC uses ground speed for cx; only zero wind is supported");
+      const auto control_dt = ns_period(nmpc_settings["ctrl_frq"].as<double>());
       planner::core::Planner planner(planning);
       if (cached_reference)
       {
@@ -146,7 +156,9 @@ namespace simple_sim
       reference.SetDoublePrecision(17);
       reference << YAML::BeginMap << YAML::Key << "order" << YAML::Value << 5
                 << YAML::Key << "frame" << YAML::Value << "world_ENU"
-                << YAML::Key << "pieces" << YAML::Value << YAML::BeginSeq;
+                << YAML::Key << "terminal_policy" << YAML::Value
+                << "hold_last_point" << YAML::Key << "pieces" << YAML::Value
+                << YAML::BeginSeq;
       for (const auto &piece : trajectory_->representation())
       {
         reference << YAML::BeginMap << YAML::Key << "duration_s" << YAML::Value
@@ -170,18 +182,17 @@ namespace simple_sim
       reference_file.exceptions(std::ios::failbit | std::ios::badbit);
       reference_file << reference.c_str() << '\n';
       reference_file.close();
-      double available = trajectory_->duration();
-      if (config_.controller == "nmpc")
-        available -= n["horizon_s"].as<double>();
+      const bool   automatic = config_.duration_s == 0.0;
       const double requested =
-          config_.duration_s == 0.0 ? available : config_.duration_s;
-      if (!std::isfinite(requested) || requested <= 0.0 ||
-          requested > available)
-        throw std::invalid_argument(
-            "requested duration is not covered by the planned "
-            "trajectory/horizon");
-      const double count =
-          std::floor(requested / (static_cast<double>(control_dt) * 1e-9));
+          automatic ? trajectory_->duration() + config_.terminal_hold_s
+                    : config_.duration_s;
+      if (!std::isfinite(requested) || requested <= 0.0)
+        throw std::invalid_argument("invalid requested duration");
+      // Automatic runs include the terminal state, plus optional hover dwell.
+      // Explicit-duration probes retain their historical complete-step floor.
+      const double periods =
+          requested / (static_cast<double>(control_dt) * 1e-9);
+      const double count = automatic ? std::ceil(periods) : std::floor(periods);
       if (count < 1.0 || count >= static_cast<double>(
                                       std::numeric_limits<std::int64_t>::max()))
         throw std::invalid_argument(
@@ -197,17 +208,28 @@ namespace simple_sim
 #ifdef SIMPLE_SIM_WITH_NMPC
       else
       {
-        nmpc::TrackingConfig cfg;
-        cfg.horizon_s    = n["horizon_s"].as<double>();
-        cfg.traj_res_s   = n["traj_res_s"].as<double>();
-        cfg.ctrl_frq     = n["ctrl_frq"].as<double>();
-        cfg.u_hover      = n["u_hover"].as<double>();
-        cfg.cz_rate      = n["cz_rate"].as<double>();
-        cfg.thrust_tau_s = n["thrust_tau_s"].as<double>();
-        for (int i = 0; i < 3; ++i)
-          cfg.rate_tau_s[i] = n["rate_tau_s"][i].as<double>();
+        nmpc::TrackingConfig tracking_config;
+        tracking_config.horizon_s  = nmpc_settings["horizon_s"].as<double>();
+        tracking_config.traj_res_s = nmpc_settings["traj_res_s"].as<double>();
+        tracking_config.ctrl_frq   = nmpc_settings["ctrl_frq"].as<double>();
+        tracking_config.initial_specific_thrust =
+            nmpc_settings["initial_specific_thrust"].as<double>();
+        tracking_config.cx_alpha_slope =
+            nmpc_settings["cx_alpha_slope"].as<double>();
+        tracking_config.cx_slope_estimation =
+            nmpc_settings["cx_slope_estimation"].as<bool>();
+        tracking_config.cx_slope_forgetting =
+            nmpc_settings["cx_slope_forgetting"].as<double>();
+        tracking_config.cx_slope_limit =
+            nmpc_settings["cx_slope_limit"].as<double>();
+        tracking_config.cx_slope_covariance_limit =
+            nmpc_settings["cx_slope_covariance_limit"].as<double>();
+        tracking_config.cx_slope_min_excitation =
+            nmpc_settings["cx_slope_min_excitation"].as<double>();
+        tracking_config.cx_slope_lag_s =
+            nmpc_settings["cx_slope_lag_s"].as<double>();
         controller_ = std::make_unique<NmpcController>(
-            trajectory_, cfg, output_dir_ / "nmpc_reference.csv");
+            trajectory_, tracking_config, output_dir_ / "nmpc_reference.csv");
       }
 #endif
       // Any canonical model ("none" resolves to the null model, wrench = 0)
@@ -257,6 +279,12 @@ namespace simple_sim
               "rpm_sp_1,rpm_sp_2,rpm_sp_3,rpm_sp_4,duty_1,duty_2,duty_3,duty_4,"
               "applied_fx,applied_fy,applied_fz,applied_mx,applied_my,applied_"
               "mz,"
+              "aero_alpha_rad,aero_beta_rad,air_wing_v_x,air_wing_v_y,air_wing_"
+              "v_z,aero_observation_valid,"
+              "next_aero_alpha_rad,next_aero_beta_rad,next_air_wing_v_x,next_"
+              "air_wing_v_y,next_air_wing_v_z,next_aero_observation_valid,"
+              "next_aero_fx,next_aero_fy,next_aero_fz,next_aero_mx,next_aero_"
+              "my,next_aero_mz,"
               "solver_status,solve_time_ms\n";
       finish("running");
       finished_ = false;
@@ -318,6 +346,10 @@ namespace simple_sim
           row << ',' << v[i];
       vector_csv(row, record.feedback_before.applied.force);
       vector_csv(row, record.feedback_before.applied.moment);
+      observation_csv(row, record.feedback_before.aerodynamic.observation);
+      observation_csv(row, record.feedback_after.aerodynamic.observation);
+      vector_csv(row, record.feedback_after.aerodynamic.force);
+      vector_csv(row, record.feedback_after.aerodynamic.moment);
       row << ',' << record.control.solver_status << ',' << record.solve_time_ms
           << '\n';
       log_ << row.str();
@@ -345,28 +377,40 @@ namespace simple_sim
       log_.flush();
     std::ofstream manifest(output_dir_ / "manifest.json.tmp");
     manifest.exceptions(std::ios::failbit | std::ios::badbit);
-    manifest << std::setprecision(17)
-             << "{\n  \"status\": " << json_string(status)
-             << ",\n  \"reason\": " << json_string(reason)
-             << ",\n  \"controller\": " << json_string(config_.controller)
-             << ",\n  \"build_revision\": "
-             << json_string(AP_PNC_BUILD_REVISION)
-             << ",\n  \"build_dirty\": " << AP_PNC_BUILD_DIRTY
-             << ",\n  \"compiler\": " << json_string(AP_PNC_BUILD_COMPILER)
-             << ",\n  \"platform\": " << json_string(AP_PNC_BUILD_PLATFORM)
-             << ",\n  \"nmpc_bundle_sha256\": "
-             << json_string(AP_PNC_NMPC_BUNDLE_SHA256)
-             << ",\n  \"actuator_model\": "
-             << json_string(config_.actuator_model)
-             << ",\n  \"nmpc_prediction_model\": \"first_order_thrust_rates\""
-             << ",\n  \"integrator\": \"rk4\",\n  \"physics_dt_ns\": "
-             << config_.physics_dt_ns << ",\n  \"control_dt_ns\": "
-             << (runner_ ? runner_->control_dt_ns() : 0)
-             << ",\n  \"trajectory_duration_s\": "
-             << (trajectory_ ? trajectory_->duration() : 0.0)
-             << ",\n  \"committed_steps\": " << (runner_ ? runner_->index() : 0)
-             << ",\n  \"time_ns\": " << (runner_ ? runner_->time_ns() : 0)
-             << ",\n  \"stochastic_model\": false\n}\n";
+    manifest
+        << std::setprecision(17) << "{\n  \"status\": " << json_string(status)
+        << ",\n  \"reason\": " << json_string(reason)
+        << ",\n  \"controller\": " << json_string(config_.controller)
+        << ",\n  \"build_revision\": " << json_string(AP_PNC_BUILD_REVISION)
+        << ",\n  \"build_dirty\": " << AP_PNC_BUILD_DIRTY
+        << ",\n  \"compiler\": " << json_string(AP_PNC_BUILD_COMPILER)
+        << ",\n  \"platform\": " << json_string(AP_PNC_BUILD_PLATFORM)
+        << ",\n  \"nmpc_bundle_sha256\": "
+        << json_string(AP_PNC_NMPC_BUNDLE_SHA256)
+        << ",\n  \"actuator_model\": " << json_string(config_.actuator_model)
+        << ",\n  \"nmpc_prediction_model\": \""
+        << (config_.controller == "nmpc" ? "command_integrator"
+                                         : "not_applicable")
+        << "\""
+        << ",\n  \"nmpc_aero_axis\": "
+        << json_string(config_.controller == "nmpc" ? "body_x_lumped"
+                                                    : "not_applicable")
+        << ",\n  \"arm_length_scale\": " << config_.arm_length_scale
+        << ",\n  \"aero_model\": " << json_string(config_.aero_model)
+        << ",\n  \"aero_validation\": " << json_string(config_.aero_validation)
+#ifdef SIMPLE_SIM_WITH_NMPC
+        << ",\n  \"nmpc_solver_abi\": " << NMPC_SOLVER_ABI
+#endif
+        << ",\n  \"integrator\": \"rk4\",\n  \"physics_dt_ns\": "
+        << config_.physics_dt_ns << ",\n  \"control_dt_ns\": "
+        << (runner_ ? runner_->control_dt_ns() : 0)
+        << ",\n  \"reference_terminal_policy\": \"hold_last_point\""
+        << ",\n  \"terminal_hold_s\": " << config_.terminal_hold_s
+        << ",\n  \"trajectory_duration_s\": "
+        << (trajectory_ ? trajectory_->duration() : 0.0)
+        << ",\n  \"committed_steps\": " << (runner_ ? runner_->index() : 0)
+        << ",\n  \"time_ns\": " << (runner_ ? runner_->time_ns() : 0)
+        << ",\n  \"stochastic_model\": false\n}\n";
     manifest.close();
     fs::rename(output_dir_ / "manifest.json.tmp",
                output_dir_ / "manifest.json");

@@ -1,14 +1,10 @@
-# Tailsitter differential-flatness model (vendored autodiff headers included).
-# Plain CMake subdirectory of the `planner` package -- no ament_package().
+# Tailsitter differential-flatness map.
+# Header-only: ENU/FLU analytic flatness (flu_reference.hpp values plus the
+# hand-derived Jacobian in flu_flatness.hpp). The vendored autodiff kernel was
+# removed; there is no autodiff dependency and no code generation here.
 find_package(Eigen3 REQUIRED)
 
-add_library(tailsitter_df STATIC src/tailsitter_df.cpp)
-target_include_directories(tailsitter_df PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(tailsitter_df Eigen3::Eigen)
-
-# The core is also consumed by standalone, ROS-free simulation builds.
-if(BUILD_TESTING AND ament_cmake_FOUND)
-  find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_tailsitter_df test/test_tailsitter_df.cpp)
-  target_link_libraries(test_tailsitter_df tailsitter_df)
-endif()
+add_library(tailsitter_df INTERFACE)
+target_include_directories(tailsitter_df INTERFACE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(tailsitter_df INTERFACE Eigen3::Eigen)

@@ -20,8 +20,8 @@ namespace simple_sim
         throw std::invalid_argument("absolute trace path required");
       trace_file_.exceptions(std::ios::failbit | std::ios::badbit);
       trace_file_.open(trace_file);
-      trace_file_
-          << "tick,control_time_ns,reference_time_ns,stage,ny,solver_status";
+      trace_file_ << "tick,control_time_ns,reference_time_ns,stage,ny,solver_"
+                     "status,sample_time_ns";
       for (int i = 0; i < NMPC_NY; ++i)
         trace_file_ << ",yref_" << i;
       for (const auto *name : {"p", "v", "a", "omega", "yb"})
@@ -32,13 +32,19 @@ namespace simple_sim
         trace_file_ << ",parameter_" << i;
       for (int i = 0; i < NMPC_NX; ++i)
         trace_file_ << ",initial_state_" << i;
-      trace_file_ << '\n' << std::setprecision(17);
+      for (const auto *prefix : {"u0_derivative_", "published_command_"})
+        for (int i = 0; i < NMPC_NU; ++i)
+          trace_file_ << ',' << prefix << i;
+      trace_file_ << ",solution_accepted\n" << std::setprecision(17);
     }
   }
   void NmpcController::reset(const State &initial)
   {
     validate_state(initial);
-    controller_.reset();
+    controller_.reset({controller_.config().initial_specific_thrust,
+                       initial.angular_velocity.x(),
+                       initial.angular_velocity.y(),
+                       initial.angular_velocity.z()});
   }
   ControlResult NmpcController::compute(const StepContext &ctx, const State &s,
                                         const Feedback &feedback)
@@ -54,14 +60,12 @@ namespace simple_sim
     horizon.reserve(n + 1);
     for (int i = 0; i <= n; ++i)
     {
-      const double t = ctx.time_s() + i * cfg.traj_res_s;
-      if (t < 0.0 || t > trajectory_->duration())
-        throw std::runtime_error("NMPC horizon outside planned trajectory");
-      const auto ref = trajectory_->sample(t);
+      const double t   = ctx.time_s() + i * cfg.traj_res_s;
+      const auto   ref = trajectory_->sample(t);
       planned.push_back(ref);
       horizon.push_back(nmpc::cost_reference(
           {ref.p.x(), ref.p.y(), ref.p.z()}, {ref.v.x(), ref.v.y(), ref.v.z()},
-          {ref.yb.x(), ref.yb.y(), ref.yb.z()}, cfg.u_hover));
+          {ref.yb.x(), ref.yb.y(), ref.yb.z()}));
     }
     const std::array<double, 13> x = {
         s.position.x(),         s.position.y(),         s.position.z(),
@@ -100,7 +104,9 @@ namespace simple_sim
       trace_file_ << ctx.index << ',' << ctx.time_ns << ','
                   << ctx.time_ns + static_cast<std::int64_t>(i) * dt << ',' << i
                   << ',' << (terminal ? NMPC_NYN : NMPC_NY) << ','
-                  << trace.status;
+                  << trace.status << ','
+                  << static_cast<std::int64_t>(
+                         std::llround(planned[i].t * 1e9));
       for (int field = 0; field < NMPC_NY; ++field)
         trace_file_ << ','
                     << (terminal
@@ -115,7 +121,11 @@ namespace simple_sim
         trace_file_ << ',' << p;
       for (double x : trace.state)
         trace_file_ << ',' << x;
-      trace_file_ << '\n';
+      for (const auto &values :
+           {trace.command_derivative, trace.integrated_command})
+        for (double value : values)
+          trace_file_ << ',' << value;
+      trace_file_ << ',' << trace.accepted << '\n';
     }
     trace_file_.flush();
   }

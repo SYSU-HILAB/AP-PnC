@@ -12,11 +12,11 @@
  * Tail-sitter UAV.
  */
 
-#include <filesystem>
-#include <stdexcept>
 #include <yaml-cpp/yaml.h>
 
+#include <filesystem>
 #include <planner_core/problem_config.hpp>
+#include <stdexcept>
 
 namespace planner::core
 {
@@ -52,14 +52,12 @@ namespace planner::core
     problem.piece_n = get_or<int>(problem_node, "piece_n", problem.piece_n);
 
     const YAML::Node box_node = problem_node["box"];
-    problem.box.side_inside =
-        get_or(box_node, "side_inside", problem.box.side_inside);
-    problem.box.side_outside =
-        get_or(box_node, "side_outside", problem.box.side_outside);
-    problem.box.up    = get_or(box_node, "up", problem.box.up);
-    problem.box.down  = get_or(box_node, "down", problem.box.down);
-    problem.box.front = get_or(box_node, "front", problem.box.front);
-    problem.box.back  = get_or(box_node, "back", problem.box.back);
+    problem.box.left          = get_or(box_node, "left", problem.box.left);
+    problem.box.right         = get_or(box_node, "right", problem.box.right);
+    problem.box.up            = get_or(box_node, "up", problem.box.up);
+    problem.box.down          = get_or(box_node, "down", problem.box.down);
+    problem.box.front         = get_or(box_node, "front", problem.box.front);
+    problem.box.back          = get_or(box_node, "back", problem.box.back);
 
     const YAML::Node basic_node = problem_node["basic_traj"];
     problem.basic_traj.type =
@@ -84,10 +82,10 @@ namespace planner::core
     problem.cost.omg_z_max =
         get_or(cost_node, "omg_z_max", problem.cost.omg_z_max);
     problem.cost.acc_max = get_or(cost_node, "acc_max", problem.cost.acc_max);
-    problem.cost.thrust_min =
-        get_or(cost_node, "thrust_min", problem.cost.thrust_min);
-    problem.cost.thrust_max =
-        get_or(cost_node, "thrust_max", problem.cost.thrust_max);
+    problem.cost.tangential_acc_min = get_or(cost_node, "tangential_acc_min",
+                                             problem.cost.tangential_acc_min);
+    problem.cost.tangential_acc_max = get_or(cost_node, "tangential_acc_max",
+                                             problem.cost.tangential_acc_max);
     problem.cost.vel_weight =
         get_or(cost_node, "vel_weight", problem.cost.vel_weight);
     problem.cost.acc_weight =
@@ -98,8 +96,14 @@ namespace planner::core
         get_or(cost_node, "omg_y_weight", problem.cost.omg_y_weight);
     problem.cost.omg_z_weight =
         get_or(cost_node, "omg_z_weight", problem.cost.omg_z_weight);
+    problem.cost.thrust_min =
+        get_or(cost_node, "thrust_min", problem.cost.thrust_min);
+    problem.cost.thrust_max =
+        get_or(cost_node, "thrust_max", problem.cost.thrust_max);
     problem.cost.thrust_weight =
         get_or(cost_node, "thrust_weight", problem.cost.thrust_weight);
+    problem.cost.tangential_acc_weight = get_or(
+        cost_node, "tangential_acc_weight", problem.cost.tangential_acc_weight);
     problem.cost.time_weight =
         get_or(cost_node, "time_weight", problem.cost.time_weight);
     problem.cost.omg_consistent_weight = get_or(
@@ -118,6 +122,8 @@ namespace planner::core
         get_or<std::vector<double>>(flatness_node, "phi", problem.flatness.phi);
     problem.flatness.mass =
         get_or(flatness_node, "mass", problem.flatness.mass);
+    problem.flatness.gravity =
+        get_or(flatness_node, "gravity", problem.flatness.gravity);
 
     // Mirror cost settings into the gcopter singleton it actually consumes
     cost_config.v_max                 = problem.cost.v_max;
@@ -125,16 +131,20 @@ namespace planner::core
     cost_config.omg_y_max             = problem.cost.omg_y_max;
     cost_config.omg_z_max             = problem.cost.omg_z_max;
     cost_config.acc_max               = problem.cost.acc_max;
-    cost_config.thrust_min            = problem.cost.thrust_min;
-    cost_config.thrust_max            = problem.cost.thrust_max;
+    cost_config.tangential_acc_min    = problem.cost.tangential_acc_min;
+    cost_config.tangential_acc_max    = problem.cost.tangential_acc_max;
     cost_config.vel_weight            = problem.cost.vel_weight;
     cost_config.acc_weight            = problem.cost.acc_weight;
     cost_config.omg_x_weight          = problem.cost.omg_x_weight;
     cost_config.omg_y_weight          = problem.cost.omg_y_weight;
     cost_config.omg_z_weight          = problem.cost.omg_z_weight;
-    cost_config.thrust_weight         = problem.cost.thrust_weight;
+    cost_config.tangential_acc_weight = problem.cost.tangential_acc_weight;
     cost_config.time_weight           = problem.cost.time_weight;
     cost_config.omg_consistent_weight = problem.cost.omg_consistent_weight;
+    // FLU flatness parameters come from the same planner document.
+    cost_config.flatness_gravity = problem.flatness.gravity;
+    if (problem.flatness.phi.size() >= 8)
+      cost_config.flatness_aero_slope = problem.flatness.phi[7];
   }
 
 }  // namespace planner::core

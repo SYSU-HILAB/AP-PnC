@@ -15,9 +15,6 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
-
-#include <tailsitter_df/tailsitter_df.hpp>
-
 #include <planner_core/planner.hpp>
 
 namespace planner::core
@@ -45,8 +42,6 @@ namespace planner::core
   Planner::Planner(ProblemConfig config, LogSink log)
       : config_(std::move(config)), log_(std::move(log))
   {
-    tailsitter_df::Model::getInstance().setParameters(
-        config_.problem.flatness.phi, config_.problem.flatness.mass);
     init_basic_trajectory_type(config_.problem.basic_traj.type);
   }
 
@@ -82,7 +77,8 @@ namespace planner::core
     if (type == 3)
     {
       basic_traj_ = std::make_unique<basic_trajectories::Sin>(
-          config_.problem.basic_traj.radius, config_.problem.basic_traj.wave_len,
+          config_.problem.basic_traj.radius,
+          config_.problem.basic_traj.wave_len,
           config_.problem.basic_traj.height);
       config_.problem.basic_traj.rate = basic_traj_->getAngularSpeed();
       return;
@@ -100,7 +96,8 @@ namespace planner::core
     }
   }
 
-  void Planner::create_basic_trajectory_sfc(std::vector<Eigen::MatrixX4d> &hPolys)
+  void Planner::create_basic_trajectory_sfc(
+      std::vector<Eigen::MatrixX4d> &hPolys)
   {
     Eigen::RowVector4d h1, h2, h3, h4, h5, h6;
 
@@ -115,21 +112,21 @@ namespace planner::core
       Eigen::Vector3d pc    = point.col(0);  // Center of the box
 
       // Define the half-lengths of the box in each direction
-      double front   = config_.problem.box.front;
-      double back    = config_.problem.box.back;
-      double outside = config_.problem.box.side_outside;
-      double inside  = config_.problem.box.side_inside;
-      double up      = config_.problem.box.up;
-      double down    = config_.problem.box.down;
+      double front = config_.problem.box.front;
+      double back  = config_.problem.box.back;
+      double right = config_.problem.box.right;
+      double left  = config_.problem.box.left;
+      double up    = config_.problem.box.up;
+      double down  = config_.problem.box.down;
 
       // Create the six planes of the box (axis-aligned)
       // Each plane is defined as [a, b, c, d] where ax + by + cz + d <= 0
-      h1 << 1, 0, 0, -pc.x() - front;    // Front (x+)
-      h2 << -1, 0, 0, pc.x() - back;     // Back  (x-)
-      h3 << 0, 1, 0, -pc.y() - outside;  // Outside (y+)
-      h4 << 0, -1, 0, pc.y() - inside;   // Inside  (y-)
-      h5 << 0, 0, 1, -pc.z() - up;       // Up      (z+)
-      h6 << 0, 0, -1, pc.z() - down;     // Down    (z-)
+      h1 << 1, 0, 0, -pc.x() - front;  // Front (x+)
+      h2 << -1, 0, 0, pc.x() - back;   // Back  (x-)
+      h3 << 0, 1, 0, -pc.y() - right;  // Right (y+)
+      h4 << 0, -1, 0, pc.y() - left;   // Left  (y-)
+      h5 << 0, 0, 1, -pc.z() - up;     // Up    (z+)
+      h6 << 0, 0, -1, pc.z() - down;   // Down  (z-)
 
       // Stack the planes into a matrix
       H << h1, h2, h3, h4, h5, h6;
@@ -164,16 +161,13 @@ namespace planner::core
       v.normalize();
       Eigen::Vector3d u = v.cross(Eigen::Vector3d::UnitZ());
       initPointsPos.col(i) =
-          route[i + 1].col(0) + u * config_.problem.box.side_outside * 0.8;
+          route[i + 1].col(0) + u * config_.problem.box.right * 0.8;
     }
 
-    // Reset body frame before optimization
-    tailsitter_df::Data::getInstance().reset();
-
-    if (!gcopter.setup_basic_trajectory(
-            iniState, finState, initTime, initPointsPos, hPolys,
-            config_.problem.minco.smoothing_eps,
-            config_.problem.minco.integral_intervs))
+    if (!gcopter.setup_basic_trajectory(iniState, finState, initTime,
+                                        initPointsPos, hPolys,
+                                        config_.problem.minco.smoothing_eps,
+                                        config_.problem.minco.integral_intervs))
     {
       log(LogLevel::Error, "GCOPTER setup failed");
       return std::nullopt;
@@ -190,8 +184,8 @@ namespace planner::core
     log(LogLevel::Info,
         "PLANNING Duration " +
             std::to_string(
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    opt_end - opt_start)
+                std::chrono::duration_cast<std::chrono::milliseconds>(opt_end -
+                                                                      opt_start)
                     .count()) +
             " ms");
 

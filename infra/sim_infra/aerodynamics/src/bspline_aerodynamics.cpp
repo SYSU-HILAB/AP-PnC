@@ -8,15 +8,15 @@
  * Hanamy: rongerch@outlook.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 #include <aerodynamics/bspline_aerodynamics.hpp>
 #include <aerodynamics/project_paths.hpp>
-#include <yaml-cpp/yaml.h>
-
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -41,13 +41,9 @@ namespace aerodynamics
                                           Eigen::Vector3d&       aero_moment_b,
                                           double& alpha, double& beta)
   {
-    // Evaluate the cubic B-spline basis at alpha (knots/coefs from the aero DB)
-    const std::vector<double> cx_basis =
-        bspline_basis(SPLINE_ORDER, cx_knots_, alpha);
-    const std::vector<double> cz_basis =
-        bspline_basis(SPLINE_ORDER, cz_knots_, alpha);
-    // Calculate alpha and beta first, similar to PhiAerodynamics
-    // alpha, beta  [rad]
+    // alpha/beta and the B-spline basis must both come from THIS body_speed.
+    // The basis previously used the caller's stale alpha (often zero), so the
+    // returned force did not correspond to the returned angle.
     constexpr double vThreshold = 5e-1;
     if (body_speed.norm() < vThreshold)
     {
@@ -59,6 +55,12 @@ namespace aerodynamics
       alpha = std::atan2(body_speed(2), body_speed(0));
       beta  = std::asin(body_speed(1) / body_speed.norm());
     }
+
+    // Evaluate the cubic B-spline basis at the actual current alpha.
+    const std::vector<double> cx_basis =
+        bspline_basis(SPLINE_ORDER, cx_knots_, alpha);
+    const std::vector<double> cz_basis =
+        bspline_basis(SPLINE_ORDER, cz_knots_, alpha);
 
     double v_squared = body_speed.squaredNorm();
 
@@ -92,15 +94,16 @@ namespace aerodynamics
     {
       const YAML::Node config =
           YAML::LoadFile(paths::aero_config("ma").string());
-      const auto read_vector = [&config](const char         *key,
-                                         std::vector<double> &out) {
+      const auto read_vector =
+          [&config](const char* key, std::vector<double>& out)
+      {
         const YAML::Node node = config[key];
         if (!node || !node.IsSequence() || node.size() == 0)
           throw std::runtime_error(std::string("ma.yaml: '") + key +
                                    "' must be a non-empty list");
         out.clear();
         out.reserve(node.size());
-        for (const auto &item : node)
+        for (const auto& item : node)
           out.push_back(item.as<double>());
       };
       read_vector("cx_coefs", cx_coefs);
@@ -111,7 +114,7 @@ namespace aerodynamics
         throw std::runtime_error("ma.yaml: 'scale_factor' missing");
       scale_factor = config["scale_factor"].as<double>();
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
       spdlog::error("ma aerodynamics: failed to load {}: {}",
                     paths::aero_config("ma").string(), e.what());

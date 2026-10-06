@@ -48,7 +48,6 @@ namespace simple_sim
     Eigen::Vector4d derivative(const State &state) const;
     State initialize(const State &state, const Command &command) const;
     State prepare(const State &state, const Command &command) const;
-    static Eigen::Matrix3d wing_from_flu();
 
    private:
     MotorModelConfig               cfg_;

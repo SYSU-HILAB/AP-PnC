@@ -21,9 +21,14 @@ All project paths below are anchored at the absolute `AP_PNC_DIR`.
   `v_air_B = R_WB.T (v_W - wind_W)`.
   This is aircraft velocity relative to air, not the negated incoming-flow vector.
 - Collective specific thrust is `a_T = F_T / mass`, N/kg, applied along +Z_B.
-- The current NMPC adaptive aerodynamic contribution is signed body-X specific
-  force. It is distinct from collective thrust and world reference acceleration.
-  No thrust-axis change follows from calling an aerodynamic term body X.
+- The current NMPC adaptive aerodynamic contribution is the **lumped body-X**
+  specific-force coefficient `cx`, scaled by `|v|^2` (ground speed, zero wind
+  only). Because `+X_B = +Z_L`, that single axis is the legacy wing-normal
+  (lift) direction; it deliberately also absorbs any actuator body-X component
+  measured on the IMU. It is distinct from collective thrust and world
+  reference acceleration.
+- The NMPC is **mass-normalized**: `NMPC` needs no mass, no area and no inertia.
+  Only the plant/model coefficients carry dimensional scaling.
 
 These conventions apply to planner references, NMPC, simulation state/control,
 scientific output and Rust/autodiff public interfaces. Rerun's `xyzw` layout is

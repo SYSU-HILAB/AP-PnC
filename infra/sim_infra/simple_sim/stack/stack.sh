@@ -102,7 +102,11 @@ case "$command" in
     profile="${3:-ideal}"
     aero="${4:-configured}"
     vmax="${5:-configured}"
-    [[ "$aero" =~ ^(configured|none|lyu|phi|ma|advanced)$ ]] || exit 2
+    hold="${6:-0}"
+    mass="${7:-configured}"
+    # Only models marked under_test (plus the null control) are accepted; see
+    # infra/sim_infra/aerodynamics/include/aerodynamics/aero_models.hpp.
+    [[ "$aero" =~ ^(configured|none|lyu|phi)$ ]] || exit 2
     [[ "$profile" = ideal || "$profile" = matlab-vtol ]] || exit 2
     job="$base/runs/$(date -u +%Y%m%dT%H%M%SZ)-$$"
     mkdir -p "$job/benchmark" "$job/config"
@@ -120,16 +124,29 @@ n = float(sys.argv[1])
 assert math.isfinite(n) and n >= 0
 cfg = yaml.safe_load(p.read_text())
 cfg["simple_sim"]["duration_s"] = n
+hold = float(sys.argv[5])
+assert math.isfinite(hold) and hold >= 0
+cfg["simple_sim"]["terminal_hold_s"] = hold
 if sys.argv[2] == "matlab-vtol":
     profile = yaml.safe_load((root / ".artifacts/simple-stack/job/profile.yaml").read_text())
     cfg["simple_sim"]["plant"].update(profile["plant"])
     cfg["simple_sim"]["actuator"] = profile["actuator"]
-    for name in ["planning", "nmpc"]:
-        other = p.parent / (name + ".yaml")
-        data = yaml.safe_load(other.read_text())
-        owner = data["problem_formulation"]["flatness"] if name == "planning" else data["nmpc"]
-        owner["mass"] = profile["plant"]["mass"]
-        other.write_text(yaml.safe_dump(data, sort_keys=False))
+    # Only the planner owns a mass: the NMPC model is mass-normalized.
+    owner = yaml.safe_load((p.parent / "planning.yaml").read_text())
+    owner["problem_formulation"]["flatness"]["mass"] = profile["plant"]["mass"]
+    (p.parent / "planning.yaml").write_text(yaml.safe_dump(owner, sort_keys=False))
+if sys.argv[6] != "configured":
+    mass = float(sys.argv[6])
+    assert math.isfinite(mass) and mass > 0
+    original_mass = cfg["simple_sim"]["plant"]["mass"]
+    cfg["simple_sim"]["plant"]["mass"] = mass
+    owner = yaml.safe_load((p.parent / "planning.yaml").read_text())
+    owner["problem_formulation"]["flatness"]["mass"] = mass
+    (p.parent / "planning.yaml").write_text(yaml.safe_dump(owner, sort_keys=False))
+    import json
+    (p.parent.parent / "experiment-overrides.json").write_text(json.dumps({
+        "mass_kg": mass, "original_profile_mass_kg": original_mass,
+        "unchanged": "inertia, motor calibration, PID, weights, bounds and timing"}, indent=2))
 if sys.argv[3] != "configured":
     cfg["simple_sim"]["aero"]["model"] = sys.argv[3]
 if sys.argv[4] != "configured":
@@ -140,7 +157,7 @@ if sys.argv[4] != "configured":
     planning["problem_formulation"]["cost"]["v_max"] = vmax
     other.write_text(yaml.safe_dump(planning, sort_keys=False))
 p.write_text(yaml.safe_dump(cfg, sort_keys=False))
-' "$duration" "$profile" "$aero" "$vmax"
+' "$duration" "$profile" "$aero" "$vmax" "$hold" "$mass"
     cp "$source_dir/dataflow.yml" "$job/dataflow.yml"
     docker image inspect "$image" "simple-sim:$arch" --format '{{json .}}' > "$job/images.jsonl"
     cp "$source_dir/Cargo.lock" "$job/Cargo.lock"
@@ -196,5 +213,5 @@ p.write_text(yaml.safe_dump(cfg, sort_keys=False))
       rerun --serve-web --bind 0.0.0.0 --web-viewer-port 9090 --port 9876 \
       "/workspace/.artifacts/benchmark/$run/replay.rrd"
     ;;
-  *) echo 'build | import-matlab | run [duration_s] [ideal|matlab-vtol] [aero|configured] [vmax|configured] | test-ffi | test JOB | export/verify/check-run/view JOB RUN_NAME' >&2; exit 2 ;;
+  *) echo 'build | import-matlab | run [duration_s] [ideal|matlab-vtol] [aero|configured] [vmax|configured] [terminal_hold_s] [mass_kg|configured] | test-ffi | test JOB | export/verify/check-run/view JOB RUN_NAME' >&2; exit 2 ;;
 esac

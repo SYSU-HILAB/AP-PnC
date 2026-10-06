@@ -1,8 +1,16 @@
 # Tracking evaluation and NMPC reference plots
 
-Status: requested acceptance contract. The new multi-model sweep and complete
-reference instrumentation are not yet implemented/accepted. Existing evidence
-covers short successful runs and failed full Lyu-aero runs, not this sweep.
+Status: the current controller is the [ABI3 command-integrator NMPC](nmpc_model.md).
+Its [2 kg four-motor speed campaign](tracking_integrator_speed_report.md) has
+11 status4 failures and one completed but severely divergent ma/6 run.
+It does not establish a usable speed range. Actual alpha/beta and FLU force histories are recorded.
+Actual horizon logging, terminal-point hold and the **historical ABI2** native ARM64
+6/8/10/12 m/s five-model sweep are implemented. Read the historical
+[speed + terminal-hold report](tracking_speed_report.md). The earlier
+[6 m/s report](tracking_v6_report.md) preserves the historical 17.48 s truncated
+window; new runs execute the whole reference plus 2 s dwell. New completion is
+5/5 at 6, 4/5 at 8, and 0/5 at 10 and 12 m/s. This is not hard-speed-limit,
+AMD64 or flight acceptance. Broader diagnostics/frame gates below remain pending.
 
 Follow [coordinate_frames.md](coordinate_frames.md). Use absolute project-root
 paths for all inputs and `.artifacts/benchmark/` or the offline stack job trees
@@ -17,13 +25,20 @@ Compute the saved polynomial's maximum/reference speed and separately measure
 actual speed. Show both; do not call a run v_max=6 merely by its label.
 
 First complete coordinate/yb acceptance and a `none`-aero control case, then
-attempt complete reference-supported trajectories with each canonical model:
+attempt complete reference-supported trajectories only with the selected models:
 
-- `none`: no aerodynamic force or moment.
-- `lyu`: Zhang-Lyu model.
-- `phi`: coefficient model.
-- `ma`: spline/model approximation.
-- `advanced`: advanced lift/drag model.
+- `none`: zero wrench control baseline (not a physics model).
+- `lyu`: Zhang-Lyu model. **under test**
+- `phi`: phi quadratic form. **under test**
+
+`ma` (B-spline) and `advanced` remain compiled but are marked **not tested**:
+they are rejected by the offline driver and excluded from the campaign until a
+separate decision. The single source of truth is
+`infra/sim_infra/aerodynamics/include/aerodynamics/aero_models.hpp`, and each run
+records its own status in `manifest.json` as `aero_validation`.
+
+Historical artifacts that used `ma` or `advanced` remain historical evidence and
+must not be presented as current campaign results.
 
 If a model requires absent parameters, identify it as unavailable rather than
 substitute another model silently. Load each model's owned configuration.
@@ -56,24 +71,23 @@ For every control tick and horizon stage, record:
 - per-stage effective weights, bounds/grid, or a pinned generated-OCP snapshot;
 - whether the numerical period committed, failed, or never ran.
 
-Current cost layout is:
+Current ABI3 cost layout is:
 
 ```
 yref[0:3]   = position_W
      [3:6]  = velocity_W
-     [6:9]  = body_rate_B
-     [9:12] = body_Y_direction_W
-     [12]   = collective_specific_force_sp [N/kg]
-     [13:16]= body_rate_sp_B [rad/s]
-terminal   = yref[0:12]
+     [6:9]  = body_Y_direction_W
+     [9:13] = zeros: d[collective_specific_thrust, body_rate_command_xyz]/dt
+terminal   = yref[0:9]
 ```
 
-Audit these meanings against the generated solver before plotting. Log actual
-values even when they are zero or constant. Currently `cost_reference()` fills
-rate references with zero and the collective command reference with hover;
-it does NOT use planner omega or its legacy scalar called thrust. Stage 0 cost
-has zero W in the current OCP. Zero-weight references can be plotted, but must
-not be described as active tracking targets.
+`cost_reference()` has no hover argument. There is no absolute command or
+state-rate tracking target, and stage 0 DOES penalize the command derivative.
+Actual command publication is `previous_command + u0_derivative / ctrl_frq`,
+not u0 and not the future x1. Persist both operands/output in the solver trace;
+verify command memory continuity and correspondence to `steps.csv`.
+Older ABI2 files retain their 16/12 layout and zero-W0 semantics; never reinterpret
+them using the new yb offset or claim they validate ABI3.
 
 Do not conflate state-rate reference, command-rate reference and measured rate.
 Do not silently map the legacy tangent acceleration to collective thrust.
@@ -82,6 +96,11 @@ is a different quantity. Fix the definition before using a body-X scalar as a
 reference/cost field.
 
 Horizon-stage reference timestamps are `control_time + stage*traj_res_s`.
+When this requested time exceeds the trajectory end, all reference fields repeat
+the final point, matching the ROS buffer. `sample_time_ns` records the actual
+clamped source time; `reference_time_ns` remains the requested prediction time.
+Serialized references explicitly declare `terminal_policy: hold_last_point`.
+Legacy datasets without this policy still reject unsupported extrapolation.
 Do not overlay stage-1 future reference against current actual state as though
 both belonged to the same time. Use stage-0 for same-time overlays and show
 future stages as labeled horizon traces. The terminal knot has its own time.
@@ -140,7 +159,8 @@ is required for a successful offline replay but is not control acceptance.
 - Main-frame definitions and planner->NMPC yb identity tests pass.
 - No unresolved unexplained yb flips remain in the v_max=6 reference.
 - Solver references are logged, not inferred, including effective cost weights.
-- Reference horizon stays inside the same saved trajectory.
+- Actual source samples stay inside the saved trajectory; future requests beyond
+  its end explicitly use the final point, with both times logged.
 - Each requested aerodynamic model either completes or has an explicit failure
   or unavailable-model explanation with evidence.
 - Tracking figures show matched-time actual and reference channels.

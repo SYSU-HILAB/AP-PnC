@@ -1,8 +1,12 @@
 """Offline-stack contracts; actual native Docker acceptance is separate."""
 
+import importlib.util
+import json
 import os
 import subprocess
+from types import SimpleNamespace
 
+import pytest
 import tomllib
 import yaml
 
@@ -60,6 +64,30 @@ def test_driver_rejects_foreign_job_without_docker(tmp_path):
     )
     assert result.returncode == 2
     assert "invalid job directory" in result.stderr
+
+
+@pytest.mark.parametrize("vmax", [8.0, 10.0, 12.0])
+def test_sweep_passes_actual_speed_and_terminal_hold(vmax, tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location("tracking_evaluate", STACK / "evaluate.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    commands = []
+
+    def fake_run(argv, **kwargs):
+        commands.append(argv)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(
+        module, "subprocess", SimpleNamespace(run=fake_run, STDOUT=subprocess.STDOUT)
+    )
+    module.run(tmp_path, "matlab-vtol", 0.0, vmax, 2.0, 2.0)
+    index = json.loads((tmp_path / "index.json").read_text())
+    assert index["v_max_setting_mps"] == vmax
+    assert index["terminal_hold_s"] == 2.0
+    assert index["mass_override_kg"] == 2.0
+    assert len(commands) == 3
+    assert {command[5] for command in commands} == {"none", "lyu", "phi"}
+    assert all(cmd[-3:] == [str(vmax), "2.0", "2.0"] for cmd in commands)
 
 
 def test_runtime_does_not_mount_over_image_install():

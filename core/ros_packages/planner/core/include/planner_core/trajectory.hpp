@@ -61,7 +61,8 @@ namespace planner::core
     double duration() const { return duration_; }
     bool   empty() const { return duration_ <= 0.0; }
 
-    /// Exact evaluation at time t (flatness: p, v, a, yb, omega, thrust).
+    /// Exact evaluation at t >= 0; requests beyond duration repeat the final
+    /// point (all fields). ReferencePoint::t is the clamped sample time.
     ReferencePoint sample(double t) const;
 
     /// Read-only access for exact trajectory serialization/replay (coefficients

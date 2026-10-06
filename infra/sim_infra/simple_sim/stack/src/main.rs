@@ -19,6 +19,8 @@ struct Manifest {
     time_ns: i64,
     control_dt_ns: i64,
     physics_dt_ns: i64,
+    #[serde(default)]
+    nmpc_solver_abi: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -35,6 +37,8 @@ struct Run {
 struct Reference {
     order: u8,
     frame: String,
+    #[serde(default)]
+    terminal_policy: Option<String>,
     pieces: Vec<Piece>,
 }
 
@@ -48,6 +52,9 @@ impl Reference {
     // Evaluate the simulator's persisted polynomial, never invoke a planner.
     fn sample(&self, mut t: f64) -> Result<([f64; 3], [f64; 3])> {
         ensure!(t.is_finite() && t >= 0.0, "invalid reference time");
+        if self.terminal_policy.as_deref() == Some("hold_last_point") {
+            t = t.min(self.pieces.iter().map(|p| p.duration_s).sum());
+        }
         for (i, piece) in self.pieces.iter().enumerate() {
             if t > piece.duration_s && i + 1 < self.pieces.len() {
                 t -= piece.duration_s;
@@ -147,6 +154,11 @@ fn read_run(path: &Path) -> Result<Run> {
     ensure!(
         reference.order == 5 && reference.frame == "world_ENU" && !reference.pieces.is_empty(),
         "unsupported reference"
+    );
+    ensure!(
+        reference.terminal_policy.is_none()
+            || reference.terminal_policy.as_deref() == Some("hold_last_point"),
+        "unsupported terminal policy"
     );
     ensure!(
         reference.pieces.iter().all(|p| p.duration_s.is_finite()
@@ -343,6 +355,11 @@ fn read_run(path: &Path) -> Result<Run> {
     );
     let mut solver_references = Vec::new();
     if dir.join("nmpc_reference.csv").is_file() {
+        let (ny, nyn, yb_start) = match manifest.nmpc_solver_abi {
+            None | Some(2) => (16, 12, 9),
+            Some(3) => (13, 9, 6),
+            _ => bail!("unsupported NMPC reference ABI"),
+        };
         let cfg: serde_yaml::Value = serde_yaml::from_slice(&fs::read(dir.join("nmpc.yaml"))?)?;
         let step_ns = (cfg["nmpc"]["traj_res_s"]
             .as_f64()
@@ -357,6 +374,29 @@ fn read_run(path: &Path) -> Result<Run> {
             .round() as usize;
         let mut reader = csv::Reader::from_path(dir.join("nmpc_reference.csv"))?;
         let headers = reader.headers()?.clone();
+        ensure!(
+            headers
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                == headers.len(),
+            "duplicate solver CSV headers"
+        );
+        let mut required: Vec<String> = (0..ny).map(|i| format!("yref_{i}")).collect();
+        if manifest.nmpc_solver_abi == Some(3) {
+            required.push("solution_accepted".to_owned());
+            for i in 0..4 {
+                required.push(format!("u0_derivative_{i}"));
+                required.push(format!("published_command_{i}"));
+            }
+            for i in [13, 6, 7, 8] {
+                required.push(format!("initial_state_{i}"));
+            }
+        }
+        ensure!(
+            required.iter().all(|key| headers.iter().any(|h| h == key)),
+            "missing solver reference/integrator fields"
+        );
         for (i, record) in reader.records().enumerate() {
             let record = record?;
             let r: BTreeMap<String, f64> = headers
@@ -377,14 +417,28 @@ fn read_run(path: &Path) -> Result<Run> {
                     && r["stage"] == stage as f64
                     && r["control_time_ns"] == time as f64
                     && r["reference_time_ns"] == (time + stage as i64 * step_ns) as f64
-                    && r["ny"] == if stage == n { 12.0 } else { 16.0 },
+                    && r["ny"] == if stage == n { nyn as f64 } else { ny as f64 },
                 "solver reference grid mismatch"
             );
             ensure!(
                 r["solver_status"] == rows[tick]["solver_status"],
                 "reference status mismatch"
             );
-            let (p, v) = reference.sample(r["reference_time_ns"] * 1e-9)?;
+            let requested_time = r["reference_time_ns"] * 1e-9;
+            if reference.terminal_policy.is_some() {
+                ensure!(
+                    r.contains_key("sample_time_ns"),
+                    "missing clamped sample time"
+                );
+            }
+            if let Some(&sample_ns) = r.get("sample_time_ns") {
+                let duration: f64 = reference.pieces.iter().map(|p| p.duration_s).sum();
+                ensure!(
+                    (sample_ns - (requested_time.min(duration) * 1e9).round()).abs() <= 1.0,
+                    "clamped sample time mismatch"
+                );
+            }
+            let (p, v) = reference.sample(requested_time)?;
             for axis in 0..3 {
                 ensure!(
                     (r[&format!("yref_{axis}")] - p[axis]).abs() < 1e-7
@@ -393,12 +447,45 @@ fn read_run(path: &Path) -> Result<Run> {
                 );
                 let name = format!("planner_yb_{}", ["x", "y", "z"][axis]);
                 ensure!(
-                    (r[&format!("yref_{}", axis + 9)] - r[&name]).abs() < 1e-12,
+                    (r[&format!("yref_{}", axis + yb_start)] - r[&name]).abs() < 1e-12,
                     "planner to NMPC yb changed"
                 );
             }
-            let norm: f64 = (9..12).map(|a| r[&format!("yref_{a}")].powi(2)).sum();
+            let norm: f64 = (yb_start..yb_start + 3)
+                .map(|a| r[&format!("yref_{a}")].powi(2))
+                .sum();
             ensure!((norm - 1.0).abs() < 1e-8, "nonunit yb reference");
+            if manifest.nmpc_solver_abi == Some(3) {
+                ensure!(
+                    (9..13).all(|a| r[&format!("yref_{a}")] == 0.0),
+                    "command derivative reference is not zero"
+                );
+                ensure!(
+                    r["solution_accepted"] == 1.0,
+                    "unaccepted solution in committed run"
+                );
+                for (a, state_index) in [13, 6, 7, 8].iter().enumerate() {
+                    let initial = r[&format!("initial_state_{state_index}")];
+                    let derivative = r[&format!("u0_derivative_{a}")];
+                    let published = r[&format!("published_command_{a}")];
+                    let expected = initial + manifest.control_dt_ns as f64 * 1e-9 * derivative;
+                    ensure!(
+                        (published - expected).abs() < 1e-10,
+                        "command was not integrated at actual control period"
+                    );
+                    let column = ["specific_force_sp", "rate_x_sp", "rate_y_sp", "rate_z_sp"][a];
+                    ensure!(
+                        (published - rows[tick][column]).abs() < 1e-10,
+                        "published command differs from scientific step"
+                    );
+                    if tick > 0 {
+                        ensure!(
+                            (initial - rows[tick - 1][column]).abs() < 1e-10,
+                            "command integrator memory discontinuity"
+                        );
+                    }
+                }
+            }
             solver_references.push(r);
         }
         ensure!(
@@ -857,6 +944,26 @@ mod tests {
     #[test]
     fn relative_paths_are_rejected_before_io() {
         assert!(artifact_existing(Path::new("relative/run")).is_err());
+    }
+    #[test]
+    fn terminal_hold_is_explicit_and_repeats_endpoint() {
+        let mut reference = Reference {
+            order: 5,
+            frame: "world_ENU".to_owned(),
+            terminal_policy: None,
+            pieces: vec![Piece {
+                duration_s: 1.0,
+                coefficients_xyz_descending: [[0.0, 0.0, 0.0, 0.0, 2.0, 3.0], [0.0; 6], [0.0; 6]],
+            }],
+        };
+        assert!(reference.sample(1.1).is_err()); // Legacy data still rejects extrapolation.
+        reference.terminal_policy = Some("hold_last_point".to_owned());
+        let endpoint = reference.sample(1.0).unwrap();
+        assert_eq!(endpoint, ([5.0, 0.0, 0.0], [2.0, 0.0, 0.0]));
+        assert_eq!(reference.sample(1.1).unwrap(), endpoint);
+        assert_eq!(reference.sample(100.0).unwrap(), endpoint);
+        assert!(reference.sample(-1.0).is_err());
+        assert!(reference.sample(f64::NAN).is_err());
     }
     #[test]
     fn vector_axis_order() {

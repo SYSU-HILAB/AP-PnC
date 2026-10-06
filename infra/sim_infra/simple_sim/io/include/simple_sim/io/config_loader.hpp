@@ -24,12 +24,18 @@ namespace simple_sim
     Se3Gains              se3;
     AeroConfig            aero;
     std::string           aero_model;
-    std::string           controller;
-    std::int64_t          physics_dt_ns = 0;
-    double                duration_s =
-        0.0;  // 0 -> maximum duration with full horizon coverage
+    // Project validation status of `aero_model` (aerodynamics/aero_models.hpp).
+    std::string  aero_validation;
+    std::string  controller;
+    std::int64_t physics_dt_ns = 0;
+    double       duration_s = 0.0;  // 0 -> full trajectory plus terminal_hold_s
+    double       terminal_hold_s =
+        0.0;  // auto-duration extension; final point repeats
     std::int64_t publish_stride  = 5;
     double       realtime_factor = 1.0;  // ROS scheduler only; 0 means unpaced
+    // Explicit study override of the extracted private geometry. Recorded in
+    // the manifest so a plant result is never confused with the bare profile.
+    double arm_length_scale = 1.0;
   };
 
   std::filesystem::path project_root();

@@ -37,8 +37,8 @@ if(NOT TARGET Eigen3::Eigen)
 endif()
 
 add_library(simple_sim_core STATIC
-  core/src/config.cpp core/src/plant.cpp core/src/rate_loop.cpp core/src/runner.cpp
-  core/src/motor_model.cpp
+  core/src/config.cpp core/src/frames.cpp core/src/plant.cpp core/src/rate_loop.cpp
+  core/src/runner.cpp core/src/motor_model.cpp
 )
 target_include_directories(simple_sim_core PUBLIC core/include)
 target_link_libraries(simple_sim_core PUBLIC Eigen3::Eigen)

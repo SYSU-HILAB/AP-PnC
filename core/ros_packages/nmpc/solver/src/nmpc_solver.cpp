@@ -11,6 +11,9 @@ static_assert(TAILSITTER_FLU_NX == NMPC_NX,
               "stale NMPC state ABI: regenerate bundle");
 static_assert(TAILSITTER_FLU_NU == NMPC_NU, "stale NMPC control ABI");
 static_assert(TAILSITTER_FLU_NP == NMPC_NP, "stale NMPC parameter ABI");
+static_assert(TAILSITTER_FLU_NY0 == NMPC_NY && TAILSITTER_FLU_NY == NMPC_NY,
+              "stale NMPC stage cost ABI");
+static_assert(TAILSITTER_FLU_NYN == NMPC_NYN, "stale NMPC terminal cost ABI");
 struct nmpc_solver
 {
   tailsitter_flu_solver_capsule *capsule;

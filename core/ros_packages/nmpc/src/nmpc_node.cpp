@@ -37,14 +37,15 @@ class NMPC : public rclcpp::Node
       path = std::filesystem::path(root) / "core/bringup/config/nmpc.yaml";
     const auto           n = YAML::LoadFile(path.string())["nmpc"];
     nmpc::TrackingConfig cfg;
-    cfg.horizon_s    = n["horizon_s"].as<double>();
-    cfg.traj_res_s   = n["traj_res_s"].as<double>();
-    cfg.ctrl_frq     = n["ctrl_frq"].as<double>();
-    cfg.u_hover      = n["u_hover"].as<double>();
-    cfg.cz_rate      = n["cz_rate"].as<double>();
-    cfg.thrust_tau_s = n["thrust_tau_s"].as<double>();
-    for (int i = 0; i < 3; ++i)
-      cfg.rate_tau_s[i] = n["rate_tau_s"][i].as<double>();
+    cfg.horizon_s                 = n["horizon_s"].as<double>();
+    cfg.traj_res_s                = n["traj_res_s"].as<double>();
+    cfg.ctrl_frq                  = n["ctrl_frq"].as<double>();
+    cfg.initial_specific_thrust   = n["initial_specific_thrust"].as<double>();
+    cfg.cx_alpha_slope            = n["cx_alpha_slope"].as<double>();
+    cfg.cx_slope_estimation       = n["cx_slope_estimation"].as<bool>();
+    cfg.cx_slope_forgetting       = n["cx_slope_forgetting"].as<double>();
+    cfg.cx_slope_limit            = n["cx_slope_limit"].as<double>();
+    cfg.cx_slope_covariance_limit = n["cx_slope_covariance_limit"].as<double>();
     controller_    = std::make_unique<nmpc::TrackingController>(cfg);
     const auto qos = rclcpp::QoS(1).reliable();
     control_pub_ =
@@ -97,9 +98,9 @@ class NMPC : public rclcpp::Node
       std::vector<nmpc::CostReference> horizon;
       horizon.reserve(reference.points.size());
       for (const auto &p : reference.points)
-        horizon.push_back(nmpc::cost_reference(
-            {p.pos[0], p.pos[1], p.pos[2]}, {p.vel[0], p.vel[1], p.vel[2]},
-            {p.yb[0], p.yb[1], p.yb[2]}, controller_->config().u_hover));
+        horizon.push_back(nmpc::cost_reference({p.pos[0], p.pos[1], p.pos[2]},
+                                               {p.vel[0], p.vel[1], p.vel[2]},
+                                               {p.yb[0], p.yb[1], p.yb[2]}));
       const auto start = std::chrono::steady_clock::now();
       const auto result =
           controller_->compute(state_, specific_force_x_, horizon);

@@ -12,7 +12,10 @@
  * Tail-sitter UAV.
  */
 
+#include <algorithm>
+#include <cmath>
 #include <planner_core/trajectory.hpp>
+#include <stdexcept>
 #include <tailsitter_df/flu_reference.hpp>
 
 namespace planner::core
@@ -25,6 +28,11 @@ namespace planner::core
 
   ReferencePoint ReferenceTrajectory::sample(double t) const
   {
+    if (empty() || !std::isfinite(t) || t < 0.0)
+      throw std::invalid_argument("invalid trajectory sample time");
+    // Repeat the complete final point, as the ROS reference buffer does.
+    // Never extrapolate the terminal polynomial into the hover horizon.
+    t = std::min(t, duration_);
     ReferencePoint rp;
     rp.t = t;
     rp.p = traj_.getPos(t);

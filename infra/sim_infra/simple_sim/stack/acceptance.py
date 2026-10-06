@@ -102,19 +102,53 @@ def main():
     reject("wrong-metrics", bad_metric)
     if "nmpc_reference.csv" in files:
 
+        def wrong_sample_time(p):
+            file = p / "nmpc_reference.csv"
+            with file.open() as f:
+                reader = csv.DictReader(f)
+                names = reader.fieldnames
+                data = list(reader)
+            data[-1]["sample_time_ns"] = "0"
+            with file.open("w") as f:
+                writer = csv.DictWriter(f, fieldnames=names)
+                writer.writeheader()
+                writer.writerows(data)
+
+        with (original / "nmpc_reference.csv").open() as f:
+            has_sample_time = "sample_time_ns" in csv.DictReader(f).fieldnames
+        if has_sample_time:
+            reject("wrong-clamped-sample-time", wrong_sample_time)
+
         def wrong_yb(p):
             file = p / "nmpc_reference.csv"
             with file.open() as f:
                 reader = csv.DictReader(f)
                 names = reader.fieldnames
                 data = list(reader)
-            data[0]["yref_10"] = str(-float(data[0]["yref_10"]))
+            manifest = json.loads((p / "manifest.json").read_text())
+            yb_column = "yref_7" if manifest.get("nmpc_solver_abi") == 3 else "yref_10"
+            data[0][yb_column] = str(-float(data[0][yb_column]))
             with file.open("w") as f:
                 writer = csv.DictWriter(f, fieldnames=names)
                 writer.writeheader()
                 writer.writerows(data)
 
         reject("solver-yb-flip", wrong_yb)
+
+        if json.loads((original / "manifest.json").read_text()).get("nmpc_solver_abi") == 3:
+
+            def wrong_period(p):
+                file = p / "nmpc_reference.csv"
+                with file.open() as f:
+                    reader = csv.DictReader(f)
+                    names, data = reader.fieldnames, list(reader)
+                data[0]["published_command_0"] = str(float(data[0]["published_command_0"]) + 0.1)
+                with file.open("w") as f:
+                    writer = csv.DictWriter(f, fieldnames=names)
+                    writer.writeheader()
+                    writer.writerows(data)
+
+            reject("wrong-command-integration", wrong_period)
 
         def bad_horizon(p):
             file = p / "nmpc_reference.csv"

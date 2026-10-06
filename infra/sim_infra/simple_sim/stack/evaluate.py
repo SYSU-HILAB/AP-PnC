@@ -14,7 +14,9 @@ import yaml
 
 from ap_pnc.env import artifact_path, get_git_root, project_path
 
-MODELS = ("none", "lyu", "phi", "ma", "advanced")
+# Only models marked under_test (plus the null control) may appear in a campaign.
+# See infra/sim_infra/aerodynamics/include/aerodynamics/aero_models.hpp.
+MODELS = ("none", "lyu", "phi")
 
 
 def sha(path):
@@ -45,20 +47,32 @@ def reference_speed(path):
     return maximum
 
 
-def run(out, profile, duration):
+def run(out, profile, duration, vmax=6.0, hold=0.0, mass=None):
     root = get_git_root()
     driver = root / "infra/sim_infra/simple_sim/stack/stack.sh"
     index = {
         "schema": "ap-pnc/tracking-sweep/v1",
         "profile": profile,
-        "v_max_setting_mps": 6.0,
+        "v_max_setting_mps": vmax,
+        "terminal_hold_s": hold,
+        "mass_override_kg": mass,
         "runs": [],
     }
     for model in MODELS:
         log = out / f"{model}.log"
         with log.open("w") as f:
             result = subprocess.run(
-                ["bash", str(driver), "run", str(duration), profile, model, "6"],
+                [
+                    "bash",
+                    str(driver),
+                    "run",
+                    str(duration),
+                    profile,
+                    model,
+                    str(vmax),
+                    str(hold),
+                    "configured" if mass is None else str(mass),
+                ],
                 env={**os.environ, "AP_PNC_DIR": str(root)},
                 stdout=f,
                 stderr=subprocess.STDOUT,
@@ -83,6 +97,7 @@ def plot(out):
     import matplotlib.pyplot as plt
 
     index = json.loads((out / "index.json").read_text())
+    vmax = index["v_max_setting_mps"]
     images = out / "figures"
     images.mkdir(exist_ok=True)
     summary = []
@@ -92,6 +107,8 @@ def plot(out):
             continue
         folder = project_path(item["run"])
         manifest = json.loads((folder / "manifest.json").read_text())
+        integrator = manifest.get("nmpc_solver_abi") == 3
+        yb_start = 6 if integrator else 9
         data = rows(folder / "steps.csv")
         trace = (
             rows(folder / "nmpc_reference.csv") if (folder / "nmpc_reference.csv").exists() else {}
@@ -101,6 +118,10 @@ def plot(out):
             "status": manifest["status"],
             "stop_time_s": manifest["time_ns"] * 1e-9,
             "steps": manifest["committed_steps"],
+            "trajectory_duration_s": manifest["trajectory_duration_s"],
+            "terminal_hold_s": manifest.get("terminal_hold_s", 0.0),
+            "reference_terminal_policy": manifest.get("reference_terminal_policy", "error"),
+            "v_max_setting_mps": vmax,
             "reason": manifest["reason"],
             "reference_sha256": sha(folder / "reference.yaml"),
             "reference_max_speed_mps": reference_speed(folder / "reference.yaml"),
@@ -119,12 +140,15 @@ def plot(out):
         if not data:
             continue
         entry["actual_max_speed_mps"] = float(
-            np.max(np.linalg.norm(np.column_stack([data[f"v_{a}"] for a in "xyz"]), axis=1))
+            max(
+                np.max(np.linalg.norm(np.column_stack([data[f"v_{a}"] for a in "xyz"]), axis=1)),
+                np.linalg.norm([data[f"next_v_{a}"][-1] for a in "xyz"]),
+            )
         )
         ocp = json.loads((project_path(item["job"]) / "generated-ocp.json").read_text())
         entry["cost_diagonal_stage0"] = np.diag(ocp["cost"]["W_0"]).tolist()
         entry["cost_diagonal_future"] = np.diag(ocp["cost"]["W"]).tolist()
-        label = f'{item["model"]} | {manifest["status"].upper()} | {entry["stop_time_s"]:.2f}s | v_max setting=6'
+        label = f'{item["model"]} | {manifest["status"].upper()} | {entry["stop_time_s"]:.2f}s | v_max setting={vmax:g}'
         t = data["time_ns"] * 1e-9
         fig = plt.figure(figsize=(8, 6), constrained_layout=True)
         axis = fig.add_subplot(111, projection="3d")
@@ -177,13 +201,19 @@ def plot(out):
         ax[0, 0].set_title("Position error [m]")
         ax[0, 1].plot(t, angle)
         ax[0, 1].set_title("Body-Y direction error [deg]")
-        ax[1, 0].plot(t, data["specific_force_sp"], label="u0 collective command")
+        ax[1, 0].plot(t, data["specific_force_sp"], label="published collective command")
         mass = yaml.safe_load((folder / "simple_sim.yaml").read_text())["simple_sim"]["plant"][
             "mass"
         ]
         ax[1, 0].plot(t, data["applied_fz"] / mass, label="actuator Fz/m")
         ax[1, 0].plot(t, data["imu_z"], label="net IMU z (includes aero)")
-        ax[1, 0].axhline(9.81, ls="--", label="solver command reference hover")
+        ax[1, 0].axhline(
+            9.81,
+            ls="--",
+            label=(
+                "hover scale, NOT a cost target" if integrator else "solver command reference hover"
+            ),
+        )
         ax[1, 0].set_title("Collective / body-Z specific force [N/kg]")
         ax[1, 0].legend(fontsize=7)
         for a in "xyz":
@@ -201,7 +231,7 @@ def plot(out):
             tc = trace["control_time_ns"][mask] * 1e-9
             fig, axes = plt.subplots(4, 3, figsize=(14, 11), constrained_layout=True)
             for a, axis in enumerate("xyz"):
-                for row, start, planner in [(0, 0, "p"), (1, 3, "v"), (2, 9, "yb")]:
+                for row, start, planner in [(0, 0, "p"), (1, 3, "v"), (2, yb_start, "yb")]:
                     axes[row, a].plot(
                         tc, trace[f"planner_{planner}_{axis}"][mask], label="planner", lw=2
                     )
@@ -212,25 +242,49 @@ def plot(out):
                 axes[3, a].plot(
                     tc, trace[f"planner_omega_{axis}"][mask], label="new physical FLU planned omega"
                 )
-                axes[3, a].plot(tc, trace[f"yref_{6+a}"][mask], label="solver STATE-rate reference")
-                axes[3, a].plot(
-                    tc, trace[f"yref_{13+a}"][mask], label="solver COMMAND-rate reference", ls="--"
-                )
+                if integrator:
+                    axes[3, a].plot(
+                        tc,
+                        trace[f"initial_state_{6+a}"][mask],
+                        label="initial rate COMMAND (not a cost target)",
+                    )
+                    axes[3, a].plot(
+                        tc,
+                        trace[f"published_command_{1+a}"][mask],
+                        label="integrated rate command",
+                        ls="--",
+                    )
+                else:
+                    axes[3, a].plot(
+                        tc, trace[f"yref_{6+a}"][mask], label="solver STATE-rate reference"
+                    )
+                    axes[3, a].plot(
+                        tc,
+                        trace[f"yref_{13+a}"][mask],
+                        label="solver COMMAND-rate reference",
+                        ls="--",
+                    )
                 axes[3, a].set_title(f"rate_{axis} (body FLU)")
             for a in axes.flat:
                 a.grid(alpha=0.2)
                 a.legend(fontsize=7)
                 a.set_xlabel("control time [s]")
             fig.suptitle(
-                label + " | stage 0 audit (CURRENT W0=0; future knots weighted)", fontsize=11
+                label
+                + (
+                    " | ABI3: p/v/yb + command derivatives; W0 active"
+                    if integrator
+                    else " | historical ABI2: W0=0; future knots weighted"
+                ),
+                fontsize=11,
             )
             fig.savefig(images / f"{item['model']}-nmpc-reference.png", dpi=130)
             plt.close(fig)
             entry["planner_solver_yb_max_difference"] = max(
-                float(np.max(np.abs(trace[f"planner_yb_{a}"] - trace[f"yref_{9+i}"])))
+                float(np.max(np.abs(trace[f"planner_yb_{a}"] - trace[f"yref_{yb_start+i}"])))
                 for i, a in enumerate("xyz")
             )
-            yr = np.column_stack([trace[f"yref_{9+a}"][mask] for a in range(3)])
+            yr = np.column_stack([trace[f"yref_{yb_start+a}"][mask] for a in range(3)])
             dots = np.sum(yr[1:] * yr[:-1], axis=1)
             flips = np.where(dots < 0)[0]
             entry["yb_negative_adjacent_dot_events"] = [
@@ -260,7 +314,7 @@ def plot(out):
                         "o-",
                         label=f"horizon at t={tick*.02:.1f}s",
                     )
-                    axes[1, a].plot(future_time, trace[f"yref_{9+a}"][selected], "o-")
+                    axes[1, a].plot(future_time, trace[f"yref_{yb_start+a}"][selected], "o-")
             for a, axis in enumerate("xyz"):
                 axes[0, a].set_title(f"p_{axis} solver future knots [m]")
                 axes[1, a].set_title(f"yb_{axis} solver future knots")
@@ -269,7 +323,8 @@ def plot(out):
                 a.set_xlabel("REFERENCE time [s]")
             axes[0, 0].legend(fontsize=8)
             fig.suptitle(
-                "Logged solver horizons: stage 1..9 weighted, stage10 terminal; stage0 W=0"
+                "Logged solver horizons: stage10 terminal; "
+                + ("stage0 derivative cost active" if integrator else "historical stage0 W=0")
             )
             fig.savefig(images / f"{item['model']}-horizons.png", dpi=130)
             plt.close(fig)
@@ -288,7 +343,7 @@ def plot(out):
         axes[0].plot(t, e, label=item["model"])
         axes[1].plot(t, speed, label=item["model"])
     axes[0].set_title("Matched-window position errors [m]")
-    axes[1].axhline(6, color="gray", ls="--", label="v_max setting=6 (soft constraint)")
+    axes[1].axhline(vmax, color="gray", ls="--", label=f"v_max setting={vmax:g} (soft constraint)")
     axes[1].set_title("Actual speed [m/s]")
     for a in axes:
         a.grid(alpha=0.2)
@@ -297,15 +352,17 @@ def plot(out):
     fig.savefig(images / "comparison.png", dpi=150)
     plt.close(fig)
     same = (
-        len(summary) == len(MODELS)
+        len(summary) == len(index["runs"])
         and len({r["reference_sha256"] for r in summary if "reference_sha256" in r}) == 1
     )
     report = {
         "schema": "ap-pnc/tracking-evaluation/v1",
         "same_saved_reference": same,
+        "v_max_setting_mps": vmax,
+        "terminal_hold_s": index.get("terminal_hold_s", 0.0),
         "models": summary,
         "frame_scope": "public reference now direct FLU; legacy MINCO cost kernel still pending migration",
-        "reference_semantics": "state rates/command rates zero; collective command reference constant hover; stage0 W=0",
+        "reference_semantics": "ABI3: p/v/yb + zero command derivatives, W0 active; legacy ABI2 retains its original layout and weights",
         "plots": "raw logged data only; failed plots are partial diagnostics, no successful replay marker",
     }
     (out / "summary.json").write_text(json.dumps(report, indent=2))
@@ -318,7 +375,18 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--profile", choices=["ideal", "matlab-vtol"], default="matlab-vtol")
     parser.add_argument("--duration", type=float, default=0.0)
+    parser.add_argument("--v-max", type=float, default=6.0)
+    parser.add_argument("--hold-seconds", type=float, default=0.0)
+    parser.add_argument(
+        "--mass", type=float, help="explicit plant/planner/controller mass override [kg]"
+    )
     args = parser.parse_args()
+    if not np.isfinite(args.v_max) or args.v_max <= 0:
+        parser.error("positive finite v-max required")
+    if not np.isfinite(args.hold_seconds) or args.hold_seconds < 0:
+        parser.error("nonnegative finite hold-seconds required")
+    if args.mass is not None and (not np.isfinite(args.mass) or args.mass <= 0):
+        parser.error("positive finite mass required")
     if args.output and not args.output.is_absolute():
         parser.error("absolute output required")
     out = artifact_path(
@@ -326,14 +394,14 @@ def main():
         or (
             get_git_root()
             / ".artifacts/benchmark"
-            / ("tracking-v6-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
+            / (f"tracking-v{args.v_max:g}-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
         )
     )
     out.mkdir(parents=True, exist_ok=True)
     if args.mode == "run":
         if (out / "index.json").exists():
             parser.error("refusing to overwrite existing sweep")
-        run(out, args.profile, args.duration)
+        run(out, args.profile, args.duration, args.v_max, args.hold_seconds, args.mass)
     else:
         plot(out)
     print("EVALUATION=" + str(out))

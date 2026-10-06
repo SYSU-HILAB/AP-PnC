@@ -8,7 +8,8 @@
  * Hanamy: rongerch@outlook.com
  *
  * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
+ * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
+ * Tail-sitter UAV.
  */
 
 /*
@@ -42,7 +43,7 @@
 #include <cfloat>
 #include <cmath>
 #include <iostream>
-#include <tailsitter_df/tailsitter_df.hpp>
+#include <tailsitter_df/flu_flatness.hpp>
 #include <vector>
 
 #include "gcopter/geo_utils.hpp"
@@ -53,15 +54,22 @@ namespace gcopter
 {
   struct CostConfig
   {
-    double  v_max;
-    double  omg_x_max, omg_y_max, omg_z_max;
-    double  acc_max;
-    double  thrust_min, thrust_max;
-    double  pos_weight, vel_weight, acc_weight;
-    double  omg_x_weight, omg_y_weight, omg_z_weight;
-    double  thrust_weight;
-    double  time_weight;
-    double  omg_consistent_weight;
+    double v_max;
+    double omg_x_max, omg_y_max, omg_z_max;
+    double acc_max;
+    double tangential_acc_min, tangential_acc_max;
+    double thrust_min, thrust_max;
+    double pos_weight, vel_weight, acc_weight;
+    double omg_x_weight, omg_y_weight, omg_z_weight;
+    double tangential_acc_weight;
+    double thrust_weight;
+    double time_weight;
+    double omg_consistent_weight;
+    // FLU flatness parameters. The limit semantics are pure FLU body axes and a
+    // frame-free tangential acceleration; see gcopter.hpp and
+    // tailsitter_df/flu_flatness.hpp.
+    double  flatness_gravity;
+    double  flatness_aero_slope;
     double &rho;
     // singleton acquisition
     static CostConfig &getInstance()
@@ -78,19 +86,24 @@ namespace gcopter
     CostConfig() : rho(time_weight)
     {
       // all to zero
-      v_max         = 0.0;
-      omg_x_max     = 0.0;
-      omg_y_max     = 0.0;
-      omg_z_max     = 0.0;
-      omg_x_weight  = 0.0;
-      omg_y_weight  = 0.0;
-      omg_z_weight  = 0.0;
-      thrust_min    = 0.0;
-      thrust_max    = 0.0;
-      pos_weight    = 0.0;
-      vel_weight    = 0.0;
-      thrust_weight = 0.0;
-      time_weight   = 0.0;
+      v_max                 = 0.0;
+      omg_x_max             = 0.0;
+      omg_y_max             = 0.0;
+      omg_z_max             = 0.0;
+      omg_x_weight          = 0.0;
+      omg_y_weight          = 0.0;
+      omg_z_weight          = 0.0;
+      tangential_acc_min    = 0.0;
+      tangential_acc_max    = 0.0;
+      thrust_min            = 0.0;
+      thrust_max            = 0.0;
+      pos_weight            = 0.0;
+      vel_weight            = 0.0;
+      tangential_acc_weight = 0.0;
+      thrust_weight         = 0.0;
+      time_weight           = 0.0;
+      flatness_gravity      = 9.81;
+      flatness_aero_slope   = -0.09408;
     }
   };
 
@@ -371,36 +384,52 @@ namespace gcopter
       const double omgySqrMax = config.omg_y_max * config.omg_y_max;
       const double omgzSqrMax = config.omg_z_max * config.omg_z_max;
 
-      const double accSqrMax  = config.acc_max * config.acc_max;
+      const double accSqrMax = config.acc_max * config.acc_max;
+      const double tangentialAccMean =
+          0.5 * (config.tangential_acc_min + config.tangential_acc_max);
+      const double tangentialAccRadi =
+          0.5 * fabs(config.tangential_acc_max - config.tangential_acc_min);
+      const double tangentialAccSqrRadi = tangentialAccRadi * tangentialAccRadi;
       const double thrustMean = 0.5 * (config.thrust_min + config.thrust_max);
       const double thrustRadi =
           0.5 * fabs(config.thrust_max - config.thrust_min);
       const double thrustSqrRadi = thrustRadi * thrustRadi;
 
       // const double weightPos = penaltyWeights(0);
-      const double    weightVel    = config.vel_weight;
-      const double    weightAcc    = config.acc_weight;
-      const double    weightThrust = config.thrust_weight;
+      const double    weightVel           = config.vel_weight;
+      const double    weightAcc           = config.acc_weight;
+      const double    weightTangentialAcc = config.tangential_acc_weight;
+      const double    weightThrust        = config.thrust_weight;
       Eigen::Vector3d pos, vel, acc, jer, sna;
       Eigen::Vector3d totalGradPos, totalGradVel, totalGradAcc, totalGradJer;
-      double          thr;
-      Eigen::Vector4d quat;
-      Eigen::Vector3d omg;
-      double          gradThr;
-      Eigen::Vector4d gradQuat;
-      Eigen::Vector3d gradPos, gradVel, gradAcc;
-      Eigen::Vector3d gradOmg;
+      // Frame-free tangential acceleration v.a/|v| (kept from the legacy cost;
+      // the yaml key `tangential_acc_min/max` bounds THIS quantity, not rotor
+      // thrust).
+      double                           tangential_acc;
+      Eigen::Vector4d                  quat;
+      Eigen::Vector3d                  omg;
+      double                           gradTangentialAcc;
+      Eigen::Vector4d                  gradQuat;
+      Eigen::Vector3d                  gradPos, gradVel, gradAcc;
+      Eigen::Vector3d                  gradOmg;
+      tailsitter_df::FluFlatnessParams flatness_params;
+      flatness_params.gravity = config.flatness_gravity;
+      flatness_params.k       = config.flatness_aero_slope;
 
       double                      step, alpha;
       double                      s1, s2, s3, s4, s5;
       Eigen::Matrix<double, 6, 1> beta0, beta1, beta2, beta3, beta4;
       Eigen::Vector3d             outerNormal;
       double                      violaVel, violaAcc;
+      double                      violaTangentialAcc;
       double                      violaThrust;
-      double                      violaVelPena, violaAccPena;
       double                      violaThrustPena;
-      double                      violaVelPenaD, violaAccPenaD;
       double                      violaThrustPenaD;
+      double                      gradThrust;
+      double                      violaVelPena, violaAccPena;
+      double                      violaTangentialAccPena;
+      double                      violaVelPenaD, violaAccPenaD;
+      double                      violaTangentialAccPenaD;
       double                      node, pena;
       const int                   pieceNum     = T.size();
       const double                integralFrac = 1.0 / integralResolution;
@@ -431,9 +460,13 @@ namespace gcopter
           jer = c.transpose() * beta3;
           sna = c.transpose() * beta4;
 
-          // auto z = tailsitter_df::init(vel, acc, jer);
-          tailsitter_df::Data::getInstance().df_backward_auto(vel, acc, jer,
-                                                              thr, omg);
+          // FLU flatness: pure ENU/FLU body rates plus the frame-free
+          // tangential acceleration. The legacy mixed-frame kernel is gone.
+          const auto flatness =
+              tailsitter_df::flu_flatness(vel, acc, jer, flatness_params);
+          const double speed_norm = vel.norm();
+          tangential_acc = speed_norm > 1e-9 ? vel.dot(acc) / speed_norm : 0.0;
+          omg            = flatness.omega;
 
           violaVel = vel.squaredNorm() - velSqrMax;
           violaAcc = acc.squaredNorm() - accSqrMax;
@@ -452,8 +485,16 @@ namespace gcopter
            *    - Uses range cost: (T-T_max)(T-T_min)
            *    - Penalizes thrust outside [T_min, T_max]
            */
-          violaThrust = (thr - thrustMean) * (thr - thrustMean) - thrustSqrRadi;
-          gradThr     = 0.0;
+          // Real collective specific thrust a_T = eta . z_B, straight from the
+          // same FLU flatness evaluation used for the rates.
+          violaThrust = (flatness.specific_thrust - thrustMean) *
+                            (flatness.specific_thrust - thrustMean) -
+                        thrustSqrRadi;
+          gradThrust         = 0.0;
+          violaTangentialAcc = (tangential_acc - tangentialAccMean) *
+                                   (tangential_acc - tangentialAccMean) -
+                               tangentialAccSqrRadi;
+          gradTangentialAcc = 0.0;
           gradQuat.setZero();
           gradPos.setZero(), gradVel.setZero(), gradOmg.setZero();
           totalGradPos.setZero(), totalGradVel.setZero(),
@@ -470,9 +511,9 @@ namespace gcopter
           }
           if (smoothedL1(violaAcc, smoothFactor, violaAccPena, violaAccPenaD))
           {
-            // cost type is v^2 - v_max^2
+            // cost type is a^2 - a_max^2
             gradAcc += weightAcc * violaAccPenaD * 2.0 * acc;
-            pena += weightAcc * violaVelPena;
+            pena += weightAcc * violaAccPena;
             totalGradAcc += gradAcc;
           }
 
@@ -496,26 +537,57 @@ namespace gcopter
             pena += config.omg_y_weight * violaOmgYPena;
             pena += config.omg_z_weight * violaOmgZPena;
 
-            Eigen::Matrix3d Jv, Ja, Jj;
-            tailsitter_df::Data::getInstance().jacobian_omega(Jv, Ja, Jj);
+            // jacobian rows are outputs [a_T, w_x, w_y, w_z]; the chain rule
+            // needs d(pena)/d(input_j) = sum_i d(w_i)/d(input_j) * g_i, so
+            // these blocks are transposed before multiplying by gradOmg.
+            const Eigen::Matrix3d Jv =
+                flatness.jacobian.block<3, 3>(1, 0).transpose();
+            const Eigen::Matrix3d Ja =
+                flatness.jacobian.block<3, 3>(1, 3).transpose();
+            const Eigen::Matrix3d Jj =
+                flatness.jacobian.block<3, 3>(1, 6).transpose();
             totalGradVel += Jv * gradOmg;
             totalGradAcc += Ja * gradOmg;
             totalGradJer += Jj * gradOmg;
           }
 
+          if (smoothedL1(violaTangentialAcc, smoothFactor,
+                         violaTangentialAccPena, violaTangentialAccPenaD))
+          {
+            gradTangentialAcc += weightTangentialAcc * violaTangentialAccPenaD *
+                                 2.0 * (tangential_acc - tangentialAccMean);
+            pena += weightTangentialAcc * violaTangentialAccPena;
+
+            Eigen::Vector3d tmp_gv = Eigen::Vector3d::Zero();
+            Eigen::Vector3d tmp_ga = Eigen::Vector3d::Zero();
+            Eigen::Vector3d tmp_gj = Eigen::Vector3d::Zero();
+            if (speed_norm > 1e-9)
+            {
+              tmp_gv =
+                  acc / speed_norm -
+                  vel * (vel.dot(acc) / (speed_norm * speed_norm * speed_norm));
+              tmp_ga = vel / speed_norm;
+            }
+            totalGradVel += tmp_gv * gradTangentialAcc;
+            totalGradAcc += tmp_ga * gradTangentialAcc;
+            totalGradJer += tmp_gj * gradTangentialAcc;
+          }
+
           if (smoothedL1(violaThrust, smoothFactor, violaThrustPena,
                          violaThrustPenaD))
           {
-            gradThr +=
-                weightThrust * violaThrustPenaD * 2.0 * (thr - thrustMean);
+            // Minimum/maximum collective thrust: keeps the plan out of the
+            // thrust-off regime where the wing alone over-lifts the aircraft.
+            gradThrust += weightThrust * violaThrustPenaD * 2.0 *
+                          (flatness.specific_thrust - thrustMean);
             pena += weightThrust * violaThrustPena;
-
-            Eigen::Vector3d tmp_gv, tmp_ga, tmp_gj;
-            tailsitter_df::Data::getInstance().jacobian_at(tmp_gv, tmp_ga,
-                                                           tmp_gj);
-            totalGradVel += tmp_gv * gradThr;
-            totalGradAcc += tmp_ga * gradThr;
-            totalGradJer += tmp_gj * gradThr;
+            // Row 0 of the flatness Jacobian is d(a_T)/d(v, a, j).
+            totalGradVel +=
+                flatness.jacobian.row(0).segment<3>(0).transpose() * gradThrust;
+            totalGradAcc +=
+                flatness.jacobian.row(0).segment<3>(3).transpose() * gradThrust;
+            totalGradJer +=
+                flatness.jacobian.row(0).segment<3>(6).transpose() * gradThrust;
           }
 
           node  = (j == 0 || j == integralResolution) ? 0.5 : 1.0;
@@ -550,8 +622,6 @@ namespace gcopter
 
       forwardT(tau, obj.times);
       forwardP(xi, obj.vPolyIdx, obj.vPolytopes, obj.points);
-      // TODO actually, this is not correct.
-      tailsitter_df::Data::getInstance().reset();
 
       double cost;
       obj.minco.setParameters(obj.points, obj.times);
@@ -862,7 +932,8 @@ namespace gcopter
       return true;
     }
 
-    inline double optimize(TrajectoryRepresentation<5> &traj, const double &relCostTol)
+    inline double optimize(TrajectoryRepresentation<5> &traj,
+                           const double                &relCostTol)
     {
       Eigen::VectorXd             x(temporalDim + spatialDim);
       Eigen::Map<Eigen::VectorXd> tau(x.data(), temporalDim);

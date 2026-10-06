@@ -2,10 +2,48 @@
 
 Aerodynamic Prior-free Trajectory Generation and Tracking Control for a Tail-sitter UAV.
 
+## Paper
+
+This repository is the reference implementation of
+
+> **Aerodynamic Prior-Free Coordinated Trajectory Generation and Tracking Control
+> for a Tail-Sitter UAV**
+> Erchao Rong, Zihao Liu, Junning Liang, Jianguo Wang, Xiao Jie, Haoran Fu,
+> Ziliang Chen, Ximin Lyu
+> arXiv:2609.11698 — <https://arxiv.org/abs/2609.11698>
+
+```bibtex
+@article{rong2026apPnc,
+  title  = {Aerodynamic Prior-Free Coordinated Trajectory Generation and
+            Tracking Control for a Tail-Sitter UAV},
+  author = {Rong, Erchao and Liu, Zihao and Liang, Junning and Wang, Jianguo and
+            Jie, Xiao and Fu, Haoran and Chen, Ziliang and Lyu, Ximin},
+  journal = {arXiv preprint arXiv:2609.11698},
+  year   = {2026},
+  url    = {https://arxiv.org/abs/2609.11698}
+}
+```
+
+The paper's two phase-specific choices are the contract this code follows:
+
+| Phase | Paper | Repository |
+|---|---|---|
+| Planning | full phi-theory flatness under coordinated flight, parameterised by one flat-plate drag coefficient `C_D,flat = 1.28` | `tailsitter_df/flu_reference.hpp` + `flu_flatness.hpp` feed the MINCO cost |
+| Tracking | simplified model with **one** non-linear longitudinal aerodynamic parameter `c_z` estimated online | NMPC state `cx` (same physical axis: the wing-normal direction) |
+
+The paper also states two modelling decisions we rely on: the lateral coefficient
+vanishes under the coordinated-flight assumption, and the aerodynamic moment is
+neglected because the **inclined motor layout** provides sufficient control
+authority. Axis labels differ from the paper: the paper puts the thrust axis on
+body `x`, this repository puts it on body `+Z` (FLU), so the paper's `c_z` is our
+`cx`.
+
 ## Numerical specifications
 
 - [Main ENU/FLU frames and simulation-only legacy wing boundary](docs/coordinate_frames.md)
 - [v_max=6 tracking acceptance and actual NMPC reference plots](docs/tracking_evaluation.md)
+- [6 m/s 历史窗口测试报告](docs/tracking_v6_report.md)
+- [6/8/10/12 m/s + 末点悬停测试报告](docs/tracking_speed_report.md)
 
 These define the migration/acceptance contract. The direct FLU public reference
 and a five-model matched-reference simulation sweep are now implemented; the
@@ -118,39 +156,36 @@ at codegen time.
 | `horizon_s`  | 1.0     | Prediction horizon [s] (acados tf) |
 | `traj_res_s` | 0.1     | Horizon node spacing [s]; grid = `N + 1` reference points, `N = round(horizon_s/traj_res_s)` |
 | `ctrl_frq`   | 50.0    | Solve / reference-request frequency [Hz] |
-| `u_hover`    | 2.4525  | Actuation reference at hover [N/kg per rotor] |
-| `mass`       | 2.0     | Vehicle mass [kg] |
-| `cz_rate`    | 0.10    | Vertical drag (cz) rate parameter |
+| `initial_specific_thrust` | 9.81 | Initial collective command [N/kg], NOT a cost target |
+| `cx_alpha_slope` | 0.10 | Lumped body-X coefficient evolution parameter |
+
+`nmpc.yaml` carries **no mass, area or inertia**: the NMPC model is
+mass-normalized (specific thrust in N/kg, `cx` in 1/m). Mass belongs to the
+planner/plant, which keep their own `flatness.mass` / `plant.mass` check.
 
 The planner builds the reference on exactly this grid (no downsampling):
 point `k` is evaluated at `t0 + k·traj_res_s`, the playhead advances by
 `1/ctrl_frq` per request. Changing the grid (`horizon_s` / `traj_res_s`)
 also changes the codegen discretization — see below.
 
-### Cost weights: `ap_pnc/nmpc_gen/config.py` (`MpcConfig`)
+### Cost weights and bounds: the same `nmpc.yaml`
 
-The convex-over-nonlinear least-squares cost lives in
-`ap_pnc/nmpc_gen/config.py`:
+`config.py` and its duplicate `MpcConfig` are removed. YAML `objective` owns
+`position`, `velocity`, `body_y` and `command_derivative` weights;
+`command_bounds.lower/upper` bound the four absolute commands, not their derivatives.
 
-| Field    | Meaning |
-|----------|---------|
-| `qPos`   | Position tracking weight `[x, y, z]` |
-| `qVel`   | Velocity tracking weight |
-| `qAngV`  | Body-rate tracking weight |
-| `qYB`    | Body-y (lateral) tracking weight, derived from `qh`/`qv` |
-| `rU`     | Control-effort weight (per rotor `u`) |
-| `lb_r`/`ub_r` | Body-rate bounds |
-| `lb_u`/`ub_u` | Actuation bounds |
-
-The cost layout is `[pos, vel, rate, yb, u]`; the rate and actuation
-references are controller-side (rate weight is zero, `u` holds at hover).
+The objective output is `[pos(3), vel(3), yb(3), dc/dt(4)]`, with reference
+`[pos_ref, vel_ref, yb_ref, zeros(4)]`; terminal output is `[pos, vel, yb]`.
+No absolute hover/body-rate command target exists. Command states obey `dc/dt=u`;
+there is no first-order actuator lag in prediction. Stage 0 includes the derivative
+penalty. See [NMPC model and cost](docs/nmpc_model.md).
 
 Changing any weight, bound, or the horizon grid changes the OCP itself, so
 regenerate the solver and rebuild the node:
 
 ```bash
-uv run ap-pnc gen-nmpc-lib    # regenerate solver + bundle
-uv run ap-pnc build nmpc      # rebuild the nmpc node against the new bundle
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib # regenerate solver + bundle
+uv run --project "$AP_PNC_DIR" ap-pnc build nmpc   # statically relink the node
 ```
 
 ---
@@ -336,7 +371,8 @@ Nodes read sectioned yaml from `<AP_PNC_DIR>/bringup/config/`:
 - `planning.yaml` — `problem_formulation` (box, basic_traj, nested cost,
   MINCO, prior-free phi-theory flatness)
 - `nmpc.yaml` — the horizon convention + model:
-  `nmpc: {horizon_s, traj_res_s, ctrl_frq, mass, cz_rate, u_hover}`
+  `nmpc: {horizon_s, traj_res_s, ctrl_frq, initial_specific_thrust,
+  cx_alpha_slope, objective, command_bounds}`
 
 The aerodynamics alpha-solver reads
 `infra/sim_infra/aerodynamics/config/aero_alpha_solver.yaml`.

@@ -58,11 +58,19 @@ int main()
     using namespace simple_sim;
     const MotorModel model(synthetic(), 2.0, 30.0, Eigen::Vector3d::Constant(8),
                            1000000);
-    const auto       c = MotorModel::wing_from_flu();
-    check(c.determinant() == 1.0 && (c.transpose() * c).isIdentity(),
-          "frame must be proper rotation");
-    check((c * Eigen::Vector3d::UnitZ()).isApprox(Eigen::Vector3d::UnitX()),
-          "thrust axis mapping");
+    // The frame mapping now has one definition; this test uses the same helper
+    // as the plant, so it verifies the real conversion, not a private copy.
+    Eigen::Matrix3d frame;
+    for (int axis = 0; axis < 3; ++axis)
+      frame.col(axis) = wing_from_flu(Eigen::Vector3d::Unit(axis));
+    check(
+        frame.determinant() == 1.0 && (frame.transpose() * frame).isIdentity(),
+        "frame must be a proper rotation");
+    check((wing_from_flu(Eigen::Vector3d::UnitZ()))
+                  .isApprox(Eigen::Vector3d::UnitX()) &&
+              (flu_from_wing(wing_from_flu(Eigen::Vector3d(1, 2, 3)))
+                   .isApprox(Eigen::Vector3d(1, 2, 3))),
+          "thrust axis mapping / inverse");
     const auto trim =
         model.initialize(State{}, {9.81, Eigen::Vector3d::Zero()});
     const auto wrench = model.wrench(trim);
