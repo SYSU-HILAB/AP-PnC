@@ -313,8 +313,13 @@ namespace simple_sim
                 // ideal profile, where a first-order thrust loop drives it, so
                 // on this path its derivative is identically zero and the
                 // effectiveness estimate is meaningless.
-                const double measured =
-                    model->wrench(s).force.z() / config_.plant.mass;
+                // The simulated IMU: the total specific force (thrust plus
+                // aerodynamics) along the body axes. The estimator regresses on
+                // its thrust-axis component, exactly as px4ctrl regresses on
+                // the accelerometer; the motor thrust alone is not a
+                // measurement and excluding the aerodynamic part would make the
+                // lumped effectiveness inconsistent with the reading.
+                const double measured = runner_->feedback().specific_force.z();
                 model->set_realized_throttle(
                     realization->command(c.specific_force, measured, inner_dt));
               }
