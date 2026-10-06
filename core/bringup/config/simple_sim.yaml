@@ -71,7 +71,12 @@ simple_sim:
     # carries the tracking, roll in between. Owner-selected; on practical + indi /
     # lyu / se3-aero-ff this costs +41/+20/+87% position RMSE against the uniform
     # 48 (0.0217/0.0563/0.0959 vs 0.0154/0.0470/0.0512).
-    attitude_gain: [10.0, 20.0, 10.0]
+    # Halved again by owner request ([5,10,5]). Tuning path, practical + indi / lyu /
+    # se3-aero-ff, position RMSE [m]: attitude [48] with p8/v6 = 0.0154/0.0470/0.0512;
+    # [10,20,10] = 0.0217/0.0563/0.0959; with p4/v3 = 0.0444/0.1187/0.2297;
+    # [5,10,5] with p4/v3 = 0.0707/0.1740/0.8813, where the rate limits saturate on
+    # all three axes at 12 m/s.
+    attitude_gain: [5.0, 10.0, 5.0]
     # Body-rate output limit [rad/s, FLU], the same numbers the NMPC uses as its
     # command bounds: yaw lower than pitch and roll, as a real airframe does.
     max_rate: [1.5, 2.5, 1.5]
