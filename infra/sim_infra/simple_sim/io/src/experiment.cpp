@@ -200,10 +200,22 @@ namespace simple_sim
       RunnerConfig runner_cfg{config_.physics_dt_ns, control_dt,
                               static_cast<std::int64_t>(count)};
       runner_cfg.validate();
+      // One aerodynamic instance, shared by the controller (flight-path
+      // feedforward) and the plant (injected force). The ideal profile's
+      // first-order thrust loop IS the closed loop on the thrust axis, so the
+      // aerodynamic force is not injected along that axis a second time. The
+      // controller's feedforward model must apply the same rule.
+      const bool inject_thrust_axis_aero =
+          config_.aero.inject_thrust_axis < 0
+              ? config_.actuator_model != "ideal_rate_loop"
+              : config_.aero.inject_thrust_axis == 1;
+      const bool zero_thrust_axis_aero = !inject_thrust_axis_aero;
+      const auto aero_model = aerodynamics::make_aero(config_.aero_model);
       if (config_.controller == "se3")
       {
         controller_ = std::make_unique<Se3Controller>(
-            trajectory_, config_.plant.gravity, config_.se3);
+            trajectory_, config_.plant.gravity, config_.se3, aero_model,
+            config_.plant.mass, zero_thrust_axis_aero, config_.aero);
       }
 #ifdef SIMPLE_SIM_WITH_NMPC
       else
@@ -233,14 +245,11 @@ namespace simple_sim
       }
 #endif
       // Any canonical model ("none" resolves to the null model, wrench = 0)
-      ForceModel aero = tailsitter_aero(
-          aerodynamics::make_aero(config_.aero_model), config_.aero);
-      if (config_.actuator_model == "ideal_rate_loop")
+      ForceModel aero = tailsitter_aero(aero_model, config_.aero);
+      if (zero_thrust_axis_aero)
       {
-        // The ideal profile's first-order thrust loop IS the closed loop on the
-        // thrust axis, so the aerodynamic force is not injected along that axis
-        // a second time. This also matches the prediction model, which carries
-        // the aerodynamic force only along body X.
+        // See above: matches the prediction model, which carries the
+        // aerodynamic force only along body X.
         auto inner = std::move(aero);
         aero       = [inner](const State &state)
         {

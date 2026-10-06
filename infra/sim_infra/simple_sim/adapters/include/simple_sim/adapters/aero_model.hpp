@@ -16,6 +16,12 @@ namespace simple_sim
     // forced to zero, matching the paper's neglect of the roll/yaw aerodynamic
     // moment (M_a = 0 in Eq. 26). Explicit, not silent: see simple_sim.yaml.
     bool lateral_moment_only = false;
+    // Inject the aerodynamic force along the thrust axis (body +Z)?
+    // -1 = follow the profile rule (the ideal profile's first-order thrust loop
+    // already closes that axis, so the force is not injected a second time),
+    // 0 = never inject, 1 = always inject. The controller's feedforward model
+    // reads the same value, so plant and prediction cannot diverge.
+    int inject_thrust_axis = -1;
   };
 
   // Zhang-Lyu uses the wing FRD frame: (x,y,z)_wing = (z,-y,x)_FLU.

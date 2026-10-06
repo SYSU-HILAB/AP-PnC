@@ -1,7 +1,7 @@
 # Tracking-only simulation. No collision, ground contact, LiDAR, PX4 or MAVROS.
 # Reference belongs to planner; horizon/outer-loop period belong to nmpc.yaml.
 simple_sim:
-  controller: nmpc              # nmpc | se3
+  controller: se3
   physics_dt_ns: 1000000         # fixed RK4 step; must divide the control period
   duration_s: 0.0                # 0: run until the full prediction horizon no longer fits
   plant:
@@ -22,6 +22,9 @@ simple_sim:
     max_moment: [2.0, 2.0, 1.0]  # N m, FLU
     max_specific_force: 30.0     # m/s^2, along body +Z
   se3:
+    # Flatness feedforward: solve alpha numerically from the true aerodynamic
+    # force balance, rebuild the thrust axis, keep the planned yb.
+    aero_flatness_feedforward: false
     position_gain: [4.0, 4.0, 4.0]
     velocity_gain: [3.0, 3.0, 3.0]
     attitude_gain: [6.0, 6.0, 6.0]
@@ -32,6 +35,10 @@ simple_sim:
     # moment. The plant aero models still compute all three; this is an explicit
     # boundary choice, recorded in every run's simple_sim.yaml snapshot.
     lateral_moment_only: true
+    # Inject the aerodynamic force along the thrust axis? auto = the profile rule
+    # (the ideal profile's first-order thrust loop already closes that axis).
+    # The controller's flatness feedforward uses the same value.
+    inject_thrust_axis: auto
     scale: 1.0
     wind_world: [0.0, 0.0, 0.0]  # ENU, m/s
   ros:

@@ -66,6 +66,8 @@ namespace simple_sim
     feedback.applied = actuated;
     feedback.specific_force =
         (actuated.force + feedback.aerodynamic.force) / config_.mass;
+    feedback.aerodynamic_specific_force =
+        feedback.aerodynamic.force / config_.mass;
     return feedback;
   }
   State Plant::advance(const State &state, const Command &command, double dt,

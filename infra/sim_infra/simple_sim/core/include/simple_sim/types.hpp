@@ -58,8 +58,12 @@ namespace simple_sim
   {
     Eigen::Vector3d specific_force =
         Eigen::Vector3d::Zero();  // ideal IMU, no gravity
-    Wrench aerodynamic;
-    Wrench applied;
+    // True aerodynamic specific force (body FLU, m/s^2). This is the
+    // simulator's own model evaluation, so a controller using it gets a perfect
+    // aero feedforward; a real implementation would use a model or an estimate.
+    Eigen::Vector3d aerodynamic_specific_force = Eigen::Vector3d::Zero();
+    Wrench          aerodynamic;
+    Wrench          applied;
   };
 
   struct StepContext

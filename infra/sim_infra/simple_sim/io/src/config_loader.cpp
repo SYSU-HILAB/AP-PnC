@@ -145,6 +145,8 @@ namespace simple_sim
       motor.validate();
     }
 
+    config.se3.aero_flatness_feedforward =
+        sim["se3"]["aero_flatness_feedforward"].as<bool>(false);
     config.se3.position    = read_vector3(sim["se3"]["position_gain"]);
     config.se3.velocity    = read_vector3(sim["se3"]["velocity_gain"]);
     config.se3.attitude    = read_vector3(sim["se3"]["attitude_gain"]);
@@ -153,6 +155,17 @@ namespace simple_sim
     config.aero.scale      = sim["aero"]["scale"].as<double>();
     config.aero.lateral_moment_only =
         sim["aero"]["lateral_moment_only"].as<bool>(false);
+    const auto injection =
+        sim["aero"]["inject_thrust_axis"].as<std::string>("auto");
+    if (injection == "auto")
+      config.aero.inject_thrust_axis = -1;
+    else if (injection == "true")
+      config.aero.inject_thrust_axis = 1;
+    else if (injection == "false")
+      config.aero.inject_thrust_axis = 0;
+    else
+      throw std::invalid_argument(
+          "aero.inject_thrust_axis must be auto, true or false");
     // Canonical model names and their project validation status come from the
     // single table in aerodynamics/aero_models.hpp.
     const auto *entry = aerodynamics::find_aero_model(config.aero_model);
