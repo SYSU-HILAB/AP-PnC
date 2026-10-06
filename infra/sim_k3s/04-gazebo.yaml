@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ap-pnc-gazebo
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: ap-pnc-gazebo
+    app.kubernetes.io/part-of: ap-pnc
+    app.kubernetes.io/component: simulator
+    sim.ap-pnc/type: gazebo
+spec:
+  replicas: 0 # 由 sim-dispatcher 根据 sim-config 动态控制
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ap-pnc-gazebo
+  template:
+    metadata:
+      labels:
+        app: ap-pnc-gazebo
+        app.kubernetes.io/name: ap-pnc-gazebo
+        app.kubernetes.io/part-of: ap-pnc
+        sim.ap-pnc/type: gazebo
+    spec:
+      hostNetwork: true
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        # Container 1: stock PX4 v1.17.0 + Gazebo Jetty SITL (gz_x500)
+        - name: px4-simulator
+          image: px4-simulator:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: DISPLAY
+                  optional: true
+            - name: QT_X11_NO_MITSHM
+              value: "1"
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "all"
+            - name: XDG_RUNTIME_DIR
+              value: "/tmp/runtime-px4"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[px4-simulator] Starting stock PX4 v1.17.0 Gazebo Jetty SITL..."
+              cd /home/px4/PX4-Autopilot && make px4_sitl gz_x500
+              exec bash
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "8"
+              memory: 16Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix
+              name: x11-unix
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+
+        # Container 2: nav_infra — single base-services gateway (mavros2 +
+        # px4ctrl FCU interface/controller in the sim profile; livox +
+        # fast_lio + ekf_quat join in the real one). Research code stays in
+        # ap-pnc.
+        # NAV_PROFILE selects the bringup profile (sim | real) via ConfigMap.
+        - name: nav_infra
+          image: nav_infra:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NAV_PROFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: NAV_PROFILE
+                  optional: true
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[nav_infra] Starting base-services gateway (profile: ${NAV_PROFILE:-sim})..."
+              exec ros2 launch bringup nav_infra.launch.py profile:=${NAV_PROFILE:-sim}
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "4"
+              memory: 4Gi
+            requests:
+              cpu: "500m"
+              memory: 512Mi
+
+        # Container 3: AP-PnC ROS2 NMPC & Planning Node
+        - name: ap-pnc
+          image: ap-pnc:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: DISPLAY
+                  optional: true
+            - name: QT_X11_NO_MITSHM
+              value: "1"
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+            - name: AP_PNC_DIR
+              value: "/ap-pnc"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[ap-pnc] Starting AP-PnC Planning & Control stack..."
+              exec bash
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+            requests:
+              cpu: "500m"
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix
+              name: x11-unix
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+      volumes:
+        - name: x11-unix
+          hostPath:
+            path: /tmp/.X11-unix
+            type: DirectoryOrCreate
+        - name: host-localtime
+          hostPath:
+            path: /etc/localtime
+            type: File

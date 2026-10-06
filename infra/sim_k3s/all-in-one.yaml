@@ -1,0 +1,396 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sim-config
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-config
+    app.kubernetes.io/part-of: ap-pnc
+data:
+  # Selection only. Flight/simulation configuration belongs to core/bringup.
+  # simple-sim: tracking-only lockstep C++; gazebo: PX4 SITL; stop: scale to zero.
+  SIM_TYPE: "simple-sim"
+  HEADLESS: "true"
+  DISPLAY: ":0"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sim-dispatcher-sa
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sim-dispatcher-role
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    verbs: ["get", "watch", "list", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sim-dispatcher-rb
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+subjects:
+  - kind: ServiceAccount
+    name: sim-dispatcher-sa
+    namespace: sim
+roleRef:
+  kind: Role
+  name: sim-dispatcher-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sim-dispatcher
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: sim-dispatcher
+    app.kubernetes.io/part-of: ap-pnc
+    app.kubernetes.io/component: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sim-dispatcher
+  template:
+    metadata:
+      labels:
+        app: sim-dispatcher
+        app.kubernetes.io/name: sim-dispatcher
+        app.kubernetes.io/part-of: ap-pnc
+    spec:
+      serviceAccountName: sim-dispatcher-sa
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: dispatcher
+          image: alpine:3.19
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBECONFIG
+              value: /etc/rancher/k3s/k3s.yaml
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "[sim-dispatcher] Starting AP-PnC Simulation Dispatcher in namespace '$NAMESPACE'..."
+
+              LAST_APPLIED=""
+              while true; do
+                TARGET=$(kubectl get cm sim-config -n "$NAMESPACE" -o jsonpath='{.data.SIM_TYPE}' 2>/dev/null || true)
+                if [ -n "$TARGET" ] && [ "$TARGET" != "$LAST_APPLIED" ]; then
+                  echo "[sim-dispatcher] [$(date +'%Y-%m-%d %H:%M:%S')] Detected SIM_TYPE change: '${LAST_APPLIED}' -> '${TARGET}'"
+                  case "$TARGET" in
+                    simple|simple-sim|simple_sim)
+                      echo "[sim-dispatcher] Activating simple-sim (scale: ap-pnc-simple-sim=1, ap-pnc-gazebo=0)..."
+                      kubectl scale deployment ap-pnc-simple-sim -n "$NAMESPACE" --replicas=1 || true
+                      kubectl scale deployment ap-pnc-gazebo -n "$NAMESPACE" --replicas=0 || true
+                      LAST_APPLIED="$TARGET"
+                      ;;
+                    gazebo|gz)
+                      echo "[sim-dispatcher] Activating gazebo (scale: ap-pnc-gazebo=1, ap-pnc-simple-sim=0)..."
+                      kubectl scale deployment ap-pnc-gazebo -n "$NAMESPACE" --replicas=1 || true
+                      kubectl scale deployment ap-pnc-simple-sim -n "$NAMESPACE" --replicas=0 || true
+                      LAST_APPLIED="$TARGET"
+                      ;;
+                    stop|none|off)
+                      echo "[sim-dispatcher] Stopping all simulations (scale: ap-pnc-simple-sim=0, ap-pnc-gazebo=0)..."
+                      kubectl scale deployment ap-pnc-simple-sim -n "$NAMESPACE" --replicas=0 || true
+                      kubectl scale deployment ap-pnc-gazebo -n "$NAMESPACE" --replicas=0 || true
+                      LAST_APPLIED="$TARGET"
+                      ;;
+                    *)
+                      echo "[sim-dispatcher] Warning: Unknown SIM_TYPE '$TARGET'. Expected 'simple-sim', 'gazebo', or 'stop'."
+                      ;;
+                  esac
+                fi
+                sleep 3
+              done
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          volumeMounts:
+            - mountPath: /bin/kubectl
+              name: k3s-bin
+              readOnly: true
+            - mountPath: /var/lib/rancher/k3s/data
+              name: k3s-data
+              readOnly: true
+            - mountPath: /etc/rancher/k3s/k3s.yaml
+              name: k3s-yaml
+              readOnly: true
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+      volumes:
+        - name: k3s-bin
+          hostPath:
+            path: /usr/local/bin/k3s
+            type: File
+        - name: k3s-data
+          hostPath:
+            path: /var/lib/rancher/k3s/data
+            type: Directory
+        - name: k3s-yaml
+          hostPath:
+            path: /etc/rancher/k3s/k3s.yaml
+            type: File
+        - name: host-localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ap-pnc-simple-sim
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: ap-pnc-simple-sim
+    app.kubernetes.io/part-of: ap-pnc
+    app.kubernetes.io/component: simulator
+    sim.ap-pnc/type: simple-sim
+spec:
+  replicas: 0 # 由 sim-dispatcher 根据 sim-config 动态控制
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ap-pnc-simple-sim
+  template:
+    metadata:
+      labels:
+        app: ap-pnc-simple-sim
+        app.kubernetes.io/name: ap-pnc-simple-sim
+        app.kubernetes.io/part-of: ap-pnc
+        sim.ap-pnc/type: simple-sim
+    spec:
+      hostNetwork: true
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: simple-sim
+          image: simple-sim:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: DISPLAY
+                  optional: true
+            - name: QT_X11_NO_MITSHM
+              value: "1"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              source /workspace/.artifacts/colcon/install/setup.bash
+              echo "[simple-sim] Launching lockstep tracking simulator (initially paused)"
+              exec ros2 launch bringup simple_sim.launch.py rviz:=false
+          resources:
+            limits:
+              cpu: "4"
+              memory: 4Gi
+            requests:
+              cpu: "500m"
+              memory: 512Mi
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix
+              name: x11-unix
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+      volumes:
+        - name: x11-unix
+          hostPath:
+            path: /tmp/.X11-unix
+            type: DirectoryOrCreate
+        - name: host-localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ap-pnc-gazebo
+  namespace: sim
+  labels:
+    app.kubernetes.io/name: ap-pnc-gazebo
+    app.kubernetes.io/part-of: ap-pnc
+    app.kubernetes.io/component: simulator
+    sim.ap-pnc/type: gazebo
+spec:
+  replicas: 0 # 由 sim-dispatcher 根据 sim-config 动态控制
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ap-pnc-gazebo
+  template:
+    metadata:
+      labels:
+        app: ap-pnc-gazebo
+        app.kubernetes.io/name: ap-pnc-gazebo
+        app.kubernetes.io/part-of: ap-pnc
+        sim.ap-pnc/type: gazebo
+    spec:
+      hostNetwork: true
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        # Container 1: stock PX4 v1.17.0 + Gazebo Jetty SITL (gz_x500)
+        - name: px4-simulator
+          image: px4-simulator:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: DISPLAY
+                  optional: true
+            - name: QT_X11_NO_MITSHM
+              value: "1"
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "all"
+            - name: XDG_RUNTIME_DIR
+              value: "/tmp/runtime-px4"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[px4-simulator] Starting stock PX4 v1.17.0 Gazebo Jetty SITL..."
+              cd /home/px4/PX4-Autopilot && make px4_sitl gz_x500
+              exec bash
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "8"
+              memory: 16Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix
+              name: x11-unix
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+
+        # Container 2: nav_infra — single base-services gateway (mavros2 +
+        # px4ctrl FCU interface/controller in the sim profile; livox +
+        # fast_lio + ekf_quat join in the real one). Research code stays in
+        # ap-pnc.
+        # NAV_PROFILE selects the bringup profile (sim | real) via ConfigMap.
+        - name: nav_infra
+          image: nav_infra:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NAV_PROFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: NAV_PROFILE
+                  optional: true
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[nav_infra] Starting base-services gateway (profile: ${NAV_PROFILE:-sim})..."
+              exec ros2 launch bringup nav_infra.launch.py profile:=${NAV_PROFILE:-sim}
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "4"
+              memory: 4Gi
+            requests:
+              cpu: "500m"
+              memory: 512Mi
+
+        # Container 3: AP-PnC ROS2 NMPC & Planning Node
+        - name: ap-pnc
+          image: ap-pnc:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              valueFrom:
+                configMapKeyRef:
+                  name: sim-config
+                  key: DISPLAY
+                  optional: true
+            - name: QT_X11_NO_MITSHM
+              value: "1"
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+            - name: AP_PNC_DIR
+              value: "/ap-pnc"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "[ap-pnc] Starting AP-PnC Planning & Control stack..."
+              exec bash
+          stdin: true
+          tty: true
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+            requests:
+              cpu: "500m"
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix
+              name: x11-unix
+            - mountPath: /etc/localtime
+              name: host-localtime
+              readOnly: true
+      volumes:
+        - name: x11-unix
+          hostPath:
+            path: /tmp/.X11-unix
+            type: DirectoryOrCreate
+        - name: host-localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---

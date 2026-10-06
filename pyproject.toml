@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ap-pnc"
+version = "0.1.0"
+description = "AP-PnC tailsitter project CLI"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "typer",
+    "rich",
+    "pyyaml",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.53.0",
+    "websockets>=16.1.1",
+]
+
+[project.optional-dependencies]
+telemetry = [
+    "opentelemetry-sdk==1.45.0",
+    "opentelemetry-exporter-otlp-proto-http==1.45.0",
+]
+
+[project.scripts]
+ap-pnc = "tooling.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff==0.5.4",
+    "pandas",
+    "pybind11",
+    "httpx>=0.28.1",
+    "pyarrow>=25.0.1",
+]
+extra = [
+    "jax[cpu]",
+    "torch",
+    "casadi",
+    "matplotlib",
+    "optax",
+    "flax",
+    "safetensors",
+    "seaborn",
+]
+
+[tool.uv]
+package = true
+
+[tool.setuptools.packages.find]
+where = [".", "infra/sim_infra/aerodynamics/python"]
+include = ["tooling*", "aerodynamics*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+required-version = "0.5.4"
+src = ["tooling", "ros_packages", "tests"]
+extend-exclude = [
+    "artifacts",
+    "docs",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "B",
+    "UP",
+    "NPY",
+    "RUF100",
+]
+ignore = [
+    "E203",
+    "E266",
+    "E501",
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tooling", "ros_packages"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"

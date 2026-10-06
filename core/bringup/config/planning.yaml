@@ -1,0 +1,61 @@
+# AP-PnC prior-free planning configuration (phi-theory trajectory generation).
+#
+# Loaded by the planner node from <AP_PNC_DIR>/bringup/config/planning.yaml.
+
+problem_formulation:
+  piece_n: 10
+  box:
+    # Lateral half-extents [m]. The SFC planes are axis aligned, so
+    # left  = -y half-length and right = +y half-length of the box.
+    left: 0.3
+    right: 0.3
+    up: 0.1
+    down: 0.1
+    front: 0.5
+    back: 0.5
+  basic_traj:
+    type: 2
+    radius: 25.0
+    height: 0.0
+    rate: 0.1
+    curvature_factor: 0.8
+    wave_len: 50.0
+  cost:
+    v_max: 12.0
+    omg_x_max: 0.8
+    omg_y_max: 2.5
+    omg_z_max: 0.8
+    acc_max: 12.0
+    # Bounds on the FRAME-FREE tangential acceleration v.a/|v|, not rotor thrust.
+    tangential_acc_min: -2.0
+    tangential_acc_max: 2.0
+    # Collective specific thrust a_T = eta . z_B [N/kg]. This is the REAL thrust
+    # (the `tangential_acc_*` pair above is the frame-free v.a/|v|). A minimum
+    # keeps the plan out of the degenerate thrust-off regime where the wing alone
+    # carries more than gravity.
+    thrust_min: 2.0
+    thrust_max: 22.0
+    thrust_weight: 10000.0
+    vel_weight: 10000.0
+    acc_weight: 0.0
+    omg_x_weight: 20000.0
+    omg_y_weight: 10000.0
+    omg_z_weight: 20000.0
+    tangential_acc_weight: 10000.0
+    time_weight: 10000.0
+    omg_consistent_weight: 0.0
+  minco:
+    smoothing_eps: 0.01
+    integral_intervs: 30
+    rel_cost_tol: 1.0e-05
+  flatness:
+    phi:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - -0.09408
+    mass: 2.0

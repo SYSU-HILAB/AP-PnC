@@ -1,0 +1,47 @@
+# The caller selects a service explicitly; bare `up` starts neither architecture.
+x-dev: &dev
+  ipc: host
+  init: true
+  network_mode: host
+  environment:
+    AP_PNC_DIR: /workspace
+    RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+  volumes:
+    - ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}/core/ros_packages:/workspace/src:rw
+    - ${AP_PNC_DIR}/core/bringup:/workspace/bringup:rw
+    - ${AP_PNC_DIR}/infra/sim_infra/aerodynamics:/workspace/infra/sim_infra/aerodynamics:ro
+    - ${AP_PNC_DIR}/.artifacts/nmpc_solver:/workspace/.artifacts/nmpc_solver:ro
+  stdin_open: true
+  tty: true
+
+services:
+  ros2-dev-amd64:
+    <<: *dev
+    profiles: [amd64]
+    platform: linux/amd64
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/core/docker/ros2-base.dockerfile
+      target: base
+    image: ap-pnc-ros2-base:amd64
+    volumes:
+      - ${AP_PNC_DIR}/core/ros_packages:/workspace/src:rw
+      - ${AP_PNC_DIR}/core/bringup:/workspace/bringup:rw
+      - ${AP_PNC_DIR}/infra/sim_infra/aerodynamics:/workspace/infra/sim_infra/aerodynamics:ro
+      - ${AP_PNC_DIR}/.artifacts/nmpc_solver/libnmpc_bundle_x86_64.a:/workspace/.artifacts/nmpc_solver/libnmpc_bundle.a:ro
+      - ${AP_PNC_DIR}/.artifacts/docker-dev/amd64/colcon:/workspace/.artifacts/colcon
+  ros2-dev-arm64:
+    <<: *dev
+    profiles: [arm64]
+    platform: linux/arm64
+    build:
+      context: ${AP_PNC_DIR:?Set absolute AP_PNC_DIR}
+      dockerfile: ${AP_PNC_DIR}/core/docker/ros2-base.dockerfile
+      target: base
+    image: ap-pnc-ros2-base:arm64
+    volumes:
+      - ${AP_PNC_DIR}/core/ros_packages:/workspace/src:rw
+      - ${AP_PNC_DIR}/core/bringup:/workspace/bringup:rw
+      - ${AP_PNC_DIR}/infra/sim_infra/aerodynamics:/workspace/infra/sim_infra/aerodynamics:ro
+      - ${AP_PNC_DIR}/.artifacts/nmpc_solver/libnmpc_bundle_aarch64.a:/workspace/.artifacts/nmpc_solver/libnmpc_bundle.a:ro
+      - ${AP_PNC_DIR}/.artifacts/docker-dev/arm64/colcon:/workspace/.artifacts/colcon
