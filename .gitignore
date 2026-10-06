@@ -57,3 +57,7 @@ src/spdlog
 
 # Research notes and reports are local working material, not repository content.
 docs/
+
+# Third-party navigation stack (vendored FAST-LIO / Livox SDK / px4ctrl); kept
+# on disk for the container builds, not redistributed.
+infra/nav_infra/

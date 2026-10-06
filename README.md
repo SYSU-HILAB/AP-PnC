@@ -1,4 +1,5 @@
 # AP-PnC
+**The complete usable version will be delayed by approximately one month or more.**
 
 Aerodynamic prior-free trajectory generation and tracking control for a tail-sitter UAV.
 
@@ -98,6 +99,10 @@ commanded collective thrust and body rates become a wrench.
 The `ideal` profile is the control baseline: it isolates the guidance and control
 law from actuator behaviour. The `practical` profile is what to use when the
 question is about the vehicle rather than the guidance.
+
+The navigation stack under `infra/nav_infra/` (vendored FAST-LIO, the Livox SDK
+and px4ctrl) stays on disk for the container builds but is not distributed with
+this repository, so a fresh clone does not contain it.
 
 ### Figures
 
