@@ -7,6 +7,8 @@ Aerodynamic prior-free trajectory generation and tracking control for a tail-sit
 > for a Tail-Sitter UAV**
 > Erchao Rong, Zihao Liu, Junning Liang, Jianguo Wang, Xiao Jie, Haoran Fu,
 > Ziliang Chen, Ximin Lyu — arXiv:2609.11698 · <https://arxiv.org/abs/2609.11698>
+> IEEE/ASME Transactions on Mechatronics, Early Access:
+> <https://ieeexplore.ieee.org/document/11719954>
 
 <details>
 <summary>BibTeX</summary>
@@ -18,6 +20,7 @@ Aerodynamic prior-free trajectory generation and tracking control for a tail-sit
   author = {Rong, Erchao and Liu, Zihao and Liang, Junning and Wang, Jianguo and
             Jie, Xiao and Fu, Haoran and Chen, Ziliang and Lyu, Ximin},
   journal = {arXiv preprint arXiv:2609.11698},
+  note = {IEEE/ASME Transactions on Mechatronics, Early Access},
   year   = {2026},
   url    = {https://arxiv.org/abs/2609.11698}
 }
@@ -187,4 +190,5 @@ None of these are needed by the quick start, and none of them are validated by i
 | QGroundControl, container desktop | optional | a noVNC desktop image; not required by any command above. |
 | Real hardware | code present, unvalidated | `nav_infra` carries the px4ctrl tracking/INDI controller, mavros profiles, Livox drivers and FAST-LIO. No hardware or flight acceptance is claimed. |
 | K3s orchestration | planned | ConfigMap-driven switching, running against cri-dockerd and the images you built yourself — scheduling over the same containers, not a second runtime. |
+| Dora support | partial | the offline stack already runs as dora nodes (`simulate -> record -> verify`, dora 1.0.1). The planner, the NMPC and the ROS/PX4 bridges are not dora nodes yet, and the C++ simulator is still the only plant. |
 | Web reports and sweep aggregation | planned | browser views of trajectories and tracking error, and NMPC-vs-SE3 comparison across runs. |
