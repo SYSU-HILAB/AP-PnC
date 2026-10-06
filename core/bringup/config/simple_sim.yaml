@@ -65,8 +65,8 @@ simple_sim:
     # translation loop. Measured cost on practical + indi / lyu / se3-aero-ff:
     # +105/+111/+140% position RMSE (0.0444/0.1187/0.2297 against
     # 0.0217/0.0563/0.0959 with the previous values and the same attitude gain).
-    position_gain: [4.0, 4.0, 4.0]
-    velocity_gain: [3.0, 3.0, 3.0]
+    position_gain: [2.0, 2.0, 2.0]
+    velocity_gain: [1.5, 1.5, 1.5]
     # Per-axis: yaw low (its rate limit is the lowest), pitch high because it
     # carries the tracking, roll in between. Owner-selected; on practical + indi /
     # lyu / se3-aero-ff this costs +41/+20/+87% position RMSE against the uniform
