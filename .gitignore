@@ -54,3 +54,6 @@ src/spdlog
 
 # colcon logs must live under .artifacts/ (see AGENTS.md); catch stray ones
 /log/
+
+# Research notes and reports are local working material, not repository content.
+docs/

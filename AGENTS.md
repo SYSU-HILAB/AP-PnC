@@ -172,7 +172,8 @@ Lint rules are agent-enforced, not README-documented:
 
 ## OpenTelemetry: project-wide observability
 
-- Follow `docs/observability.md` for the full coverage and rollout contract.
+- Follow the local (untracked) `docs/observability.md` notes for the full coverage
+  and rollout contract.
   The user requests deep CLI/dora/planner/NMPC/plant/actuator/ROS/artifact
   observability, not just generic process logs. State implemented coverage
   separately from planned hooks and synthetic probes.

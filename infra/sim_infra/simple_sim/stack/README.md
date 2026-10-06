@@ -63,7 +63,7 @@ Default remains off; SDK flush/shutdown never runs within a control period.
 Native ARM64 full off/on/outage comparisons preserve 874 ticks × 74 scientific
 columns and actual solver-reference CSV (only solve wall time excluded). A real
 status4 failure produces ERROR spans and no successful replay marker. See the full
-[project observability contract](../../../../docs/observability.md) for scope/gates.
+the project observability contract for scope/gates.
 
 ## Terminal reference and speed sweeps
 
@@ -84,7 +84,7 @@ uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/st
 ```
 
 New matched sweep completion: 6 m/s 5/5, 8 m/s 4/5, 10/12 m/s 0/5. See the
-[current speed/hold report](../../../../docs/tracking_speed_report.md). Historical
+speed/hold report. Historical
 17.48 s v6 figures below exclude the last prediction tail and are not the new
 full-trajectory+dwell window. Do not compare failed partial RMSE with full runs.
 
@@ -138,7 +138,7 @@ The second command only plots saved CSV. Model-returned wing-FRD alpha/beta and
 FLU aerodynamic force/moment are recorded at before/after states; curves include
 the final committed state. Low-speed angle guards remain model-owned.
 
-[Actual 6/8/10/12 results](../../../../docs/tracking_integrator_speed_report.md):
+Actual 6/8/10/12 results:
 11 status4 failures; ma/6 completes but position RMSE is 18.98 m and max error 69.36 m.
 Completion/verified RRD is scientific-record validation, **not tracking acceptance**.
 Do not test phi/advanced in this campaign.
@@ -200,7 +200,7 @@ matlab-vtol plant aero models (none/lyu/phi/ma/advanced) finish 17.48 s / 874 ti
 at v_max setting 6 and pass independent replay verification. This is a soft speed
 constraint: reference peak is about 6.00201 m/s, not strictly ≤6.0000. Actual NMPC
 references are audited separately from planned rates/thrust; see
-[tracking evaluation](../../../../docs/tracking_evaluation.md). Native dora OTel
+the tracking evaluation notes. Native dora OTel
 off/on/outage also preserve all 74 non-wall-time scientific columns on the full
 Lyu run. No hardware/flight acceptance is implied.
 
