@@ -59,9 +59,14 @@ validate_job() {
 # compiled C++ install, and isolate every job's simulator output.
 container() {
   local job="$1"; shift
+  # --no-simulator: export/replay a finished job, which does not need the
+  # simulator binary. An argument, not an environment variable: AP_PNC_DIR is the
+  # only variable this project defines.
+  local with_simulator=1
+  if [[ "${1:-}" = --no-simulator ]]; then with_simulator=0; shift; fi
   validate_job "$job"
   local sim_bind=()
-  if [[ "${STACK_TEST_EXPORT_ONLY:-0}" != 1 ]]; then
+  if [[ "$with_simulator" = 1 ]]; then
     sim_bind=(-v "$base/cpp/install/lib/simple_sim/simple_sim_run:/workspace/.artifacts/colcon/install/lib/simple_sim/simple_sim_run:ro")
   fi
   local telemetry_args=(--network none)
@@ -119,7 +124,7 @@ case "$command" in
     validate_job "$job"
     # Source is copied into the job so the image stays independent of host cwd.
     cp "$source_dir/acceptance.py" "$job/acceptance.py"
-    STACK_TEST_EXPORT_ONLY=1 container "$job" python3 /workspace/.artifacts/simple-stack/job/acceptance.py
+    container "$job" --no-simulator python3 /workspace/.artifacts/simple-stack/job/acceptance.py
     ;;
   view)
     job="${2:?absolute job directory}"; run="${3:?simulator run directory name}"
