@@ -159,13 +159,12 @@ mistaken for a host install that does not exist:
 | `benchmark` | offline plan → track → metrics pipeline | in-process Python |
 | `sim` | start, stop and follow the logs of the simulation stack | K3s, over the images you built |
 
-The ROS/Gazebo lifecycle commands are gone until the roadmap reaches real
-hardware: the only runtime this repository claims today is the offline one.
-
-`ap-pnc docker` is the container layer underneath, not a separate workflow: use
-it to manage images directly (`build`, `up`, `down`, `config`, `dev`).
-`ap-pnc lint` and `ap-pnc telemetry` are local; the collector for the latter runs
-from a compose file.
+The command groups are the ones this repository can run today: generate the
+solver bundle, build the C++ packages, run the benchmark, run the tests, lint,
+and the K3s simulation management. The ROS/Gazebo lifecycle, the compose layer and
+the telemetry collector CLI are gone until the roadmap reaches them; the
+libraries behind them (`tooling/docker_runtime.py`, `tooling/observability.py`)
+stay, because the code that does run uses them.
 
 `uv` is the only Python entry point, and the CLI resolves every path it needs
 from `AP_PNC_DIR`.
