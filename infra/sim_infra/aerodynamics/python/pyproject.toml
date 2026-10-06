@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "pybind11>=2.10.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aerodynamics_bindings"
+version = "0.1.0"
+description = "Python bindings for AP-PnC aerodynamics models"
+authors = [{name = "Hanamy"}]
+requires-python = ">=3.8"
+dependencies = ["pybind11>=2.10.0"]
+
+[tool.setuptools]
+ext-modules = [
+    {name = "aerodynamics_bindings", sources = ["../src/pybind_aerodynamics.cpp"]}
+]
