@@ -1,8 +1,8 @@
 """Stack-level sweep for the SE3 aerodynamic feedforward.
 
-Drives ``infra/sim_infra/simple_sim/stack/stack.sh run`` over a matrix of
-aerodynamic models, speed caps and controller variants, and prints one table at
-the end. This is deliberately a thin driver: every number in the table comes from
+Runs a matrix of aerodynamic models, speed caps, actuator profiles and controller
+variants through :mod:`tooling.simple_stack` — which owns the whole job lifecycle
+— and prints one table at the end. This is deliberately a thin driver: every number in the table comes from
 a normal run's manifest/metrics, so the same artefacts can be inspected by hand
 afterwards. Controller gains are not a dimension here — the tuned values live in
 ``core/bringup/config/simple_sim.yaml``, which is the single source of truth for
