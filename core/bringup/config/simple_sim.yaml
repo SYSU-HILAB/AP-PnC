@@ -34,9 +34,11 @@ simple_sim:
     innovation_gate: 3.0
     var_valid_threshold: 0.01
     min_throttle_update: 0.05
-    # Loop bandwidth [rad/s]: the increment is kp * error / eta * dt, so kp is
-    # the closed-loop rate of the thrust loop (20 ~ 50 ms).
-    specific_force_p: 20.0
+    # Loop bandwidth [rad/s]: the increment is kp * error / eta * dt, so kp is the
+    # closed-loop rate of the thrust loop. Measured on practical/lyu with the
+    # NMPC: 20 -> 40 rad/s gains 1.5-2.1% of position RMSE and 60 is marginal, so
+    # the tighter of the two useful values is the default.
+    specific_force_p: 40.0
     throttle_min: 0.05
     throttle_max: 1.0
     measurement_tau_s: 0.02
