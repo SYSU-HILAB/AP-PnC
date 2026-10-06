@@ -228,6 +228,11 @@ namespace simple_sim
         gains_.attitude.cwiseProduct(current.transpose() *
                                      (error.axis() * error.angle())) +
         current.transpose() * desired * ref.omega;
+    // Per-axis output limit, the same one the NMPC carries as command bounds: a
+    // demand the airframe cannot realise must not leave the controller,
+    // whatever the reference asks for.
+    result.command.rates = result.command.rates.cwiseMax(-gains_.max_rate)
+                               .cwiseMin(gains_.max_rate);
     return result;
   }
 }  // namespace simple_sim

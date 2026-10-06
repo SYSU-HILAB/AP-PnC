@@ -19,6 +19,8 @@ namespace simple_sim
     // true aerodynamic force balance numerically, rebuild the thrust axis from
     // it, and keep the planned yb. Off by default.
     bool aero_flatness_feedforward = false;
+    // Body-rate output limit [rad/s, FLU], per axis.
+    Eigen::Vector3d max_rate = Eigen::Vector3d(1.5, 2.5, 1.5);
     // Zero the thrust-axis component of the aerodynamic force in the
     // feedforward model, mirroring the plant's own injection rule for the ideal
     // profile. The two must agree or the feedforward fights a force that is not

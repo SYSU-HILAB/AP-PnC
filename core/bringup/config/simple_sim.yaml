@@ -70,6 +70,11 @@ simple_sim:
     position_gain: [8.0, 8.0, 8.0]
     velocity_gain: [6.0, 6.0, 6.0]
     attitude_gain: [48.0, 48.0, 48.0]
+    # Body-rate output limit [rad/s, FLU]. The same numbers the NMPC already uses
+    # as its command bounds: yaw is lower than pitch and roll because that is what
+    # a real airframe will do. Measured without it, the SE3 asked for 14.9 rad/s of
+    # yaw at the reference's guard crossing and 4.8 rad/s at 10 m/s.
+    max_rate: [1.5, 2.5, 1.5]
   aero:
     model: lyu # under test: lyu | phi (plus `none` control)
     # Drop the body-X and body-Z aerodynamic moments, keeping only the lateral

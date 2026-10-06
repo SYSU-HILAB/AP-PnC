@@ -150,6 +150,7 @@ namespace simple_sim
     config.se3.position    = read_vector3(sim["se3"]["position_gain"]);
     config.se3.velocity    = read_vector3(sim["se3"]["velocity_gain"]);
     config.se3.attitude    = read_vector3(sim["se3"]["attitude_gain"]);
+    config.se3.max_rate    = read_vector3(sim["se3"]["max_rate"]);
     config.aero_model      = sim["aero"]["model"].as<std::string>();
     config.aero.wind_world = read_vector3(sim["aero"]["wind_world"]);
     config.aero.scale      = sim["aero"]["scale"].as<double>();
