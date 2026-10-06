@@ -23,7 +23,8 @@ import platform
 import shutil
 import subprocess
 import time
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
 
@@ -73,6 +74,11 @@ class JobRequest:
     hold_s: float = 0.0
     mass_kg: float | None = None
     duration_s: float = 0.0
+
+    #: Dotted yaml overrides applied to the job's own configuration copy, keyed by
+    #: the document root ("simple_sim.controller", "problem_formulation.cost.v_max",
+    #: ...). A variant is therefore a run parameter, not an edit to a tracked file.
+    overrides: Mapping[str, object] = field(default_factory=dict)
 
     def validate(self) -> None:
         if self.profile not in PROFILES:
@@ -196,6 +202,26 @@ def _write_configuration(job: Path, request: JobRequest) -> None:
         simple_sim["simple_sim"]["aero"]["model"] = request.aero
     if request.v_max is not None:
         planning["problem_formulation"]["cost"]["v_max"] = request.v_max
+
+    # Override paths are file-relative and start at the document root the file
+    # already carries, e.g. "simple_sim.se3.aero_flatness_feedforward" or
+    # "problem_formulation.cost.v_max". Unknown roots are rejected instead of
+    # silently writing a key nobody reads.
+    documents: dict[str, dict] = {
+        "simple_sim": simple_sim,
+        "problem_formulation": planning,
+    }
+    for path, value in request.overrides.items():
+        keys = path.split(".")
+        root = keys[0]
+        if root not in documents or len(keys) < 2:
+            raise ValueError(
+                f"override {path!r} must start with one of {sorted(documents)}"
+            )
+        node = documents[root][root]
+        for key in keys[1:-1]:
+            node = node[key]
+        node[keys[-1]] = value
 
     (config_dir / "simple_sim.yaml").write_text(yaml.safe_dump(simple_sim, sort_keys=False))
     planning_path.write_text(yaml.safe_dump(planning, sort_keys=False))

@@ -61,21 +61,25 @@ uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib
 # 2. Build the offline stack: Rust dora nodes + the C++ simulator.
 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" build
 
-# 3. Plan, simulate and record one run. Prints the JOB path.
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 ideal none 6 0
-#    run [duration_s | 0 = whole reference]
-#        [ideal | practical]
-#        [aero model | configured]
-#        [v_max | configured]
-#        [terminal hold s]
-
-# 4. Re-decode that job independently and run the acceptance checks.
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" test "$JOB"
+# 3. Plan, simulate and record the whole matrix, and print the table.
+uv run --project "$AP_PNC_DIR" ap-pnc benchmark stack \
+    --profile ideal,practical --aero none,lyu,phi --vmax 8,10,12
 ```
+
+One command runs every combination, writes each run's data under
+`.artifacts/simple-stack/<os>-<arch>/runs/<job>/`, and prints one table at the
+end with the change from the SE3 baseline to the aerodynamic-feedforward variant
+on every row. The tooling owns this: the job directory, the configuration
+overrides, the containerised `dora run` and the verification receipt are all
+`tooling/simple_stack.py`, so a sweep is one Python process rather than a shell
+script per run. Narrow it down with `--aero lyu --vmax 8`, and add `--variants`
+to choose which controllers run.
 
 ### What you get
 
-Step 3 prints `JOB=/…/runs/<timestamp>-<pid>`. That directory is the result:
+Each run owns a directory `.artifacts/simple-stack/<os>-<arch>/runs/<utc>-<pid>/`,
+and the sweep's own summary lands in `.artifacts/benchmark/stack-sweep/`. Inside a
+run:
 
 | File | Content |
 |---|---|
@@ -85,6 +89,8 @@ Step 3 prints `JOB=/…/runs/<timestamp>-<pid>`. That directory is the result:
 | `manifest.json` | status, config hashes, build revision, validation labels |
 | `metrics.json` | RMSE and max error over the samples the run actually committed |
 | `replay.rrd` + `verified.json` | the Rerun recording and its verification receipt |
+| `config/`, `profile.yaml`, `experiment-overrides.json` | the exact configuration the run used |
+| `stack.log`, `images.jsonl`, `source-revision.txt` | what executed, against which images and revision |
 
 Rerun is **offline only**. The scientific authority is the CSV/YAML/metrics;
 viewing or exporting the recording never re-plans and never re-simulates.

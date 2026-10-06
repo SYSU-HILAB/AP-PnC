@@ -25,7 +25,7 @@ uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib
 
 ```bash
 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" build
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 2.0
+uv run --project "$AP_PNC_DIR" ap-pnc benchmark stack --aero lyu --vmax 8
 # Omit duration (or use 0) for the complete reference-supported NMPC horizon.
 ```
 
@@ -48,7 +48,7 @@ The original path payload is unchanged; reserved dora metadata carries W3C conte
 
 ```bash
 uv run --project "$AP_PNC_DIR" --extra telemetry ap-pnc telemetry up
-AP_PNC_TELEMETRY=1 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 practical lyu 6
+AP_PNC_TELEMETRY=1 uv run --project "$AP_PNC_DIR" ap-pnc benchmark stack --aero lyu --vmax 8
 # Compare actual Collector spans AND scientific data with a telemetry-off job:
 uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/observability/verify_dora.py" "$ON_JOB" --baseline "$OFF_JOB"
 ```
@@ -78,7 +78,7 @@ control period. Optional `terminal_hold_s` adds dwell; explicit-duration short
 probes retain their complete-step floor. Example (full trajectory + 2 s dwell):
 
 ```bash
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 0 practical lyu 8 2
+uv run --project "$AP_PNC_DIR" ap-pnc benchmark stack --aero lyu --vmax 8
 uv run --project "$AP_PNC_DIR" python "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/evaluate.py" run \
   --v-max 8 --hold-seconds 2 --output "$AP_PNC_DIR/.artifacts/benchmark/NEW_V8"
 ```
@@ -180,7 +180,7 @@ surfaces**. Authorized private MATLAB numeric data is extracted only locally:
 
 ```bash
 bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" import-matlab
-bash "$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/stack.sh" run 1 practical
+uv run --project "$AP_PNC_DIR" ap-pnc benchmark stack --aero lyu --vmax 8
 # Default `run` is the ideal-rate-loop plant, available as the control baseline.
 ```
 

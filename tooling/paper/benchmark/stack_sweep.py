@@ -82,6 +82,22 @@ def _patch_config(text: str, variant: str) -> str:
     return text
 
 
+def _variant_overrides(variant: str) -> dict:
+    """What a variant means, as overrides for the job's own configuration copy.
+
+    A variant is a run parameter, not an edit to a tracked file, so a sweep never
+    rewrites ``core/bringup/config`` and two sweeps cannot race on it.
+    """
+    if variant not in VARIANTS:
+        raise ValueError(f"unknown variant {variant!r}, expected one of {VARIANTS}")
+    overrides: dict[str, object] = {
+        "simple_sim.controller": "nmpc" if variant == "nmpc" else "se3"
+    }
+    if variant != "nmpc":
+        overrides["simple_sim.se3.aero_flatness_feedforward"] = variant == "se3-aero-ff"
+    return overrides
+
+
 def _run_once(
     *,
     aero: str,
@@ -90,14 +106,14 @@ def _run_once(
     profile: str,
     hold_s: float,
     mass_kg: float,
+    overrides: dict,
     log_dir: Path,
     tag: str,
-) -> tuple[Path, Path]:
-    """One job, driven through the tooling rather than through the shell.
+) -> Path:
+    """One job, driven through the tooling.
 
-    The whole lifecycle (job directory, configuration overrides, containerised
-    dora run, receipt check) is `tooling.simple_stack`; the shell keeps only the
-    build and the optional services.
+    The lifecycle (job directory, configuration overrides, containerised dora run,
+    receipt check) is :mod:`tooling.simple_stack`; the shell keeps only the build.
     """
     job = simple_stack.run_job(
         simple_stack.JobRequest(
@@ -107,12 +123,12 @@ def _run_once(
             hold_s=hold_s,
             mass_kg=mass_kg,
             duration_s=duration_s,
+            overrides=overrides,
         )
     )
-    log = log_dir / f"{tag}.log"
-    log.write_text(str(job / "stack.log"))
+    (log_dir / f"{tag}.log").write_text(str(job / "stack.log"))
     (log_dir / f"{tag}.job").write_text(str(job))
-    return job, log
+    return job
 
 
 def run_matrix(
@@ -127,70 +143,66 @@ def run_matrix(
     output_dir: Path | None = None,
 ) -> list[Row]:
     """Run the matrix and return one Row per run."""
-    config = project_path("core/bringup/config/simple_sim.yaml")
-    original = config.read_text()
     out = output_dir or artifact_path(".artifacts/benchmark/stack-sweep")
     out.mkdir(parents=True, exist_ok=True)
     rows: list[Row] = []
-    try:
-        for variant in variants:
-            config.write_text(_patch_config(original, variant))
-            for profile in profiles:
-                for aero in aeros:
-                    for v_max in v_maxs:
-                        tag = f"{profile}-{aero}-v{v_max:g}-{variant}"
-                        # One bad run must not destroy the table: a failure is a
-                        # row, not an exception. A real crash of the stack still
-                        # raises out of _run_once and is reported as an error row.
-                        try:
-                            job, _ = _run_once(
-                                aero=aero,
-                                v_max=v_max,
-                                duration_s=duration_s,
-                                profile=profile,
-                                hold_s=hold_s,
-                                mass_kg=mass_kg,
-                                log_dir=out,
-                                tag=tag,
-                            )
-                            summary = simple_stack.run_summary(Path(job))
-                            run_dir = summary["run_dir"]
-                            manifest = summary["manifest"]
-                            metrics = summary["metrics"]
-                            row = Row(
-                                profile=profile,
-                                aero=aero,
-                                v_max=v_max,
-                                variant=variant,
-                                status=manifest["status"],
-                                steps=int(manifest["committed_steps"]),
-                                position_rmse=float(metrics["position_rmse_m"]),
-                                position_max=float(metrics["position_max_m"]),
-                                velocity_rmse=float(metrics["velocity_rmse_mps"]),
-                                run_dir=run_dir,
-                            )
-                        except Exception as error:  # noqa: BLE001 - keep sweeping
-                            print(f"{tag}: {error}")
-                            row = Row(
-                                profile=profile,
-                                aero=aero,
-                                v_max=v_max,
-                                variant=variant,
-                                status="error",
-                                steps=0,
-                                position_rmse=float("nan"),
-                                position_max=float("nan"),
-                                velocity_rmse=float("nan"),
-                                run_dir=out,
-                            )
-                        rows.append(row)
-                        print(
-                            f"{profile:9s} {aero:5s} v{v_max:<3g} {variant:8s} "
-                            f"{row.status:9s} {row.position_rmse:.4f}",
-                            flush=True,
+    for variant in variants:
+        overrides = _variant_overrides(variant)
+        for profile in profiles:
+            for aero in aeros:
+                for v_max in v_maxs:
+                    tag = f"{profile}-{aero}-v{v_max:g}-{variant}"
+                    # One bad run must not destroy the table: a failure is a row,
+                    # not an exception. A real crash of the stack still raises out
+                    # of run_job and is reported as an error row.
+                    try:
+                        job = _run_once(
+                            aero=aero,
+                            v_max=v_max,
+                            duration_s=duration_s,
+                            profile=profile,
+                            hold_s=hold_s,
+                            mass_kg=mass_kg,
+                            overrides=overrides,
+                            log_dir=out,
+                            tag=tag,
                         )
-    finally:
-        config.write_text(original)
+                        summary = simple_stack.run_summary(job)
+                        run_dir = summary["run_dir"]
+                        manifest = summary["manifest"]
+                        metrics = summary["metrics"]
+                        row = Row(
+                            profile=profile,
+                            aero=aero,
+                            v_max=v_max,
+                            variant=variant,
+                            status=manifest["status"],
+                            steps=int(manifest["committed_steps"]),
+                            position_rmse=float(metrics["position_rmse_m"]),
+                            position_max=float(metrics["position_max_m"]),
+                            velocity_rmse=float(metrics["velocity_rmse_mps"]),
+                            run_dir=run_dir,
+                        )
+                    except Exception as error:  # noqa: BLE001 - keep sweeping
+                        print(f"{tag}: {error}")
+                        row = Row(
+                            profile=profile,
+                            aero=aero,
+                            v_max=v_max,
+                            variant=variant,
+                            status="error",
+                            steps=0,
+                            position_rmse=float("nan"),
+                            position_max=float("nan"),
+                            velocity_rmse=float("nan"),
+                            run_dir=out,
+                        )
+                    rows.append(row)
+                    print(
+                        f"{profile:9s} {aero:5s} v{v_max:<3g} {variant:12s} "
+                        f"{row.status:9s} {row.position_rmse:.4f}",
+                        flush=True,
+                    )
 
     (out / "sweep.json").write_text(json.dumps([r.as_dict() for r in rows], indent=2))
     (out / "table.md").write_text(render_table(rows))
@@ -198,6 +210,7 @@ def run_matrix(
 
 
 def _cell(row: Row | None) -> str:
+    """One table cell: a number with an optional failure mark, or an error."""
     if row is None:
         return "-"
     if row.status == "error" or row.position_rmse != row.position_rmse:  # NaN
