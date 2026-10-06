@@ -179,14 +179,16 @@ namespace nmpc
     if (std::abs(qw * qw + qx * qx + qy * qy + qz * qz - 1.0) > 1e-6)
       throw std::runtime_error("NMPC requires a unit quaternion");
     // The estimator regresses the coefficient level on alpha, so it must use
-    // the SAME regularised alpha as the prediction model's derivative term.
+    // the SAME alpha as the prediction model. The prediction uses the exact
+    // atan2(v_x, v_z): the regularised form shifts alpha (and its rate) exactly
+    // where the vehicle operates, which biased the earlier slope fits.
     const double vx = (1 - 2 * (qy * qy + qz * qz)) * state[3] +
                       2 * (qx * qy + qw * qz) * state[4] +
                       2 * (qx * qz - qw * qy) * state[5];
     const double vz = 2 * (qx * qz + qw * qy) * state[3] +
                       2 * (qy * qz - qw * qx) * state[4] +
                       (1 - 2 * (qx * qx + qy * qy)) * state[5];
-    const double alpha = std::atan2(vx, vz + 0.1);
+    const double alpha = std::atan2(vx, vz);
     // The estimator's own current value is the fallback; never fall back to the
     // configured seed, otherwise every low-speed tick would discard the
     // estimate.
