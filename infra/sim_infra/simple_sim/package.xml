@@ -3,7 +3,7 @@
   <name>simple_sim</name>
   <version>0.2.0</version>
   <description>Deterministic lockstep trajectory-tracking simulator, without collision.</description>
-  <maintainer email="rongerch@outlook.com">Hanamy</maintainer>
+  <maintainer email="rongerch@outlook.com">Erchao Rong</maintainer>
   <license>BSD-3-Clause</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>eigen</depend>
