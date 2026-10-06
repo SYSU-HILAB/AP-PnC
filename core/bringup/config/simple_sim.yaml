@@ -69,11 +69,14 @@ simple_sim:
     #   position 4   velocity 3   attitude [5,10,5]   -> 0.0707 / 0.1740 / 0.8813
     #   position 2   velocity 1.5 attitude [5,10,5]   -> 0.1536 / 0.4690 / 1.6686
     #   position 2   velocity 1.5 attitude [6,12,6]   -> 0.1319 / 0.3811 / 0.9834
+    #   position 1   velocity 0.75 attitude [6,12,6]  -> 0.2982 / 0.8415 / 1.7700
+    #     (peak position error 0.68 / 1.63 / 4.00 m: at 12 m/s the vehicle is 4 m off
+    #      a 25 m circle, so this row tracks the reference only loosely)
     # Each halving roughly doubles the error. In the last row the rate commands no
     # longer saturate (0.21/0.46/0.62 rad/s at 8 m/s), so se3.max_rate has stopped
     # being the binding constraint and the translation gains are.
-    position_gain: [2.0, 2.0, 2.0]
-    velocity_gain: [1.5, 1.5, 1.5]
+    position_gain: [1.0, 1.0, 1.0]
+    velocity_gain: [0.75, 0.75, 0.75]
     # Per-axis: yaw low (its rate limit is the lowest), pitch high because it
     # carries the tracking, roll in between. Owner-selected; on practical + indi /
     # lyu / se3-aero-ff this costs +41/+20/+87% position RMSE against the uniform
