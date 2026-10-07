@@ -195,9 +195,9 @@ Docker build selects the native Linux CPU target (Apple Silicon: ARM64),
 creates a missing arch-tagged bundle in Docker and verifies its ELF members:
 
 ```bash
-uv run --project "$AP_PNC_DIR" ap-pnc sim build --target simple
+uv run --project "$AP_PNC_DIR" ap-pnc build simple-sim
 # Explicit alternate target:
-uv run --project "$AP_PNC_DIR" ap-pnc sim build --target simple --arch amd64
+uv run --project "$AP_PNC_DIR" ap-pnc build simple-sim --arch amd64
 ```
 
 Raw Compose works as-is (`--profile build` is what the tooling adds); the

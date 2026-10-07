@@ -295,6 +295,41 @@ cmake --install "$dir/build"
 """
 
 
+def _image_exists(name: str) -> bool:
+    """True when the Docker daemon already has this image."""
+    return (
+        subprocess.run(
+            ["docker", "image", "inspect", name],
+            capture_output=True,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
+def _ensure_stack_base_images(root, arch, platform, run) -> None:
+    """Build the base images the stack Dockerfile inherits, when they are missing.
+
+    `ap-pnc build simple-sim` is the quick start's only build entry point, so it
+    has to produce everything it depends on. The two parents below used to be
+    reachable only from command groups that have since been removed, which left a
+    fresh clone unable to build the stack at all.
+    """
+    if not _image_exists(f"ap-pnc-ros2-base:{arch}"):
+        run([
+            "docker", "build", "--platform", platform,
+            "-t", f"ap-pnc-ros2-base:{arch}",
+            "-f", str(project_path("core/docker/ros2-base.dockerfile")), str(root),
+        ])
+    if not _image_exists(f"simple-sim:{arch}"):
+        run([
+            "docker", "build", "--platform", platform,
+            "-t", f"simple-sim:{arch}",
+            "-f", str(project_path("infra/sim_infra/simple_sim/docker/simple-sim.dockerfile")),
+            str(root),
+        ])
+
+
 def build() -> None:
     """Build the offline stack: toolchain image, Rust nodes, C++ simulator, runtime image.
 
@@ -319,6 +354,7 @@ def build() -> None:
             text=quiet,
         )
 
+    _ensure_stack_base_images(root, arch, platform, run)
     run(["docker", "image", "inspect", f"simple-sim:{arch}"], quiet=True)
     run([
         "docker", "build", "--platform", platform, "--target", "toolchain",

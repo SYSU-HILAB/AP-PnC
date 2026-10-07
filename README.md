@@ -48,25 +48,22 @@ no private data. On macOS this runs a native `linux/arm64` container rather than
 emulating AMD64, and the acados toolchain is built inside Docker too.
 
 ```bash
-export AP_PNC_DIR=/absolute/path/to/AP-PnC
-git clone https://github.com/WarriorHanamy/AP-PnC.git "$AP_PNC_DIR"
+git clone https://github.com/SYSU-HILAB/AP-PnC.git && cd AP-PnC
 
-# 1. Python environment + the self-contained acados solver bundle.
-#    On Linux this builds locally; on macOS it builds in the pinned container.
-#    `--group extra` adds the plotting/ML stack used by the paper layer and by
-#    `evaluate.py plot` below; `--group dev` alone is enough for the stack itself.
-uv sync --project "$AP_PNC_DIR" --group dev --group extra
-uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib
+# 1. Python environment + the self-contained acados solver bundle. `AP_PNC_DIR` is
+#    derived from the checkout, so nothing has to be exported; `uv` finds the
+#    project itself, so no `--project` is needed either.
+uv sync
+uv run ap-pnc gen-nmpc-lib     # runs in the pinned builder image, on every host
 
-# 2. Build the offline stack: Rust dora nodes + the C++ simulator.
-uv run --project "$AP_PNC_DIR" ap-pnc build simple-sim
+# 2. Build the offline stack: the base images it inherits, the Rust dora nodes and
+#    the C++ simulator.
+uv run ap-pnc build simple-sim
 
-# 3. Run the whole matrix and print the table. Each run starts its own
-#    simulation in a container, records it, verifies the receipt and shuts down.
-uv run --project "$AP_PNC_DIR" ap-pnc benchmark \
-    --profile ideal,practical --aero none,lyu,phi --vmax 8,10,12
+# 3. Run the whole matrix and print the table. Each run starts its own simulation
+#    in a container, records it, verifies the receipt and shuts down.
+uv run ap-pnc benchmark --aero none,lyu,phi --vmax 8,10,12
 ```
-
 One command runs every combination and manages the simulation itself: it starts a
 container per run, records it, verifies the receipt and shuts it down. It writes
 each run's data under
