@@ -73,8 +73,13 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pyarrow" },
+    { name = "pybind11" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
@@ -91,11 +96,6 @@ telemetry = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pyarrow" },
-    { name = "pybind11" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -116,9 +116,13 @@ extra = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.141.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "numpy" },
     { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'telemetry'", specifier = "==1.45.0" },
     { name = "opentelemetry-sdk", marker = "extra == 'telemetry'", specifier = "==1.45.0" },
+    { name = "pandas" },
+    { name = "pyarrow", specifier = ">=25.0.1" },
+    { name = "pybind11" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
@@ -129,10 +133,6 @@ provides-extras = ["telemetry"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "pandas" },
-    { name = "pyarrow", specifier = ">=25.0.1" },
-    { name = "pybind11" },
     { name = "pytest" },
     { name = "ruff", specifier = "==0.5.4" },
 ]

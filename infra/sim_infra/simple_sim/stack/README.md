@@ -13,7 +13,7 @@ architecture; it does not silently emulate another target. A matching
 `simple-sim:<arm64|amd64>` baseline image must already exist. To prepare it:
 
 ```bash
-uv run --project "$AP_PNC_DIR" ap-pnc sim build --target simple
+uv run ap-pnc build simple-sim   # builds the base images it needs
 ```
 
 Regenerate the matching NMPC bundle after prediction-model/ABI changes, then

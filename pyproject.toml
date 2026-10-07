@@ -15,6 +15,12 @@ dependencies = [
     "fastapi>=0.141.1",
     "uvicorn[standard]>=0.53.0",
     "websockets>=16.1.1",
+    # Runtime, not dev: the aerodynamics data layer and the local HTTP helpers use
+    # these, and a user running the stack should get them from a plain `uv sync`.
+    "pandas",
+    "pybind11",
+    "httpx>=0.28.1",
+    "pyarrow>=25.0.1",
 ]
 
 [project.optional-dependencies]
@@ -30,10 +36,6 @@ ap-pnc = "tooling.cli:main"
 dev = [
     "pytest",
     "ruff==0.5.4",
-    "pandas",
-    "pybind11",
-    "httpx>=0.28.1",
-    "pyarrow>=25.0.1",
 ]
 extra = [
     "jax[cpu]",

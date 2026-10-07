@@ -243,19 +243,10 @@ def cocp(
         )
 
     git_root = get_git_root()
-    use_docker = arch != "native" or not IS_LINUX
-    if use_docker:
-        _docker_build_bundle(git_root, target)
-        return
-
-    _ensure_prerequisites()
-    setup_env()
-    script = git_root / "tooling" / "nmpc_gen" / "create_ocp.py"
-    gen_dir = git_root / ".artifacts" / "c_generated_code"
-    gen_dir.mkdir(parents=True, exist_ok=True)
-    typer.echo(f"Running: {script}")
-    # The generator explicitly resolves code and JSON outputs against AP_PNC_DIR.
-    subprocess.run([sys.executable, str(script)], cwd=gen_dir, check=True)
+    # One path everywhere: the pinned builder image carries acados, t_renderer and
+    # acados_template, so a host needs Docker and nothing else and Linux results
+    # come from the same builder as macOS.
+    _docker_build_bundle(git_root, target)
 
     _build_acados_static(git_root)
     _build_wrapper_and_bundle(git_root)
