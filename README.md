@@ -186,6 +186,22 @@ tooling/                   Python: the ap-pnc CLI, acados codegen, paper layer
 test/                      pytest
 ```
 
+Planner and NMPC use the same package layers:
+
+```text
+core/ros_packages/{planner,nmpc}/
+  src/                      ROS-free C++ algorithms, headers and dependencies
+  node/                     ROS interfaces only
+  python/                   Python bindings, only when needed (planner today)
+  CMakeLists.txt            ROS package entry point
+  package.xml
+```
+
+The NMPC solver wrapper is built from `nmpc/src/`; its shared tracking logic
+lives in `nmpc/src/controller/`. Planner bindings and the simulator consume
+these same ROS-free sources. Do not put ROS node code into `src/` or introduce
+parallel package-root `core/`, `solver/` or `controller/` trees.
+
 ## Roadmap
 
 None of these are needed by the quick start, and none of them are validated by it.

@@ -23,13 +23,14 @@ find_package(fmt REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 ament_auto_find_build_dependencies()
-add_subdirectory(controller)
+# src/ owns the ROS-free solver wrapper and tracking logic.
+add_subdirectory(src/controller)
 
 # Composable component: also produces the standalone `nmpc_node` executable.
-ament_auto_add_library(${PROJECT_NAME}_component SHARED src/nmpc_node.cpp)
+ament_auto_add_library(${PROJECT_NAME}_component SHARED node/src/nmpc_node.cpp)
 
 target_include_directories(${PROJECT_NAME}_component PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/solver/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/include
 )
 
 target_link_libraries(${PROJECT_NAME}_component

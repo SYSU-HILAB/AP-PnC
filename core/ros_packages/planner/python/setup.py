@@ -11,8 +11,10 @@ from pathlib import Path
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 
-pkg = Path(__file__).resolve().parent.parent  # .../core/ros_packages/planner
-core = pkg / "core"
+from tooling.env import get_git_root
+
+pkg = get_git_root() / "core" / "ros_packages" / "planner"
+src = pkg / "src"
 
 
 def _first_existing(paths: list[Path]) -> str | None:
@@ -28,20 +30,20 @@ eigen_include = os.environ.get("EIGEN3_INCLUDE_DIR") or _first_existing(
 )
 
 include_dirs = [
-    str(core / "include"),
-    str(core / "gcopter" / "include"),
-    str(core / "basic_trajectories" / "include"),
-    str(core / "tailsitter_df" / "include"),
+    str(src / "include"),
+    str(src / "gcopter" / "include"),
+    str(src / "basic_trajectories" / "include"),
+    str(src / "tailsitter_df" / "include"),
 ]
 if eigen_include:
     include_dirs.insert(0, eigen_include)
 
 sources = [
-    str(Path(__file__).resolve().parent / "planner_bindings.cpp"),
-    str(core / "src" / "problem_config.cpp"),
-    str(core / "src" / "planner.cpp"),
-    *[str(p) for p in sorted((core / "basic_trajectories" / "src").glob("*.cpp"))],
-    *[str(p) for p in sorted((core / "tailsitter_df" / "src").glob("*.cpp"))],
+    str(pkg / "python" / "planner_bindings.cpp"),
+    str(src / "problem_config.cpp"),
+    str(src / "planner.cpp"),
+    *[str(p) for p in sorted((src / "basic_trajectories" / "src").glob("*.cpp"))],
+    *[str(p) for p in sorted((src / "tailsitter_df" / "src").glob("*.cpp"))],
 ]
 
 ext_modules = [

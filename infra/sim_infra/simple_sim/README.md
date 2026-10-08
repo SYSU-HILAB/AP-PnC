@@ -18,7 +18,7 @@ CasADi-to-C backward-gradient prototype, and the Rust migration roadmap.
 - `core/bringup/` owns **all runtime YAML, launch and RViz resources**.
 - `planner::core::ReferenceTrajectory` owns the reference and exact time evaluation.
   The simulator neither defines another reference representation nor interpolates a sample table.
-- `core/ros_packages/nmpc/controller/` owns ROS-free NMPC tracking logic, shared
+- `core/ros_packages/nmpc/src/controller/` owns ROS-free NMPC tracking logic, shared
   by `nmpc_node` and the simulator. The existing solver bundle remains the solver.
 - `simple_sim/core/` owns simulation time, lifecycle, rate-loop actuation and physics.
 - `io/` composes an experiment and records it; `app/` and `ros/` use the same Runner.

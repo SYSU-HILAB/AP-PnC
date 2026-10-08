@@ -59,7 +59,7 @@ if(SIMPLE_SIM_BUILD_APP)
     add_library(yaml-cpp ALIAS yaml-cpp::yaml-cpp)
   endif()
   # Reuse owner sources directly: neither reference definitions nor aero algorithms live here.
-  add_subdirectory(${AP_PNC_DIR}/core/ros_packages/planner/core
+  add_subdirectory(${AP_PNC_DIR}/core/ros_packages/planner/src
                    ${CMAKE_CURRENT_BINARY_DIR}/planner_core)
   set(AERO_DIR ${AP_PNC_DIR}/infra/sim_infra/aerodynamics)
   # All five canonical models (lyu | phi | ma | advanced | none) compile
@@ -89,7 +89,7 @@ if(SIMPLE_SIM_BUILD_APP)
       message(FATAL_ERROR "NMPC bundle is Linux-only. For core/baseline tests use -DSIMPLE_SIM_WITH_NMPC=OFF.")
     endif()
     set(NMPC_BUNDLE_PATH "${AP_PNC_DIR}/.artifacts/nmpc_solver/libnmpc_bundle.a" CACHE FILEPATH "NMPC static bundle")
-    add_subdirectory(${AP_PNC_DIR}/core/ros_packages/nmpc/controller
+    add_subdirectory(${AP_PNC_DIR}/core/ros_packages/nmpc/src/controller
                      ${CMAKE_CURRENT_BINARY_DIR}/nmpc_controller)
     file(SHA256 "${NMPC_BUNDLE_PATH}" NMPC_BUNDLE_SHA256)
     target_sources(simple_sim_adapters PRIVATE adapters/src/nmpc_controller.cpp)
@@ -136,10 +136,10 @@ if(BUILD_TESTING)
   target_link_libraries(simple_sim_core_test PRIVATE simple_sim_core Threads::Threads)
   add_test(NAME simple_sim_core COMMAND simple_sim_core_test)
   add_executable(simple_sim_nmpc_contract_test test/test_nmpc_contract.cpp
-    ${AP_PNC_DIR}/core/ros_packages/nmpc/controller/src/tracking_controller.cpp)
+    ${AP_PNC_DIR}/core/ros_packages/nmpc/src/controller/src/tracking_controller.cpp)
   target_include_directories(simple_sim_nmpc_contract_test PRIVATE
-    ${AP_PNC_DIR}/core/ros_packages/nmpc/controller/include
-    ${AP_PNC_DIR}/core/ros_packages/nmpc/solver/include)
+    ${AP_PNC_DIR}/core/ros_packages/nmpc/src/controller/include
+    ${AP_PNC_DIR}/core/ros_packages/nmpc/src/include)
   add_test(NAME simple_sim_nmpc_contract COMMAND simple_sim_nmpc_contract_test)
   if(SIMPLE_SIM_BUILD_APP)
     add_executable(simple_sim_adapters_test test/test_adapters.cpp)

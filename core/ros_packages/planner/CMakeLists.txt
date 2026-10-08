@@ -14,8 +14,8 @@ find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-# core/ : pure C++ planning core (ROS-free)
-add_subdirectory(core)
+# src/ : pure C++ planning core (ROS-free); node/ owns the ROS adapter.
+add_subdirectory(src)
 
 # ROS adapter: composable component. Defined in this root CMakeLists on purpose:
 # rclcpp_components_register_node() registers via set_property(DIRECTORY

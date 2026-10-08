@@ -6,9 +6,9 @@ add_subdirectory(basic_trajectories)
 add_subdirectory(tailsitter_df)
 
 add_library(planner_core STATIC
-  src/problem_config.cpp
-  src/planner.cpp
-  src/trajectory.cpp
+  problem_config.cpp
+  planner.cpp
+  trajectory.cpp
 )
 target_include_directories(planner_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(planner_core

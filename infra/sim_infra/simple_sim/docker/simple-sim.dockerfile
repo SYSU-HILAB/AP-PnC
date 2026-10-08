@@ -3,8 +3,8 @@ ARG TARGETARCH
 FROM ap-pnc-ros2-base:${TARGETARCH}
 ARG TARGETARCH
 COPY core/ros_packages/planner/ /workspace/core/ros_packages/planner/
-COPY core/ros_packages/nmpc/controller/ /workspace/core/ros_packages/nmpc/controller/
-COPY core/ros_packages/nmpc/solver/include/ /workspace/core/ros_packages/nmpc/solver/include/
+COPY core/ros_packages/nmpc/src/controller/ /workspace/core/ros_packages/nmpc/src/controller/
+COPY core/ros_packages/nmpc/src/include/ /workspace/core/ros_packages/nmpc/src/include/
 COPY core/bringup/ /workspace/core/bringup/
 COPY infra/sim_infra/aerodynamics/ /workspace/infra/sim_infra/aerodynamics/
 COPY infra/sim_infra/simple_sim/ /workspace/infra/sim_infra/simple_sim/

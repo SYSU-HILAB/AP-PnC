@@ -161,6 +161,18 @@ Linux, even when both sides use ARM64.
   update an existing executable. Rebuild the core/simple-sim image after
   solver changes. Config-only core edits can use the read-only config mount.
 
+## Planner / NMPC package layout
+
+Both `core/ros_packages/planner` and `core/ros_packages/nmpc` use:
+
+- `src/`: ROS-free C++ algorithms, public headers and internal dependencies.
+- `node/`: ROS interfaces only.
+- `python/`: Python bindings only when needed; do not add an empty placeholder.
+
+Do not reintroduce package-root `core/`, `solver/` or `controller/` directories.
+Keep CMake, solver generation, Python bindings and simulator consumers pointed
+at the same owner sources when moving files.
+
 ## Code style: lint after every change
 
 Lint rules are agent-enforced, not README-documented:
