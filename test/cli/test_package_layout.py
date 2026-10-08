@@ -31,6 +31,7 @@ def test_planner_bindings_compile_sources_from_src(monkeypatch, tmp_path):
     runpy.run_path(str(root / "python" / "setup.py"))
     extension = captured["ext_modules"][0]
     assert str(root / "src" / "planner.cpp") in extension.sources
+    assert str(root / "src" / "trajectory.cpp") in extension.sources
     assert str(root / "src" / "include") in extension.include_dirs
     for source in extension.sources:
         assert Path(source).is_absolute()
