@@ -10,4 +10,5 @@ float32[3] ref_yb
 float32[3] actual_yb
 float32 alpha
 float32 beta
-float32 cz
+# IMU-derived, mass-normalized body-X coefficient [1/m], not body-Z lift.
+float32 cx

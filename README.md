@@ -201,6 +201,8 @@ The NMPC solver wrapper is built from `nmpc/src/`; its shared tracking logic
 lives in `nmpc/src/controller/`. Planner bindings and the simulator consume
 these same ROS-free sources. Do not put ROS node code into `src/` or introduce
 parallel package-root `core/`, `solver/` or `controller/` trees.
+See [adapter contracts and Linux verification](core/ros_packages/README.md) for
+Python sampling and the `TrackingInfo.cx` message migration.
 
 ## Roadmap
 
