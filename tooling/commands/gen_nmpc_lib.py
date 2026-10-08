@@ -124,7 +124,7 @@ def _build_wrapper_and_bundle(
     The staging locations are arguments: the Docker builder image points them
     at /opt, a host run takes the .artifacts defaults.
     """
-    wrapper_src = git_root / "core" / "ros_packages" / "nmpc" / "solver"
+    wrapper_src = git_root / "core" / "ros_packages" / "nmpc" / "src"
     build_dir = git_root / ".artifacts" / "nmpc_solver"
     # Arguments, not variables: the builder image passes /opt paths, a host run
     # takes the .artifacts defaults. AP_PNC_DIR stays the only variable.

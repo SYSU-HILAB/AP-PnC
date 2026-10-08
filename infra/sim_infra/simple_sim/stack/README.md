@@ -221,7 +221,7 @@ library depends on C/libm, with per-call stack workspace. It does not touch
 acados codegen, the NMPC bundle, or the active planner implementation.
 
 ```bash
-bash "$AP_PNC_DIR/core/ros_packages/planner/core/tailsitter_df/codegen/build.sh"
+bash "$AP_PNC_DIR/core/ros_packages/planner/src/tailsitter_df/codegen/build.sh"
 ```
 
 Outputs: `<root>/.artifacts/flatness/linux-<aarch64|x86_64>/`. This workflow needs

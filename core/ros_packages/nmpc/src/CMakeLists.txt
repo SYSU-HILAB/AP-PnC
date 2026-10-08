@@ -10,7 +10,7 @@ file(GLOB_RECURSE SOLVER_SRCS
 )
 
 add_library(nmpc_solver STATIC
-  src/nmpc_solver.cpp
+  nmpc_solver.cpp
   ${SOLVER_SRCS}
 )
 

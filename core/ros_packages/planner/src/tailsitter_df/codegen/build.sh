@@ -17,7 +17,7 @@ docker run --rm --platform "linux/$arch" --ipc=host --network none --entrypoint 
   -v "$AP_PNC_DIR:/ws:ro" -v "$AP_PNC_DIR/.artifacts/flatness:/ws/.artifacts/flatness:rw" \
   "$builder" -c '
 set -euo pipefail
-python3 "$AP_PNC_DIR/core/ros_packages/planner/core/tailsitter_df/codegen/generate.py"
+python3 "$AP_PNC_DIR/core/ros_packages/planner/src/tailsitter_df/codegen/generate.py"
 dir="$AP_PNC_DIR/.artifacts/flatness/linux-$(uname -m)"
 cc -O2 -fPIC -shared "$dir/flatness_generated.c" "$dir/flatness_wrapper.c" -lm -o "$dir/libflatness.so"
 cc -O2 -c "$dir/flatness_generated.c" -o "$dir/flatness_generated.o"
@@ -29,7 +29,7 @@ docker run --rm --platform "linux/$arch" --ipc=host --network none --entrypoint 
   -e AP_PNC_DIR=/workspace -v "$AP_PNC_DIR:/workspace:ro" \
   -v "$AP_PNC_DIR/.artifacts/flatness:/workspace/.artifacts/flatness:rw" "$tool" -c '
 set -euo pipefail
-dir="$AP_PNC_DIR/core/ros_packages/planner/core/tailsitter_df"
+dir="$AP_PNC_DIR/core/ros_packages/planner/src/tailsitter_df"
 c++ -O2 -std=c++17 -I/usr/include/eigen3 -I"$dir/include" "$dir/codegen/golden.cpp" \
   "$dir/src/tailsitter_df.cpp" -o "$AP_PNC_DIR/.artifacts/flatness/linux-$(uname -m)/flatness_golden"
 c++ -O2 -std=c++17 -I/usr/include/eigen3 -I"$dir/include" "$dir/codegen/flu_golden.cpp" \
@@ -38,4 +38,4 @@ c++ -O2 -std=c++17 -I/usr/include/eigen3 -I"$dir/include" "$dir/codegen/flu_gold
 docker run --rm --platform "linux/$arch" --ipc=host --network none --entrypoint /bin/bash \
   -e AP_PNC_DIR=/ws -e PYTHONPATH=/ws -v "$AP_PNC_DIR:/ws:ro" \
   -v "$AP_PNC_DIR/.artifacts/flatness:/ws/.artifacts/flatness:rw" "$builder" \
-  -c 'python3 "$AP_PNC_DIR/core/ros_packages/planner/core/tailsitter_df/codegen/validate.py"; python3 "$AP_PNC_DIR/core/ros_packages/planner/core/tailsitter_df/codegen/validate_flu.py"'
+  -c 'python3 "$AP_PNC_DIR/core/ros_packages/planner/src/tailsitter_df/codegen/validate.py"; python3 "$AP_PNC_DIR/core/ros_packages/planner/src/tailsitter_df/codegen/validate_flu.py"'

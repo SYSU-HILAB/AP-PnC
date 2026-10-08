@@ -15,7 +15,7 @@ add_library(nmpc_tracking_core STATIC src/tracking_controller.cpp)
 target_compile_features(nmpc_tracking_core PUBLIC cxx_std_17)
 target_include_directories(nmpc_tracking_core PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/../solver/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 target_link_libraries(nmpc_tracking_core PUBLIC ${NMPC_BUNDLE_PATH})
 set_target_properties(nmpc_tracking_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
