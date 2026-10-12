@@ -4,15 +4,14 @@ import argparse
 import csv
 import hashlib
 import json
-import os
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import yaml
 
-from tooling.env import artifact_path, get_git_root, project_path
+from tooling import simple_stack
+from tooling.env import artifact_path, project_path
 
 # Only models marked under_test (plus the null control) may appear in a campaign.
 # See infra/sim_infra/aerodynamics/include/aerodynamics/aero_models.hpp.
@@ -48,8 +47,6 @@ def reference_speed(path):
 
 
 def run(out, profile, duration, vmax=6.0, hold=0.0, mass=None):
-    root = get_git_root()
-    driver = root / "infra/sim_infra/simple_sim/stack/stack.sh"
     index = {
         "schema": "ap-pnc/tracking-sweep/v1",
         "profile": profile,
@@ -60,34 +57,20 @@ def run(out, profile, duration, vmax=6.0, hold=0.0, mass=None):
     }
     for model in MODELS:
         log = out / f"{model}.log"
-        with log.open("w") as f:
-            result = subprocess.run(
-                [
-                    "bash",
-                    str(driver),
-                    "run",
-                    str(duration),
-                    profile,
-                    model,
-                    str(vmax),
-                    str(hold),
-                    "configured" if mass is None else str(mass),
-                ],
-                env={**os.environ, "AP_PNC_DIR": str(root)},
-                stdout=f,
-                stderr=subprocess.STDOUT,
-            )
-        jobs = [line[4:] for line in log.read_text().splitlines() if line.startswith("JOB=")]
-        item = {"model": model, "driver_exit": result.returncode, "log": str(log)}
-        if jobs:
-            job = project_path(jobs[0])
-            manifests = list((job / "benchmark").glob("simple_sim_*/manifest.json"))
-            item["job"] = str(job)
-            if len(manifests) == 1:
-                item["run"] = str(manifests[0].parent)
+        item = {"model": model, "driver_exit": 1, "log": str(log)}
+        try:
+            job = simple_stack.run_job(simple_stack.JobRequest(
+                profile=profile, aero=model, v_max=vmax, hold_s=hold,
+                mass_kg=mass, duration_s=duration,
+            ))
+            log.write_text((job / "stack.log").read_text())
+            item.update(driver_exit=0, job=str(job))
+            item["run"] = str(simple_stack.run_summary(job)["run_dir"])
+        except (RuntimeError, ValueError, FileNotFoundError) as error:
+            log.write_text(str(error))
         index["runs"].append(item)
         (out / "index.json").write_text(json.dumps(index, indent=2))
-        print(model, result.returncode, item.get("run", "startup failed"), flush=True)
+        print(model, item["driver_exit"], item.get("run", "startup failed"), flush=True)
 
 
 def plot(out):

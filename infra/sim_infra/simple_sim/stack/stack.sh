@@ -69,16 +69,7 @@ container() {
   if [[ "$with_simulator" = 1 ]]; then
     sim_bind=(-v "$base/cpp/install/lib/simple_sim/simple_sim_run:/workspace/.artifacts/colcon/install/lib/simple_sim/simple_sim_run:ro")
   fi
-  local telemetry_args=(--network none)
-  if [[ "${1:-}" = --telemetry ]]; then
-    local endpoint="${DORA_OTLP_ENDPOINT:-http://otel-collector:4317}"
-    [[ "$endpoint" = http://otel-collector:4317 || "$endpoint" = http://otel-collector:9 ]] || { echo 'only local Collector supported' >&2; exit 2; }
-    docker network inspect ap-pnc-observability_default >/dev/null
-    telemetry_args=(--network ap-pnc-observability_default -e "DORA_OTLP_ENDPOINT=$endpoint"
-      -e OTEL_EXPORTER_OTLP_TIMEOUT=1000 -e OTEL_BSP_SCHEDULE_DELAY=200
-      -e OTEL_METRIC_EXPORT_INTERVAL=500 -e OTEL_METRIC_EXPORT_TIMEOUT=1000)
-  fi
-  docker run --rm --platform "linux/$arch" --ipc=host "${telemetry_args[@]}" \
+  docker run --rm --platform "linux/$arch" --ipc=host --network none \
     -e AP_PNC_DIR=/workspace -e RERUN_ANALYTICS_ENABLED=false \
     -e HOME=/workspace/.artifacts/simple-stack/job \
     --workdir /workspace/.artifacts/simple-stack/job \
@@ -140,5 +131,5 @@ case "$command" in
       rerun --serve-web --bind 0.0.0.0 --web-viewer-port 9090 --port 9876 \
       "/workspace/.artifacts/benchmark/$run/replay.rrd"
     ;;
-  *) echo 'build | import-matlab | run [duration_s] [ideal|practical] [aero|configured] [vmax|configured] [terminal_hold_s] [mass_kg|configured] | test-ffi | test JOB | export/verify/check-run/view JOB RUN_NAME' >&2; exit 2 ;;
+  *) echo 'build | import-matlab | test-ffi | test JOB | export/verify/check-run/view JOB RUN_NAME; run experiments with ap-pnc benchmark' >&2; exit 2 ;;
 esac

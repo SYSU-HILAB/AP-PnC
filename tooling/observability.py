@@ -21,7 +21,7 @@ OPERATIONS = frozenset(
     {
         "cli.command",
         "experiment",
-        "dora.node",
+        "offline.stage",
         "planner.optimize",
         "nmpc.solve",
         "plant.advance",

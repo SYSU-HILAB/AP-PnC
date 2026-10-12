@@ -43,6 +43,24 @@ Use `--aero none,lyu,phi --vmax 8,10,12` for a larger sweep.
 Keep `--profile ideal` for a fresh clone; `practical` needs locally extracted
 actuator parameters.
 
+## ROS2 development scene (separate from benchmarks)
+
+A pillar/ground point-cloud scene and pose-dependent first-return LiDAR run with
+**Lyu aerodynamics + practical actuation**, through ROS2 pause/step/reset.
+The default is headless and isolated from aircraft networks.
+
+```bash
+uv run --project "$AP_PNC_DIR" ap-pnc dev-sim build
+JOB=$(uv run --project "$AP_PNC_DIR" ap-pnc dev-sim prepare)
+uv run --project "$AP_PNC_DIR" ap-pnc dev-sim run "$JOB"
+```
+
+Set an absolute `AP_PNC_DIR` first. This needs the numerical image built above
+and the local practical profile; it never silently uses ideal actuation.
+See the [development simulator guide](infra/sim_infra/lidar_sim/README.md) for
+profile preparation, ROS2 topics, RViz and limits. Sensor geometry does not add
+collision dynamics or obstacle-aware planning.
+
 ## Results
 
 All generated files stay under `.artifacts/`:

@@ -4,14 +4,16 @@ A lightweight, ROS-free C++ simulation kernel with optional ROS observation.
 **No collision, ground contact, LiDAR, scene generation, PX4 or MAVROS.**
 It verifies trajectory tracking, not the SITL/offboard flight procedure.
 
-## Offline dora / Rerun stack
+## Offline pipeline and interactive ROS2 development
 
-The new [Docker-only offline stack](stack/README.md) runs the existing real-NMPC
-experiment through Rust dora nodes, then exports and independently verifies a
-Rerun recording. Rerun is opened after completion, not connected to a live
-simulator. The ROS adapter below remains a baseline/legacy entry point.
-The stack documentation includes native ARM64 evidence, the build-only
-CasADi-to-C backward-gradient prototype, and the Rust migration roadmap.
+The [offline pipeline](stack/README.md) invokes the C++ experiment directly,
+then exports and independently verifies a Rerun recording. It remains the
+benchmark path; the viewer opens only after completion.
+
+The separate [ROS2 development simulator](../lidar_sim/README.md) uses the same
+plant with a practical actuator profile and Lyu aerodynamics. It adds a pillar
+point-cloud scene and pose-dependent first-return LiDAR, with pause/step/reset.
+The tracking kernel itself still has no collision or contact dynamics.
 
 ## Ownership
 
@@ -89,8 +91,9 @@ uv run ap-pnc gen-nmpc-lib
 uv run ap-pnc build simple-sim
 
 # Headless: no ROS graph, RViz or K3s required.
-uv run ap-pnc sim track
-uv run ap-pnc sim track --controller se3
+uv run --project "$AP_PNC_DIR" ap-pnc benchmark --profile ideal --aero lyu --vmax 8
+# Interactive pillar/LiDAR development is a separate entry point:
+uv run --project "$AP_PNC_DIR" ap-pnc dev-sim prepare
 
 # ROS visualization/interactive operation, owned by bringup.
 source "$AP_PNC_DIR/.artifacts/colcon/install/setup.bash"

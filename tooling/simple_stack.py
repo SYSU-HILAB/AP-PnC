@@ -1,7 +1,7 @@
 """Run the offline simple_sim stack from Python.
 
 The whole job lifecycle lives here: the job directory and its metadata, the
-configuration overrides, the containerised ``dora run`` and the receipt check.
+configuration overrides, the sequential simulator/exporter and the receipt check.
 ``stack.sh`` keeps only the build and the optional services, and anything that
 wants a run — ``ap-pnc benchmark``, tests, a notebook — calls this module instead
 of a shell script. One Python process can therefore own a whole sweep and print
@@ -11,7 +11,7 @@ Layout of a job (all under ``.artifacts/simple-stack/<os>-<arch>/``):
 
     runs/<utc>-<pid>/config/    the exact yaml the run used
     runs/<utc>-<pid>/benchmark/ the simulator output and the verification receipt
-    runs/<utc>-<pid>/stack.log  the graph's stdout
+    runs/<utc>-<pid>/stack.log  the pipeline's stdout
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ import platform
 import shutil
 import subprocess
 import time
+import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -66,7 +67,7 @@ def stack_image() -> str:
 
 @dataclass(frozen=True)
 class JobRequest:
-    """One run of the stack: the same knobs ``stack.sh run`` took positionally."""
+    """One simulation request; shared profile/overrides, independent job lifecycles."""
 
     profile: str = "ideal"
     aero: str = "configured"
@@ -153,7 +154,7 @@ def _container(job: Path, *args: str, with_simulator: bool = True) -> subprocess
     )
 
 
-def _write_configuration(job: Path, request: JobRequest) -> None:
+def write_configuration(job: Path, request: JobRequest) -> None:
     """Apply the profile and the request to the job's own configuration copy.
 
     Pure yaml work, so it happens here on the host rather than inside a
@@ -236,7 +237,6 @@ def _write_metadata(job: Path) -> None:
     if not offline.exists() or not simulator.exists():
         raise FileNotFoundError("run 'stack.sh build' first")
 
-    shutil.copy2(source_dir / "dataflow.yml", job / "dataflow.yml")
     shutil.copy2(source_dir / "Cargo.lock", job / "Cargo.lock")
     inspect = subprocess.run(
         ["docker", "image", "inspect", stack_image(), f"simple-sim:{native_arch()}"],
@@ -266,7 +266,7 @@ def _write_metadata(job: Path) -> None:
     ).stdout
     (job / "source-revision.txt").write_text(revision)
     (job / "source-status.txt").write_text(status)
-    (job / "node-binary.sha256").write_text(_sha256(offline))
+    (job / "recorder-binary.sha256").write_text(_sha256(offline))
     (job / "simulator-binary.sha256").write_text(_sha256(simulator))
 
 
@@ -331,7 +331,7 @@ def _ensure_stack_base_images(root, arch, platform, run) -> None:
 
 
 def build() -> None:
-    """Build the offline stack: toolchain image, Rust nodes, C++ simulator, runtime image.
+    """Build the offline stack: toolchain, recorder, C++ simulator and runtime image.
 
     The five steps the shell used, owned by the tooling so `ap-pnc build simple-sim`
     is the single entry point and no shell script is needed.
@@ -390,8 +390,8 @@ def build() -> None:
 def run_job(request: JobRequest | None = None, *, job: Path | None = None) -> Path:
     """Run one job and return its directory.
 
-    Raises on a failed run, including the case the graph exits zero without a
-    verification receipt: a graph exit alone is not evidence that the recorded
+    Raises on a failed run, including a zero exit without a
+    verification receipt: an exit alone is not evidence that the recorded
     window is complete.
     """
     request = request or JobRequest()
@@ -401,9 +401,11 @@ def run_job(request: JobRequest | None = None, *, job: Path | None = None) -> Pa
     runs = root / "runs"
     runs.mkdir(parents=True, exist_ok=True)
     if job is None:
-        job = runs / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{os.getpid()}"
-    (job / "benchmark").mkdir(parents=True, exist_ok=True)
-    (job / "config").mkdir(parents=True, exist_ok=True)
+        job = runs / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    job = artifact_path(job)
+    job.mkdir(parents=True, exist_ok=False)
+    (job / "benchmark").mkdir()
+    (job / "config").mkdir()
 
     bringup = project_path("core/bringup/config")
     for name in ("simple_sim.yaml", "planning.yaml", "nmpc.yaml"):
@@ -413,10 +415,13 @@ def run_job(request: JobRequest | None = None, *, job: Path | None = None) -> Pa
         shutil.copy2(extracted / "profile.yaml", job / "profile.yaml")
         shutil.copy2(extracted / "provenance.json", job / "upstream-provenance.json")
 
-    _write_configuration(job, request)
+    write_configuration(job, request)
     _write_metadata(job)
 
-    result = _container(job, "dora", "run", f"{_JOB_IN_CONTAINER}/dataflow.yml")
+    result = _container(
+        job, "/workspace/.artifacts/bin/ap-pnc-offline", "run",
+        "/workspace/core/bringup/config/simple_sim.yaml",
+    )
     (job / "stack.log").write_text(result.stdout + result.stderr)
     receipts = list((job / "benchmark").glob("*/verified.json"))
     if result.returncode != 0 or len(receipts) != 1:
@@ -432,7 +437,7 @@ def export_job(job: Path) -> None:
     if not (job / "benchmark").is_dir():
         raise ValueError(f"{job} is not a job directory")
     shutil.copy2(project_path(_STACK_DIR) / "acceptance.py", job / "acceptance.py")
-    result = _container(job, "python3", f"{_JOB_IN_CONTAINER}/acceptance.py")
+    result = _container(job, "python3", f"{_JOB_IN_CONTAINER}/acceptance.py", with_simulator=False)
     if result.returncode != 0:
         raise RuntimeError(f"acceptance failed for {job.name}: {result.stderr.strip()}")
 

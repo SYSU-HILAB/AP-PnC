@@ -91,7 +91,7 @@ def planner(
 
 @app.command(name="simple-sim")
 def simple_sim() -> None:
-    """Build the whole offline stack: images, Rust dora nodes and the C++ simulator.
+    """Build the offline pipeline: images, recorder and the C++ simulator.
 
     This is the build the quick start needs. It runs in Docker, so no host ROS,
     Rust or acados installation is involved.

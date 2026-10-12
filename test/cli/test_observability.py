@@ -149,7 +149,7 @@ def test_w3c_parent_propagation(telemetry, monkeypatch):
         assert "baggage" not in saved
         parent_id = parent.get_span_context().span_id
     monkeypatch.setenv("TRACEPARENT", saved["traceparent"])
-    with otel.session(telemetry=current), otel.operation("dora.node"):
+    with otel.session(telemetry=current), otel.operation("offline.stage"):
         pass
     current.flush()
     assert spans.get_finished_spans()[1].parent.span_id == parent_id

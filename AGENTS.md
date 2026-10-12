@@ -188,13 +188,12 @@ Lint rules are agent-enforced, not README-documented:
 
 - Follow the local (untracked) `docs/observability.md` notes for the full coverage
   and rollout contract.
-  The user requests deep CLI/dora/planner/NMPC/plant/actuator/ROS/artifact
+  The user requests deep CLI/planner/NMPC/plant/actuator/ROS/artifact
   observability, not just generic process logs. State implemented coverage
   separately from planned hooks and synthetic probes.
-- Reuse dora's existing Rust tracing/OTLP, metrics and reserved metadata context
-  before adding a parallel subscriber or custom trace envelope. Prefer public
-  node APIs; `dora-tracing` itself is explicitly internal/unstable. The C++ node
-  API is a Rust-backed CXX bridge, not automatic numerical-function tracing.
+- Offline jobs execute a sequential simulator/export/verify pipeline. Interactive
+  development uses ROS2; retain normal ROS topics, frames and timestamps.
+  Python CLI telemetry does not prove native numerical-function tracing.
 - Preserve scientific data and transactional control behavior. Do not use
   telemetry as a replacement for saved reference/CSV/manifest/Rerun validation.
 - OTel span time is wall clock; simulation time is an explicit attribute.

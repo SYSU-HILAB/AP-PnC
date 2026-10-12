@@ -113,7 +113,7 @@ def _run_once(
 ) -> Path:
     """One job, driven through the tooling.
 
-    The lifecycle (job directory, configuration overrides, containerised dora run,
+    The lifecycle (job directory, configuration overrides, containerised offline pipeline,
     receipt check) is :mod:`tooling.simple_stack`; the shell keeps only the build.
     """
     job = simple_stack.run_job(
@@ -199,6 +199,7 @@ def run_matrix(
                             position_rmse=float("nan"),
                             position_max=float("nan"),
                             velocity_rmse=float("nan"),
+                            max_sideslip_deg=float("nan"),
                             run_dir=out,
                         )
                     rows.append(row)

@@ -1,6 +1,4 @@
-//! Offline graph: the simulator alone produces data; export never steps a plant.
-mod telemetry;
-use dora_node_api::{DoraNode, Event, into_vec};
+//! Sequential offline pipeline: only the simulator produces scientific data.
 use eyre::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -741,21 +739,18 @@ fn verify(receipt_path: &Path) -> Result<()> {
         hash(&recording)? == receipt.recording_sha256,
         "recording hash mismatch"
     );
-    telemetry::child("rerun.decoder", || {
-        let out = Command::new("rerun")
-            .args(["rrd", "verify"])
-            .arg(&recording)
-            .output()?;
-        fs::write(
-            run.dir.join("rrd-verify.log"),
-            [&out.stdout[..], &out.stderr[..]].concat(),
-        )?;
-        ensure!(
-            out.status.success(),
-            "Rerun decoder rejected recording (raw details retained in local rrd-verify.log)"
-        );
-        Ok(())
-    })?;
+    let out = Command::new("rerun")
+        .args(["rrd", "verify"])
+        .arg(&recording)
+        .output()?;
+    fs::write(
+        run.dir.join("rrd-verify.log"),
+        [&out.stdout[..], &out.stderr[..]].concat(),
+    )?;
+    ensure!(
+        out.status.success(),
+        "Rerun decoder rejected recording (raw details retained in local rrd-verify.log)"
+    );
     fs::write(
         run.dir.join("verified.json"),
         serde_json::to_vec_pretty(&receipt)?,
@@ -777,35 +772,18 @@ fn simulate(config: &Path) -> Result<PathBuf> {
         fs::read_dir(&bench)?.next().is_none(),
         "simulation requires an empty per-job benchmark mount"
     );
-    telemetry::child("cpp.simulator", || {
-        let mut command =
-            Command::new(root()?.join(".artifacts/colcon/install/lib/simple_sim/simple_sim_run"));
-        command.arg("--config").arg(config);
-        telemetry::inject_environment(&mut command);
-        let out = command.output()?;
-        // Retain raw diagnostics locally on success AND failure.
-        fs::write(
-            root()?.join(".artifacts/simple-stack/job/simulator.log"),
-            [&out.stdout[..], &out.stderr[..]].concat(),
-        )?;
-        if telemetry::enabled() {
-            let diagnostic = (|| -> Result<()> {
-                let dirs = fs::read_dir(&bench)?.collect::<std::io::Result<Vec<_>>>()?;
-                if let Some(entry) = dirs.first() {
-                    telemetry::observe_run(&entry.path())?;
-                }
-                Ok(())
-            })();
-            if diagnostic.is_err() {
-                tracing::warn!("logged solver telemetry unavailable");
-            }
-        }
-        ensure!(
-            out.status.success(),
-            "simulator failed (raw details retained in local simulator.log)"
-        );
-        Ok(())
-    })?;
+    let out = Command::new(root()?.join(".artifacts/colcon/install/lib/simple_sim/simple_sim_run"))
+        .arg("--config")
+        .arg(config)
+        .output()?;
+    fs::write(
+        root()?.join(".artifacts/simple-stack/job/simulator.log"),
+        [&out.stdout[..], &out.stderr[..]].concat(),
+    )?;
+    ensure!(
+        out.status.success(),
+        "simulator failed (raw details retained in local simulator.log)"
+    );
     let dirs: Vec<PathBuf> = fs::read_dir(&bench)?
         .map(|r| r.map(|e| e.path()))
         .collect::<std::io::Result<_>>()?;
@@ -814,128 +792,26 @@ fn simulate(config: &Path) -> Result<PathBuf> {
     Ok(dirs[0].clone())
 }
 
-fn send(node: &mut DoraNode, id: &str, path: &Path) -> Result<()> {
-    let bytes = serde_json::to_vec(path)?;
-    node.send_output(id.to_owned().into(), Default::default(), bytes)?;
-    Ok(())
-}
-
 fn main() -> Result<()> {
     let mut args = env::args().skip(1);
     let role = args
         .next()
-        .ok_or_else(|| eyre::eyre!("simulate|record|verify|export|check-run PATH"))?;
-    if role == "export" || role == "check-run" || role == "check-replay" {
-        let path = PathBuf::from(args.next().ok_or_else(|| eyre::eyre!("path required"))?);
-        match role.as_str() {
-            "export" => {
-                println!("{}", export(&path)?.display());
-            }
-            "check-run" => {
-                let r = read_run(&path)?;
-                println!("{} valid steps", r.rows.len());
-            }
-            _ => verify(&path)?,
+        .ok_or_else(|| eyre::eyre!("run|simulate|export|check-run|check-replay PATH"))?;
+    let path = PathBuf::from(args.next().ok_or_else(|| eyre::eyre!("path required"))?);
+    ensure!(args.next().is_none(), "unexpected extra arguments");
+    match role.as_str() {
+        "run" => {
+            let run = simulate(&path)?;
+            let receipt = export(&run)?;
+            verify(&receipt)?;
         }
-        return Ok(());
+        "simulate" => println!("{}", simulate(&path)?.display()),
+        "export" => println!("{}", export(&path)?.display()),
+        "check-run" => println!("{} valid steps", read_run(&path)?.rows.len()),
+        "check-replay" => verify(&path)?,
+        _ => bail!("unknown role {role}"),
     }
-    telemetry::validate_endpoint()?;
-    let (mut node, mut events) = DoraNode::init_from_env()?;
-    // Public dora lifecycle owns subscriber and both OTLP exporters.
-    let runtime = if telemetry::configured() {
-        Some(
-            tokio::runtime::Builder::new_multi_thread()
-                .worker_threads(2)
-                .enable_all()
-                .build()?,
-        )
-    } else {
-        None
-    };
-    let otel_guard = if let Some(rt) = &runtime {
-        let _entered = rt.enter();
-        opentelemetry::global::set_text_map_propagator(
-            opentelemetry_sdk::propagation::TraceContextPropagator::new(),
-        );
-        let guard = dora_node_api::init_tracing(node.id(), node.dataflow_id())?;
-        // init_tracing starts asynchronously. Do not create/export a scope before readiness.
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while !(tracing::dispatcher::has_been_set()
-            && guard.lock().map(|g| g.is_some()).unwrap_or(false))
-        {
-            ensure!(
-                std::time::Instant::now() < deadline,
-                "dora tracing initialization timed out"
-            );
-            std::thread::sleep(std::time::Duration::from_millis(5));
-        }
-        Some(guard)
-    } else {
-        None
-    };
-    let result = run_node(&role, &mut args, &mut node, &mut events);
-    drop(events);
-    drop(node);
-    // Flush only after node work; never in control/RK4. Keep Tokio alive until shutdown.
-    if let Some(guard) = otel_guard
-        && let Ok(mut guard) = guard.lock()
-    {
-        drop(guard.take());
-    }
-    drop(runtime);
-    result
-}
-
-fn run_node(
-    role: &str,
-    args: &mut impl Iterator<Item = String>,
-    node: &mut DoraNode,
-    events: &mut dora_node_api::EventStream,
-) -> Result<()> {
-    let experiment = node.dataflow_id().to_string();
-    if role == "simulate" {
-        let config = PathBuf::from(args.next().ok_or_else(|| eyre::eyre!("config required"))?);
-        let incoming = env::var("TRACEPARENT")
-            .map(|p| format!("traceparent:{p}\n"))
-            .unwrap_or_default();
-        return telemetry::stage("experiment.simulate", &incoming, &experiment, || {
-            let path = simulate(&config)?;
-            send(node, "run", &path)?;
-            Ok(())
-        });
-    }
-    ensure!(role == "record" || role == "verify", "unknown role {role}");
-    let expected_id = if role == "record" { "run" } else { "recording" };
-    while let Some(event) = events.recv() {
-        match event {
-            Event::Input { id, data, metadata } if id.as_str() == expected_id => {
-                let incoming = metadata.open_telemetry_context();
-                return telemetry::stage(
-                    if role == "record" {
-                        "replay.export"
-                    } else {
-                        "replay.verify"
-                    },
-                    &incoming,
-                    &experiment,
-                    || {
-                        let bytes = into_vec::<u8>(&data)?;
-                        let path: PathBuf = serde_json::from_slice(&bytes)?;
-                        if role == "record" {
-                            let receipt = export(&path)?;
-                            send(node, "recording", &receipt)?;
-                        } else {
-                            verify(&path)?;
-                        }
-                        Ok(())
-                    },
-                );
-            }
-            Event::Stop(_) => bail!("stopped before {expected_id}"),
-            _ => {}
-        }
-    }
-    bail!("input closed without successful {expected_id}")
+    Ok(())
 }
 
 #[cfg(test)]

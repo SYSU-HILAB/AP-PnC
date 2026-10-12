@@ -1,0 +1,28 @@
+# Development perception scene, separate from tracking benchmarks.
+lidar_sim:
+  world_frame: world
+  body_frame: base_link
+  sensor_frame: lidar
+  odom_topic: /simple_sim/odom
+  sensor:
+    channels: 16
+    columns: 720
+    vertical_fov_deg: 30.0
+    rate_hz: 10.0
+    min_range_m: 0.3
+    max_range_m: 50.0
+    noise_std_m: 0.01
+    seed: 7
+    position_body_m: [0.0, 0.0, 0.12]
+    orientation_body_xyzw: [0.0, 0.0, 0.0, 1.0]
+  scene:
+    ground_z: 0.0
+    half_extent: 25.0
+    map_resolution: 0.25
+    pillars:
+      - {x: 0.0, y: 0.0, radius: 1.0, height: 6.0}
+      - {x: 4.0, y: 3.0, radius: 0.6, height: 5.0}
+      - {x: -4.0, y: 3.0, radius: 0.6, height: 5.0}
+      - {x: 4.0, y: -3.0, radius: 0.6, height: 5.0}
+      - {x: -4.0, y: -3.0, radius: 0.6, height: 5.0}
+      - {x: 12.0, y: 0.0, radius: 0.8, height: 7.0}
