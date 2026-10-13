@@ -262,7 +262,12 @@ namespace planner::core
     {
       totalLength += (route[i] - route[i - 1]).norm();
     }
-    const double v_max     = std::max(0.1, config_.problem.cost.v_max);
+    // Seed conservatively (a slow cruise-speed guess the optimizer shrinks)
+    // rather than near v_max (an optimistic guess it must stretch): shrinking
+    // an overestimated time allocation is the direction GCOPTER's line
+    // search handles reliably; stretching an underestimated one from a
+    // tight, irregular grid-search corridor is the direction that stalled.
+    const double v_max     = std::max(0.1, config_.problem.cost.v_max / 8.0);
     const double segLength = std::max(1e-3, totalLength / pieceN);
 
     Eigen::VectorXd  initTime(pieceN);
@@ -278,7 +283,23 @@ namespace planner::core
         acc += (route[routeIdx + 1] - route[routeIdx]).norm();
         ++routeIdx;
       }
-      initPointsPos.col(i) = route[routeIdx];
+      // Nudge the seed slightly off the A* centerline: GCOPTER's setup
+      // becomes degenerate when interior seed points are exactly colinear
+      // with the boundary states (always true for a straight-line route),
+      // the same reason plan()'s own seed offsets its interior points
+      // sideways rather than placing them on the nominal path.
+      Eigen::Vector3d tangent = finState.col(0) - iniState.col(0);
+      if (tangent.norm() < 1e-6)
+      {
+        tangent = Eigen::Vector3d::UnitX();
+      }
+      const Eigen::Vector3d lateral =
+          tangent.normalized().cross(Eigen::Vector3d::UnitZ());
+      const Eigen::Vector3d nudge =
+          lateral.norm() > 1e-6
+              ? Eigen::Vector3d(lateral.normalized() * 0.15)
+              : Eigen::Vector3d(Eigen::Vector3d::UnitY() * 0.15);
+      initPointsPos.col(i) = route[routeIdx] + nudge;
       initTime(i)          = segLength / v_max;
     }
     initTime(pieceN - 1) = segLength / v_max;

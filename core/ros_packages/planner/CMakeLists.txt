@@ -25,6 +25,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(interface REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 add_library(planner_component SHARED
   node/src/planner_node.cpp
@@ -37,6 +38,7 @@ ament_target_dependencies(planner_component
   rclcpp_components
   interface
   std_msgs
+  sensor_msgs
 )
 install(TARGETS planner_component
   ARCHIVE DESTINATION lib

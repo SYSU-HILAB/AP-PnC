@@ -42,26 +42,13 @@ namespace simple_sim
     ControlResult compute(const StepContext &, const State &,
                           const Feedback &) override;
 
-    /**
-     * @brief Swap in a replanned leg without discontinuity.
-     *
-     * `trajectory`'s own time axis starts at 0; `time_offset` is the sim
-     * time at which that 0 occurred, so `sample(t)` calls become
-     * `sample(t - time_offset)`. Unused by the default (box_sfc) path, which
-     * never calls this and keeps `time_offset_ == 0` for its whole run.
-     */
-    void set_trajectory(
-        std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory,
-        double                                                    time_offset);
-
    private:
     std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory_;
-    double                                               time_offset_ = 0.0;
-    double                                               gravity_;
-    Se3Gains                                             gains_;
-    std::shared_ptr<aerodynamics::AerodynamicsInterface> aero_model_;
-    double                                               mass_;
-    double                                               alpha_prev_;
+    double                                                    gravity_;
+    Se3Gains                                                  gains_;
+    std::shared_ptr<aerodynamics::AerodynamicsInterface>      aero_model_;
+    double                                                    mass_;
+    double                                                    alpha_prev_;
     bool       zero_thrust_axis_aero_ = false;
     bool       alpha_initialized_     = false;
     AeroConfig aero_config_;
