@@ -256,7 +256,7 @@ def load_scene(data):
 def beam_directions(channels=16, columns=720, vertical_fov_deg=30.0):
     if not isinstance(channels, int) or not isinstance(columns, int) or not 1 <= channels <= 128 or not 4 <= columns <= 4096:
         raise ValueError("invalid beam grid")
-    if not np.isfinite(vertical_fov_deg) or not 0 < vertical_fov_deg < 180:
+    if not np.isfinite(vertical_fov_deg) or not 0 < vertical_fov_deg <= 180:
         raise ValueError("invalid vertical field of view")
     elevation = np.array([0.0]) if channels == 1 else np.linspace(-vertical_fov_deg / 2, vertical_fov_deg / 2, channels)
     elevation, azimuth = np.meshgrid(np.radians(elevation), np.linspace(-np.pi, np.pi, columns, endpoint=False), indexing="ij")

@@ -53,6 +53,11 @@ if(BUILD_TESTING)
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  # Pure Eigen/STL: no ROS, no rclcpp.
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_grid_astar test/test_grid_astar.cpp)
+  target_link_libraries(test_grid_astar planner_core)
 endif()
 
 ament_package()

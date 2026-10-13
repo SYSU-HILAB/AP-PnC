@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <limits>
 #include <memory>
@@ -9,6 +10,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
 #include <sensor_msgs/msg/imu.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <stdexcept>
 
@@ -43,8 +45,8 @@ namespace simple_sim
    public:
     SimNode() : Node("simple_sim")
     {
-      config_    = load_config(declare_parameter<std::string>("config", ""),
-                               declare_parameter<std::string>("controller", ""));
+      config_ = load_config(declare_parameter<std::string>("config", ""),
+                            declare_parameter<std::string>("controller", ""));
       clock_pub_ = create_publisher<rosgraph_msgs::msg::Clock>(
           "/clock", rclcpp::ClockQoS());
       odom_pub_   = create_publisher<nav_msgs::msg::Odometry>("~/odom", 10);
@@ -54,6 +56,13 @@ namespace simple_sim
       actual_pub_    = create_publisher<nav_msgs::msg::Path>("~/path", 1);
       reference_pub_ = create_publisher<nav_msgs::msg::Path>(
           "~/reference", rclcpp::QoS(1).transient_local());
+      // Ground-truth map for `corridor_source: map_sfc` (see
+      // planner_core::MapCfg::map_topic's default). Unused on the box_sfc
+      // path; QoS matches lidar_sim's latched publisher.
+      map_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
+          "/lidar_sim/map", rclcpp::QoS(1).reliable().transient_local(),
+          [this](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+          { on_map(*msg); });
       reset_experiment();
       // This timer only schedules complete Runner transactions. It never
       // supplies dt.
@@ -155,9 +164,31 @@ namespace simple_sim
     rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr wrench_pub_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr               actual_pub_,
         reference_pub_;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr  map_sub_;
     std::vector<rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr> services_;
     nav_msgs::msg::Path actual_path_;
-    void                reset_experiment()
+    // Re-fed into each new Experiment on reset: the map is latched upstream
+    // (one message for the scene's lifetime), but a reset Experiment starts
+    // with no map of its own.
+    std::vector<Eigen::Vector3d> cached_map_points_;
+    void on_map(const sensor_msgs::msg::PointCloud2 &msg)
+    {
+      if (msg.point_step < 12 || msg.height * msg.width == 0)
+        return;
+      std::vector<Eigen::Vector3d> points;
+      points.reserve(msg.height * msg.width);
+      for (std::uint32_t i = 0; i < msg.height * msg.width; ++i)
+      {
+        float xyz[3];
+        std::memcpy(xyz, msg.data.data() + i * msg.point_step, sizeof(xyz));
+        points.emplace_back(xyz[0], xyz[1], xyz[2]);
+      }
+      cached_map_points_ = std::move(points);
+      RCLCPP_INFO(get_logger(), "received map: %zu points",
+                  cached_map_points_.size());
+      experiment_->ingest_map(cached_map_points_);
+    }
+    void reset_experiment()
     {
       const auto cached_reference =
           experiment_ ? experiment_->reference_handle() : nullptr;
@@ -166,7 +197,9 @@ namespace simple_sim
       auto next = std::make_unique<Experiment>(config_, cached_reference);
       next->runner().pause();    // explicit resume after startup/reset
       config_ = next->config();  // frozen snapshots; reset is not reload/replan
-      experiment_                  = std::move(next);
+      experiment_ = std::move(next);
+      if (!cached_map_points_.empty())
+        experiment_->ingest_map(cached_map_points_);
       actual_path_                 = nav_msgs::msg::Path{};
       actual_path_.header.frame_id = "world";
       publish_clock();

@@ -52,6 +52,8 @@ namespace planner::core
 
     const YAML::Node problem_node = root["problem_formulation"];
     problem.piece_n = get_or<int>(problem_node, "piece_n", problem.piece_n);
+    problem.corridor_source = get_or<std::string>(
+        problem_node, "corridor_source", problem.corridor_source);
 
     const YAML::Node box_node = problem_node["box"];
     problem.box.left          = get_or(box_node, "left", problem.box.left);
@@ -126,6 +128,20 @@ namespace planner::core
         get_or(flatness_node, "mass", problem.flatness.mass);
     problem.flatness.gravity =
         get_or(flatness_node, "gravity", problem.flatness.gravity);
+
+    const YAML::Node map_node = problem_node["map"];
+    problem.map.map_topic =
+        get_or<std::string>(map_node, "map_topic", problem.map.map_topic);
+    problem.map.voxel_scale_m =
+        get_or(map_node, "voxel_scale_m", problem.map.voxel_scale_m);
+    problem.map.dilate_radius_m =
+        get_or(map_node, "dilate_radius_m", problem.map.dilate_radius_m);
+    problem.map.bounds_margin_m =
+        get_or(map_node, "bounds_margin_m", problem.map.bounds_margin_m);
+    problem.map.replan_margin_s =
+        get_or(map_node, "replan_margin_s", problem.map.replan_margin_s);
+    problem.map.drift_threshold_m =
+        get_or(map_node, "drift_threshold_m", problem.map.drift_threshold_m);
 
     // Mirror cost settings into the gcopter singleton it actually consumes
     cost_config.v_max                 = problem.cost.v_max;

@@ -64,13 +64,20 @@ def test_beam_grid_and_map_have_finite_samples():
     assert np.max(points[:, 2]) == 4
 
 
+def test_full_sphere_fov_is_supported_for_omnidirectional_sensors():
+    directions = beam_directions(channels=128, columns=360, vertical_fov_deg=180.0)
+    assert directions.shape == (128 * 360, 3)
+    np.testing.assert_allclose(np.linalg.norm(directions, axis=1), 1)
+    assert directions[:, 2].min() < -0.99 and directions[:, 2].max() > 0.99
+
+
 @pytest.mark.parametrize("q", [(0, 0, 0, 0), (0, 0, float("nan"), 1)])
 def test_invalid_pose_is_rejected(q):
     with pytest.raises(ValueError):
         quaternion_rotation(*q)
 
 
-@pytest.mark.parametrize("args", [(0, 720, 30), (16, 1, 30), (16, 720, 180)])
+@pytest.mark.parametrize("args", [(0, 720, 30), (16, 1, 30), (16, 720, 181)])
 def test_invalid_grid_is_rejected(args):
     with pytest.raises(ValueError):
         beam_directions(*args)

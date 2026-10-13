@@ -174,6 +174,15 @@ namespace simple_sim
       if (!v->allFinite() || (v->array() <= 0.0).any())
         throw std::invalid_argument("SE3 gains must be finite and positive");
   }
+  void Se3Controller::set_trajectory(
+      std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory,
+      double                                                    time_offset)
+  {
+    if (!trajectory || trajectory->empty() || !std::isfinite(time_offset))
+      throw std::invalid_argument("invalid replanned SE3 trajectory");
+    trajectory_  = std::move(trajectory);
+    time_offset_ = time_offset;
+  }
   void Se3Controller::reset(const State &initial)
   {
     validate_state(initial);
@@ -188,7 +197,7 @@ namespace simple_sim
     // Past the end the trajectory holds its last point (ReferenceTrajectory
     // clamps), so the controller can keep tracking through the terminal dwell
     // instead of aborting the run.
-    const auto            ref = trajectory_->sample(ctx.time_s());
+    const auto ref = trajectory_->sample(ctx.time_s() - time_offset_);
     const Eigen::Vector3d force =
         ref.a + gravity_ * Eigen::Vector3d::UnitZ() +
         gains_.position.cwiseProduct(ref.p - s.position) +

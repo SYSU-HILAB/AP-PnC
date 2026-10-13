@@ -144,6 +144,48 @@ throughout (hundreds to a few thousand points per 11520-beam scan,
 ~50-70ms/scan on a laptop CPU). That one run is not a regression-tested
 claim — rerun it yourself before relying on it.
 
+## Experimental: obstacle-aware corridors from the sensed map (`corridor_source: map_sfc`)
+
+The planner's safe flight corridor (SFC) defaults to a fixed box around the
+seed trajectory (`problem_formulation.corridor_source: box_sfc`), unrelated to
+anything sensed. Setting it to `map_sfc` (`dev-sim prepare --corridor-source
+map_sfc`) instead builds the corridor from the LiDAR sim's own ground-truth
+map and continuously replans while flying:
+
+- `simple_sim_node` subscribes to `/lidar_sim/map` once (latched) and builds a
+  dilated voxel occupancy grid (`voxel_map::VoxelMap`,
+  `core/ros_packages/planner/src/gcopter/include/gcopter/voxel_map.hpp`,
+  ported from upstream [GCOPTER](https://github.com/ZJU-FAST-Lab/GCOPTER)).
+- A dependency-free 3D grid A* (`planner_core/grid_astar.hpp`, project-original
+  — upstream's path search needs OMPL, not otherwise a dependency here) finds
+  a collision-free route between legs; `sfc_gen::convexCover` + `shortCut`
+  (also ported from upstream, verbatim besides the vendoring header) turn it
+  into a chain of overlapping H-polytopes via FIRI convex decomposition.
+- `Planner::plan_corridor` feeds that corridor into the same
+  `GCOPTER_PolytopeSFC` optimizer `plan()` already uses. Every replanned leg's
+  initial state is the previous leg's exact terminal state (GCOPTER enforces
+  boundary conditions exactly), so splicing is velocity/acceleration-continuous
+  with no stop-and-go.
+- `simple_sim::Experiment::replan_if_due` triggers a new leg once the current
+  one's remaining duration drops below `map.replan_margin_s` (default 1.0s),
+  advancing one mission waypoint at a time around the same closed-loop route
+  `box_sfc` flies. `corridor_source: box_sfc` never touches any of this code.
+
+**Validated mechanism, not a tuned demo.** A real end-to-end run against
+`garden-3dgs` confirmed the full chain fires correctly (map ingested, corridor
+built, leg replanned, new trajectory tracked) and that `box_sfc` stays
+byte-identical (`metrics.json` matched a pre-change run exactly). But treating
+every opaque Gaussian in a dense, unfiltered real-world point cloud as a hard
+3D obstacle makes free space very constrained — one observed replan produced a
+valid but extreme 31-second detour (large lateral excursion and altitude
+climb) to get around it. That is the corridor construction correctly
+respecting a conservative map, not a crash or a silent failure, but it is not
+a demonstration of clean obstacle avoidance either. Before relying on this for
+anything presentable, tune `map.voxel_scale_m`/`dilate_radius_m` or pre-filter
+the source point cloud (tighter opacity/scale thresholds in
+`convert_3dgs_scene.py`) to keep only genuinely solid obstacles rather than
+every sensed point.
+
 ## Isolation and verification
 
 The launcher uses Docker `--network none`, host IPC, `ROS_DOMAIN_ID=213` and

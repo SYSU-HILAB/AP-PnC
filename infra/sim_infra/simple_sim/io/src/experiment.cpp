@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <planner_core/planner.hpp>
 #include <sstream>
@@ -124,9 +125,8 @@ namespace simple_sim
           load_config(output_dir_ / "simple_sim.yaml", config_.controller);
       config_.planning_yaml = output_dir_ / "planning.yaml";
       config_.nmpc_yaml     = output_dir_ / "nmpc.yaml";
-      planner::core::ProblemConfig planning;
-      planning.load(config_.planning_yaml.string());
-      if (std::abs(planning.problem.flatness.mass - config_.plant.mass) > 1e-9)
+      planning_.load(config_.planning_yaml.string());
+      if (std::abs(planning_.problem.flatness.mass - config_.plant.mass) > 1e-9)
         throw std::invalid_argument("planner and plant mass differ");
       const YAML::Node nmpc_settings =
           YAML::LoadFile(config_.nmpc_yaml.string())["nmpc"];
@@ -136,7 +136,8 @@ namespace simple_sim
         throw std::invalid_argument(
             "NMPC uses ground speed for cx; only zero wind is supported");
       const auto control_dt = ns_period(nmpc_settings["ctrl_frq"].as<double>());
-      planner::core::Planner planner(planning);
+      planner_.emplace(planning_);
+      auto &planner = *planner_;
       if (cached_reference)
       {
         trajectory_ = std::move(cached_reference);
@@ -152,6 +153,9 @@ namespace simple_sim
             std::make_shared<const planner::core::ReferenceTrajectory>(
                 std::move(*planned));
       }
+      // trajectory_time_offset_ stays 0: this first trajectory's own t=0
+      // coincides with sim t=0.
+      current_leg_end_time_s_ = trajectory_->duration();
       YAML::Emitter reference;
       reference.SetDoublePrecision(17);
       reference << YAML::BeginMap << YAML::Key << "order" << YAML::Value << 5
@@ -213,9 +217,14 @@ namespace simple_sim
       const auto aero_model = aerodynamics::make_aero(config_.aero_model);
       if (config_.controller == "se3")
       {
-        controller_ = std::make_unique<Se3Controller>(
+        auto se3 = std::make_unique<Se3Controller>(
             trajectory_, config_.plant.gravity, config_.se3, aero_model,
             config_.plant.mass, zero_thrust_axis_aero, config_.aero);
+        apply_replan_ =
+            [ptr = se3.get()](
+                std::shared_ptr<const planner::core::ReferenceTrajectory> t,
+                double offset) { ptr->set_trajectory(std::move(t), offset); };
+        controller_ = std::move(se3);
       }
 #ifdef SIMPLE_SIM_WITH_NMPC
       else
@@ -240,8 +249,13 @@ namespace simple_sim
             nmpc_settings["cx_slope_min_excitation"].as<double>();
         tracking_config.cx_slope_lag_s =
             nmpc_settings["cx_slope_lag_s"].as<double>();
-        controller_ = std::make_unique<NmpcController>(
+        auto nmpc = std::make_unique<NmpcController>(
             trajectory_, tracking_config, output_dir_ / "nmpc_reference.csv");
+        apply_replan_ =
+            [ptr = nmpc.get()](
+                std::shared_ptr<const planner::core::ReferenceTrajectory> t,
+                double offset) { ptr->set_trajectory(std::move(t), offset); };
+        controller_ = std::move(nmpc);
       }
 #endif
       // Any canonical model ("none" resolves to the null model, wrench = 0)
@@ -407,7 +421,7 @@ namespace simple_sim
   }  // namespace
   void Experiment::metrics_sample(const State &s, double t)
   {
-    const auto   ref   = trajectory_->sample(t);
+    const auto   ref   = trajectory_->sample(t - trajectory_time_offset_);
     const double error = (s.position - ref.p).norm();
     squared_position_error_ += error * error;
     squared_velocity_error_ += (s.velocity - ref.v).squaredNorm();
@@ -434,7 +448,8 @@ namespace simple_sim
     try
     {
       const auto         record = runner_->step();
-      const auto         ref    = trajectory_->sample(record.context.time_s());
+      const auto         ref    = trajectory_->sample(record.context.time_s() -
+                                                      trajectory_time_offset_);
       std::ostringstream row;
       row << std::setprecision(17) << record.context.index << ','
           << record.context.time_ns << ','
@@ -467,6 +482,7 @@ namespace simple_sim
       metrics_sample(record.before, record.context.time_s());
       if (record.control.solver_status == 2)
         ++status2_count_;
+      replan_if_due(record.context.time_s(), record.before.position);
       if (runner_->status() == RunStatus::Finished)
       {
         metrics_sample(record.after,
@@ -564,5 +580,121 @@ namespace simple_sim
     metrics.close();
     fs::rename(output_dir_ / "metrics.json.tmp", output_dir_ / "metrics.json");
     finished_ = status != "running";
+  }
+
+  void Experiment::ingest_map(const std::vector<Eigen::Vector3d> &points)
+  {
+    if (planning_.problem.corridor_source != "map_sfc" || map_ ||
+        points.empty())
+      return;
+
+    Eigen::Vector3d lo = points.front(), hi = points.front();
+    for (const Eigen::Vector3d &p : points)
+    {
+      lo = lo.cwiseMin(p);
+      hi = hi.cwiseMax(p);
+    }
+    const double margin = planning_.problem.map.bounds_margin_m;
+    lo -= Eigen::Vector3d::Constant(margin);
+    hi += Eigen::Vector3d::Constant(margin);
+    const double          voxel = planning_.problem.map.voxel_scale_m;
+    const Eigen::Vector3i size =
+        ((hi - lo) / voxel).array().ceil().cast<int>().matrix() +
+        Eigen::Vector3i::Ones();
+
+    map_.emplace(size, lo, voxel);
+    for (const Eigen::Vector3d &p : points)
+      map_->setOccupied(p);
+    const int dilate_cells = static_cast<int>(
+        std::ceil(planning_.problem.map.dilate_radius_m / voxel));
+    map_->dilate(std::max(1, dilate_cells));
+    force_replan_ = true;
+    std::cerr << "[simple_sim] ingested map: " << points.size()
+              << " points, voxel grid " << size.transpose() << "\n";
+  }
+
+  void Experiment::replan_if_due(double                 sim_time_s,
+                                 const Eigen::Vector3d &actual_position)
+  {
+    if (!map_ || !planner_ || planning_.problem.corridor_source != "map_sfc" ||
+        sim_time_s < next_replan_attempt_s_)
+      return;
+    const bool due = force_replan_ || (current_leg_end_time_s_ - sim_time_s) <
+                                          planning_.problem.map.replan_margin_s;
+    if (!due)
+      return;
+    // Bound retry frequency regardless of outcome below: a degenerate
+    // corridor (no route/empty hPolys) must not be retried every control
+    // step.
+    next_replan_attempt_s_ = sim_time_s + planning_.problem.map.replan_margin_s;
+
+    const double    local_t   = sim_time_s - trajectory_time_offset_;
+    const auto      ini_point = trajectory_->sample(local_t);
+    Eigen::Matrix3d iniState;
+    iniState.col(0) = ini_point.p;
+    iniState.col(1) = ini_point.v;
+    iniState.col(2) = ini_point.a;
+
+    // Divergence guard: log only, never fed back into iniState above (raw
+    // odometry noise would reintroduce a discontinuity at every splice).
+    const double drift = (actual_position - ini_point.p).norm();
+    if (drift > planning_.problem.map.drift_threshold_m &&
+        !drift_warning_logged_)
+    {
+      std::cerr << "[simple_sim] tracked position drifted " << drift
+                << "m from the predicted splice state at t=" << sim_time_s
+                << "s (threshold " << planning_.problem.map.drift_threshold_m
+                << "m)\n";
+      drift_warning_logged_ = true;
+    }
+
+    const auto route = planner_->mission_route();
+    if (route.size() < 2)
+      return;
+    const std::size_t piece_n = route.size() - 1;
+
+    if (force_replan_)
+    {
+      // Bootstrap: the map just arrived mid-leg, so aim at whichever
+      // mission waypoint the vehicle is actually nearest to right now.
+      std::size_t best      = 0;
+      double      best_dist = (route.front().col(0) - ini_point.p).norm();
+      for (std::size_t i = 1; i < route.size(); ++i)
+      {
+        const double d = (route[i].col(0) - ini_point.p).norm();
+        if (d < best_dist)
+        {
+          best_dist = d;
+          best      = i;
+        }
+      }
+      mission_waypoint_index_ = best % piece_n;
+    }
+    const std::size_t target_index = (mission_waypoint_index_ + 1) % piece_n;
+    const Eigen::Matrix3d finState = route[target_index].leftCols<3>();
+
+    auto planned = planner_->plan_corridor(iniState, finState, *map_);
+    if (!planned || planned->empty())
+    {
+      if (!map_degenerate_logged_)
+      {
+        std::cerr << "[simple_sim] corridor replan failed at t=" << sim_time_s
+                  << "s; holding the current leg and retrying later\n";
+        map_degenerate_logged_ = true;
+      }
+      return;
+    }
+
+    trajectory_ = std::make_shared<const planner::core::ReferenceTrajectory>(
+        std::move(*planned));
+    trajectory_time_offset_ = sim_time_s;
+    current_leg_end_time_s_ = sim_time_s + trajectory_->duration();
+    mission_waypoint_index_ = target_index;
+    force_replan_           = false;
+    if (apply_replan_)
+      apply_replan_(trajectory_, trajectory_time_offset_);
+    std::cerr << "[simple_sim] replanned leg to waypoint " << target_index
+              << " at t=" << sim_time_s
+              << "s, duration=" << trajectory_->duration() << "s\n";
   }
 }  // namespace simple_sim

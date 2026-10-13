@@ -38,6 +38,15 @@ namespace simple_sim
       trace_file_ << ",solution_accepted\n" << std::setprecision(17);
     }
   }
+  void NmpcController::set_trajectory(
+      std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory,
+      double                                                    time_offset)
+  {
+    if (!trajectory || trajectory->empty() || !std::isfinite(time_offset))
+      throw std::invalid_argument("invalid replanned NMPC trajectory");
+    trajectory_  = std::move(trajectory);
+    time_offset_ = time_offset;
+  }
   void NmpcController::reset(const State &initial)
   {
     validate_state(initial);
@@ -61,7 +70,7 @@ namespace simple_sim
     for (int i = 0; i <= n; ++i)
     {
       const double t   = ctx.time_s() + i * cfg.traj_res_s;
-      const auto   ref = trajectory_->sample(t);
+      const auto   ref = trajectory_->sample(t - time_offset_);
       planned.push_back(ref);
       horizon.push_back(nmpc::cost_reference(
           {ref.p.x(), ref.p.y(), ref.p.z()}, {ref.v.x(), ref.v.y(), ref.v.z()},

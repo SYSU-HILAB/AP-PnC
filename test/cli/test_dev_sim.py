@@ -79,6 +79,18 @@ def test_unknown_scene_is_rejected(project):
         dev_sim.prepare(scene="bogus", output=project / ".artifacts/bogus")
 
 
+def test_unknown_corridor_source_is_rejected(project):
+    with pytest.raises(ValueError, match="corridor_source"):
+        dev_sim.prepare(corridor_source="bogus", output=project / ".artifacts/bogus")
+
+
+def test_map_sfc_corridor_source_is_written_into_planning_yaml(project):
+    job = dev_sim.prepare(corridor_source="map_sfc", output=project / ".artifacts/dev-map-sfc")
+    planning = yaml.safe_load((job / "config/planning.yaml").read_text())
+    assert planning["problem_formulation"]["corridor_source"] == "map_sfc"
+    assert json.loads((job / "dev-sim.json").read_text())["corridor_source"] == "map_sfc"
+
+
 def test_garden_3dgs_scene_requires_converted_points_first(project):
     with pytest.raises(FileNotFoundError, match="garden-3dgs"):
         dev_sim.prepare(scene="garden-3dgs", output=project / ".artifacts/garden")

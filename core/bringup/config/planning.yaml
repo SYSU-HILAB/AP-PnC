@@ -4,6 +4,13 @@
 
 problem_formulation:
   piece_n: 10
+  # box_sfc (default): the fixed corridor below, around basic_traj.
+  # map_sfc (experimental): a corridor built from /lidar_sim/map via grid A*
+  # + FIRI convex decomposition, continuously replanned leg by leg as the
+  # vehicle flies (see infra/sim_infra/lidar_sim/README.md and
+  # simple_sim::Experiment::ingest_map/replan_if_due). Never silently
+  # switched on; dev-sim's CLI sets it explicitly via --corridor-source.
+  corridor_source: box_sfc
   box:
     # Lateral half-extents [m]. The SFC planes are axis aligned, so
     # left  = -y half-length and right = +y half-length of the box.
@@ -59,3 +66,11 @@ problem_formulation:
       - 0.0
       - -0.09408
     mass: 2.0
+  # Only consumed when corridor_source: map_sfc.
+  map:
+    map_topic: /lidar_sim/map
+    voxel_scale_m: 0.2
+    dilate_radius_m: 0.3
+    bounds_margin_m: 1.0
+    replan_margin_s: 1.0
+    drift_threshold_m: 0.5

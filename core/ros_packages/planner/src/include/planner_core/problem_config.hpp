@@ -101,6 +101,29 @@ namespace planner::core
   };
 
   /**
+   * @brief Map-derived corridor construction and continuous replanning.
+   *
+   * Only consumed when `corridor_source == "map_sfc"`. The occupancy map is
+   * built once from a latched ground-truth point cloud (see
+   * infra/sim_infra/lidar_sim); bounds are derived from that cloud's own
+   * extent plus `bounds_margin_m`, not hand-duplicated here.
+   */
+  struct MapCfg
+  {
+    std::string map_topic       = "/lidar_sim/map";
+    double      voxel_scale_m   = 0.2;
+    double      dilate_radius_m = 0.3;
+    double      bounds_margin_m = 1.0;
+    // Replan the front buffered segment once its remaining duration drops
+    // below this lead time; must exceed one NMPC horizon.
+    double replan_margin_s = 1.0;
+    // Divergence guard only (see Planner/PlannerNode): logged, not fed into
+    // the next leg's initial state, which always comes from the predicted
+    // terminal state of the previously-pushed segment.
+    double drift_threshold_m = 0.5;
+  };
+
+  /**
    * @brief The optimization problem itself: corridor, seed curve, cost,
    * trajectory parameterization, and vehicle flatness model
    */
@@ -108,11 +131,16 @@ namespace planner::core
   {
     int piece_n = 10;
 
+    // "box_sfc" (default, fixed synthetic corridor around basic_traj) or
+    // "map_sfc" (corridor built from the sensed map, continuously replanned).
+    std::string corridor_source = "box_sfc";
+
     BoxCfg       box;
     BasicTrajCfg basic_traj;
     CostCfg      cost;
     MincoCfg     minco;
     FlatnessCfg  flatness;
+    MapCfg       map;
   };
 
   /**

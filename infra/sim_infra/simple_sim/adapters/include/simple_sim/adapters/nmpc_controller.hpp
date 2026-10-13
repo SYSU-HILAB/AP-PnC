@@ -21,10 +21,23 @@ namespace simple_sim
     ControlResult compute(const StepContext &, const State &,
                           const Feedback &) override;
 
+    /**
+     * @brief Swap in a replanned leg without discontinuity.
+     *
+     * `trajectory`'s own time axis starts at 0; `time_offset` is the sim
+     * time at which that 0 occurred, so `sample(t)` calls become
+     * `sample(t - time_offset)`. Unused by the default (box_sfc) path, which
+     * never calls this and keeps `time_offset_ == 0` for its whole run.
+     */
+    void set_trajectory(
+        std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory,
+        double                                                    time_offset);
+
    private:
     std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory_;
-    nmpc::TrackingController                                  controller_;
-    std::ofstream                                             trace_file_;
+    double                   time_offset_ = 0.0;
+    nmpc::TrackingController controller_;
+    std::ofstream            trace_file_;
     void write_trace(const StepContext &,
                      const std::vector<planner::core::ReferencePoint> &);
   };

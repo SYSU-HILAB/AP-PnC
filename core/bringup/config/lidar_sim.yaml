@@ -5,9 +5,14 @@ lidar_sim:
   sensor_frame: lidar
   odom_topic: /simple_sim/odom
   sensor:
-    channels: 16
-    columns: 720
-    vertical_fov_deg: 30.0
+    # Idealized as omnidirectional: a tail-sitter's attitude swings ~90deg
+    # between hover and cruise, so a forward-facing sensor would lose
+    # coverage mid-transition. Modeled after a top-mounted Hesai JT128
+    # (360x189deg hyper-hemispherical, 128ch), simplified to a full sphere
+    # since its real ~9deg blind cone points into the airframe anyway.
+    channels: 128
+    columns: 360
+    vertical_fov_deg: 180.0
     rate_hz: 10.0
     min_range_m: 0.3
     max_range_m: 50.0

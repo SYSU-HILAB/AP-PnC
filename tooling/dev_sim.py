@@ -33,13 +33,16 @@ SCENES = {
 }
 
 
-def prepare(*, controller="nmpc", v_max=4.0, output=None, scene="pillars"):
+def prepare(*, controller="nmpc", v_max=4.0, output=None, scene="pillars",
+           corridor_source="box_sfc"):
     if controller not in {"se3", "nmpc"}:
         raise ValueError("controller must be se3 or nmpc")
     if not math.isfinite(v_max) or v_max <= 0:
         raise ValueError("v_max must be finite and positive")
     if scene not in SCENES:
         raise ValueError(f"scene must be one of {sorted(SCENES)}")
+    if corridor_source not in {"box_sfc", "map_sfc"}:
+        raise ValueError("corridor_source must be box_sfc or map_sfc")
     root = get_git_root()
     profile = root / ".artifacts/vtol-matlab/profile.yaml"
     provenance = profile.with_name("provenance.json")
@@ -69,7 +72,8 @@ def prepare(*, controller="nmpc", v_max=4.0, output=None, scene="pillars"):
                          overrides={"simple_sim.controller": controller,
                                     "simple_sim.ros.publish_stride": 1,
                                     "problem_formulation.basic_traj.radius": 8.0,
-                                    "problem_formulation.basic_traj.height": 3.0})
+                                    "problem_formulation.basic_traj.height": 3.0,
+                                    "problem_formulation.corridor_source": corridor_source})
     request.validate()
     write_configuration(job, request)
     revision = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
@@ -77,7 +81,8 @@ def prepare(*, controller="nmpc", v_max=4.0, output=None, scene="pillars"):
     (job / "dev-sim.json").write_text(json.dumps({
         "schema": "ap-pnc/ros2-dev-sim/v1", "source_revision": revision, "source_dirty": dirty,
         "profile": "practical", "aero": "lyu", "controller": controller,
-        "scene": scene, "ros_domain_id": 213, "hardware_connected": False,
+        "scene": scene, "corridor_source": corridor_source, "ros_domain_id": 213,
+        "hardware_connected": False,
         "collision_dynamics": False, "lidar_model": scene_spec["lidar_model"],
         "container_name": f"ap-pnc-dev-{job.name}",
     }, indent=2))

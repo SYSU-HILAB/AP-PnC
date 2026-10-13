@@ -24,6 +24,7 @@
 #include <functional>
 #include <gcopter/gcopter.hpp>
 #include <gcopter/trajectory.hpp>
+#include <gcopter/voxel_map.hpp>
 #include <memory>
 #include <optional>
 #include <planner_core/problem_config.hpp>
@@ -88,12 +89,46 @@ namespace planner::core
      */
     std::optional<ReferenceTrajectory> plan();
 
+    /**
+     * @brief Run one corridor-constrained replanning leg against a sensed map.
+     *
+     * Unlike plan(), the corridor comes from `map` (grid A* + FIRI convex
+     * decomposition, see grid_astar.hpp and gcopter/sfc_gen.hpp) instead of a
+     * fixed box around basic_traj_. `iniState`/`finState` are full
+     * position/velocity/acceleration boundary conditions (GCOPTER enforces
+     * them exactly), so chaining calls with each leg's `finState` as the
+     * next leg's `iniState` produces a trajectory that splices without a
+     * velocity/acceleration discontinuity.
+     *
+     * @param iniState Initial position/velocity/acceleration (columns), world
+     * @param finState Terminal position/velocity/acceleration (columns), world
+     * @param map      Dilated occupancy map to route through
+     * @return the continuous reference trajectory, or std::nullopt on failure
+     */
+    std::optional<ReferenceTrajectory> plan_corridor(
+        const Eigen::Matrix3d &iniState, const Eigen::Matrix3d &finState,
+        const voxel_map::VoxelMap &map);
+
     /// Problem configuration in use.
     const ProblemConfig &config() const { return config_; }
+
+    /// The nominal (unobstructed) mission route this config's basic_traj_
+    /// describes; columns of each point are (pos, vel, acc). Exposed so
+    /// map_sfc continuous replanning can advance through the same waypoints
+    /// `plan()`'s box-SFC path uses, leg by leg.
+    std::vector<basic_trajectories::Mat3x4> mission_route() const
+    {
+      return basic_traj_->samplingPointArray(config_.problem.piece_n);
+    }
 
    private:
     void init_basic_trajectory_type(int type);
     void create_basic_trajectory_sfc(std::vector<Eigen::MatrixX4d> &hPolys);
+    bool build_corridor_sfc(const Eigen::Vector3d         &start,
+                            const Eigen::Vector3d         &goal,
+                            const voxel_map::VoxelMap     &map,
+                            std::vector<Eigen::MatrixX4d> &hPolys,
+                            std::vector<Eigen::Vector3d>  &route);
     void log(LogLevel level, const std::string &msg) const;
 
     ProblemConfig                                   config_;

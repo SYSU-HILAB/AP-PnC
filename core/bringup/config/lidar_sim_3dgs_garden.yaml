@@ -8,9 +8,10 @@ lidar_sim:
   sensor_frame: lidar
   odom_topic: /simple_sim/odom
   sensor:
-    channels: 16
-    columns: 720
-    vertical_fov_deg: 30.0
+    # Idealized omnidirectional top-mounted sensor, see lidar_sim.yaml.
+    channels: 128
+    columns: 360
+    vertical_fov_deg: 180.0
     rate_hz: 10.0
     min_range_m: 0.3
     max_range_m: 20.0
