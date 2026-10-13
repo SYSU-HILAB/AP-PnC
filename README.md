@@ -59,7 +59,10 @@ Set an absolute `AP_PNC_DIR` first. This needs the numerical image built above
 and the local practical profile; it never silently uses ideal actuation.
 See the [development simulator guide](infra/sim_infra/lidar_sim/README.md) for
 profile preparation, ROS2 topics, RViz and limits. Sensor geometry does not add
-collision dynamics or obstacle-aware planning.
+collision dynamics or obstacle-aware planning. An experimental `--scene
+garden-3dgs` option runs the same pipeline against a real captured scene
+converted from 3D Gaussian Splatting instead of the default pillars; see that
+guide's "Experimental" section before using it.
 
 ## Results
 

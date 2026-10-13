@@ -1,8 +1,25 @@
 """Deterministic point-cloud map and analytic first-return cylinder ray casting."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
+from scipy.ndimage import binary_dilation
+
+
+def _validate_rays(origin, directions, min_range, max_range):
+    """Shared ray-batch checks for every scene's `ranges` implementation."""
+    origin = np.asarray(origin, dtype=float)
+    directions = np.asarray(directions, dtype=float)
+    if origin.shape != (3,) or directions.ndim != 2 or directions.shape[1] != 3:
+        raise ValueError("origin/directions must be (3,) and (N,3)")
+    if not np.isfinite(origin).all() or not np.isfinite(directions).all():
+        raise ValueError("nonfinite rays")
+    if not np.allclose(np.linalg.norm(directions, axis=1), 1, atol=1e-8):
+        raise ValueError("ray directions must have unit norm")
+    if not np.isfinite([min_range, max_range]).all() or not 0 < min_range < max_range:
+        raise ValueError("invalid range bounds")
+    return origin, directions
 
 
 @dataclass(frozen=True)
@@ -80,16 +97,7 @@ class Scene:
         Directions and distances are in world metres. The nearest geometric hit
         wins, including a near hit inside the minimum range: never see through it.
         """
-        origin = np.asarray(origin, dtype=float)
-        directions = np.asarray(directions, dtype=float)
-        if origin.shape != (3,) or directions.ndim != 2 or directions.shape[1] != 3:
-            raise ValueError("origin/directions must be (3,) and (N,3)")
-        if not np.isfinite(origin).all() or not np.isfinite(directions).all():
-            raise ValueError("nonfinite rays")
-        if not np.allclose(np.linalg.norm(directions, axis=1), 1, atol=1e-8):
-            raise ValueError("ray directions must have unit norm")
-        if not np.isfinite([min_range, max_range]).all() or not 0 < min_range < max_range:
-            raise ValueError("invalid range bounds")
+        origin, directions = _validate_rays(origin, directions, min_range, max_range)
         distances = np.full(len(directions), np.inf)
         dx, dy, dz = directions.T
 
@@ -122,6 +130,127 @@ class Scene:
             plane_hit(pillar.base_z + pillar.height, pillar)
         distances[(distances < min_range) | (distances > max_range)] = np.inf
         return distances
+
+
+def load_xyz_ply(path):
+    """Read vertex x,y,z from an ASCII or binary_little_endian PLY; other properties ignored."""
+    with open(path, "rb") as handle:
+        line = handle.readline()
+        if line.strip() != b"ply":
+            raise ValueError("not a PLY file")
+        fmt, count, names = None, None, []
+        while True:
+            line = handle.readline()
+            if not line:
+                raise ValueError("PLY header truncated")
+            tokens = line.split()
+            if tokens[:2] == [b"format", b"ascii"]:
+                fmt = "ascii"
+            elif tokens[:2] == [b"format", b"binary_little_endian"]:
+                fmt = "binary_little_endian"
+            elif tokens[:2] == [b"element", b"vertex"]:
+                count = int(tokens[2])
+            elif tokens[:1] == [b"element"]:
+                raise ValueError("PLY must contain only a vertex element (no faces/edges)")
+            elif tokens[:1] == [b"property"]:
+                names.append(tokens[-1].decode())
+            elif tokens[:1] == [b"end_header"]:
+                break
+        if fmt is None or count is None:
+            raise ValueError("PLY header missing format/vertex count")
+        if "x" not in names or "y" not in names or "z" not in names:
+            raise ValueError("PLY vertices must have x, y, z properties")
+        if fmt == "ascii":
+            rows = [handle.readline().split() for _ in range(count)]
+            data = {name: np.array([float(row[i]) for row in rows]) for i, name in enumerate(names)}
+        else:
+            dtype = np.dtype([(name, "<f4") for name in names])
+            data = np.fromfile(handle, dtype=dtype, count=count)
+            data = {name: data[name] for name in names}
+        points = np.column_stack((data["x"], data["y"], data["z"])).astype(np.float32)
+    if not np.isfinite(points).all():
+        raise ValueError("PLY contains nonfinite vertices")
+    return points
+
+
+class PointCloudScene:
+    """Ray-marches a voxelized surface point cloud (e.g. a converted 3DGS scene).
+
+    MARSIM-style map rendering: instead of analytic primitives, the map is a
+    boolean occupancy grid built from the point cloud (each occupied voxel
+    dilated by one cell so marching steps cannot tunnel between neighbouring
+    points), and a scan is the first range at which a ray's march enters an
+    occupied voxel. This is an approximation (gaps show through at low point
+    density), so keep `occupancy_radius` comparable to the source map's own
+    point spacing, and `step` at or below `occupancy_radius`.
+    """
+
+    MAX_VOXELS = 200_000_000
+
+    def __init__(self, points, occupancy_radius=0.15, step=0.1):
+        points = np.asarray(points, dtype=np.float32)
+        if points.ndim != 2 or points.shape[1] != 3 or len(points) == 0:
+            raise ValueError("point cloud must be a nonempty (N,3) array")
+        if not np.isfinite(points).all():
+            raise ValueError("point cloud must be finite")
+        if not np.isfinite([occupancy_radius, step]).all() or occupancy_radius <= 0 or step <= 0:
+            raise ValueError("occupancy radius and step must be finite and positive")
+        self.points = points
+        self.occupancy_radius = float(occupancy_radius)
+        self.step = float(step)
+        self._voxel = self.occupancy_radius
+        self._origin = points.min(axis=0) - 2 * self._voxel
+        dims = np.ceil((points.max(axis=0) + 2 * self._voxel - self._origin) / self._voxel).astype(np.int64) + 1
+        if np.prod(dims.astype(np.int64)) > self.MAX_VOXELS:
+            raise ValueError("occupancy_radius too small for this point cloud's extent")
+        self._dims = dims
+        index = np.floor((points - self._origin) / self._voxel).astype(np.int64)
+        grid = np.zeros(tuple(dims), dtype=bool)
+        grid[index[:, 0], index[:, 1], index[:, 2]] = True
+        self._grid = binary_dilation(grid, iterations=1)
+
+    @classmethod
+    def from_file(cls, path, **kwargs):
+        return cls(load_xyz_ply(path), **kwargs)
+
+    def point_cloud(self):
+        """Surface samples for map display; scans do not cheat using this cloud."""
+        return self.points
+
+    def ranges(self, origin, directions, min_range, max_range):
+        """March each ray outward and stop at the first occupied voxel."""
+        origin, directions = _validate_rays(origin, directions, min_range, max_range)
+        n_steps = int(np.ceil((max_range - min_range) / self.step)) + 1
+        distances = np.full(len(directions), np.inf)
+        unresolved = np.arange(len(directions))
+        for depth in min_range + self.step * np.arange(n_steps):
+            if unresolved.size == 0:
+                break
+            depth = min(depth, max_range)
+            samples = origin + directions[unresolved] * depth
+            index = np.floor((samples - self._origin) / self._voxel).astype(np.int64)
+            in_bounds = ((index >= 0) & (index < self._dims)).all(axis=1)
+            hit = np.zeros(len(samples), dtype=bool)
+            bounded = index[in_bounds]
+            hit[in_bounds] = self._grid[bounded[:, 0], bounded[:, 1], bounded[:, 2]]
+            distances[unresolved[hit]] = depth
+            unresolved = unresolved[~hit]
+        distances[(distances < min_range) | (distances > max_range)] = np.inf
+        return distances
+
+
+def load_scene(data):
+    """Pillars are the default/regression scene; point_cloud is experimental (see README)."""
+    kind = data.get("type", "pillars")
+    if kind == "pillars":
+        return Scene.from_dict(data)
+    if kind == "point_cloud":
+        path = Path(data["path"])
+        if not path.is_absolute():
+            raise ValueError("point_cloud scene path must be absolute")
+        return PointCloudScene.from_file(path, occupancy_radius=float(data.get("occupancy_radius_m", 0.15)),
+                                         step=float(data.get("step_m", 0.2)))
+    raise ValueError("scene type must be 'pillars' or 'point_cloud'")
 
 
 def beam_directions(channels=16, columns=720, vertical_fov_deg=30.0):

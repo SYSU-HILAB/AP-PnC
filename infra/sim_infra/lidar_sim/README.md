@@ -87,9 +87,62 @@ packet formats are not modeled. Point fields are little-endian float32 xyz.
 **No collision/contact dynamics or obstacle-aware replanning are added.** Pillars
 are sensor geometry, not forces in the plant. The frozen reference may intersect
 a custom obstacle. This is a perception/interface development environment, not
-collision-avoidance acceptance. External PLY/3DGS scenes are not yet supported;
-use the reproducible pillars first rather than downloading an unverified large
-scene or treating Gaussian splats as LiDAR-solid geometry.
+collision-avoidance acceptance.
+
+## Experimental: an external point-cloud/3DGS scene
+
+`type: pillars` (above) stays the default/regression scene. A second, explicitly
+experimental `type: point_cloud` scene exists for trying the stack against a
+real captured environment, MARSIM-style: instead of analytic primitives, the
+map is a voxel occupancy grid built from an arbitrary point cloud, and a scan is
+the first range at which a ray's march enters an occupied voxel (see
+`lidar_sim.geometry.PointCloudScene`). This is still a geometric approximation
+(gaps show through at low point density; occupancy does not become a collision
+force), not a verified LiDAR-realism or obstacle-avoidance claim.
+
+`infra/sim_infra/lidar_sim/scripts/convert_3dgs_scene.py` turns a raw 3D
+Gaussian Splatting training output (one binary PLY row per Gaussian: position,
+opacity, scale, rotation, SH color) into the plain x,y,z PLY this scene type
+consumes. It keeps Gaussians that behave like solid surface (opaque, small),
+recovers the ground plane by RANSAC so the result is Z-up with ground at
+z=0, and crops to a radius/height band around the origin. The source scene's
+metric scale is whatever its own capture pipeline produced — sanity-check the
+result against the flight envelope and pass `--scale` if it looks off.
+
+A ready-made example: the Mip-NeRF360 "garden" scene (real-world capture,
+non-commercial research license — see
+[Mip-NeRF360](https://jonbarron.info/mipnerf360/) and the
+[3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting)
+repo it was trained with) has a community-trained pretrained PLY at
+[`alexmkwizu/gaussian_training_datasets`](https://huggingface.co/datasets/alexmkwizu/gaussian_training_datasets)
+(`tested_outputs/garden.ply`, Apache-2.0 output license, ~180MB). Convert it once:
+
+```bash
+curl -L -o /tmp/garden_raw.ply \
+  https://huggingface.co/datasets/alexmkwizu/gaussian_training_datasets/resolve/main/tested_outputs/garden.ply
+python3 infra/sim_infra/lidar_sim/scripts/convert_3dgs_scene.py \
+  /tmp/garden_raw.ply "$AP_PNC_DIR/.artifacts/dev-sim/scenes/garden_points.ply"
+```
+
+Then select it when preparing a job, e.g. to try the 10m/s circuit this scene
+was validated against:
+
+```bash
+uv run --project "$AP_PNC_DIR" ap-pnc dev-sim prepare --scene garden-3dgs --v-max 10
+```
+
+`prepare` copies the converted point cloud into the job directory and mounts it
+read-only into the container; it fails explicitly if the file above is missing
+rather than silently falling back to pillars. Neither the raw download nor the
+converted output is committed to the repository — both stay under `.artifacts/`.
+
+This was run once end-to-end with practical actuation + Lyu aerodynamics +
+NMPC at `v_max=10`: the full closed radius-8m/altitude-3m circuit completed
+(no solver failures, `position_rmse_m≈0.28`, `position_max_m≈0.65`), with the
+LiDAR node returning real hits against the converted garden geometry
+throughout (hundreds to a few thousand points per 11520-beam scan,
+~50-70ms/scan on a laptop CPU). That one run is not a regression-tested
+claim — rerun it yourself before relying on it.
 
 ## Isolation and verification
 

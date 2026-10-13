@@ -13,7 +13,7 @@ from sensor_msgs.msg import PointCloud2, PointField
 from std_msgs.msg import Header
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
-from lidar_sim.geometry import Scene, beam_directions, quaternion_rotation, scan
+from lidar_sim.geometry import beam_directions, load_scene, quaternion_rotation, scan
 
 
 def point_cloud(points, stamp, frame):
@@ -37,7 +37,7 @@ class LidarSim(Node):
         if not config.is_absolute():
             raise ValueError("LiDAR config must be absolute")
         data = yaml.safe_load(config.read_text())["lidar_sim"]
-        self.scene = Scene.from_dict(data["scene"])
+        self.scene = load_scene(data["scene"])
         self.settings = data["sensor"]
         bounds = [float(self.settings[key]) for key in ("min_range_m", "max_range_m", "noise_std_m")]
         if not np.isfinite(bounds).all() or not 0 < bounds[0] < bounds[1] or bounds[2] < 0:

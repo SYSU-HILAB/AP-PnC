@@ -1,0 +1,25 @@
+# Experimental scene converted from a real-world 3D Gaussian Splatting capture
+# (Mip-NeRF360 "garden"). See infra/sim_infra/lidar_sim/README.md before using
+# this: it is a point-cloud-occupancy approximation, not verified LiDAR-solid
+# geometry, and is kept separate from the default pillar regression scene.
+lidar_sim:
+  world_frame: world
+  body_frame: base_link
+  sensor_frame: lidar
+  odom_topic: /simple_sim/odom
+  sensor:
+    channels: 16
+    columns: 720
+    vertical_fov_deg: 30.0
+    rate_hz: 10.0
+    min_range_m: 0.3
+    max_range_m: 20.0
+    noise_std_m: 0.01
+    seed: 7
+    position_body_m: [0.0, 0.0, 0.12]
+    orientation_body_xyzw: [0.0, 0.0, 0.0, 1.0]
+  scene:
+    type: point_cloud
+    path: /workspace/scene/garden_points.ply
+    occupancy_radius_m: 0.12
+    step_m: 0.1

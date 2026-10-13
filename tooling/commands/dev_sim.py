@@ -20,10 +20,11 @@ def build():
 def prepare(
     controller: str = typer.Option("nmpc"),
     v_max: float = typer.Option(4.0, min=0.01),
+    scene: str = typer.Option("pillars", help="pillars (default) or garden-3dgs (experimental)"),
     output: Annotated[Path | None, typer.Option(help="Fresh directory under AP_PNC_DIR/.artifacts")] = None,
 ):
     """Stage frozen practical + lyu configs; do not start simulation."""
-    typer.echo(dev_sim.prepare(controller=controller, v_max=v_max, output=output))
+    typer.echo(dev_sim.prepare(controller=controller, v_max=v_max, scene=scene, output=output))
 
 
 @app.command()
