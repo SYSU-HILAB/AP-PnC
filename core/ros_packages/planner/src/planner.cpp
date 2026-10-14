@@ -262,66 +262,88 @@ namespace planner::core
     {
       totalLength += (route[i] - route[i - 1]).norm();
     }
-    // Seed conservatively (a slow cruise-speed guess the optimizer shrinks)
-    // rather than near v_max (an optimistic guess it must stretch): shrinking
-    // an overestimated time allocation is the direction GCOPTER's line
-    // search handles reliably; stretching an underestimated one from a
-    // tight, irregular grid-search corridor is the direction that stalled.
-    const double v_max     = std::max(0.1, config_.problem.cost.v_max / 8.0);
     const double segLength = std::max(1e-3, totalLength / pieceN);
 
-    Eigen::VectorXd  initTime(pieceN);
-    Eigen::Matrix3Xd initPointsPos(3, pieceN - 1);
-    double           acc      = 0.0;
-    std::size_t      routeIdx = 0;
-    for (int i = 0; i < pieceN - 1; i++)
+    Eigen::Vector3d tangent = finState.col(0) - iniState.col(0);
+    if (tangent.norm() < 1e-6)
     {
-      const double target = segLength * (i + 1);
-      while (routeIdx + 1 < route.size() &&
-             acc + (route[routeIdx + 1] - route[routeIdx]).norm() < target)
+      tangent = Eigen::Vector3d::UnitX();
+    }
+    Eigen::Vector3d lateral =
+        tangent.normalized().cross(Eigen::Vector3d::UnitZ());
+    if (lateral.norm() < 1e-6)
+    {
+      lateral = Eigen::Vector3d::UnitY();
+    }
+    lateral.normalize();
+
+    // GCOPTER's corridor setup can be numerically finicky for some A*
+    // route/polytope shapes (exact colinearity of seed points with the
+    // boundary states, or a seed time allocation the line search can't
+    // reach from): retry a small set of perturbations -- alternating the
+    // sideways nudge direction/magnitude and the seed cruise-speed guess --
+    // before giving up, the same "try a different starting point" tactic a
+    // human would use on a stuck nonlinear solve.
+    const struct
+    {
+      double nudge;
+      double speedDivisor;
+    } attempts[] = {
+        {0.15, 8.0}, {-0.15, 8.0}, {0.3, 8.0}, {-0.3, 4.0}, {0.0, 8.0},
+    };
+
+    for (const auto &attempt : attempts)
+    {
+      // Seed conservatively (a slow cruise-speed guess the optimizer
+      // shrinks) rather than near v_max (an optimistic guess it must
+      // stretch): shrinking an overestimated time allocation is the
+      // direction GCOPTER's line search handles reliably.
+      const double v_max =
+          std::max(0.1, config_.problem.cost.v_max / attempt.speedDivisor);
+
+      Eigen::VectorXd  initTime(pieceN);
+      Eigen::Matrix3Xd initPointsPos(3, pieceN - 1);
+      double           acc      = 0.0;
+      std::size_t      routeIdx = 0;
+      for (int i = 0; i < pieceN - 1; i++)
       {
-        acc += (route[routeIdx + 1] - route[routeIdx]).norm();
-        ++routeIdx;
+        const double target = segLength * (i + 1);
+        while (routeIdx + 1 < route.size() &&
+               acc + (route[routeIdx + 1] - route[routeIdx]).norm() < target)
+        {
+          acc += (route[routeIdx + 1] - route[routeIdx]).norm();
+          ++routeIdx;
+        }
+        // Nudge the seed slightly off the A* centerline: exact colinearity
+        // of interior seed points with the boundary states is degenerate
+        // for GCOPTER's setup, the same reason plan()'s own seed offsets
+        // its interior points sideways rather than placing them on the
+        // nominal path.
+        initPointsPos.col(i) = route[routeIdx] + lateral * attempt.nudge;
+        initTime(i)          = segLength / v_max;
       }
-      // Nudge the seed slightly off the A* centerline: GCOPTER's setup
-      // becomes degenerate when interior seed points are exactly colinear
-      // with the boundary states (always true for a straight-line route),
-      // the same reason plan()'s own seed offsets its interior points
-      // sideways rather than placing them on the nominal path.
-      Eigen::Vector3d tangent = finState.col(0) - iniState.col(0);
-      if (tangent.norm() < 1e-6)
+      initTime(pieceN - 1) = segLength / v_max;
+
+      gcopter::GCOPTER_PolytopeSFC gcopter;
+      TrajectoryRepresentation<5>  traj;
+      if (!gcopter.setup_basic_trajectory(
+              iniState, finState, initTime, initPointsPos, hPolys,
+              config_.problem.minco.smoothing_eps,
+              config_.problem.minco.integral_intervs))
       {
-        tangent = Eigen::Vector3d::UnitX();
+        continue;
       }
-      const Eigen::Vector3d lateral =
-          tangent.normalized().cross(Eigen::Vector3d::UnitZ());
-      const Eigen::Vector3d nudge =
-          lateral.norm() > 1e-6
-              ? Eigen::Vector3d(lateral.normalized() * 0.15)
-              : Eigen::Vector3d(Eigen::Vector3d::UnitY() * 0.15);
-      initPointsPos.col(i) = route[routeIdx] + nudge;
-      initTime(i)          = segLength / v_max;
-    }
-    initTime(pieceN - 1) = segLength / v_max;
-
-    gcopter::GCOPTER_PolytopeSFC gcopter;
-    TrajectoryRepresentation<5>  traj;
-    if (!gcopter.setup_basic_trajectory(iniState, finState, initTime,
-                                        initPointsPos, hPolys,
-                                        config_.problem.minco.smoothing_eps,
-                                        config_.problem.minco.integral_intervs))
-    {
-      log(LogLevel::Error, "GCOPTER setup failed (corridor)");
-      return std::nullopt;
+      if (std::isinf(
+              gcopter.optimize(traj, config_.problem.minco.rel_cost_tol)))
+      {
+        continue;
+      }
+      return ReferenceTrajectory(std::move(traj));
     }
 
-    if (std::isinf(gcopter.optimize(traj, config_.problem.minco.rel_cost_tol)))
-    {
-      log(LogLevel::Error, "GCOPTER optimization diverged (corridor)");
-      return std::nullopt;
-    }
-
-    return ReferenceTrajectory(std::move(traj));
+    log(LogLevel::Error,
+        "GCOPTER optimization diverged (corridor) after all seed retries");
+    return std::nullopt;
   }
 
 }  // namespace planner::core
