@@ -5,9 +5,6 @@ Compiles the pure planner_core sources directly (no colcon / no ROS needed).
 Requires: pybind11, Eigen3 headers, yaml-cpp dev library.
 """
 
-import os
-from pathlib import Path
-
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 
@@ -17,27 +14,14 @@ pkg = get_git_root() / "core" / "ros_packages" / "planner"
 src = pkg / "src"
 
 
-def _first_existing(paths: list[Path]) -> str | None:
-    for p in paths:
-        if p.exists():
-            return str(p)
-    return None
-
-
-eigen_include = os.environ.get("EIGEN3_INCLUDE_DIR") or _first_existing(
-    [Path("/usr/include/eigen3"), Path("/opt/homebrew/include/eigen3"),
-     Path("/usr/local/include/eigen3")]
-)
-
+# Built only inside the Linux tools image; no host-specific header search.
 include_dirs = [
+    "/usr/include/eigen3",
     str(src / "include"),
     str(src / "gcopter" / "include"),
     str(src / "basic_trajectories" / "include"),
     str(src / "tailsitter_df" / "include"),
 ]
-if eigen_include:
-    include_dirs.insert(0, eigen_include)
-
 sources = [
     str(pkg / "python" / "planner_bindings.cpp"),
     str(src / "problem_config.cpp"),

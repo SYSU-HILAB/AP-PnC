@@ -1,4 +1,4 @@
-# Shared ROS-free tracking logic. libnmpc_bundle.a owns the generated solver.
+# Shared ROS-free tracking logic. The target-tagged bundle owns the generated solver.
 if(NOT EXISTS "${NMPC_BUNDLE_PATH}")
   message(FATAL_ERROR "NMPC bundle missing: ${NMPC_BUNDLE_PATH}. Run ap-pnc gen-nmpc-lib on Linux.")
 endif()

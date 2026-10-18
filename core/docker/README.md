@@ -1,50 +1,49 @@
-# ROS2 Linux development images
+# Linux build and development containers
 
-One Dockerfile, `core/docker/ros2-base.dockerfile`, serves both architectures.
-Do not use separate ARM64/AMD64 source recipes or mix their build trees.
+All hosts use Docker for codegen, compilation, Python bindings and numerical/ROS
+tests. `uv` only orchestrates these jobs; no host ROS/acados/compiler installation
+is required. One Dockerfile serves both target architectures.
 
-| Host-native target | Docker platform | Bundle |
+| Target | Docker platform | Static solver archive |
 |---|---|---|
-| Apple Silicon / Linux ARM64 | linux/arm64 | libnmpc_bundle_aarch64.a |
-| Intel Mac / Linux x86_64 | linux/amd64 | libnmpc_bundle_x86_64.a |
+| ARM64 | linux/arm64 | libnmpc_bundle_aarch64.a |
+| AMD64 | linux/amd64 | libnmpc_bundle_x86_64.a |
 
-Set an absolute checkout root. The CLI discovers this root from its module or
-`AP_PNC_DIR`, not the shell cwd:
+The default uses the host CPU architecture. Explicit cross-architecture targets
+are supported when Docker can execute the selected platform; there is no silent
+fallback, host-native compile branch or untagged bundle alias.
 
 ```bash
 export AP_PNC_DIR=/absolute/path/to/AP-PnC
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.dev()"
-# Explicit cross/deployment target, never an automatic fallback:
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.dev(arch='amd64')"
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch aarch64
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch x86_64
+uv run --project "$AP_PNC_DIR" ap-pnc build planner --arch arm64
+uv run --project "$AP_PNC_DIR" ap-pnc build nmpc --arch amd64
+uv run --project "$AP_PNC_DIR" ap-pnc build planner-bindings --arch arm64
+uv run --project "$AP_PNC_DIR" ap-pnc test colcon --arch arm64
 ```
 
-`dev` creates a missing matching solver archive in the pinned Linux builder
-and builds/reuses the corresponding base image. To build only the base:
+`build all` builds the core workspace, not the separate nav_infra repository.
+Tools use read-only sources, host IPC and no external runtime network. Their
+artifacts are isolated under `.artifacts/docker-tools/<arm64|amd64>/`, including
+colcon output and Linux bindings. Consume bindings inside the matching container,
+never from the host Python interpreter. Codegen caches separately live under
+`.artifacts/nmpc_build/<aarch64|x86_64>/`.
+
+## Interactive ROS development
 
 ```bash
-The architecture is a tooling argument: `tooling.docker_runtime` resolves it and
-writes it into the generated Compose override. Nothing is exported.
-# Selecting a service explicitly activates its architecture profile.
-docker compose -f "$AP_PNC_DIR/core/docker/docker-compose.yml" build ros2-dev-arm64
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.dev()"
+# Explicit cross/deployment target:
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.dev(arch='amd64')"
 ```
 
-The runtime mounts `core/ros_packages` at `/workspace/src`, bringup at
-`/workspace/bringup`, and the selected archive at the container-local alias.
-Colcon output is isolated on the host under
-`.artifacts/docker-dev/<arm64|amd64>/colcon/`, not the host's native install tree.
-Both services use host network and host IPC; bare `up` starts neither profile.
+The dev shell has a separate cache under
+`.artifacts/docker-dev/<arm64|amd64>/colcon/`. It mounts the matching tagged solver
+archive without renaming it. Both services use host network and host IPC;
+bare `up` starts neither architecture profile. Do not use these interactive
+network settings for synthetic probes near aircraft networks.
 
-Inside the development shell:
-
-```bash
-colcon --log-base "$AP_PNC_DIR/.artifacts/colcon/log" build \
-  --base-paths "$AP_PNC_DIR/src" "$AP_PNC_DIR/bringup" \
-  --build-base "$AP_PNC_DIR/.artifacts/colcon/build" \
-  --install-base "$AP_PNC_DIR/.artifacts/colcon/install" \
-  --packages-select interface nmpc planner bringup \
-  --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-source "$AP_PNC_DIR/.artifacts/colcon/install/setup.bash"
-```
-
-For self-contained simulation images, use `uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"` instead.
-See [Gazebo deployment](../../infra/sim_infra/gazebo/README.md).
+For self-contained simulation images, use `ap-pnc build simple-sim`.
+See [Gazebo deployment](../../infra/sim_infra/gazebo/README.md) for deployment and
+acceptance limits. Do not resume the deferred production PX4 rebuild on this Mac.

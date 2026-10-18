@@ -12,7 +12,7 @@ endif()
 if(NOT IS_ABSOLUTE "${AP_PNC_ROOT}")
   message(FATAL_ERROR "AP_PNC_DIR must be absolute")
 endif()
-set(NMPC_BUNDLE_PATH "${AP_PNC_ROOT}/.artifacts/nmpc_solver/libnmpc_bundle.a" CACHE FILEPATH
+set(NMPC_BUNDLE_PATH "${AP_PNC_ROOT}/.artifacts/nmpc_solver/libnmpc_bundle_${CMAKE_SYSTEM_PROCESSOR}.a" CACHE FILEPATH
     "NMPC static bundle (CMake override, not a per-file environment variable)")
 
 find_package(ament_cmake_auto REQUIRED)

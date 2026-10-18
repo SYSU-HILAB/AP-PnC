@@ -2,13 +2,12 @@ import os
 import platform
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
 import typer
 
-from tooling.env import IS_LINUX, get_git_root, setup_env
+from tooling.env import get_git_root
 
 app = typer.Typer()
 
@@ -77,7 +76,6 @@ def _docker_build_bundle(git_root: Path, target_arch: str) -> None:
         "-v", f"{git_root}:/ws:ro",
         "-v", f"{workspace}:/ws/.artifacts:rw",
         "-e", "AP_PNC_DIR=/ws",
-        "-e", "NMPC_BUNDLE_ALIAS=1",
     ]
     env = {**os.environ, "AP_PNC_DIR": str(git_root)}
     subprocess.run(run_cmd + [tag], check=True, env=env)
@@ -90,47 +88,22 @@ def _docker_build_bundle(git_root: Path, target_arch: str) -> None:
     solver_dir.mkdir(parents=True, exist_ok=True)
     tagged = solver_dir / name
     _publish_bundle(built, tagged)
-    if target_arch == _host_arch():
-        _publish_bundle(tagged, solver_dir / "libnmpc_bundle.a")
     typer.echo(f"Bundle: {tagged}")
-
-
-def _build_acados_static(git_root: Path) -> None:
-    """Build acados as static libs into .artifacts/acados_static."""
-    src = git_root / ".artifacts" / "acados_src"
-    build_dir = git_root / ".artifacts" / "acados_static"
-    if not (build_dir / "acados" / "libacados.a").exists():
-        typer.echo("Building acados static libs...")
-        subprocess.run(
-            ["cmake", "-S", str(src), "-B", str(build_dir),
-             "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_BUILD_TYPE=Release"],
-            check=True,
-        )
-        subprocess.run(
-            ["make", "-j", str(os.cpu_count() or 4), "-C", str(build_dir)],
-            check=True,
-        )
-    else:
-        typer.echo("acados static libs already built, skipping.")
 
 
 def _build_wrapper_and_bundle(
     git_root: Path,
-    staging_root: Path | None = None,
-    static_dir: Path | None = None,
+    *,
+    arch: str,
+    staging_root: Path,
+    static_dir: Path,
 ) -> None:
-    """Build libnmpc_solver.a, then merge with static acados into libnmpc_bundle.a.
-
-    The staging locations are arguments: the Docker builder image points them
-    at /opt, a host run takes the .artifacts defaults.
-    """
+    """Container-only wrapper build using the image's explicit toolchain paths."""
     wrapper_src = git_root / "core" / "ros_packages" / "nmpc" / "src"
     build_dir = git_root / ".artifacts" / "nmpc_solver"
-    # Arguments, not variables: the builder image passes /opt paths, a host run
-    # takes the .artifacts defaults. AP_PNC_DIR stays the only variable.
-    staging_root = staging_root or (git_root / ".artifacts" / "acados")
-    static_dir = static_dir or (git_root / ".artifacts" / "acados_static")
-    bundle = build_dir / "libnmpc_bundle.a"
+    if arch not in ("aarch64", "x86_64"):
+        raise ValueError(f"unsupported solver architecture: {arch}")
+    bundle = build_dir / f"libnmpc_bundle_{arch}.a"
     build_dir.mkdir(parents=True, exist_ok=True)
 
     # A cache from a different checkout path (e.g. a container build at
@@ -165,7 +138,7 @@ def _build_wrapper_and_bundle(
         check=True,
     )
 
-    typer.echo("Merging into libnmpc_bundle.a...")
+    typer.echo(f"Merging into {bundle.name}...")
 
     with tempfile.TemporaryDirectory(dir=build_dir, prefix="bundle_merge_") as tmp:
         tmpdir = Path(tmp)
@@ -196,45 +169,22 @@ def _build_wrapper_and_bundle(
     typer.echo(f"Bundle: {bundle} ({size // 1024} KB)")
 
 
-def _ensure_prerequisites() -> None:
-    """Run install automatically when acados prerequisites are missing."""
-    git_root = get_git_root()
-    staged_lib = git_root / ".artifacts" / "acados" / "lib" / "libacados.so"
-    renderer = git_root / ".artifacts" / "acados" / "bin" / "t_renderer"
-    source = git_root / ".artifacts" / "acados_src" / "CMakeLists.txt"
-    try:
-        import acados_template  # noqa: F401
-        have_template = True
-    except ImportError:
-        have_template = False
-
-    if staged_lib.exists() and renderer.exists() and source.exists() and have_template:
-        return
-
-    typer.echo("acados prerequisites missing, running install...")
-    from tooling import acados_setup
-
-    acados_setup.install_acados_stack()
-
-
 @app.callback(invoke_without_command=True)
 def cocp(
     arch: str = typer.Option(
         "native",
         "--arch",
-        help="native | aarch64 | x86_64. Native uses the local toolchain "
-             "(Linux only); everything else builds in the Docker builder image.",
+        help="native | aarch64 | x86_64. Native selects the host CPU architecture; "
+             "all targets build in the pinned Linux Docker builder image.",
     ),
 ) -> None:
-    """Generate acados OCP C code and build libnmpc_bundle.a for ROS2 linking.
+    """Generate an architecture-tagged Linux static NMPC bundle in Docker.
 
-    libnmpc_bundle.a is a single static archive containing the wrapper,
-    generated solver, and statically-linked acados/hpipm/blasfeo. Output is
-    arch-tagged: .artifacts/nmpc_solver/libnmpc_bundle_<arch>.a (the
-    unsuffixed libnmpc_bundle.a stays as the host-native alias).
-    Prerequisites for the native path (acados source, staged libs,
-    t_renderer, acados_template) are installed automatically on first use;
-    the Docker path (any non-Linux host or explicit --arch) is self-contained.
+    .artifacts/nmpc_solver/libnmpc_bundle_<arch>.a contains the wrapper,
+    generated solver and statically-linked acados/hpipm/blasfeo.
+    There is no host-native build or untagged output alias.
+    All targets use the self-contained Docker builder; no host ROS, acados
+    installation or native compiler is needed.
     """
     target = _host_arch() if arch == "native" else arch
     if target not in ("aarch64", "x86_64"):
@@ -247,11 +197,3 @@ def cocp(
     # acados_template, so a host needs Docker and nothing else and Linux results
     # come from the same builder as macOS.
     _docker_build_bundle(git_root, target)
-
-    _build_acados_static(git_root)
-    _build_wrapper_and_bundle(git_root)
-
-    bundle = git_root / ".artifacts" / "nmpc_solver" / "libnmpc_bundle.a"
-    tagged = bundle.with_name(f"libnmpc_bundle_{target}.a")
-    shutil.copy2(bundle, tagged)
-    typer.echo(f"Arch-tagged bundle: {tagged}")

@@ -7,9 +7,10 @@ Aerodynamic prior-free trajectory generation and tracking control for a tail-sit
 
 ## Quick start
 
-**Requirements:** Git, [uv](https://docs.astral.sh/uv/getting-started/installation/)
-and Docker. This workflow does not need a host ROS or acados installation.
-On Apple Silicon, it uses native Linux ARM64 containers.
+**Requirements:** [uv (installation guide)](https://docs.astral.sh/uv/getting-started/installation/)
+and [Docker (installation guide)](https://docs.docker.com/get-started/get-docker/).
+You do not need to install ROS on the host.
+On Apple Silicon, this workflow uses native Linux ARM64 containers.
 
 ### 1. Get the code
 
@@ -29,6 +30,20 @@ uv run ap-pnc build simple-sim
 ```
 
 The first build downloads and compiles the required dependencies in Docker.
+`uv` only orchestrates these jobs; code generation, compilation, bindings and
+numerical/ROS tests run in Linux containers on every host.
+
+To generate a solver for an explicit target (including cross-architecture builds):
+
+```bash
+uv run ap-pnc gen-nmpc-lib --arch aarch64  # Docker linux/arm64
+uv run ap-pnc gen-nmpc-lib --arch x86_64   # Docker linux/amd64
+```
+
+Outputs are `.artifacts/nmpc_solver/libnmpc_bundle_aarch64.a` and
+`libnmpc_bundle_x86_64.a`; there is no untagged alias. The default target is the
+host CPU architecture, not the host OS. Cross-architecture execution needs a
+Docker builder/runtime capable of running the selected platform.
 
 ### 3. Run an experiment
 

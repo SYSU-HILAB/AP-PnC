@@ -9,8 +9,8 @@ from tooling.env import get_git_root
 
 sys.path.insert(0, str(get_git_root() / "infra/sim_infra/lidar_sim"))
 from lidar_sim.geometry import (
-    PointCloudScene,
     Pillar,
+    PointCloudScene,
     Scene,
     beam_directions,
     load_scene,

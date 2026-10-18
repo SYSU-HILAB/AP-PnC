@@ -88,7 +88,7 @@ if(SIMPLE_SIM_BUILD_APP)
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
       message(FATAL_ERROR "NMPC bundle is Linux-only. For core/baseline tests use -DSIMPLE_SIM_WITH_NMPC=OFF.")
     endif()
-    set(NMPC_BUNDLE_PATH "${AP_PNC_DIR}/.artifacts/nmpc_solver/libnmpc_bundle.a" CACHE FILEPATH "NMPC static bundle")
+    set(NMPC_BUNDLE_PATH "${AP_PNC_DIR}/.artifacts/nmpc_solver/libnmpc_bundle_${CMAKE_SYSTEM_PROCESSOR}.a" CACHE FILEPATH "NMPC static bundle")
     add_subdirectory(${AP_PNC_DIR}/core/ros_packages/nmpc/src/controller
                      ${CMAKE_CURRENT_BINARY_DIR}/nmpc_controller)
     file(SHA256 "${NMPC_BUNDLE_PATH}" NMPC_BUNDLE_SHA256)

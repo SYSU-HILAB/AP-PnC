@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate every ELF member of an archive before installing the container-local alias.
+# Validate every ELF member of the architecture-tagged archive used by CMake.
 set -euo pipefail
 case "${AP_PNC_DIR:?Set absolute AP_PNC_DIR}" in
     /*) ;;
@@ -27,5 +27,4 @@ LC_ALL=C readelf -h "$bundle" | awk -F: -v expected="$machine" '
     }
     END { if (!count || bad) exit 1 }
 '
-cp "$bundle" "$AP_PNC_DIR/.artifacts/nmpc_solver/libnmpc_bundle.a"
 echo "Selected and verified $bundle"

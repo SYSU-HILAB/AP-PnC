@@ -37,3 +37,14 @@ RUN chmod +x /entrypoint.sh /usr/local/bin/select-nmpc-bundle \
     && echo 'source /entrypoint.sh true' >> /root/.bashrc
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bash"]
+
+# Build bindings and run numerical tests only in Linux, never in the host uv env.
+FROM base AS tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-dev python3-pip python3-pybind11 python3-setuptools \
+    && rm -rf /var/lib/apt/lists/*
+RUN python3 -m pip install --no-cache-dir \
+    pytest numpy scipy pandas pyarrow matplotlib casadi 'jax[cpu]' pyyaml pybind11
+
+# Preserve the lean default image used by runtime consumers.
+FROM base AS runtime

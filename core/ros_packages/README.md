@@ -42,28 +42,29 @@ Use a disposable container, host IPC, no external network, and ROS domain 213.
 The probe sends synthetic sensor/reference messages and runs the real solver;
 it does not arm a vehicle and does not establish flight acceptance.
 
-Build `interface`, `planner` and `nmpc` with colcon, then source the ROS and
-workspace setup scripts. The probe supports isolated and merged install trees:
+Build and run the probe in Docker (the helper sources the matching workspace):
 
 ```bash
-ROS_DOMAIN_ID=213 PYTHONPATH="$AP_PNC_DIR:${PYTHONPATH:-}" python3 \
-  "$AP_PNC_DIR/test/integration/check_core_ros.py" \
-  --ros-install "$AP_PNC_DIR/.artifacts/colcon/install"
+uv run --project "$AP_PNC_DIR" ap-pnc build all --arch arm64
+uv run --project "$AP_PNC_DIR" python -c 'from tooling import container_tools as c; c.run(["env", "ROS_DOMAIN_ID=213", "python3", "/workspace/test/integration/check_core_ros.py", "--ros-install", "/workspace/.artifacts/colcon/install"], arch="arm64")'
 ```
+
+Use `--arch amd64` / `arch="amd64"` together for the other target.
 
 It checks real NMPC command delivery, correctly labeled coefficient feedback,
 wrong-grid rejection/recovery, feedback saturation, planner startup and mode
 switching, and planner-to-NMPC horizon delivery. It saves process logs beneath
 `$AP_PNC_DIR/.artifacts/tests/core-adapters/` and shuts down its own processes.
 
-Build and test the Python module with the same Python interpreter:
+Build and test the Python module with the same Linux container interpreter:
 
 ```bash
-uv run --project "$AP_PNC_DIR" ap-pnc build planner-bindings
-uv run --project "$AP_PNC_DIR" python \
-  "$AP_PNC_DIR/test/integration/check_planner_bindings.py" \
-  --bindings-dir "$AP_PNC_DIR/.artifacts/bindings"
+uv run --project "$AP_PNC_DIR" ap-pnc build planner-bindings --arch arm64
+uv run --project "$AP_PNC_DIR" python -c 'from tooling import container_tools as c; c.run(["python3", "/workspace/test/integration/check_planner_bindings.py", "--bindings-dir", "/workspace/.artifacts/bindings"], arch="arm64")'
 ```
+
+The host stores these Linux outputs under `.artifacts/docker-tools/arm64/`.
+Do not import the generated module from host uv/Python.
 
 The binding checks exercise real planning, default/explicit grids, exact endpoint
 inclusion, finite arrays, circle boundary conditions and invalid input rejection.

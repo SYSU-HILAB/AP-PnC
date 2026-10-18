@@ -2,6 +2,12 @@
 
 Project conventions for coding agents.
 
+## Canonical repository
+
+Maintain `official` (`SYSU-HILAB/AP-PnC`), with `official/main` as the canonical
+branch. Do not push or synchronize the retired `origin` fork unless explicitly
+requested.
+
 ## Path discipline: absolute or explicitly anchored at `AP_PNC_DIR`
 
 For project navigation, file access, runtime resources, and generated output,
@@ -46,7 +52,7 @@ never inside a source tree:
 | colcon build / install / log | `<AP_PNC_DIR>/.artifacts/colcon/` |
 | acados staging source + build | `<AP_PNC_DIR>/.artifacts/acados_src/`, `<AP_PNC_DIR>/.artifacts/acados/`, `<AP_PNC_DIR>/.artifacts/acados_static/` |
 | generated OCP code | `<AP_PNC_DIR>/.artifacts/c_generated_code/` |
-| NMPC static bundle | `<AP_PNC_DIR>/.artifacts/nmpc_solver/libnmpc_bundle_<arch>.a` (host-native alias: `libnmpc_bundle.a`) |
+| NMPC static bundle | `<AP_PNC_DIR>/.artifacts/nmpc_solver/libnmpc_bundle_<arch>.a` (no untagged alias) |
 | pybind11 modules (+ their build temp) | `<AP_PNC_DIR>/.artifacts/bindings/` |
 | benchmark runs | `<AP_PNC_DIR>/.artifacts/benchmark/<name>/` |
 | aerodynamics CSV datasets / ML weights | `<AP_PNC_DIR>/.artifacts/aerodynamics/` |
@@ -111,9 +117,12 @@ Linux, even when both sides use ARM64.
   binary. Toolchain versions (acados commit, t_renderer, acados_template)
   must stay in sync with `tooling/acados_setup.py:ACADOS_COMMIT`.
 - Keep the base image, builder platform, ROS2 compilation, and linked bundle
-  on the same target architecture. Consume the arch-tagged bundle;
-  `libnmpc_bundle.a` is only a host-native convenience alias, not a portable
-  or architecture-independent library.
+  on the same target architecture. Consume only the arch-tagged bundle; do not
+  generate or restore an untagged `libnmpc_bundle.a` alias.
+- All codegen, compilation, bindings and numerical/ROS tests run in Docker on
+  every host. `uv` is only the orchestration layer. Do not restore host acados,
+  renderer downloads, native compiler branches or OS-specific fallback paths.
+  Explicit cross-architecture targets remain supported through Docker.
 - Never reuse colcon/CMake caches, install trees, or compiled bindings from
   another OS/architecture. Docker solver generation uses
   `.artifacts/nmpc_build/<solver_arch>/`; dev containers use
@@ -138,8 +147,9 @@ Linux, even when both sides use ARM64.
 - Verify the built image/container architecture and the bundle's object-file
   architecture before claiming the ARM64 workflow works. Code generation
   success alone does not prove ROS2 linking or runtime success.
-- Host `ap-pnc build ...` assumes Linux with ROS2/colcon;
-  on macOS, perform those toolchain steps inside the target Linux container.
+- `ap-pnc build ...` and numerical/ROS `ap-pnc test ...` dispatch Docker on
+  every host. Tool artifacts stay under `.artifacts/docker-tools/<docker_arch>/`;
+  Linux bindings must be consumed inside the matching Linux container.
 - Gazebo defaults to headless PX4 + GCS heartbeat + nav_infra + core.
   `--gui` adds a container Xvfb/Mesa desktop, QGC and Gazebo GUI via noVNC
   on host loopback port 6088, without Mac NVIDIA/X11 assumptions. Every

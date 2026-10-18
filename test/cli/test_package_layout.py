@@ -49,4 +49,7 @@ def test_bundle_builder_configures_the_src_layer(monkeypatch, tmp_path):
 
     monkeypatch.setattr(gen_nmpc_lib.subprocess, "run", configure)
     with pytest.raises(RuntimeError, match="configuration inspected"):
-        gen_nmpc_lib._build_wrapper_and_bundle(tmp_path)
+        gen_nmpc_lib._build_wrapper_and_bundle(
+            tmp_path, arch="aarch64",
+            staging_root=Path("/opt/acados"), static_dir=Path("/opt/acados_static")
+        )

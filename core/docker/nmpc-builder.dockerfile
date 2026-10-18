@@ -56,6 +56,5 @@ COPY core/docker/nmpc-builder-entrypoint.sh /usr/local/bin/nmpc-builder-entrypoi
 RUN chmod +x /usr/local/bin/nmpc-builder-entrypoint
 
 # Expects the repo mounted at ${AP_PNC_DIR:-/ws}; writes
-# .artifacts/nmpc_solver/libnmpc_bundle_<arch>.a (and the unsuffixed alias
-# when NMPC_BUNDLE_ALIAS=1, i.e. when the target arch matches the host).
+# .artifacts/nmpc_solver/libnmpc_bundle_<arch>.a; no host-native alias.
 ENTRYPOINT ["/usr/local/bin/nmpc-builder-entrypoint"]

@@ -21,30 +21,30 @@ The CLI resolves the architecture from the host and writes it into the generated
 Compose override; AP_PNC_DIR is the only variable involved.
 
 ```bash
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(gui=True)"
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build()"
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(gui=True)"
 # Explicit non-native deployment target only when requested:
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(arch='amd64')"
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(arch='amd64')"
 ```
 
 A missing arch-tagged solver is generated in Docker. To regenerate deliberately:
 
 ```bash
 uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch aarch64
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(services=['ap-pnc'])"
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.build(services=['ap-pnc'])"
 ```
 
 Caches live under `.artifacts/nmpc_build/<solver_arch>/`. Core/simple-sim image
-builds check every archive member's ELF target. Never consume the host alias
-as a portable build input. NMPC is statically linked: regeneration requires an
+builds check every archive member's ELF target. Only architecture-tagged
+archives are generated or consumed; there is no host-native alias. NMPC is statically linked: regeneration requires an
 image rebuild, not a bind-mounted archive or merely restarting an old node.
 
 ## Run
 
 ```bash
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up()"
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up(gui=True)"
-uv run --project "$AP_PNC_DIR" uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.down()"
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up()"
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.up(gui=True)"
+uv run --project "$AP_PNC_DIR" python -c "from tooling import docker_runtime as d; d.down()"
 ```
 
 Default services automatically start headless gz_x500 SITL, GCS heartbeat,

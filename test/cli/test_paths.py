@@ -89,18 +89,17 @@ def test_output_symlink_cannot_escape_artifacts(roots):
         env.artifact_path(".artifacts/escape/result.json")
 
 
-def test_pytest_operands_and_caches_are_absolute(roots, monkeypatch):
-    project, _ = roots
+def test_pytest_operands_and_caches_are_container_absolute(roots, monkeypatch):
     calls = []
-    monkeypatch.setattr(test_command, "setup_env", lambda: None)
-    monkeypatch.setattr(test_command.subprocess, "run", lambda args, **kw: calls.append((args, kw)))
+    monkeypatch.setattr(
+        test_command.container_tools, "run", lambda args, **kw: calls.append((args, kw))
+    )
     test_command._pytest("test/cli")
     args, options = calls[0]
-    assert args[3] == str(project / "test/cli")
-    assert args[args.index("--basetemp") + 1] == str(project / ".artifacts/tests/pytest_tmp")
-    assert f"cache_dir={project / '.artifacts/tests/pytest_cache'}" in args
-    assert options["cwd"] == project
-    assert options["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert "/workspace/test/cli" in args
+    assert args[args.index("--basetemp") + 1] == "/workspace/.artifacts/tests/pytest_tmp"
+    assert "cache_dir=/workspace/.artifacts/tests/pytest_cache" in args
+    assert options["arch"] == "native"
 
 
 @pytest.mark.parametrize("command, operation", [(lint.lint, "check"), (lint.fmt, "format")])

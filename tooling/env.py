@@ -1,53 +1,6 @@
 import os
-import platform
 import subprocess
-import sys
 from pathlib import Path
-
-IS_LINUX = sys.platform == "linux"
-IS_MACOS = sys.platform == "darwin"
-
-
-def _t_renderer_url() -> str:
-    """t_renderer release asset for the host.
-
-    Only Linux builds are published (no macOS asset exists), so acados codegen
-    requires a Linux development host.
-    """
-    if not IS_LINUX:
-        raise RuntimeError(
-            "t_renderer has no build for this platform; the acados codegen "
-            "requires a Linux development host (macOS is not supported)"
-        )
-    arch = {"x86_64": "amd64", "AMD64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
-        platform.machine()
-    )
-    if not arch:
-        raise RuntimeError(f"Unsupported t_renderer arch: {platform.machine()}")
-    return (
-        "https://github.com/acados/tera_renderer/releases/download/"
-        f"v0.2.0/t_renderer-v0.2.0-linux-{arch}"
-    )
-
-
-def ensure_t_renderer() -> Path | None:
-    """Make sure t_renderer exists; acados_template would otherwise ask
-    interactively whether to download it (hangs in non-tty subprocesses).
-
-    Returns None on non-Linux hosts (acados codegen is Linux-only); callers that
-    actually generate code must check for that.
-    """
-    git_root = get_git_root()
-    bin_dir = git_root / ".artifacts" / "acados" / "bin"
-    renderer = bin_dir / "t_renderer"
-    if renderer.exists():
-        return renderer
-    if not IS_LINUX:
-        return None
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["curl", "-fL", _t_renderer_url(), "-o", str(renderer)], check=True)
-    renderer.chmod(0o755)
-    return renderer
 
 
 def get_git_root() -> Path:
@@ -101,90 +54,10 @@ def artifact_path(path: str | Path) -> Path:
     return value
 
 
-def source_ros2_env() -> dict[str, str]:
-    """Source ROS2 setup.bash via subprocess and return merged environment."""
-    ros_paths = ["/opt/ros/humble", "/opt/ros/iron", "/opt/ros/jazzy"]
-    env = os.environ.copy()
-
-    for ros_path in ros_paths:
-        setup_file = Path(ros_path) / "setup.bash"
-        if setup_file.exists():
-            result = subprocess.run(
-                ["bash", "-c", f"source {setup_file} && env"],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    if "=" in line:
-                        key, _, value = line.partition("=")
-                        env[key] = value
-                return env
-    return env
-
-
-def source_ros2_workspace() -> dict[str, str]:
-    """Source ROS2 plus the colcon workspace install (.artifacts/colcon/install)."""
-    git_root = get_git_root()
-    env = source_ros2_env()
-    workspace_setup = git_root / ".artifacts" / "colcon" / "install" / "setup.bash"
-    if workspace_setup.exists():
-        result = subprocess.run(
-            ["bash", "-c", f"source {workspace_setup} && env"],
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                if "=" in line:
-                    key, _, value = line.partition("=")
-                    env[key] = value
-    return env
-
-
-def setup_env(ros: bool = False) -> None:
-    """Configure os.environ with acados paths and optionally ROS2.
-
-    ACADOS_SOURCE_DIR points at the staged install tree (.artifacts/acados),
-    which provides include/, lib/, bin/t_renderer for acados_template codegen.
-    ACADOS_PYTHON_INTERFACE_PATH falls back to the fetched source checkout
-    (.artifacts/acados_src) for the Python interface.
-    """
+def setup_env() -> None:
+    """Set orchestration paths; native dependencies are configured only in Docker."""
     git_root = get_git_root()
     os.environ.setdefault("AP_PNC_DIR", str(git_root))
-    os.environ.setdefault("ACADOS_SOURCE_DIR", str(git_root / ".artifacts" / "acados"))
-    os.environ.setdefault(
-        "ACADOS_PYTHON_INTERFACE_PATH",
-        str(
-            git_root
-            / ".artifacts"
-            / "acados_src"
-            / "interfaces"
-            / "acados_template"
-            / "acados_template"
-        ),
-    )
-
-    lib_path = str(git_root / ".artifacts" / "acados" / "lib")
-    existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
-    if lib_path not in existing_ld:
-        os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{existing_ld}"
-
-    # Preload acados shared libraries globally so dynamically loaded solvers locate them
-    lib_dir = git_root / ".artifacts" / "acados" / "lib"
-    if lib_dir.exists():
-        import ctypes
-
-        for libname in ("libblasfeo.so", "libhpipm.so", "libacados.so"):
-            target = lib_dir / libname
-            if target.exists():
-                try:
-                    ctypes.CDLL(str(target), mode=ctypes.RTLD_GLOBAL)
-                except OSError:
-                    pass
-
-    ensure_t_renderer()
 
     # Keep every colcon run's log inside the artifacts tree (no stray ./log).
     # Overridable; explicit exports win.
@@ -194,15 +67,6 @@ def setup_env(ros: bool = False) -> None:
 
     pythonpath = os.environ.get("PYTHONPATH", "")
     git_root_str = str(git_root)
-    bindings_dir = str(git_root / ".artifacts" / "bindings")
-    parts = [p for p in (git_root_str, bindings_dir) if p not in pythonpath]
+    parts = [p for p in (git_root_str,) if p not in pythonpath]
     if parts:
         os.environ["PYTHONPATH"] = ":".join(parts) + (f":{pythonpath}" if pythonpath else "")
-
-    if ros:
-        ros_env = source_ros2_env()
-        os.environ.update(ros_env)
-        # ROS sourcing must not move colcon logs back to the source tree.
-        os.environ.setdefault(
-            "COLCON_LOG_PATH", str(git_root / ".artifacts" / "colcon" / "log")
-        )
