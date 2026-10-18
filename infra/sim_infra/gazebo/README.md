@@ -158,8 +158,9 @@ docker exec nav_infra /entrypoint.sh python3 \
 
 The probe requires connected/unarmed PX4, IMU, local odometry, px4ctrl state,
 planner/NMPC nodes and `setpoint_raw.thrust_scaling=1.0`. It neither arms nor
-publishes setpoints. Full takeoff/hover/NMPC handover/landing is a separate
-acceptance step in the `ap-pnc-gazebo-e2e` skill.
+publishes setpoints. For dependency and acceptance checks, use the
+`ap-pnc-gazebo-readiness` skill. The public checkout does not provide an
+accepted takeoff/hover/NMPC handover/landing runbook.
 
 `.github/workflows/docker-multiarch.yml` provides manually triggered native
 AMD64 and ARM64 build/smoke jobs; it is not evidence that CI has already run.

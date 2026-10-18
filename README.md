@@ -2,67 +2,48 @@
 
 Aerodynamic prior-free trajectory generation and tracking control for a tail-sitter UAV.
 
-> **Work in progress:** Offline simulation is available. The complete usable
-> release is delayed by approximately one month or more.
-
 ## Quick start
 
-**Requirements:** [uv (installation guide)](https://docs.astral.sh/uv/getting-started/installation/)
-and [Docker (installation guide)](https://docs.docker.com/get-started/get-docker/).
-You do not need to install ROS on the host.
-On Apple Silicon, this workflow uses native Linux ARM64 containers.
-
-### 1. Get the code
-
-Replace `/absolute/path/to/AP-PnC` with your preferred clone location.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and
+[Docker](https://docs.docker.com/get-started/get-docker/).
+Set your checkout location, build, and run:
 
 ```bash
-git clone https://github.com/SYSU-HILAB/AP-PnC.git /absolute/path/to/AP-PnC
-cd /absolute/path/to/AP-PnC
+export AP_PNC_DIR=/absolute/path/to/AP-PnC
+git clone https://github.com/SYSU-HILAB/AP-PnC.git "$AP_PNC_DIR"
+uv sync --project "$AP_PNC_DIR"
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib
+uv run --project "$AP_PNC_DIR" ap-pnc build simple-sim
+uv run --project "$AP_PNC_DIR" ap-pnc benchmark --profile ideal --aero lyu --vmax 8
 ```
 
-### 2. Build
-
-```bash
-uv sync
-uv run ap-pnc gen-nmpc-lib
-uv run ap-pnc build simple-sim
-```
-
-The first build downloads and compiles the required dependencies in Docker.
-`uv` only orchestrates these jobs; code generation, compilation, bindings and
-numerical/ROS tests run in Linux containers on every host.
-
-To generate a solver for an explicit target (including cross-architecture builds):
-
-```bash
-uv run ap-pnc gen-nmpc-lib --arch aarch64  # Docker linux/arm64
-uv run ap-pnc gen-nmpc-lib --arch x86_64   # Docker linux/amd64
-```
-
-Outputs are `.artifacts/nmpc_solver/libnmpc_bundle_aarch64.a` and
-`libnmpc_bundle_x86_64.a`; there is no untagged alias. The default target is the
-host CPU architecture, not the host OS. Cross-architecture execution needs a
-Docker builder/runtime capable of running the selected platform.
-
-### 3. Run an experiment
-
-```bash
-uv run ap-pnc benchmark --profile ideal --aero lyu --vmax 8
-```
-
-This compares SE3 control with and without aerodynamic feedforward against NMPC.
-The CLI manages the simulations, saves the results, and prints a comparison table.
+`uv` orchestrates Docker builds and simulation jobs. The benchmark compares
+SE3 control with and without aerodynamic feedforward against NMPC, saves the
+results, and prints a comparison table.
 
 Use `--aero none,lyu,phi --vmax 8,10,12` for a larger sweep.
-Keep `--profile ideal` for a fresh clone; `practical` needs locally extracted
+The `ideal` profile is ready to use; `practical` requires locally extracted
 actuator parameters.
 
-## ROS2 development scene (separate from benchmarks)
+### Solver targets
 
-A pillar/ground point-cloud scene and pose-dependent first-return LiDAR run with
-**Lyu aerodynamics + practical actuation**, through ROS2 pause/step/reset.
-The default is headless and isolated from aircraft networks.
+The default target is the host CPU architecture. Select either target explicitly
+for cross-architecture builds:
+
+```bash
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch aarch64
+uv run --project "$AP_PNC_DIR" ap-pnc gen-nmpc-lib --arch x86_64
+```
+
+Docker builds for `linux/arm64` or `linux/amd64` and writes
+`.artifacts/nmpc_solver/libnmpc_bundle_<arch>.a`.
+The Docker builder/runtime must support the selected platform.
+
+## ROS2 development scene
+
+The interactive simulator combines a point-cloud scene, pose-dependent LiDAR,
+Lyu aerodynamics and practical actuation, with pause, step and reset controls.
+It requires the local practical actuator profile.
 
 ```bash
 uv run --project "$AP_PNC_DIR" ap-pnc dev-sim build
@@ -70,17 +51,8 @@ JOB=$(uv run --project "$AP_PNC_DIR" ap-pnc dev-sim prepare)
 uv run --project "$AP_PNC_DIR" ap-pnc dev-sim run "$JOB"
 ```
 
-Set an absolute `AP_PNC_DIR` first. This needs the numerical image built above
-and the local practical profile; it never silently uses ideal actuation.
 See the [development simulator guide](infra/sim_infra/lidar_sim/README.md) for
-profile preparation, ROS2 topics, RViz and limits. Sensor geometry does not add
-collision dynamics by itself. An experimental `--scene garden-3dgs` option runs
-the same pipeline against a real captured scene converted from 3D Gaussian
-Splatting instead of the default pillars, and an experimental
-`--corridor-source map_sfc` option replaces the fixed synthetic flight corridor
-with one continuously replanned from that sensed map (grid A* + FIRI convex
-decomposition into the existing GCOPTER optimizer); see that guide's
-"Experimental" sections before using either.
+profile preparation, ROS2 topics, RViz and experimental scene options.
 
 ## Results
 
@@ -89,35 +61,22 @@ All generated files stay under `.artifacts/`:
 - **Comparison summaries:** `.artifacts/benchmark/stack-sweep/`
 - **Individual runs:** `.artifacts/simple-stack/linux-<arch>/runs/`
 
-Each run saves its configuration, trajectory, simulation data, metrics and logs.
-Completed, verified runs also include an offline Rerun recording.
-Check the reported status and tracking errors; a completed recording alone does
-not establish good tracking performance.
+Run outputs include configurations, trajectories, simulation data, metrics,
+logs and verified Rerun recordings.
 
-## Configuration
+## Configuration and documentation
 
-- [planning.yaml](core/bringup/config/planning.yaml) — trajectory and planning settings.
-- [nmpc.yaml](core/bringup/config/nmpc.yaml) — controller and solver settings.
-- [simple_sim.yaml](core/bringup/config/simple_sim.yaml) — simulation and plant settings.
+- [planning.yaml](core/bringup/config/planning.yaml) — trajectory and planning.
+- [nmpc.yaml](core/bringup/config/nmpc.yaml) — controller and solver.
+- [simple_sim.yaml](core/bringup/config/simple_sim.yaml) — plant and simulation.
 
 After changing solver settings, regenerate the NMPC bundle and rebuild the stack.
-The current NMPC model supports zero wind only.
-
-## Documentation
 
 - [Simulation guide](infra/sim_infra/simple_sim/README.md)
 - [Planner and NMPC package guide](core/ros_packages/README.md)
 - [Linux development containers](core/docker/README.md)
 
-For command options:
-
-```bash
-uv run ap-pnc --help
-uv run ap-pnc benchmark --help
-```
-
-**Scope:** The quick start is an offline experiment, not a flight setup.
-Complete flight and native AMD64 runtime acceptance remain pending.
+For command options, run `uv run --project "$AP_PNC_DIR" ap-pnc --help`.
 
 ## Paper
 
