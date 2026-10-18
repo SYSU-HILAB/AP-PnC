@@ -68,7 +68,7 @@ def all_(clean: bool = False, arch: str = "native") -> None:
 def _bindings(script: str, arch: str) -> None:
     output = ROOT / ".artifacts/bindings"
     container_tools.run(
-        ["python3", str(ROOT / script), "build_ext", "--build-lib", str(output),
+        ["python3", str(ROOT / script), "build_ext", "--force", "--build-lib", str(output),
          "--build-temp", str(output / "build")],
         arch=arch,
     )

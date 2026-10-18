@@ -43,6 +43,8 @@ def test_build_commands_never_invoke_host_compilers(monkeypatch, name):
                 assert Path(arg).is_relative_to("/workspace")
     if name in ("nmpc", "all_"):
         assert run.call_args.kwargs["solver"]
+    if name in ("bindings", "planner_bindings"):
+        assert "--force" in run.call_args.args[0]
 
 
 @pytest.mark.parametrize(

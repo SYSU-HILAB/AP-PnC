@@ -27,6 +27,7 @@ sources = [
     str(src / "problem_config.cpp"),
     str(src / "planner.cpp"),
     str(src / "trajectory.cpp"),
+    str(src / "grid_astar.cpp"),
     *[str(p) for p in sorted((src / "basic_trajectories" / "src").glob("*.cpp"))],
     *[str(p) for p in sorted((src / "tailsitter_df" / "src").glob("*.cpp"))],
 ]
