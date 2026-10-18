@@ -1,5 +1,8 @@
 # Local MatrixCity mirrored-ring experiment
 
+For copy-and-run setup, see [Start the 3DGS demo](CITY_DEMO_START.md).
+For the demonstration video and image attribution, see [Media](CITY_DEMO_MEDIA.md).
+
 **Linux ARM64 acceptance passed (2026-10-18): two uninterrupted 10 m/s practical
 simulation runs, plus a successful browser pause/resume run.** This is not PX4,
 Gazebo, real-aircraft acceptance, or a claim that every future run passes. The UI

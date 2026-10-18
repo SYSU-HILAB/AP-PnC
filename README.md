@@ -2,6 +2,43 @@
 
 Aerodynamic prior-free trajectory generation and tracking control for a tail-sitter UAV.
 
+## Live 3DGS flight demo
+
+**Online planning → NMPC → practical dynamics → two body-fixed cameras.**
+A continuous 10 m/s lap through a synthetic mirrored MatrixCity scene, with no
+intermediate stops and deceleration only on return—not trajectory playback.
+
+[![Live NMPC flight with nose and belly cameras](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-cameras.png)](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-demo.mp4)
+
+**[Watch/download MP4 · 86 s](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-demo.mp4)**
+· **[Start the 3DGS simulator](infra/sim_infra/lidar_sim/CITY_DEMO_START.md)**
+· [Acceptance details](infra/sim_infra/lidar_sim/CITY_DEMO.md)
+
+| Actual cruise speed, mean | Position RMSE / maximum | Online planning legs |
+|---|---|---|
+| 10.007 m/s | 0.133 / 0.565 m | 15 |
+
+<details>
+<summary>Scene overview and independently verified return</summary>
+
+![Synthetic mirrored road and actual/reference trajectories](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-overview.png)
+
+![Completed run after independent CSV, map and return verification](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-verified.png)
+
+</details>
+
+**Scope:** Linux ARM64 simulation, static Gaussian-derived occupancy, assumed
+camera extrinsics and visual scale—not real flight or contact physics. The video
+preserves the complete simulated lap; its last four seconds are a post-verification
+still. [Media credits/license](infra/sim_infra/lidar_sim/CITY_DEMO_MEDIA.md):
+MatrixCity / CityGaussian, CC BY-NC-SA 4.0, with synthetic mirroring disclosed.
+
+**To run it:** follow the [five-step setup](infra/sim_infra/lidar_sim/CITY_DEMO_START.md)
+for the licensed local checkpoint, authorized practical profile, Docker build,
+mission and viewer. Then open **http://127.0.0.1:5178** and press **启动试验 / Start**.
+Neither the model nor private actuator inputs are included in this checkout.
+For an asset-free first run, use the ideal benchmark below.
+
 ## Quick start
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and
