@@ -4,6 +4,15 @@ The screenshots and MP4 in the `demo-city-ring-20261018` media release show
 **actual online NMPC simulation**, rendered live in the browser. They are not
 real-aircraft footage, recorded-trajectory playback, or an original surveyed city.
 
+## Gallery
+
+![Synthetic mirrored road and actual/reference trajectories](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-overview.png)
+
+![Completed run after independent CSV, map and return verification](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-verified.png)
+
+[Watch the MP4](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-demo.mp4)
+· [Acceptance details](CITY_DEMO.md)
+
 ## Attribution
 
 - **MatrixCity** — Yixuan Li, Lihan Jiang, Linning Xu, Yuanbo Xiangli, Zhenzhi Wang,
