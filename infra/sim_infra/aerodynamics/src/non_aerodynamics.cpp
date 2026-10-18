@@ -20,23 +20,12 @@
 
 namespace aerodynamics
 {
-  bool NonAerodynamics::getAeroWrench(const Eigen::Vector3d& body_speed,
-                                      Eigen::Vector3d&       aero_force_b,
-                                      Eigen::Vector3d&       aero_moment_b,
-                                      double& alpha, double& beta)
+  bool NonAerodynamics::getAeroWrench(const Eigen::Vector3d &body_speed,
+                                      Eigen::Vector3d       &aero_force_b,
+                                      Eigen::Vector3d       &aero_moment_b,
+                                      double &alpha, double &beta)
   {
-    // Calculate alpha and beta only when speed is above threshold
-    constexpr double vThreshold = 5e-1;
-    if (body_speed.norm() < vThreshold)
-    {
-      alpha = 0.0;
-      beta  = 0.0;
-    }
-    else
-    {
-      alpha = std::atan2(body_speed(2), body_speed(0));
-      beta  = std::asin(body_speed(1) / body_speed.norm());
-    }
+    std::tie(alpha, beta) = air_angles(body_speed);
 
     // Set forces and moments to zero
     aero_force_b  = Eigen::Vector3d::Zero();

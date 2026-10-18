@@ -76,6 +76,11 @@ target_link_libraries(${PROJECT_NAME}_aero_factory
   ${PROJECT_NAME}_non
 )
 
+# Link imported targets explicitly: ament's dependency variables alone do not
+# propagate the distribution's external fmt dependency for spdlog headers.
+foreach(model lyu advanced_lift_drag phi bspline non aero_factory)
+  target_link_libraries(${PROJECT_NAME}_${model} spdlog::spdlog fmt::fmt)
+endforeach()
 
 # Testing for aerodynamics
 ament_auto_add_executable(aero_comparison src/aero_comparison.cpp)

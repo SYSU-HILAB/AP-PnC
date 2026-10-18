@@ -34,8 +34,10 @@
 #include <cstdlib>
 
 // Function Declarations
-extern void Aerodynamics(const double V_b[3], double F_b[3], double M_b[3],
-                         double *alpha, double *beta);
+// Body-FLU force [N] and moment [N m]; speed [m/s], FLU alpha/beta [rad].
+// The caller applies the model's low-speed fit guard to beta, not to telemetry.
+extern void AerodynamicsFlu(double speed, double alpha, double beta,
+                            double force[3], double moment[3]);
 
 #endif
 //

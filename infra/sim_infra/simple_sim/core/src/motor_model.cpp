@@ -18,7 +18,7 @@ namespace simple_sim
         (arms.array() <= 0.0).any() || !arm_angles.allFinite() ||
         !tilts.allFinite() || !mixer.allFinite() || !thrust_poly.allFinite() ||
         !torque_poly.allFinite() || !esc_poly.allFinite() ||
-        !damping_wing.allFinite() || !kp.allFinite() || !ki.allFinite() ||
+        !damping_body.allFinite() || !kp.allFinite() || !ki.allFinite() ||
         !kd.allFinite() || !wind_world.allFinite() ||
         (kp.array() < 0.0).any() || (ki.array() < 0.0).any() ||
         (kd.array() < 0.0).any() ||
@@ -43,7 +43,7 @@ namespace simple_sim
     inner_stride_ = cfg_.inner_dt_ns / physics_dt_ns;
     for (int i = 0; i < 4; ++i)
       rotations_[i] =
-          (Eigen::AngleAxisd(cfg_.arm_angles[i], Eigen::Vector3d::UnitX()) *
+          (Eigen::AngleAxisd(cfg_.arm_angles[i], Eigen::Vector3d::UnitZ()) *
            Eigen::AngleAxisd(cfg_.tilts[i], Eigen::Vector3d::UnitY()))
               .toRotationMatrix();
   }
@@ -123,8 +123,8 @@ namespace simple_sim
     MixerResult result;
     result.fraction = moment_output * scale + cfg_.mixer.col(0) * thrust +
                       Eigen::Vector4d::Constant(boost);
-    result.lower = lo < 0.0;
-    result.upper = hi > 1.0;
+    result.lower    = lo < 0.0;
+    result.upper    = hi > 1.0;
     if (!result.fraction.allFinite())
       throw std::runtime_error("nonfinite mixer result");
     return result;
@@ -152,31 +152,31 @@ namespace simple_sim
 
   Wrench MotorModel::wrench(const State &state) const
   {
-    const Eigen::Vector3d rates    = wing_from_flu(state.angular_velocity);
-    const Eigen::Vector3d velocity = wing_from_flu(
-        state.attitude.conjugate() * (state.velocity - cfg_.wind_world));
-    Eigen::Vector3d force  = Eigen::Vector3d::Zero(),
-                    moment = cfg_.damping_wing.cwiseProduct(rates);
-    constexpr double pi    = 3.14159265358979323846;
+    const Eigen::Vector3d &rates = state.angular_velocity;
+    const Eigen::Vector3d  velocity =
+        state.attitude.conjugate() * (state.velocity - cfg_.wind_world);
+    Eigen::Vector3d  force  = Eigen::Vector3d::Zero(),
+                     moment = cfg_.damping_body.cwiseProduct(rates);
+    constexpr double pi     = 3.14159265358979323846;
     for (int i = 0; i < 4; ++i)
     {
       const auto &motor_rotation = rotations_[i];
       const auto  propeller_load = propeller(
-          state.motors.rpm[i], (motor_rotation.transpose() * velocity).x());
+          state.motors.rpm[i], (motor_rotation.transpose() * velocity).z());
       const double          reaction_sign = i % 2 == 0 ? -1.0 : 1.0;
-      const Eigen::Vector3d thrust_local(propeller_load[0], 0.0, 0.0);
+      const Eigen::Vector3d thrust_local(0.0, 0.0, propeller_load[0]);
       force += motor_rotation * thrust_local;
       moment += motor_rotation *
-                (Eigen::Vector3d(reaction_sign * propeller_load[1], 0.0, 0.0) +
-                 Eigen::Vector3d(0.0, cfg_.arms[i], 0.0).cross(thrust_local));
+                (Eigen::Vector3d(0.0, 0.0, reaction_sign * propeller_load[1]) +
+                 Eigen::Vector3d(0.0, -cfg_.arms[i], 0.0).cross(thrust_local));
       const Eigen::Vector3d rotor_angular_momentum =
           motor_rotation *
           Eigen::Vector3d(
-              -reaction_sign * cfg_.jm * state.motors.rpm[i] * 2 * pi / 60.0, 0,
-              0);
+              0, 0,
+              -reaction_sign * cfg_.jm * state.motors.rpm[i] * 2 * pi / 60.0);
       moment += rotor_angular_momentum.cross(rates);
     }
-    return {flu_from_wing(force), flu_from_wing(moment)};
+    return {force, moment};
   }
 
   Eigen::Vector4d MotorModel::derivative(const State &state) const
@@ -191,11 +191,11 @@ namespace simple_sim
     // the model error is absorbed by the estimator instead of being ignored.
     if (realized_throttle_)
       return *realized_throttle_;
-    // New interface adapter: NMPC provides N/kg, MATLAB expects [0,1].
-    // Invert the STATIC balanced-motor thrust curve. Inflow remains in plant.
+    // Invert the static balanced-motor thrust curve: +Z specific force
+    // [N/kg] to normalized throttle [0,1]. Inflow remains in the plant.
     double projection = 0.0;
     for (const auto &r : rotations_)
-      projection += r(0, 0);
+      projection += r(2, 2);
     const double target_rpm =
         std::sqrt(mass_ * std::clamp(specific_force, 0.0, max_force_) /
                   (projection * cfg_.ct * cfg_.thrust_poly[2]));
@@ -234,8 +234,7 @@ namespace simple_sim
       const double          dt = static_cast<double>(cfg_.inner_dt_ns) * 1e-9;
       const Eigen::Vector3d setpoint =
           command.rates.cwiseMax(-max_rate_).cwiseMin(max_rate_);
-      const Eigen::Vector3d error =
-          wing_from_flu(setpoint - result.angular_velocity);
+      const Eigen::Vector3d error = setpoint - result.angular_velocity;
       if (!result.motors.limited)
         result.motors.integral += dt * cfg_.ki.cwiseProduct(error);
       const Eigen::Vector3d action =
@@ -244,7 +243,7 @@ namespace simple_sim
       result.motors.previous_error  = error;
       const Eigen::Vector3d limited = action.cwiseMax(-Eigen::Vector3d::Ones())
                                           .cwiseMin(Eigen::Vector3d::Ones());
-      Eigen::Vector4d input;
+      Eigen::Vector4d       input;
       input << throttle(command.specific_force), limited;
       const auto mixed = mix(input);
       result.motors.limited =

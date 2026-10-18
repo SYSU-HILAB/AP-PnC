@@ -8,6 +8,8 @@ import dataclasses
 import casadi as cs
 import numpy as np
 
+from tooling.frame_contract import FRAME_CONVENTION
+
 from .aero_coefficients import get_numpy_coefficients
 
 
@@ -102,15 +104,11 @@ class SymbolicGdModel:
             cs.fabs(sb) * cb * sa2,
         )
 
-        w_B1 = self._logistic_func(
-            alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1
-        )
+        w_B1 = self._logistic_func(alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1)
         comp_B1 = cs.vertcat(cb2, (alpha + self._deg2rad(180)) * cb2)
         reg_B1 = w_B1 * comp_B1
 
-        w_N11 = self._logistic_func(
-            alpha, self._deg2rad(-170), 1, self._deg2rad(-20), 0.5
-        )
+        w_N11 = self._logistic_func(alpha, self._deg2rad(-170), 1, self._deg2rad(-20), 0.5)
         reg_N11 = w_N11 * comp_N
 
         w_B2 = self._logistic_func(alpha, self._deg2rad(-11), 20, self._deg2rad(18), 10)
@@ -153,15 +151,11 @@ class SymbolicGdModel:
             cs.fabs(sb) * cb * sa2,
         )
 
-        w_B1 = self._logistic_func(
-            alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1
-        )
+        w_B1 = self._logistic_func(alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1)
         comp_B1 = cs.vertcat(cb2, (alpha + self._deg2rad(180)) * cb2)
         reg_B1 = w_B1 * comp_B1
 
-        w_N1 = self._logistic_func(
-            alpha, self._deg2rad(-170), 1, self._deg2rad(-10), 0.5
-        )
+        w_N1 = self._logistic_func(alpha, self._deg2rad(-170), 1, self._deg2rad(-10), 0.5)
         reg_N1 = w_N1 * comp_N
 
         w_B2 = self._logistic_func(alpha, self._deg2rad(-11), 20, self._deg2rad(18), 10)
@@ -189,15 +183,11 @@ class SymbolicGdModel:
 
         comp_N = cs.vertcat(signb * sb2, sb * cb * ca, sb * cb * sa)
 
-        w_B1 = self._logistic_func(
-            alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1
-        )
+        w_B1 = self._logistic_func(alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1)
         comp_B1 = cs.vertcat(cb2, (alpha + self._deg2rad(180)) * cb2)
         reg_B1 = w_B1 * comp_B1
 
-        w_N11 = self._logistic_func(
-            alpha, self._deg2rad(-170), 1, self._deg2rad(-90), 1
-        )
+        w_N11 = self._logistic_func(alpha, self._deg2rad(-170), 1, self._deg2rad(-90), 1)
         reg_N11 = w_N11 * comp_N
 
         w_N12 = self._logistic_func(alpha, self._deg2rad(-90), 1, self._deg2rad(-11), 1)
@@ -226,20 +216,14 @@ class SymbolicGdModel:
         comp_B = cs.vertcat(cb2, alpha * cb2)
         comp_N = cs.vertcat(signb * sb2, sb * cb * ca, sb * cb * sa)
 
-        w_B1 = self._logistic_func(
-            alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1
-        )
+        w_B1 = self._logistic_func(alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1)
         comp_B1 = cs.vertcat(cb2, (alpha + self._deg2rad(180)) * cb2)
         reg_B1 = w_B1 * comp_B1
 
-        w_N11 = self._logistic_func(
-            alpha, self._deg2rad(-170), 1, self._deg2rad(-90), 5
-        )
+        w_N11 = self._logistic_func(alpha, self._deg2rad(-170), 1, self._deg2rad(-90), 5)
         reg_N11 = w_N11 * comp_N
 
-        w_N12 = self._logistic_func(
-            alpha, self._deg2rad(-90), 5, self._deg2rad(-20), 0.5
-        )
+        w_N12 = self._logistic_func(alpha, self._deg2rad(-90), 5, self._deg2rad(-20), 0.5)
         reg_N12 = w_N12 * comp_N
 
         w_B2 = self._logistic_func(alpha, self._deg2rad(-11), 20, self._deg2rad(18), 10)
@@ -279,15 +263,11 @@ class SymbolicGdModel:
             cs.fabs(sb) * cb * sa,
         )
 
-        w_B1 = self._logistic_func(
-            alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1
-        )
+        w_B1 = self._logistic_func(alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1)
         comp_B1 = cs.vertcat(cb2, (alpha + self._deg2rad(180)) * cb2)
         reg_B1 = w_B1 * comp_B1
 
-        w_N11 = self._logistic_func(
-            alpha, self._deg2rad(-170), 1, self._deg2rad(-20), 0.5
-        )
+        w_N11 = self._logistic_func(alpha, self._deg2rad(-170), 1, self._deg2rad(-20), 0.5)
         reg_N11 = w_N11 * comp_N
 
         w_B2 = self._logistic_func(alpha, self._deg2rad(-11), 20, self._deg2rad(18), 10)
@@ -316,15 +296,11 @@ class SymbolicGdModel:
         comp_B = cs.vertcat(cb2, alpha * cb2)
         comp_N = cs.vertcat(signb * sb2, sb * cb * ca, sb * cb * sa)
 
-        w_B1 = self._logistic_func(
-            alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1
-        )
+        w_B1 = self._logistic_func(alpha, self._deg2rad(-190), 1, self._deg2rad(-170), 1)
         comp_B1 = cs.vertcat(cb2, (alpha + self._deg2rad(180)) * cb2)
         reg_B1 = w_B1 * comp_B1
 
-        w_N1 = self._logistic_func(
-            alpha, self._deg2rad(-170), 1, self._deg2rad(-10), 10
-        )
+        w_N1 = self._logistic_func(alpha, self._deg2rad(-170), 1, self._deg2rad(-10), 10)
         reg_N1 = w_N1 * comp_N
 
         w_B2 = self._logistic_func(alpha, self._deg2rad(-10), 10, self._deg2rad(18), 10)
@@ -366,37 +342,25 @@ class SymbolicGdModel:
         vby = velb[1]
         vbz = velb[2]
 
-        # Calculation
-        v_norm = cs.sqrt(vbx**2 + vby**2 + vbz**2) + 1e-8
-        v_squared = v_norm**2
-        alpha = cs.atan2(vbz, vbx)
-        beta = cs.asin(vby / v_norm)
+        v_squared = vbx**2 + vby**2 + vbz**2
+        v_norm = cs.sqrt(v_squared)
+        longitudinal = cs.sqrt(vbx**2 + vbz**2)
+        alpha = cs.atan2(vbx, cs.if_else(longitudinal > 0, vbz, 1.0))
+        beta = cs.atan2(vby, cs.if_else(v_squared > 0, longitudinal, 1.0))
 
         return alpha, beta, v_norm, v_squared
 
-    def _trans_stab_to_body(self, alpha, vec):
-        """Transform from stability frame to body frame."""
-        # Stability to body frame transformation matrix using SX symbolic expressions
+    def _resolve_force_body(self, alpha, vec):
+        """Resolve scalar [-drag, left-side, -lift] loads onto body FLU."""
 
-        T_sb = cs.vertcat(
-            cs.horzcat(cs.cos(alpha), 0, -cs.sin(alpha)),
-            cs.horzcat(0, 1, 0),
-            cs.horzcat(cs.sin(alpha), 0, cs.cos(alpha)),
-        )
+        sa, ca = cs.sin(alpha), cs.cos(alpha)
+        return cs.vertcat(sa * vec[0] + ca * vec[2], vec[1], ca * vec[0] - sa * vec[2])
 
-        return T_sb @ vec
+    def _project_force_loads(self, alpha, vec):
+        """Extract scalar [-drag, left-side, -lift] loads from a FLU force."""
 
-    def _trans_body_to_stab(self, alpha, vec):
-        """Transform from stability frame to body frame."""
-        # Stability to body frame transformation matrix using SX symbolic expressions
-
-        T_bs = cs.vertcat(
-            cs.horzcat(cs.cos(alpha), 0, cs.sin(alpha)),
-            cs.horzcat(0, 1, 0),
-            cs.horzcat(-cs.sin(alpha), 0, cs.cos(alpha)),
-        )
-
-        return T_bs @ vec
+        sa, ca = cs.sin(alpha), cs.cos(alpha)
+        return cs.vertcat(sa * vec[0] + ca * vec[2], vec[1], ca * vec[0] - sa * vec[2])
 
     def _build_symbolic_model(self):
         """Build the symbolic CasADi model."""
@@ -418,10 +382,10 @@ class SymbolicGdModel:
         )
 
         # Transform forces to body frame
-        forces_body = self._trans_stab_to_body(alpha, forces_dyl)
+        forces_body = self._resolve_force_body(alpha, forces_dyl)
 
-        # Compute moments (already in body frame)
-        moments_body = 0.5 * rho * v_squared * cs.vertcat(0.0, CM, 0.0)
+        # Fitted moment families map to body X, Y, Z in this order.
+        moments_body = 0.5 * rho * v_squared * cs.vertcat(CN, CM, CLL)
 
         # Store symbolic expressions
         self.alpha = alpha
@@ -510,22 +474,22 @@ def _create_mesh_grid(mesh_size: int) -> tuple[np.ndarray, np.ndarray, np.ndarra
 
 def _evaluate_mesh_point(model, alpha_val: float, beta_val: float, v_mag: float = 10.0):
     """Evaluate aerodynamic coefficients at a single mesh grid location."""
-    vbx = v_mag * np.cos(alpha_val) * np.cos(beta_val)
+    vbx = v_mag * np.sin(alpha_val) * np.cos(beta_val)
     vby = v_mag * np.sin(beta_val)
-    vbz = v_mag * np.sin(alpha_val) * np.cos(beta_val)
+    vbz = v_mag * np.cos(alpha_val) * np.cos(beta_val)
     velb = np.array([vbx, vby, vbz])
 
     forces, moments, _, _ = model.evaluate(velb)
     rho = model.config.rho
     dynamic_pressure = 0.5 * rho * v_mag**2
-    forces_stability = model._trans_body_to_stab(alpha_val, forces)
+    forces_stability = model._project_force_loads(alpha_val, forces)
 
     cl = -forces_stability[2] / dynamic_pressure
     cd = -forces_stability[0] / dynamic_pressure
     cy = forces_stability[1] / dynamic_pressure
-    cll = moments[0] / dynamic_pressure
+    cll = moments[2] / dynamic_pressure
     cm = moments[1] / dynamic_pressure
-    cn = moments[2] / dynamic_pressure
+    cn = moments[0] / dynamic_pressure
     return cl, cd, cy, cll, cm, cn
 
 
@@ -566,7 +530,7 @@ def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_si
     print("Generating CasADi 3D mesh data...")
 
     # Import data utilities
-    from ...plotting.data_utils import save_mesh_data
+    from ...figure.data_utils import save_mesh_data
 
     # Create model
     model = SymbolicGdModel.create()
@@ -595,12 +559,15 @@ def generate_mesh_data(filename="mesh_aero_data_casadi", cache_dir=None, mesh_si
         f"CL={coeffs['CL'].shape}"
     )
 
-    return {"ALPHA_DEG": alpha_deg_grid, "BETA_DEG": beta_deg_grid, **coeffs}
+    return {
+        "frame_convention": FRAME_CONVENTION,
+        "ALPHA_DEG": alpha_deg_grid,
+        "BETA_DEG": beta_deg_grid,
+        **coeffs,
+    }
 
 
-def generate_cl_cd_cm_coordinated_data(
-    filename="coordinated_aero_data_casadi", cache_dir=None
-):
+def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_casadi", cache_dir=None):
     """
     Generate CL, CD, CM coefficients data under coordinated flight assumption (beta = 0).
     Saves data to .npy file for later plotting.
@@ -612,12 +579,10 @@ def generate_cl_cd_cm_coordinated_data(
     Returns:
         dict: Dictionary containing the coordinated flight data
     """
-    print(
-        "Generating CasADi aerodynamic coefficients under coordinated flight (beta = 0)..."
-    )
+    print("Generating CasADi aerodynamic coefficients under coordinated flight (beta = 0)...")
 
     # Import data utilities
-    from ...plotting.data_utils import save_coordinated_data
+    from ...figure.data_utils import save_coordinated_data
 
     # Create model
     model = SymbolicGdModel.create()
@@ -644,9 +609,9 @@ def generate_cl_cd_cm_coordinated_data(
 
         # Set velocity magnitude (can be arbitrary, coefficients are normalized)
         v_mag = 10.0  # m/s
-        vbx = v_mag * np.cos(alpha_val)  # beta = 0, so cos(beta) = 1
-        vby = 0.0  # beta = 0
-        vbz = v_mag * np.sin(alpha_val)
+        vbx = v_mag * np.sin(alpha_val)  # beta = 0
+        vby = 0.0
+        vbz = v_mag * np.cos(alpha_val)
 
         velb = np.array([vbx, vby, vbz])
 
@@ -659,28 +624,18 @@ def generate_cl_cd_cm_coordinated_data(
         dynamic_pressure = 0.5 * rho * v_squared
 
         # Convert body frame forces to stability frame before extracting coefficients
-        forces_stability = model._trans_body_to_stab(alpha_val, forces)
+        forces_stability = model._project_force_loads(alpha_val, forces)
 
         # Extract coefficients from stability frame forces
-        CL[i] = (
-            -forces_stability[2] / dynamic_pressure
-        )  # Lift coefficient (negative Z direction)
-        CD[i] = (
-            -forces_stability[0] / dynamic_pressure
-        )  # Drag coefficient (negative X direction)
-        CM[i] = (
-            moments[1] / dynamic_pressure
-        )  # Pitching moment coefficient (body frame)
+        CL[i] = -forces_stability[2] / dynamic_pressure  # Lift coefficient (negative Z direction)
+        CD[i] = -forces_stability[0] / dynamic_pressure  # Drag coefficient (negative X direction)
+        CM[i] = moments[1] / dynamic_pressure  # Pitching moment coefficient (body frame)
 
     # Save data using data utilities
-    save_coordinated_data(
-        alpha_deg, CL, CD, CM, filename=filename, cache_dir=cache_dir
-    )
+    save_coordinated_data(alpha_deg, CL, CD, CM, filename=filename, cache_dir=cache_dir)
 
     print("CasADi coordinated flight data generation completed!")
-    print(
-        f"Data shape: alpha={alpha_deg.shape}, CL={CL.shape}, CD={CD.shape}, CM={CM.shape}"
-    )
+    print(f"Data shape: alpha={alpha_deg.shape}, CL={CL.shape}, CD={CD.shape}, CM={CM.shape}")
 
     # Return the data dictionary for immediate use
     return {"alpha_deg": alpha_deg, "CL": CL, "CD": CD, "CM": CM}

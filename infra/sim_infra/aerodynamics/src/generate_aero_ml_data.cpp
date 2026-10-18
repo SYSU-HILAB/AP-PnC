@@ -36,7 +36,7 @@ using namespace aerodynamics;
  * @return true if generation succeeded
  */
 bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
-                        const std::string& filename, const std::string& name)
+                        const std::string &filename, const std::string &name)
 {
   spdlog::info("Generating data for {}", name);
 
@@ -67,7 +67,7 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
   }
 
   // CSV header: alpha in radians, cx, cz
-  outfile << "alpha(rad),cx,cz\n";
+  outfile << "alpha(rad),cx,cz,frame_convention\n";
 
   try
   {
@@ -76,12 +76,10 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
       // Input alpha for velocity calculation
       const double alpha_input = alpha_min + i * alpha_step;
 
-      // Compute body velocity components based on alpha_input
-      // For positive alpha (pitch up), velocity comes from below
-      Eigen::Vector3d body_speed;
-      body_speed.x() = speed_magnitude * std::cos(alpha_input);
-      body_speed.y() = 0.0;  // No sideslip
-      body_speed.z() = speed_magnitude * std::sin(alpha_input);
+      // FLU: alpha = atan2(v_x,v_z), beta=0; thrust is +Z.
+      const Eigen::Vector3d body_speed(speed_magnitude * std::sin(alpha_input),
+                                       0.0,
+                                       speed_magnitude * std::cos(alpha_input));
 
       Eigen::Vector3d aero_force_b;
       Eigen::Vector3d aero_moment_b;
@@ -90,8 +88,10 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
       double alpha_out = 0.0;
       double beta_out  = 0.0;
 
-      creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b, alpha_out,
-                             beta_out);
+      if (!creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b,
+                                  alpha_out, beta_out) ||
+          !aero_force_b.allFinite())
+        throw std::runtime_error("aerodynamic dataset evaluation failed");
 
       // Normalize coefficients: force / (speed^2)
       const double cx = aero_force_b.x() / (speed_magnitude * speed_magnitude);
@@ -99,7 +99,8 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
 
       // Write: alpha_input(rad), cx, cz
       outfile << std::setprecision(std::numeric_limits<double>::max_digits10)
-              << alpha_input << "," << cx << "," << cz << "\n";
+              << alpha_input << "," << cx << "," << cz << ","
+              << kFrameConvention << "\n";
     }
 
     outfile.close();
@@ -107,7 +108,7 @@ bool generate_aero_data(std::unique_ptr<AerodynamicsCreator> creator,
                  num_points);
     return true;
   }
-  catch (const std::exception& e)
+  catch (const std::exception &e)
   {
     spdlog::error("Exception in {}: {}", name, e.what());
     outfile.close();

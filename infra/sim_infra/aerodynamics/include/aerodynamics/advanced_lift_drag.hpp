@@ -53,27 +53,27 @@ namespace aerodynamics
      * (N⋅m)
      * @param[out] alpha Angle of attack (rad)
      * @param[out] beta Sideslip angle (rad)
-     * @return true Always returns true
+     * @throws std::invalid_argument for non-finite air-relative velocity
      *
-     * @note All vectors are expressed in the body frame following the
-     * Forward-Right-Down (FRD) convention
+     * @note All vectors use body FLU; alpha=atan2(vx,vz),
+     * beta=atan2(vy,hypot(vx,vz)).
      */
-    bool getAeroWrench(const Eigen::Vector3d& body_speed,
-                       Eigen::Vector3d&       aero_force_b,
-                       Eigen::Vector3d& aero_moment_b, double& alpha,
-                       double& beta) override;
+    bool getAeroWrench(const Eigen::Vector3d &body_speed,
+                       Eigen::Vector3d       &aero_force_b,
+                       Eigen::Vector3d &aero_moment_b, double &alpha,
+                       double &beta) override;
 
     // Need to declare destructor in header but define in cpp where
     // implementation is complete
     ~AdvancedLiftDrag();
 
     // Delete copy operations since we're using unique_ptr
-    AdvancedLiftDrag(const AdvancedLiftDrag&)            = delete;
-    AdvancedLiftDrag& operator=(const AdvancedLiftDrag&) = delete;
+    AdvancedLiftDrag(const AdvancedLiftDrag &)            = delete;
+    AdvancedLiftDrag &operator=(const AdvancedLiftDrag &) = delete;
 
     // Allow move operations
-    AdvancedLiftDrag(AdvancedLiftDrag&&) noexcept;
-    AdvancedLiftDrag& operator=(AdvancedLiftDrag&&) noexcept;
+    AdvancedLiftDrag(AdvancedLiftDrag &&) noexcept;
+    AdvancedLiftDrag &operator=(AdvancedLiftDrag &&) noexcept;
   };
 
   /**

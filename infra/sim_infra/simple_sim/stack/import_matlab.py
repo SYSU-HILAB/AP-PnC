@@ -10,6 +10,7 @@ import numpy as np
 import yaml
 from scipy.io import loadmat, savemat
 
+from tooling.actuator_profile import import_matlab_actuator
 from tooling.env import artifact_path, get_git_root
 
 NUMBER = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
@@ -120,6 +121,7 @@ def main():
             **local_calibration(source),
         },
     }
+    profile["actuator"] = import_matlab_actuator(profile["actuator"])
     (out / "profile.yaml").write_text(yaml.safe_dump(profile, sort_keys=False))
     numeric = {k: v for k, v in data.items() if k not in ("FJ", "QJ")}
     savemat(out / "quad_model_numeric.mat", {"quadModel": numeric})
@@ -153,7 +155,8 @@ def main():
         "mass_source": "main loads quadModel_X_VTOL.mat; generator .m differs",
         "no_control_surfaces": True,
         "adaptations": [
-            "wing->FLU proper rotation",
+            "calibrated geometry, mixer, damping and PID imported into body FLU",
+            "runtime collective thrust +Z; all body vectors and moments FLU",
             "NMPC N/kg -> static calibrated throttle",
             "motor RPM is RK4 state; source uses Euler x=T*RPM at 4 ms",
             "initial motors statically trimmed; source IC.w4 not reused",

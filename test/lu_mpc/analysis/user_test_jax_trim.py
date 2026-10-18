@@ -1,21 +1,21 @@
-from pathlib import Path
-
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import pandas as pd
 from jaxopt import LevenbergMarquardt
 
-from tooling.env import project_path
+from tooling.env import artifact_path
 
 # Use pgf backend for publication-quality plots
-plt.rcParams.update({
-    "pgf.texsystem": "pdflatex",
-    "font.family": "serif",
-    "font.serif": [],
-    "text.usetex": True,
-    "pgf.preamble": r"\usepackage{amsmath}",
-})
+plt.rcParams.update(
+    {
+        "pgf.texsystem": "pdflatex",
+        "font.family": "serif",
+        "font.serif": [],
+        "text.usetex": True,
+        "pgf.preamble": r"\usepackage{amsmath}",
+    }
+)
 
 from tooling.paper.methods.lu.gd_model_jax import (  # noqa: E402 -- after rcParams/pgf setup
     aerodynamics_B_vb,
@@ -44,9 +44,9 @@ def aircraft_equations(trim_vars, target_V, mass, g):
     # 1. State Construction
     Velocity_body = jnp.array(
         [
-            V * jnp.cos(alpha) * jnp.cos(beta),
-            V * jnp.sin(beta),
             V * jnp.sin(alpha) * jnp.cos(beta),
+            V * jnp.sin(beta),
+            V * jnp.cos(alpha) * jnp.cos(beta),
         ]
     )
 
@@ -60,15 +60,12 @@ def aircraft_equations(trim_vars, target_V, mass, g):
     FORCESZ = FORCES[2]
     MOMENTY = MOMENTS[1]
 
-    # 3. Physics (Level Flight)
-    theta = alpha
+    # Level flight: body X points partly down, collective acts along +Z.
+    W_x = mass * g * jnp.cos(alpha)
+    W_z = -mass * g * jnp.sin(alpha)
 
-    W_x = -mass * g * jnp.sin(theta)
-    W_z = mass * g * jnp.cos(theta)
-
-    # 4. Residuals
-    R_Fx = FORCESX + T + W_x
-    R_Fz = FORCESZ + W_z
+    R_Fx = FORCESX + W_x
+    R_Fz = FORCESZ + T + W_z
     R_My = MOMENTY + M_y_thrust
     R_V = V - target_V  # Constraint
 
@@ -81,9 +78,7 @@ def aircraft_equations(trim_vars, target_V, mass, g):
 
 # 1. Define Range
 num_points = 10000
-target_velocities = jnp.linspace(
-    0.1, 13.0, num_points
-)  # Start 0.1 to avoid V=0 singularities
+target_velocities = jnp.linspace(0.1, 13.0, num_points)  # Start 0.1 to avoid V=0 singularities
 
 # 2. Define Constants
 mass_val = 2.0
@@ -151,8 +146,7 @@ df = pd.DataFrame(
 )
 
 # Get git root for artifact paths
-git_root = Path(__file__).resolve().parent.parent.parent.parent
-figs_dir = project_path(".artifacts/paper/figs")
+figs_dir = artifact_path(".artifacts/paper/figures")
 figs_dir.mkdir(parents=True, exist_ok=True)
 csv_filename = figs_dir / "trim_results.csv"
 df.to_csv(csv_filename, index=False)

@@ -23,6 +23,7 @@ from typing import Any, TypedDict
 import numpy as np
 
 from tooling.env import artifact_path
+from tooling.frame_contract import FRAME_CONVENTION, require_frame
 
 
 class CoordinatedFlightData(TypedDict):
@@ -92,9 +93,7 @@ def get_data_path(filename: str, cache_dir: str | None = None) -> str:
     return str(file_path)
 
 
-def save_aero_data(
-    data: dict[str, Any], filename: str, cache_dir: str | None = None
-) -> str:
+def save_aero_data(data: dict[str, Any], filename: str, cache_dir: str | None = None) -> str:
     """
     Save aerodynamic data to .npy file.
 
@@ -128,6 +127,7 @@ def save_aero_data(
                 # Skip non-serializable objects
                 print(f"Warning: Skipping non-serializable key: {key}")
 
+    require_frame(clean_data.setdefault("frame_convention", FRAME_CONVENTION))
     np.save(file_path, clean_data)
     print(f"Data saved to: {file_path}")
     return file_path
@@ -153,13 +153,12 @@ def load_aero_data(filename: str, cache_dir: str | None = None) -> dict[str, Any
         raise FileNotFoundError(f"Data file not found: {file_path}")
 
     data = np.load(file_path, allow_pickle=True).item()
+    require_frame(data.get("frame_convention"))
     print(f"Data loaded from: {file_path}")
     return data
 
 
-def save_metadata(
-    metadata: dict[str, Any], filename: str, cache_dir: str | None = None
-) -> str:
+def save_metadata(metadata: dict[str, Any], filename: str, cache_dir: str | None = None) -> str:
     """
     Save metadata to JSON file.
 
@@ -253,9 +252,7 @@ def list_cache_files(cache_dir: str | None = None) -> list:
 
 
 # Convenience functions for common data types
-def save_coordinated_data(
-    alpha_deg, CL, CD, CM, filename="coordinated_aero_data", cache_dir=None
-):
+def save_coordinated_data(alpha_deg, CL, CD, CM, filename="coordinated_aero_data", cache_dir=None):
     """Save coordinated flight data (beta=0)"""
     data = {
         "alpha_deg": alpha_deg,

@@ -26,23 +26,12 @@
 namespace aerodynamics
 {
 
-  bool PhiAerodynamics::getAeroWrench(const Eigen::Vector3d& body_speed,
-                                      Eigen::Vector3d&       aero_force_b,
-                                      Eigen::Vector3d&       aero_moment_b,
-                                      double& alpha, double& beta)
+  bool PhiAerodynamics::getAeroWrench(const Eigen::Vector3d &body_speed,
+                                      Eigen::Vector3d       &aero_force_b,
+                                      Eigen::Vector3d       &aero_moment_b,
+                                      double &alpha, double &beta)
   {
-    // Calculate alpha and beta from body velocity
-    constexpr double vThreshold = 5e-1;
-    if (body_speed.norm() < vThreshold)
-    {
-      alpha = 0.0;
-      beta  = 0.0;
-    }
-    else
-    {
-      alpha = std::atan2(body_speed(2), body_speed(0));
-      beta  = std::asin(body_speed(1) / body_speed.norm());
-    }
+    std::tie(alpha, beta) = air_angles(body_speed);
 
     // Calculate aerodynamic forces using phi matrix
     aero_force_b  = _phi_matrix * body_speed * body_speed.norm();
@@ -58,6 +47,8 @@ namespace aerodynamics
     {
       const YAML::Node config =
           YAML::LoadFile(paths::aero_config("phi").string());
+      if (config["body_frame"].as<std::string>() != "FLU")
+        throw std::runtime_error("phi parameters require body_frame: FLU");
       const YAML::Node rows = config["phi_coefs"];
       if (!rows || !rows.IsSequence() || rows.size() != 3)
         throw std::runtime_error("phi_coefs must be a 3x3 matrix");
@@ -70,7 +61,7 @@ namespace aerodynamics
           phi_matrix(r, c) = row[c].as<double>();
       }
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
       spdlog::error("phi aerodynamics: failed to load {}: {}",
                     paths::aero_config("phi").string(), e.what());

@@ -4,7 +4,7 @@ The aerodynamics module provides a comprehensive framework for modeling aerodyna
 
 ## Overview
 
-This module implements multiple aerodynamics models with varying levels of fidelity, from simple linear models to complex MATLAB-generated implementations. It is designed for trajectory planning and tracking control, with a key innovation being the inverse calculation of angle of attack from lift coefficient.
+This module evaluates aerodynamic forces, moments and air-relative angles directly in the quadrotor body-FLU convention. The simulator, Python bindings and offline fitting tools share that contract.
 
 ## Directory Structure
 
@@ -81,7 +81,7 @@ creator.createAerodynamics();
 ```
 
 **Features:**
-- MATLAB-generated implementation from Zhang-Lyu aerodynamics
+- Native FLU evaluation of the Zhang-Lyu fitted aerodynamic polars
 - Comprehensive force and moment calculations
 - Captures complex aerodynamic effects
 
@@ -101,7 +101,7 @@ creator.createAerodynamics();
 - Cubic B-spline interpolation (order 3)
 - Control points and knots loaded from `config/aero/ma.yaml`
 - Efficient for real-time control
-- Fit pipeline: `data/bspline_aero_fit.py` → npz → `data/ma_params_writer.py` → `config/aero/ma.yaml`
+- Fit pipeline: `data/bspline_aero_fit.py` → stamped NPZ files under `.artifacts/aerodynamics/bspline_fit_results/` → `data/ma_params_writer.py` → `.artifacts/aerodynamics/ma.yaml`. Review the staged result before updating `config/aero/ma.yaml`.
 
 ### PhiAerodynamics (Linear Phi-Theory Model)
 
@@ -128,7 +128,7 @@ where:
 **Features:**
 - Fast and lightweight
 - Suitable for real-time control
-- Phi matrix loaded from database
+- FLU Phi matrix loaded from `config/aero/phi.yaml`
 
 ### AdvancedLiftDrag ("advanced")
 
@@ -218,14 +218,39 @@ uv run ap-pnc aerodyn ml pipeline
 
 ## Coordinate Convention
 
-All vectors use the **Forward-Right-Down (FRD)** body frame convention:
-- **X**: Forward
-- **Y**: Right
-- **Z**: Down
+World vectors use **ENU**; body vectors use **FLU** (X forward, Y left, Z up).
+Collective thrust acts along **+Z body**; moments follow the right-hand rule.
+`q_WB=[w,x,y,z]` is a Hamilton quaternion rotating body vectors into world.
+
+Every model receives aircraft velocity **relative to air**, expressed in FLU:
+
+```text
+v_air_B = R_WB.T * (v_world - wind_world)
+alpha   = atan2(v_air_B.x, v_air_B.z)
+beta    = atan2(v_air_B.y, hypot(v_air_B.x, v_air_B.z))
+```
+
+Forces [N] and moments [N m] are returned directly in FLU. Angles [rad] describe
+the input velocity, including low-speed flow; both are zero at rest. Pure lateral
+flow has alpha zero and beta ±π/2. A model's low-speed force-law guard does not
+change these reported kinematic angles. No model-specific body-frame adapter is
+used by the plant or SE3 controller. The simulator's explicit
+`lateral_moment_only` option retains only body-Y moment; it is a modeling option,
+not a coordinate conversion. Paper GD fit families `CLL`, `CM`, `CN` describe
+body Z, Y, X respectively; vector outputs are always ordered X, Y, Z.
+
+The Python binding exposes `compute_wrench(v_air_B)` and zero-sideslip force
+coefficients `(cx, cz) = (Fx/V², Fz/V²)`. These are **not mass-normalized**;
+controller `TrackingInfo.cx` instead has units 1/m and includes measured actuator
+contributions. CSV, parquet, fitted parameters and ML checkpoints carry a frame
+stamp; incompatible or unstamped artifacts are rejected rather than relabeled.
+One-time source-data import lives in `aerodynamics.data.import_flu`; inference
+performs no output-axis conversion.
 
 ## License
 
-BSD 3-Clause License
+Project-owned code uses the BSD 3-Clause License. The Zhang-derived kernel also
+retains its upstream academic-license notice in the source file.
 
 Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
 

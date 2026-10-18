@@ -25,10 +25,10 @@
 
 namespace aerodynamics
 {
-  BsplineAerodynamics::BsplineAerodynamics(const std::vector<double>& cx_coefs,
-                                           const std::vector<double>& cx_knots,
-                                           const std::vector<double>& cz_coefs,
-                                           const std::vector<double>& cz_knots,
+  BsplineAerodynamics::BsplineAerodynamics(const std::vector<double> &cx_coefs,
+                                           const std::vector<double> &cx_knots,
+                                           const std::vector<double> &cz_coefs,
+                                           const std::vector<double> &cz_knots,
                                            const double scale_factor)
       : cx_knots_(cx_knots),
         cz_knots_(cz_knots),
@@ -38,31 +38,21 @@ namespace aerodynamics
   {
   }
 
-  bool BsplineAerodynamics::getAeroWrench(const Eigen::Vector3d& body_speed,
-                                          Eigen::Vector3d&       aero_force_b,
-                                          Eigen::Vector3d&       aero_moment_b,
-                                          double& alpha, double& beta)
+  bool BsplineAerodynamics::getAeroWrench(const Eigen::Vector3d &body_speed,
+                                          Eigen::Vector3d       &aero_force_b,
+                                          Eigen::Vector3d       &aero_moment_b,
+                                          double &alpha, double &beta)
   {
-    // alpha/beta and the B-spline basis must both come from THIS body_speed.
-    // The basis previously used the caller's stale alpha (often zero), so the
-    // returned force did not correspond to the returned angle.
-    constexpr double vThreshold = 5e-1;
-    if (body_speed.norm() < vThreshold)
-    {
-      alpha = 0.0;
-      beta  = 0.0;
-    }
-    else
-    {
-      alpha = std::atan2(body_speed(2), body_speed(0));
-      beta  = std::asin(body_speed(1) / body_speed.norm());
-    }
-
-    // Evaluate the cubic B-spline basis at the actual current alpha.
+    std::tie(alpha, beta) = air_angles(body_speed);
+    // Preserve the fitted model's low-speed force law without changing the
+    // reported kinematic angles. Coefficient axes are body FLU.
+    const bool                low_speed = body_speed.norm() < 0.5;
+    const double              fit_alpha = low_speed ? 0.0 : alpha;
+    const double              fit_beta  = low_speed ? 0.0 : beta;
     const std::vector<double> cx_basis =
-        bspline_basis(SPLINE_ORDER, cx_knots_, alpha);
+        bspline_basis(SPLINE_ORDER, cx_knots_, fit_alpha);
     const std::vector<double> cz_basis =
-        bspline_basis(SPLINE_ORDER, cz_knots_, alpha);
+        bspline_basis(SPLINE_ORDER, cz_knots_, fit_alpha);
 
     double v_squared = body_speed.squaredNorm();
 
@@ -79,9 +69,9 @@ namespace aerodynamics
       aeroForceBz += cz_coefficients_[i] * cz_basis[i];
     }
 
-    aero_force_b = scale_factor_ *
-                   Eigen::Vector3d(aeroForceBx, aeroForceBy, aeroForceBz) *
-                   v_squared * cos(beta);
+    aero_force_b  = scale_factor_ *
+                    Eigen::Vector3d(aeroForceBx, aeroForceBy, aeroForceBz) *
+                    v_squared * cos(fit_beta);
     aero_moment_b = Eigen::Vector3d(0.0, 0.0, 0.0);
 
     return true;
@@ -96,8 +86,10 @@ namespace aerodynamics
     {
       const YAML::Node config =
           YAML::LoadFile(paths::aero_config("ma").string());
+      if (config["body_frame"].as<std::string>() != "FLU")
+        throw std::runtime_error("ma parameters require body_frame: FLU");
       const auto read_vector =
-          [&config](const char* key, std::vector<double>& out)
+          [&config](const char *key, std::vector<double> &out)
       {
         const YAML::Node node = config[key];
         if (!node || !node.IsSequence() || node.size() == 0)
@@ -105,7 +97,7 @@ namespace aerodynamics
                                    "' must be a non-empty list");
         out.clear();
         out.reserve(node.size());
-        for (const auto& item : node)
+        for (const auto &item : node)
           out.push_back(item.as<double>());
       };
       read_vector("cx_coefs", cx_coefs);
@@ -116,7 +108,7 @@ namespace aerodynamics
         throw std::runtime_error("ma.yaml: 'scale_factor' missing");
       scale_factor = config["scale_factor"].as<double>();
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
       spdlog::error("ma aerodynamics: failed to load {}: {}",
                     paths::aero_config("ma").string(), e.what());

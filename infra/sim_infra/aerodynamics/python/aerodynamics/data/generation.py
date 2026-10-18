@@ -1,17 +1,15 @@
-"""
-DEPRECATED: Direct data generation using pybind11 aerodynamics bindings.
+"""Generate frame-stamped FLU coefficient data using native Linux bindings.
 
-This module is DEPRECATED due to a known bug in the pybind11 cleanup code
-that causes segfault during object destruction. Use CSV files directly instead.
-
-Use feature.aerodynamics.data.dataset.assemble_parquet_dataset() with
-CSV files from <AP_PNC_DIR>/.artifacts/aerodynamics/ as the data source.
+Outputs are (Fx/V², Fz/V²), without mass normalization. Generated parquet files
+live under the project artifact root and preserve the angle/frame convention.
 """
 
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+
+from aerodynamics.frames import FRAME_CONVENTION, require_frame
 
 if TYPE_CHECKING:
     from aerodynamics.data.dataset import AeroMLDataset
@@ -22,16 +20,17 @@ def _get_aerodynamics_bindings():
     Import the aerodynamics_bindings pybind11 module.
 
     The module should be installed via:
-        uv pip install -e src/aerodynamics/python/
+        ap-pnc build bindings --arch arm64
     """
     try:
         import aerodynamics_bindings
 
+        require_frame(getattr(aerodynamics_bindings, "FRAME_CONVENTION", None))
         return aerodynamics_bindings
     except ImportError as e:
         raise ImportError(
             f"Failed to import aerodynamics_bindings. "
-            f"Make sure you've installed it with: uv pip install -e src/aerodynamics/python/ "
+            f"Build and load the binding in native Linux Docker with ap-pnc build bindings. "
             f"Original error: {e}"
         ) from e
 
@@ -169,6 +168,7 @@ def assemble_parquet_dataset_from_bindings(
                 "cz": cz,
                 "aero_type": aero_type,
                 "weight_path": None,
+                "frame_convention": FRAME_CONVENTION,
             }
         )
         dfs.append(df)

@@ -64,12 +64,18 @@ ROS timers only schedule complete Runner transactions. Publishing `/clock` is
 an observation of those commits, not the synchronization mechanism.
 
 Physics uses world **ENU**, body **FLU**, a Hamilton quaternion rotating body
-vectors into world, diagonal rigid-body inertia, and optional Zhang-Lyu wing
-FRD aerodynamics. The aerodynamic adapter converts `(x,y,z)_wing = (z,-y,x)_FLU`
-and applies world-frame wind before conversion. IMU output is ideal body-frame
-specific force, excluding gravity.
+vectors into world, and diagonal rigid-body inertia. All aerodynamic and motor
+models calculate directly in FLU, with collective thrust along **+Z body**.
+Air velocity is `R_WB.T * (v_world - wind_world)`;
+`alpha=atan2(v_B.x,v_B.z)` and `beta=atan2(v_B.y,hypot(v_B.x,v_B.z))`.
+IMU output is ideal body-FLU specific force, excluding gravity.
 
-NMPC rotor states are already **N/kg**. Their sum is the specific-force command;
+Calibrated geometry, mixer, damping and PID parameters are imported into FLU
+once during job preparation; source snapshots remain untouched. Runtime actuator
+configuration requires `body_frame: FLU`. Recorded aerodynamic velocity columns
+are `air_body_v_*`; manifest CSV schema 2 states all frame and angle conventions.
+
+NMPC commands collective specific force in **N/kg** and body-FLU rates;
 vehicle mass is applied exactly once by the actuator to obtain newtons. The
 predicted first-node rates/thrust form a command, **never a replacement plant state**.
 A stateless P rate loop with gyroscopic compensation and explicit torque/rate/thrust
@@ -86,7 +92,7 @@ Without ground contact, negative altitude is possible and is not corrected.
 
 ```bash
 export AP_PNC_DIR="$(git rev-parse --show-toplevel)"
-# Required again after the solver wrapper API changes in this refactor.
+# Generate the matching native-Linux solver before compiling its consumers.
 uv run ap-pnc gen-nmpc-lib
 uv run ap-pnc build simple-sim
 

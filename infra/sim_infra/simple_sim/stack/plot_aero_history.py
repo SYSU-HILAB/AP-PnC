@@ -25,7 +25,9 @@ def committed_series(folder):
     valid = series("aero_observation_valid")
     if not np.all(valid == 1):
         raise ValueError("actual aerodynamic model observations unavailable")
-    velocity = np.column_stack([series(f"air_wing_v_{a}") for a in "xyz"])
+    if "air_body_v_x" not in rows[0]:
+        raise ValueError("aerodynamic history requires body-FLU CSV schema 2")
+    velocity = np.column_stack([series(f"air_body_v_{a}") for a in "xyz"])
     forces = np.column_stack([series(f"aero_f{a}") for a in "xyz"])
     moments = np.column_stack([series(f"aero_m{a}") for a in "xyz"])
     angles = np.column_stack([series("aero_alpha_rad"), series("aero_beta_rad")])
@@ -64,7 +66,7 @@ def plot(out):
                 alpha=0.15,
                 label="air speed < 0.5 m/s",
             )
-            ax.set_title(name + " (wing FRD)")
+            ax.set_title(name + " (body FLU)")
         for i, a in enumerate("xyz"):
             ax = axes.flat[i + 2]
             ax.plot(time, forces[:, i], label=f"aerodynamic F{a}, body FLU", color=f"C{i}")
@@ -91,7 +93,7 @@ def plot(out):
             f"ABI3 | 2.0 kg FOUR-MOTOR | v_max={index['v_max_setting_mps']:g} m/s | "
             f"{item['model']} | {status}\n"
             f"committed {time[-1]:.2f}s / requested {target:.2f}s; "
-            "wing velocity=(body Z,-body Y,body X); raw wrapped angles",
+            "body-FLU air velocity; raw wrapped kinematic angles",
             fontsize=12,
         )
         path = images / f"{item['model']}-aerodynamic-history.png"
@@ -103,7 +105,7 @@ def plot(out):
                 "status": manifest["status"],
                 "committed_end_s": float(time[-1]),
                 "requested_end_s": float(target),
-                "angle_semantics": "actual model-returned wing-FRD radians; low-speed guards model-owned",
+                "angle_semantics": "body FLU: alpha=atan2(vx,vz), beta=atan2(vy,hypot(vx,vz)); radians",
                 "force_semantics": "aerodynamic only, body FLU, N; final committed state included",
                 "max_abs_alpha_deg": float(np.max(np.abs(np.degrees(angles[:, 0])))),
                 "max_abs_beta_deg": float(np.max(np.abs(np.degrees(angles[:, 1])))),

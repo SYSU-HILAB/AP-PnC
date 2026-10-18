@@ -6,7 +6,7 @@ Solves the force balance equation for level flight across a velocity range using
 brentq root-finding method.
 
 Trim Equation (Force Balance Only):
-    cz(α) * V² / mass + g * cos(α) = 0
+    cx(α) * V² / mass + g * cos(α) = 0  (body FLU, thrust +Z)
 
 Output:
     - CSV files: velocity_ms, alpha_deg, cx, cz, fx_per_mass, fz_per_mass, dfx_dalpha, dfz_dalpha, residual
@@ -29,6 +29,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from aerodynamics.frames import FRAME_CONVENTION
 from aerodynamics.inference.derivatives import load_aero_derivatives
 from aerodynamics.inference.predictor import load_aerodynamics_mlp
 from scipy.optimize import root_scalar
@@ -43,8 +44,8 @@ class TrimResults:
     Attributes:
         velocities: Velocity array in m/s
         alphas: Angle of attack in radians (NaN for velocities with no solution)
-        cx: Drag coefficient (NaN for velocities with no solution)
-        cz: Lift coefficient (NaN for velocities with no solution)
+        cx: Body-FLU X force coefficient (NaN for velocities with no solution)
+        cz: Body-FLU Z force coefficient (NaN for velocities with no solution)
         fx: X-force per mass (cx * V² / mass, NaN for velocities with no solution)
         fz: Z-force per mass (cz * V² / mass, NaN for velocities with no solution)
         dfx_dalpha: Partial derivative of fx/mass w.r.t. alpha (NaN for no solution)
@@ -53,6 +54,7 @@ class TrimResults:
         aero_type: Aerodynamic type identifier
         mass: Aircraft mass in kg
     """
+
     velocities: np.ndarray
     alphas: np.ndarray
     cx: np.ndarray
@@ -91,7 +93,10 @@ def compute_trim_two_branches(
     # Pass 1: Descending (high→low) with low initial guess
     print("  Pass 1: Descending velocity (low-AoA branch)...")
     results_low = compute_trim_continuation(
-        velocities, aero_type, mass, g,
+        velocities,
+        aero_type,
+        mass,
+        g,
         alpha_initial_guess_deg=10.0,
         direction="descending",
         max_delta_alpha_deg=5.0,
@@ -100,7 +105,10 @@ def compute_trim_two_branches(
     # Pass 2: Ascending (low→high) with high initial guess
     print("  Pass 2: Ascending velocity (high-AoA branch)...")
     results_high = compute_trim_continuation(
-        velocities, aero_type, mass, g,
+        velocities,
+        aero_type,
+        mass,
+        g,
         alpha_initial_guess_deg=70.0,
         direction="ascending",
         max_delta_alpha_deg=5.0,
@@ -143,7 +151,7 @@ def compute_trim_two_branches(
                 residual_vals_merged[i] = results_low.residuals[i]
         else:
             # Subsequent points: choose solution closest to previous solution
-            prev_alpha = alphas_merged[i-1]
+            prev_alpha = alphas_merged[i - 1]
 
             if has_low and has_high:
                 # Both branches available: choose closest to previous
@@ -218,7 +226,7 @@ def compute_trim_continuation(
     """Compute trim conditions using brentq root-finding with continuation method.
 
     For each velocity, solves the 1D root-finding problem with penalty term:
-        cz(α) * V² / mass + g * cos(α) + λ * |α - α_mean|² = 0
+        cx(α) * V² / mass + g * cos(α) + λ * |α - α_mean|² = 0
 
     The penalty term λ * |α - α_mean|² naturally selects one solution branch
     by penalizing deviations from the running mean of previous solutions.
@@ -286,11 +294,11 @@ def compute_trim_continuation(
             V: float = V,
             alpha_mean: float = alpha_mean,
         ) -> float:
-            cx_jax, cz_jax = predictor.predict(alpha)  # Returns (cx, cz)
-            cz_val = float(cz_jax.item() if hasattr(cz_jax, 'item') else cz_jax)
-            # Add penalty term to favor one branch
-            penalty = penalty_weight * (alpha - alpha_mean)**2
-            return cz_val * V**2 / mass + g * np.cos(alpha) + penalty
+            cx_jax, _ = predictor.predict(alpha)
+            cx_val = float(cx_jax.item() if hasattr(cx_jax, "item") else cx_jax)
+            # Body-X balance; collective thrust acts along the orthogonal +Z axis.
+            penalty = penalty_weight * (alpha - alpha_mean) ** 2
+            return cx_val * V**2 / mass + g * np.cos(alpha) + penalty
 
         # Try to solve using brentq in [0, 90 deg] ONLY
         try:
@@ -318,7 +326,7 @@ def compute_trim_continuation(
             result = root_scalar(
                 residual,
                 bracket=bracket,
-                method='brentq',
+                method="brentq",
                 xtol=1e-8,
                 rtol=1e-8,
             )
@@ -349,16 +357,20 @@ def compute_trim_continuation(
 
                 # Compute all outputs at solution
                 cx_jax, cz_jax = predictor.predict(alpha_sol)
-                cx_vals[i] = float(cx_jax.item() if hasattr(cx_jax, 'item') else cx_jax)
-                cz_vals[i] = float(cz_jax.item() if hasattr(cz_jax, 'item') else cz_jax)
+                cx_vals[i] = float(cx_jax.item() if hasattr(cx_jax, "item") else cx_jax)
+                cz_vals[i] = float(cz_jax.item() if hasattr(cz_jax, "item") else cz_jax)
 
                 fx_vals[i] = cx_vals[i] * V**2 / mass
                 fz_vals[i] = cz_vals[i] * V**2 / mass
 
                 # Compute derivatives
                 dcx, dcz = derivatives.compute_jacobian(alpha_sol)
-                dfx_dalpha_vals[i] = V**2 / mass * float(dcx.item() if hasattr(dcx, 'item') else dcx)
-                dfz_dalpha_vals[i] = V**2 / mass * float(dcz.item() if hasattr(dcz, 'item') else dcz)
+                dfx_dalpha_vals[i] = (
+                    V**2 / mass * float(dcx.item() if hasattr(dcx, "item") else dcx)
+                )
+                dfz_dalpha_vals[i] = (
+                    V**2 / mass * float(dcz.item() if hasattr(dcz, "item") else dcz)
+                )
 
                 # Update initial guess for next iteration (continuation)
                 alpha_guess = alpha_sol
@@ -403,9 +415,7 @@ def run_trim_analysis_all_types(
     for aero_type in aero_types:
         print(f"Computing trim for {aero_type}...")
         try:
-            results[aero_type] = compute_trim_two_branches(
-                velocities, aero_type, mass, g
-            )
+            results[aero_type] = compute_trim_two_branches(velocities, aero_type, mass, g)
             n_valid = np.sum(~np.isnan(results[aero_type].alphas))
             print(f"  Converged: {n_valid}/{len(velocities)} points")
         except Exception as e:
@@ -434,17 +444,20 @@ def save_trim_results_to_csv(
     filename = f"trim_analysis_{results.aero_type}_mass{results.mass}kg.csv"
     filepath = output_dir / filename
 
-    df = pd.DataFrame({
-        "velocity_ms": results.velocities,
-        "alpha_deg": np.rad2deg(results.alphas),
-        "cx": results.cx,
-        "cz": results.cz,
-        "fx_per_mass": results.fx,
-        "fz_per_mass": results.fz,
-        "dfx_dalpha": results.dfx_dalpha,
-        "dfz_dalpha": results.dfz_dalpha,
-        "residual": results.residuals,
-    })
+    df = pd.DataFrame(
+        {
+            "velocity_ms": results.velocities,
+            "alpha_deg": np.rad2deg(results.alphas),
+            "cx": results.cx,
+            "cz": results.cz,
+            "fx_per_mass": results.fx,
+            "fz_per_mass": results.fz,
+            "dfx_dalpha": results.dfx_dalpha,
+            "dfz_dalpha": results.dfz_dalpha,
+            "residual": results.residuals,
+            "frame_convention": FRAME_CONVENTION,
+        }
+    )
 
     df.to_csv(filepath, index=False)
     print(f"  Saved CSV: {filepath}")
@@ -483,7 +496,7 @@ def plot_trim_results_2x2(
     ax1.plot(alpha_deg, results.cx[valid_mask], "b-", linewidth=2)
     ax1.set_xlabel("Angle of Attack (degrees)")
     ax1.set_ylabel("cx")
-    ax1.set_title("Drag Coefficient vs AoA")
+    ax1.set_title("Body-FLU X Force Coefficient vs AoA")
     ax1.grid(True, alpha=0.3)
     ax1.set_xlim([0, 90])
 
@@ -492,7 +505,7 @@ def plot_trim_results_2x2(
     ax2.plot(alpha_deg, results.cz[valid_mask], "r-", linewidth=2)
     ax2.set_xlabel("Angle of Attack (degrees)")
     ax2.set_ylabel("cz")
-    ax2.set_title("Lift Coefficient vs AoA")
+    ax2.set_title("Body-FLU Z Force Coefficient vs AoA")
     ax2.grid(True, alpha=0.3)
     ax2.set_xlim([0, 90])
 
@@ -589,7 +602,9 @@ def plot_trim_comparison_2x2(
         if results is None:
             continue
 
-        style = styles.get(aero_type, {"color": "gray", "marker": "o", "linestyle": "-", "label": aero_type})
+        style = styles.get(
+            aero_type, {"color": "gray", "marker": "o", "linestyle": "-", "label": aero_type}
+        )
         valid_mask = ~np.isnan(results.alphas)
 
         if np.sum(valid_mask) == 0:
@@ -599,41 +614,74 @@ def plot_trim_comparison_2x2(
 
         # Plot 1: cx vs AoA
         ax1 = axes[0, 0]
-        ax1.plot(alpha_deg, results.cx[valid_mask], color=style["color"],
-                linestyle=style["linestyle"], marker=style["marker"],
-                markersize=3, markevery=max(1, len(alpha_deg) // 50),
-                label=style["label"], linewidth=1.5, alpha=0.8)
+        ax1.plot(
+            alpha_deg,
+            results.cx[valid_mask],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["marker"],
+            markersize=3,
+            markevery=max(1, len(alpha_deg) // 50),
+            label=style["label"],
+            linewidth=1.5,
+            alpha=0.8,
+        )
 
         # Plot 2: cz vs AoA
         ax2 = axes[0, 1]
-        ax2.plot(alpha_deg, results.cz[valid_mask], color=style["color"],
-                linestyle=style["linestyle"], marker=style["marker"],
-                markersize=3, markevery=max(1, len(alpha_deg) // 50),
-                label=style["label"], linewidth=1.5, alpha=0.8)
+        ax2.plot(
+            alpha_deg,
+            results.cz[valid_mask],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["marker"],
+            markersize=3,
+            markevery=max(1, len(alpha_deg) // 50),
+            label=style["label"],
+            linewidth=1.5,
+            alpha=0.8,
+        )
 
         # Plot 3: ∂fx/mass w.r.t. alpha vs AoA
         ax3 = axes[1, 0]
-        ax3.plot(alpha_deg, results.dfx_dalpha[valid_mask], color=style["color"],
-                linestyle=style["linestyle"], marker=style["marker"],
-                markersize=3, markevery=max(1, len(alpha_deg) // 50),
-                label=style["label"], linewidth=1.5, alpha=0.8)
+        ax3.plot(
+            alpha_deg,
+            results.dfx_dalpha[valid_mask],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["marker"],
+            markersize=3,
+            markevery=max(1, len(alpha_deg) // 50),
+            label=style["label"],
+            linewidth=1.5,
+            alpha=0.8,
+        )
 
         # Plot 4: ∂fz/mass w.r.t. alpha vs AoA
         ax4 = axes[1, 1]
-        ax4.plot(alpha_deg, results.dfz_dalpha[valid_mask], color=style["color"],
-                linestyle=style["linestyle"], marker=style["marker"],
-                markersize=3, markevery=max(1, len(alpha_deg) // 50),
-                label=style["label"], linewidth=1.5, alpha=0.8)
+        ax4.plot(
+            alpha_deg,
+            results.dfz_dalpha[valid_mask],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["marker"],
+            markersize=3,
+            markevery=max(1, len(alpha_deg) // 50),
+            label=style["label"],
+            linewidth=1.5,
+            alpha=0.8,
+        )
 
     # Configure axes
     for ax, (ylabel, title) in zip(
         axes.flat,
         [
-            ("cx", "Drag Coefficient vs AoA"),
-            ("cz", "Lift Coefficient vs AoA"),
+            ("cx", "Body-FLU X Force Coefficient vs AoA"),
+            ("cz", "Body-FLU Z Force Coefficient vs AoA"),
             ("∂fx/mass ∂α", "X-Force Derivative vs AoA"),
             ("∂fz/mass ∂α", "Z-Force Derivative vs AoA"),
-        ], strict=False,
+        ],
+        strict=False,
     ):
         ax.set_xlabel("Angle of Attack (degrees)")
         ax.set_ylabel(ylabel)
@@ -672,24 +720,31 @@ def plot_derivative_comparison_2x1(
 
     # Configure PGF backend with 8pt font
     mpl.use("pgf")
-    mpl.rcParams.update({
-        "pgf.texsystem": "pdflatex",
-        "text.usetex": True,
-        "font.family": "serif",
-        "font.size": 8,
-        "axes.labelsize": 8,
-        "axes.titlesize": 8,
-        "xtick.labelsize": 8,
-        "ytick.labelsize": 8,
-        "legend.fontsize": 8,
-        "figure.titlesize": 8,
-        "pgf.preamble": r"\usepackage{amsmath}",
-    })
+    mpl.rcParams.update(
+        {
+            "pgf.texsystem": "pdflatex",
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.size": 8,
+            "axes.labelsize": 8,
+            "axes.titlesize": 8,
+            "xtick.labelsize": 8,
+            "ytick.labelsize": 8,
+            "legend.fontsize": 8,
+            "figure.titlesize": 8,
+            "pgf.preamble": r"\usepackage{amsmath}",
+        }
+    )
 
     # Color and style mapping for each aero type
     styles = {
         "lyu": {"color": "blue", "marker": "o", "linestyle": "-", "label": r"Lyu \textit{et al.}"},
-        "bspline": {"color": "red", "marker": "s", "linestyle": ":", "label": r"Ma \textit{et al.}"},
+        "bspline": {
+            "color": "red",
+            "marker": "s",
+            "linestyle": ":",
+            "label": r"Ma \textit{et al.}",
+        },
         "phi": {"color": "green", "marker": "^", "linestyle": "-", "label": r"$\phi$-theory"},
         "advanced": {"color": "purple", "marker": "d", "linestyle": ":", "label": r"Gazebo"},
     }
@@ -697,6 +752,7 @@ def plot_derivative_comparison_2x1(
     # Figure size: 3.5 inches width, 2.0 inches height
     # Height ratio: axes[0] = 2/5, axes[1] = 3/5
     from matplotlib.gridspec import GridSpec
+
     fig = plt.figure(figsize=(3.5, 1.5))
     gs = GridSpec(2, 1, figure=fig, height_ratios=[1, 1], hspace=0.5)
     axes = [fig.add_subplot(gs[0]), fig.add_subplot(gs[1])]
@@ -706,7 +762,9 @@ def plot_derivative_comparison_2x1(
         if results is None:
             continue
 
-        style = styles.get(aero_type, {"color": "gray", "marker": "o", "linestyle": "-", "label": aero_type})
+        style = styles.get(
+            aero_type, {"color": "gray", "marker": "o", "linestyle": "-", "label": aero_type}
+        )
         valid_mask = ~np.isnan(results.alphas)
 
         if np.sum(valid_mask) == 0:
@@ -719,19 +777,39 @@ def plot_derivative_comparison_2x1(
 
         # Plot 1: ∂fx/mass w.r.t. alpha vs AoA (scaled)
         ax1 = axes[0]
-        ax1.plot(alpha_deg, results.dfx_dalpha[valid_mask] * scale_factor, color=style["color"],
-                linestyle=style["linestyle"], marker=style["marker"],
-                markersize=2, markevery=max(1, len(alpha_deg) // 50),
-                label=style["label"], linewidth=1.0, alpha=0.8)
+        ax1.plot(
+            alpha_deg,
+            results.dfx_dalpha[valid_mask] * scale_factor,
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["marker"],
+            markersize=2,
+            markevery=max(1, len(alpha_deg) // 50),
+            label=style["label"],
+            linewidth=1.0,
+            alpha=0.8,
+        )
 
-        ax1.set_ylabel(r"$\frac{\partial\,^{\mathcal{B}}\!\boldsymbol{f}_{a_x}}{\partial \alpha} [mg]$")
+        ax1.set_ylabel(
+            r"$\frac{\partial\,^{\mathcal{B}}\!\boldsymbol{f}_{a_x}}{\partial \alpha} [mg]$"
+        )
         # Plot 2: ∂fz/mass w.r.t. alpha vs AoA (scaled)
         ax2 = axes[1]
-        ax2.plot(alpha_deg, results.dfz_dalpha[valid_mask] * scale_factor, color=style["color"],
-                linestyle=style["linestyle"], marker=style["marker"],
-                markersize=2, markevery=max(1, len(alpha_deg) // 50),
-                label=style["label"], linewidth=1.0, alpha=0.8)
-        ax2.set_ylabel(r"$\frac{\partial\,^{\mathcal{B}}\!\boldsymbol{f}_{a_z}}{\partial \alpha} [mg]$")
+        ax2.plot(
+            alpha_deg,
+            results.dfz_dalpha[valid_mask] * scale_factor,
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["marker"],
+            markersize=2,
+            markevery=max(1, len(alpha_deg) // 50),
+            label=style["label"],
+            linewidth=1.0,
+            alpha=0.8,
+        )
+        ax2.set_ylabel(
+            r"$\frac{\partial\,^{\mathcal{B}}\!\boldsymbol{f}_{a_z}}{\partial \alpha} [mg]$"
+        )
 
     # Configure axes
     for ax in axes:
@@ -746,7 +824,9 @@ def plot_derivative_comparison_2x1(
 
     axes[1].set_xlabel(r"$\alpha$ [deg]")
     # Remove y-labels (keep ticks), legend: 2x2 layout with 6pt
-    axes[1].legend(loc="lower right", fontsize=6, framealpha=0.8, ncol=3, columnspacing=0.5, handletextpad=0.3)
+    axes[1].legend(
+        loc="lower right", fontsize=6, framealpha=0.8, ncol=3, columnspacing=0.5, handletextpad=0.3
+    )
 
     if output_path:
         output_path = Path(output_path)
@@ -836,11 +916,12 @@ def main() -> None:
             csv_path = output_dir / f"trim_analysis_{aero_type}_mass{args.mass}kg.csv"
             if csv_path.exists():
                 df = pd.read_csv(csv_path)
-                # Handle both old CSV (no residual) and new CSV (with residual)
-                if "residual" in df.columns:
-                    residuals = df["residual"].values
-                else:
-                    residuals = np.full(len(df), np.nan)
+                if (
+                    "frame_convention" not in df
+                    or not df["frame_convention"].eq(FRAME_CONVENTION).all()
+                ):
+                    raise ValueError("trim results require body-FLU coefficients")
+                residuals = df["residual"].values
                 results = TrimResults(
                     velocities=df["velocity_ms"].values,
                     alphas=np.deg2rad(df["alpha_deg"].values),
@@ -862,10 +943,14 @@ def main() -> None:
         if len(results_dict) > 1:
             print("\nGenerating comparison plots...")
             comparison_path = output_dir / f"trim_comparison_mass{args.mass}kg.png"
-            plot_trim_comparison_2x2(results_dict, output_path=comparison_path, show=args.show_plots)
+            plot_trim_comparison_2x2(
+                results_dict, output_path=comparison_path, show=args.show_plots
+            )
 
             derivative_path = output_dir / f"derivative_comparison_mass{args.mass}kg.pdf"
-            plot_derivative_comparison_2x1(results_dict, output_path=derivative_path, show=args.show_plots)
+            plot_derivative_comparison_2x1(
+                results_dict, output_path=derivative_path, show=args.show_plots
+            )
 
         return
 
@@ -893,9 +978,7 @@ def main() -> None:
     for aero_type in aero_types:
         print(f"\nComputing trim for {aero_type}...")
         try:
-            results = compute_trim_two_branches(
-                velocities, aero_type, args.mass
-            )
+            results = compute_trim_two_branches(velocities, aero_type, args.mass)
             results_dict[aero_type] = results
 
             # Save CSV
@@ -908,6 +991,7 @@ def main() -> None:
         except Exception as e:
             print(f"  Error: {e}")
             import traceback
+
             traceback.print_exc()
 
     # Generate comparison plot (only if we have multiple aero types)
@@ -917,7 +1001,9 @@ def main() -> None:
         plot_trim_comparison_2x2(results_dict, output_path=comparison_path, show=args.show_plots)
 
         derivative_path = output_dir / f"derivative_comparison_mass{args.mass}kg.png"
-        plot_derivative_comparison_2x1(results_dict, output_path=derivative_path, show=args.show_plots)
+        plot_derivative_comparison_2x1(
+            results_dict, output_path=derivative_path, show=args.show_plots
+        )
 
     print("\n" + "=" * 60)
     print("Analysis complete!")

@@ -20,14 +20,24 @@ Two separate planning calls can select different optimizer solutions.
 sources. This implementation replaces the removed stored `samples` table and
 `duration` field; do not restore those obsolete APIs.
 
-## ROS tracking feedback migration
+## Quadrotor frame and message contract
 
-`interface/TrackingInfo.cx` reports the current controller's mass-normalized,
-IMU-derived **body-X** coefficient in 1/m. It replaces the obsolete `cz` field.
-Do not fill a body-Z/lift field with an X-axis value or add a misleading `cz()`
-alias just to make the node compile. Rebuild the interface package and every
-publisher/subscriber after this schema change. `State.cur_cz` is a separate
-legacy field and is not changed by this migration.
+World vectors use **ENU**; body vectors use **FLU**; collective thrust acts
+along **+Z body**. Rates and moments follow the right-hand rule about X/Y/Z.
+The Hamilton quaternion `q_WB=[w,x,y,z]` rotates body vectors into world.
+
+- `State.state`: position ENU [m], velocity ENU [m/s], body rates FLU [rad/s],
+  then `q_WB`, starting at indices 0, 3, 6 and 9 respectively.
+- `Control`: FLU body-rate setpoints and +Z specific force [m/s²].
+- `ReferencePoint`: ENU position/velocity and desired body-Y **expressed in ENU**.
+- `TrackingInfo`: position/velocity and body-Y directions expressed in ENU;
+  `alpha=atan2(v_B.x,v_B.z)` and `beta=atan2(v_B.y,hypot(v_B.x,v_B.z))` [rad].
+  `cx` is the IMU-derived, mass-normalized **body-X** coefficient [1/m].
+  The controller assumes zero wind; aerodynamic plant models use air-relative
+  velocity with the same body-FLU angle definition.
+
+Rebuild `interface` and all publishers/subscribers together when changing a
+message schema.
 
 The ROS node also reads the configured excitation gate and regressor lag, so
 its `TrackingConfig` matches the simulator's settings.

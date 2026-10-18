@@ -29,15 +29,12 @@ namespace simple_sim
     // Thrust axis of the flatness map with a numerically solved angle of
     // attack.
     //
-    // With the simulator convention alpha = atan2(v_Bx, v_Bz) (thrust along
-    // +Z_B, wing normal along +X_B) and the stability frame x_s = v/|v|, z_s =
-    // lateral(eta), the body axes are
-    //     x_B =  sin(a) x_s + cos(a) z_s
-    //     z_B = -cos(a) x_s + sin(a) z_s
-    // (check: a=90deg gives v along x_B, a=0 gives z_B along -v). The balance
-    // is the body-X projection of the desired specific force against the wing
-    // force, solved by Newton with a numerical derivative; no phi-theory closed
-    // form and no lookup table is involved.
+    // alpha = atan2(v_Bx, v_Bz), thrust +Z_B. With x_s along air velocity
+    // and z_s along its orthogonal desired-force component, the body axes are
+    //     x_B = sin(a) x_s - cos(a) z_s
+    //     z_B = cos(a) x_s + sin(a) z_s.
+    // Thus R_WB^T v_air_W = V [sin(a), 0, cos(a)], exactly the velocity
+    // supplied to the model. Solve the body-X force balance by bracketing.
     bool flatness_thrust_axis(const Eigen::Vector3d &eta,
                               const Eigen::Vector3d &velocity, double V,
                               aerodynamics::AerodynamicsInterface &model,
@@ -52,32 +49,25 @@ namespace simple_sim
       if (lateral.norm() < 1e-6)
         return false;
       const Eigen::Vector3d z_s      = lateral.normalized();
-      const Eigen::Vector3d y_s      = z_s.cross(x_s);
       const auto            residual = [&](double a)
       {
-        const Eigen::Vector3d x_b = std::sin(a) * x_s + std::cos(a) * z_s;
-        const Eigen::Vector3d z_b = -std::cos(a) * x_s + std::sin(a) * z_s;
+        const Eigen::Vector3d x_b = std::sin(a) * x_s - std::cos(a) * z_s;
         Eigen::Vector3d       force;
         Eigen::Vector3d       moment;
         double                aero_alpha = 0.0;
         double                aero_beta  = 0.0;
-        // The model is evaluated exactly as the plant adapter does: it takes
-        // the WING-frame airspeed and returns the wrench in the WING frame.
         const Eigen::Vector3d body_speed =
             V * Eigen::Vector3d(std::sin(a), 0.0, std::cos(a));
-        Eigen::Vector3d force_wing;
-        model.getAeroWrench(wing_from_flu(body_speed), force_wing, moment,
-                            aero_alpha, aero_beta);
-        force = aero_config->scale * flu_from_wing(force_wing);
+        if (!model.getAeroWrench(body_speed, force, moment, aero_alpha,
+                                 aero_beta) ||
+            !force.allFinite())
+          throw std::runtime_error("SE3 aerodynamics evaluation failed");
+        force *= aero_config->scale;
         if (zero_thrust_axis_aero_)
           force.z() = 0.0;
-        // eta and x_b live in the world frame, the model returns the wrench in
-        // the body frame; rotate before projecting or the components are mixed.
-        Eigen::Matrix3d r_wb;
-        r_wb.col(0) = x_b;
-        r_wb.col(1) = y_s;
-        r_wb.col(2) = z_b;
-        return eta.dot(x_b) - (r_wb * force).dot(x_b) / mass;
+        // Project the world force onto body X; the model's force is already
+        // FLU.
+        return eta.dot(x_b) - force.x() / mass;
       };
       // Scan for sign changes and bisect. A bare Newton step is unusable here:
       // the operating band (40-60 deg) sits on the shoulder of the lift polar,
@@ -137,7 +127,7 @@ namespace simple_sim
         return false;
       alpha_initialized = true;
       alpha_rad         = best;
-      thrust_axis       = -std::cos(best) * x_s + std::sin(best) * z_s;
+      thrust_axis       = std::cos(best) * x_s + std::sin(best) * z_s;
       return true;
     }
   }  // namespace
@@ -193,15 +183,16 @@ namespace simple_sim
         ref.a + gravity_ * Eigen::Vector3d::UnitZ() +
         gains_.position.cwiseProduct(ref.p - s.position) +
         gains_.velocity.cwiseProduct(ref.v - s.velocity);
-    Eigen::Matrix3d desired;
-    double          thrust = 0.0;
+    Eigen::Matrix3d       desired;
+    double                thrust       = 0.0;
+    const Eigen::Vector3d air_velocity = s.velocity - aero_config_.wind_world;
     if (gains_.aero_flatness_feedforward && aero_model_ && mass_ > 0.0 &&
-        s.velocity.norm() > 0.5)
+        air_velocity.norm() > 0.5)
     {
       // Flatness feedforward: solve alpha from the true aerodynamic force
       // balance, rebuild the thrust axis, and keep the planned yb.
       Eigen::Vector3d z_b;
-      if (flatness_thrust_axis(force, s.velocity, s.velocity.norm(),
+      if (flatness_thrust_axis(force, air_velocity, air_velocity.norm(),
                                *aero_model_, mass_, zero_thrust_axis_aero_,
                                alpha_prev_, alpha_initialized_, aero_config_,
                                z_b))

@@ -16,12 +16,18 @@
 
 #pragma once
 #include <Eigen/Dense>
+#include <aerodynamics/air_angles.hpp>
 #include <memory>     // For std::unique_ptr
 #include <stdexcept>  // For std::runtime_error
 
 namespace aerodynamics
 {
 
+  // All input velocities and output forces/moments use body FLU; thrust is +Z.
+  // Input is aircraft velocity relative to air, not the incoming-flow vector.
+  // alpha = atan2(v_x, v_z), beta = atan2(v_y, hypot(v_x, v_z)), in radians.
+  // At rest both angles are zero. The models own their force-law speed guards,
+  // but report the same kinematic angles through air_angles().
   class AerodynamicsInterface
   {
    public:
@@ -36,10 +42,10 @@ namespace aerodynamics
      * @param[out] beta Sideslip angle (rad)
      * @return true if computation successful
      */
-    virtual bool getAeroWrench(const Eigen::Vector3d& body_speed,
-                               Eigen::Vector3d&       aero_force_b,
-                               Eigen::Vector3d& aero_moment_b, double& alpha,
-                               double& beta) = 0;
+    virtual bool getAeroWrench(const Eigen::Vector3d &body_speed,
+                               Eigen::Vector3d       &aero_force_b,
+                               Eigen::Vector3d &aero_moment_b, double &alpha,
+                               double &beta) = 0;
 
     virtual ~AerodynamicsInterface() = default;
   };
@@ -72,10 +78,10 @@ namespace aerodynamics
      * @return true if computation successful
      * @throws std::runtime_error if aerodynamics instance not created
      */
-    bool getAeroWrench(const Eigen::Vector3d& body_speed,
-                       Eigen::Vector3d&       aero_force_b,
-                       Eigen::Vector3d& aero_moment_b, double& alpha,
-                       double& beta)
+    bool getAeroWrench(const Eigen::Vector3d &body_speed,
+                       Eigen::Vector3d       &aero_force_b,
+                       Eigen::Vector3d &aero_moment_b, double &alpha,
+                       double &beta)
     {
       if (!_instance)
       {

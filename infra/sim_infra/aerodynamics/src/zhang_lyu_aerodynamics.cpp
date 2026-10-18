@@ -21,16 +21,18 @@
 namespace aerodynamics
 {
 
-  bool LyuAerodynamics::getAeroWrench(const Eigen::Vector3d& body_speed,
-                                      Eigen::Vector3d&       aero_force_b,
-                                      Eigen::Vector3d&       aero_moment_b,
-                                      double& alpha, double& beta)
+  bool LyuAerodynamics::getAeroWrench(const Eigen::Vector3d &body_speed,
+                                      Eigen::Vector3d       &aero_force_b,
+                                      Eigen::Vector3d       &aero_moment_b,
+                                      double &alpha, double &beta)
   {
-    double v_b[3] = {body_speed(0), body_speed(1), body_speed(2)};
-    double f_aero_b[3];
-    double moment_aero_b[3];
+    std::tie(alpha, beta) = air_angles(body_speed);
+    const double speed    = body_speed.norm();
+    const double fit_beta = speed >= 1e-4 ? beta : 0.0;
+    double       f_aero_b[3];
+    double       moment_aero_b[3];
 
-    Aerodynamics(v_b, f_aero_b, moment_aero_b, &alpha, &beta);
+    AerodynamicsFlu(speed, alpha, fit_beta, f_aero_b, moment_aero_b);
 
     aero_force_b = Eigen::Vector3d(f_aero_b[0], f_aero_b[1], f_aero_b[2]);
     aero_moment_b =

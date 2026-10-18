@@ -13,6 +13,8 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 
+from tooling.frame_contract import FRAME_CONVENTION
+
 from .aero_coefficients import get_jax_coefficients
 
 # setting jax printf options for better readability
@@ -36,9 +38,7 @@ def logistic_func_single(alpha, alpha1, k1, alpha2, k2):
 
 
 # Vectorized version using vmap
-logistic_func_batch = jax.vmap(
-    logistic_func_single, in_axes=(0, None, None, None, None)
-)
+logistic_func_batch = jax.vmap(logistic_func_single, in_axes=(0, None, None, None, None))
 
 
 @jax.jit
@@ -58,9 +58,7 @@ def _regression_batch(reg_single, alpha, beta):
     if alpha.ndim == 1:
         return jax.vmap(reg_single, in_axes=(0, 0))(alpha, beta)
     if alpha.ndim == 2:
-        return jax.vmap(jax.vmap(reg_single, in_axes=(0, 0)), in_axes=(0, 0))(
-            alpha, beta
-        )
+        return jax.vmap(jax.vmap(reg_single, in_axes=(0, 0)), in_axes=(0, 0))(alpha, beta)
     raise ValueError(
         "Unsupported alpha dimension "
         f"{alpha.ndim} for alpha shape {alpha.shape} and beta shape {beta.shape}"
@@ -101,9 +99,7 @@ def reg_CL_single(alpha, beta):
     comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
     reg_B1 = w_B1 * comp_B1
 
-    w_N11 = logistic_func_single(
-        alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5
-    )
+    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5)
     reg_N11 = w_N11 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -160,9 +156,7 @@ def reg_CD_single(alpha, beta):
     comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
     reg_B1 = w_B1 * comp_B1
 
-    w_N1 = logistic_func_single(
-        alpha, deg2rad_single(-170), 1, deg2rad_single(-10), 0.5
-    )
+    w_N1 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-10), 0.5)
     reg_N1 = w_N1 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -246,9 +240,7 @@ def reg_Cll_single(alpha, beta):
     w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-90), 5)
     reg_N11 = w_N11 * comp_N
 
-    w_N12 = logistic_func_single(
-        alpha, deg2rad_single(-90), 5, deg2rad_single(-20), 0.5
-    )
+    w_N12 = logistic_func_single(alpha, deg2rad_single(-90), 5, deg2rad_single(-20), 0.5)
     reg_N12 = w_N12 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -302,9 +294,7 @@ def reg_Cm_single(alpha, beta):
     comp_B1 = jnp.stack([cb2, (alpha + deg2rad_single(180)) * cb2])
     reg_B1 = w_B1 * comp_B1
 
-    w_N11 = logistic_func_single(
-        alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5
-    )
+    w_N11 = logistic_func_single(alpha, deg2rad_single(-170), 1, deg2rad_single(-20), 0.5)
     reg_N11 = w_N11 * comp_N
 
     w_B2 = logistic_func_single(alpha, deg2rad_single(-11), 20, deg2rad_single(18), 10)
@@ -399,11 +389,12 @@ def compute_angles_single(V_b):
     vby = V_b[1]
     vbz = V_b[2]
 
-    # Calculation
-    v_norm = jnp.sqrt(vbx**2 + vby**2 + vbz**2) + 1e-8
-    v_squared = v_norm**2
-    alpha = jnp.arctan2(vbz, vbx)
-    beta = jnp.arcsin(vby / v_norm)
+    # Aircraft-relative-to-air velocity in body FLU; thrust is +Z.
+    v_squared = vbx**2 + vby**2 + vbz**2
+    v_norm = jnp.sqrt(v_squared)
+    longitudinal = jnp.hypot(vbx, vbz)
+    alpha = jnp.arctan2(vbx, jnp.where(longitudinal > 0, vbz, 1.0))
+    beta = jnp.arctan2(vby, jnp.where(v_squared > 0, longitudinal, 1.0))
 
     return alpha, beta, v_norm, v_squared
 
@@ -417,37 +408,25 @@ def compute_angles_batch(V_b):
         raise ValueError(f"Unsupported V_b dimension: {V_b.ndim}")
 
 
-def trans_stab_to_body_single(alpha, vec):
-    """
-    Docstring for trans_stab_to_body
+def resolve_force_body_single(alpha, vec):
+    """Resolve scalar [-drag, left-side, -lift] loads onto body-FLU axes.
 
-    :param vec: Array of shape (..., 3) representing vectors in stability frame
-    :param alpha: Angle of attack in radians
-    :return: Transformed vectors in body frame of shape (..., 3)
+    This is a force projection, not a vector-frame adapter for moments/rates.
     """
-    # Stability to body frame transformation matrix
-    T_sb = jnp.array(
-        [
-            [jnp.cos(alpha), 0.0, -jnp.sin(alpha)],
-            [0.0, 1.0, 0.0],
-            [jnp.sin(alpha), 0.0, jnp.cos(alpha)],
-        ],
-        dtype=jnp.float32,
+    # Scalar drag/left-side/negative-lift loads resolved directly onto FLU.
+    sa, ca = jnp.sin(alpha), jnp.cos(alpha)
+    return jnp.stack(
+        [sa * vec[..., 0] + ca * vec[..., 2], vec[..., 1], ca * vec[..., 0] - sa * vec[..., 2]],
+        axis=-1,
     )
-    return jnp.einsum("ij,...j->...i", T_sb, vec)
 
 
-def trans_stab_to_body_batch(ALPHA, VEC):
-    """
-    Batch version
-    :param ALPHA: Array of shape (...) representing angles of attack in radians
-    :param VEC: Array of shape (..., 3) representing vectors in stability frame
-    :return: Transformed vectors in body frame of shape (..., 3)
-    """
+def resolve_force_body_batch(ALPHA, VEC):
+    """Batched force projection from scalar loads onto body FLU."""
     if ALPHA.ndim == 0:  # Single alpha
-        return trans_stab_to_body_single(ALPHA, VEC)
+        return resolve_force_body_single(ALPHA, VEC)
     elif ALPHA.ndim == 1:  # 1D arrays
-        return jax.vmap(trans_stab_to_body_single, in_axes=(0, 0))(ALPHA, VEC)
+        return jax.vmap(resolve_force_body_single, in_axes=(0, 0))(ALPHA, VEC)
     else:  # 2D arrays
         raise ValueError(f"Unsupported ALPHA dimension: {ALPHA.ndim}")
 
@@ -471,25 +450,24 @@ def aerodynamics_B_vb(V_bs):
         axis=-1,
     )
 
-    FORCES_B = trans_stab_to_body_batch(ALPHA, FORCES_DYL)
+    FORCES_B = resolve_force_body_batch(ALPHA, FORCES_DYL)
 
     MOMENTS_B = jnp.stack(
         [
-            0.5 * rho * V_SQUARED * CLL,
-            0.5 * rho * V_SQUARED * CM,
             0.5 * rho * V_SQUARED * CN,
+            0.5 * rho * V_SQUARED * CM,
+            0.5 * rho * V_SQUARED * CLL,
         ],
         axis=-1,
     )
     return FORCES_B, MOMENTS_B, ALPHA, BETA
 
 
-def aerodynamics_DYL_vb(V_bs):
-    """
-    Docstring for aerodynamics_vb
+def aerodynamic_polar_loads(V_bs):
+    """Return scalar [-drag, left-side, -lift] loads, FLU moments and angles.
 
-    :param V_bs: Array of shape (..., 3) representing body-frame velocities
-    :return: FORCES and MOMENTS arrays of shape (..., 3)
+    Input is body-FLU air velocity. The load triplet is not a body-force vector;
+    use aerodynamics_B_vb for force and moment vectors in body FLU.
     """
     ALPHA, BETA, V_NORM, V_SQUARED = compute_angles_batch(V_bs)
     CL, CD, CY, CLL, CM, CN = compute_aerodynamic_coeffs_jax(ALPHA, BETA)
@@ -504,13 +482,14 @@ def aerodynamics_DYL_vb(V_bs):
     )
     MOMENTS = jnp.stack(
         [
-            0.5 * rho * V_SQUARED * CLL,
-            0.5 * rho * V_SQUARED * CM,
             0.5 * rho * V_SQUARED * CN,
+            0.5 * rho * V_SQUARED * CM,
+            0.5 * rho * V_SQUARED * CLL,
         ],
         axis=-1,
     )
     return FORCES, MOMENTS, ALPHA, BETA
+
 
 def plot_aerodynamic_mesh_jax(azimuth=125.5):
     """
@@ -572,16 +551,12 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     print("Creating plots...")
     # Create figure with 3x2 subplots
     fig = plt.figure(figsize=(15, 12))
-    fig.suptitle(
-        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16
-    )
+    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16)
 
     # CL subplot
     ax1 = fig.add_subplot(3, 2, 1, projection="3d")
     ax1.view_init(elev=10, azim=azimuth)
-    surf1 = ax1.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap="viridis", alpha=0.8
-    )
+    surf1 = ax1.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap="viridis", alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -591,9 +566,7 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     # CY subplot
     ax2 = fig.add_subplot(3, 2, 3, projection="3d")
     ax2.view_init(elev=10, azim=azimuth)
-    surf2 = ax2.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap="viridis", alpha=0.8
-    )
+    surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap="viridis", alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_Y")
@@ -603,9 +576,7 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     # CD subplot
     ax3 = fig.add_subplot(3, 2, 5, projection="3d")
     ax3.view_init(elev=10, azim=azimuth)
-    surf3 = ax3.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap="viridis", alpha=0.8
-    )
+    surf3 = ax3.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap="viridis", alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -615,21 +586,17 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     # CLL subplot
     ax4 = fig.add_subplot(3, 2, 2, projection="3d")
     ax4.view_init(elev=10, azim=azimuth)
-    surf4 = ax4.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap="viridis", alpha=0.8
-    )
+    surf4 = ax4.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap="viridis", alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
-    ax4.set_title("Rolling Moment Coefficient C_l")
+    ax4.set_title("Body-Z Moment Coefficient")
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # CM subplot
     ax5 = fig.add_subplot(3, 2, 4, projection="3d")
     ax5.view_init(elev=10, azim=azimuth)
-    surf5 = ax5.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap="viridis", alpha=0.8
-    )
+    surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap="viridis", alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_m")
@@ -639,13 +606,11 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     # CN subplot
     ax6 = fig.add_subplot(3, 2, 6, projection="3d")
     ax6.view_init(elev=10, azim=azimuth)
-    surf6 = ax6.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap="viridis", alpha=0.8
-    )
+    surf6 = ax6.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap="viridis", alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
-    ax6.set_title("Yawing Moment Coefficient C_n")
+    ax6.set_title("Body-X Moment Coefficient")
     plt.colorbar(surf6, ax=ax6, shrink=0.5)
 
     plt.tight_layout()
@@ -654,6 +619,7 @@ def plot_aerodynamic_mesh_jax(azimuth=125.5):
     print("JAX batched mesh plotting completed successfully!")
 
     return {
+        "frame_convention": FRAME_CONVENTION,
         "ALPHA_DEG": ALPHA_DEG_np,
         "BETA_DEG": BETA_DEG_np,
         "CL": CL_np,
@@ -675,9 +641,7 @@ def plot_cl_cd_cm_vs_alpha_coordinated():
     print("Computing aerodynamic coefficients under coordinated flight (beta = 0)...")
 
     # Generate alpha range (angle of attack)
-    alpha_deg = jnp.linspace(
-        -30, 120, 1501
-    )  # -30 to 120 degrees, 0.1 degree increments
+    alpha_deg = jnp.linspace(-30, 120, 1501)  # -30 to 120 degrees, 0.1 degree increments
     alpha_rad = deg2rad_batch(alpha_deg)
 
     # Coordinated flight assumption: beta = 0 (sideslip angle)
@@ -737,9 +701,7 @@ def plot_cl_cd_cm_vs_alpha_coordinated():
     return {"alpha_deg": alpha_deg_np, "CL": CL_np, "CD": CD_np, "CM": CM_np}
 
 
-def generate_cl_cd_cm_coordinated_data(
-    filename="coordinated_aero_data_jax", cache_dir=None
-):
+def generate_cl_cd_cm_coordinated_data(filename="coordinated_aero_data_jax", cache_dir=None):
     """
     Generate CL, CD, CM coefficients data under coordinated flight assumption (beta = 0).
     Saves data to .npy file for later plotting.
@@ -754,12 +716,10 @@ def generate_cl_cd_cm_coordinated_data(
     print("Generating aerodynamic coefficients under coordinated flight (beta = 0)...")
 
     # Import data utilities
-    from ...plotting.data_utils import save_coordinated_data
+    from ...figure.data_utils import save_coordinated_data
 
     # Generate alpha range (angle of attack)
-    alpha_deg = jnp.linspace(
-        -30, 120, 1501
-    )  # -30 to 120 degrees, 0.1 degree increments
+    alpha_deg = jnp.linspace(-30, 120, 1501)  # -30 to 120 degrees, 0.1 degree increments
     alpha_rad = deg2rad_batch(alpha_deg)
 
     # Coordinated flight assumption: beta = 0 (sideslip angle)
@@ -775,9 +735,7 @@ def generate_cl_cd_cm_coordinated_data(
     CM_np = np.array(CM)
 
     # Save data using data utilities
-    save_coordinated_data(
-        alpha_deg_np, CL_np, CD_np, CM_np, filename=filename, cache_dir=cache_dir
-    )
+    save_coordinated_data(alpha_deg_np, CL_np, CD_np, CM_np, filename=filename, cache_dir=cache_dir)
 
     print("Coordinated flight data generation completed!")
     print(
@@ -788,9 +746,7 @@ def generate_cl_cd_cm_coordinated_data(
     return {"alpha_deg": alpha_deg_np, "CL": CL_np, "CD": CD_np, "CM": CM_np}
 
 
-def generate_mesh_data_jax(
-    filename="mesh_aero_data_jax", cache_dir=None, mesh_size=361
-):
+def generate_mesh_data_jax(filename="mesh_aero_data_jax", cache_dir=None, mesh_size=361):
     """
     Generate 3D mesh data for aerodynamic coefficients using JAX.
     Saves data to .npy file for later plotting.
@@ -806,7 +762,7 @@ def generate_mesh_data_jax(
     print("Generating JAX 3D mesh data...")
 
     # Import data utilities
-    from ...plotting.data_utils import save_mesh_data
+    from ...figure.data_utils import save_mesh_data
 
     # Check if GPU is available in JAX
     devices = jax.devices()
@@ -857,12 +813,11 @@ def generate_mesh_data_jax(
     )
 
     print("JAX mesh data generation completed!")
-    print(
-        f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}"
-    )
+    print(f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}")
 
     # Return the data dictionary for immediate use
     return {
+        "frame_convention": FRAME_CONVENTION,
         "ALPHA_DEG": ALPHA_DEG_np,
         "BETA_DEG": BETA_DEG_np,
         "CL": CL_np,

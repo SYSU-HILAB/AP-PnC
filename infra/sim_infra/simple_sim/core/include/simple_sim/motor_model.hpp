@@ -12,6 +12,8 @@ namespace simple_sim
   // not guessed defaults. See stack/import_matlab.py and local provenance.
   struct MotorModelConfig
   {
+    // Motor-local +Z is thrust, local lever is [0,-arm,0]. Its orientation
+    // into body FLU is Rz(arm_angle) * Ry(tilt); all PID/damping axes are FLU.
     Eigen::Vector4d arms         = Eigen::Vector4d::Zero();
     Eigen::Vector4d arm_angles   = Eigen::Vector4d::Zero();
     Eigen::Vector4d tilts        = Eigen::Vector4d::Zero();
@@ -19,7 +21,7 @@ namespace simple_sim
     Eigen::Vector3d thrust_poly  = Eigen::Vector3d::Zero();
     Eigen::Vector3d torque_poly  = Eigen::Vector3d::Zero();
     Eigen::Vector3d esc_poly     = Eigen::Vector3d::Zero();
-    Eigen::Vector3d damping_wing = Eigen::Vector3d::Zero();
+    Eigen::Vector3d damping_body = Eigen::Vector3d::Zero();
     Eigen::Vector3d kp           = Eigen::Vector3d::Zero();
     Eigen::Vector3d ki           = Eigen::Vector3d::Zero();
     Eigen::Vector3d kd           = Eigen::Vector3d::Zero();

@@ -2,9 +2,8 @@
 
 // ENU/FLU differential flatness for the MINCO optimizer cost.
 //
-// This replaces the legacy FRD/NED autodiff kernel. No autodiff and no code
-// generation: values come from the already-validated `flu_reference` map and
-// the Jacobian is hand-derived here.
+// Values come from the `flu_reference` map; the Jacobian is hand-derived.
+// No autodiff or code generation is required.
 //
 // Conventions: world ENU, body FLU, collective thrust along +Z_B, zero wind.
 //   eta     = a + g z                      (specific force, ENU)

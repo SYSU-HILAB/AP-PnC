@@ -24,7 +24,7 @@ def fixture(folder, valid=1):
         row[prefix + "aero_beta_rad"] = angle / 2
         row[prefix + "aero_observation_valid"] = valid
         for i, axis in enumerate("xyz"):
-            row[prefix + "air_wing_v_" + axis] = i + 1.0
+            row[prefix + "air_body_v_" + axis] = i + 1.0
             row[prefix + "aero_f" + axis] = force + i
             row[prefix + "aero_m" + axis] = 0.1 * i
     with (folder / "steps.csv").open("w") as file:

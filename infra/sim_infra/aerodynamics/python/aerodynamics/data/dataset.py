@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from aerodynamics.frames import FRAME_CONVENTION
 from tooling.env import artifact_path, project_path
 
 # Map CSV filename to aero_type identifier
@@ -26,6 +27,15 @@ class AeroMLDataset:
     """Dataset for aerodynamics ML training."""
 
     df: pd.DataFrame
+
+    def __post_init__(self):
+        if (
+            "frame_convention" not in self.df
+            or not self.df["frame_convention"].eq(FRAME_CONVENTION).all()
+        ):
+            raise ValueError("aerodynamic dataset requires stamped body-FLU coefficients")
+        if self.df.empty or not np.isfinite(self.df[["alpha", "cx", "cz"]].to_numpy()).all():
+            raise ValueError("aerodynamic dataset must contain finite samples")
 
     @classmethod
     def from_csv_files(
@@ -61,16 +71,6 @@ class AeroMLDataset:
 
             # Read CSV: alpha(rad),cx,cz
             df = pd.read_csv(csv_path)
-
-            # Handle NaN values (e.g., from C++ bug at alpha=0)
-            # Use linear interpolation to fill NaN values
-            if df.isna().any().any():
-                nan_count = df.isna().sum().sum()
-                print(f"Warning: Found {nan_count} NaN values in {csv_file}, interpolating...")
-                # Interpolate NaN values
-                df = df.interpolate(method="linear", limit_direction="both")
-                # Fill any remaining NaN (at edges) with forward/backward fill
-                df = df.ffill().bfill()
 
             # Rename columns to match schema
             df = df.rename(columns={"alpha(rad)": "alpha"})

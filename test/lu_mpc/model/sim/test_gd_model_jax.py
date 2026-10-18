@@ -5,7 +5,7 @@ from tooling.paper.methods.lu.gd_model_jax import (
     compute_aerodynamic_coeffs_jax,
     compute_angles_batch,
     compute_angles_single,
-    trans_stab_to_body_batch,
+    resolve_force_body_batch,
 )
 
 
@@ -26,22 +26,28 @@ def test_compute_angles_batch_matches_single_evaluations():
             jnp.array(vector, dtype=jnp.float32)
         )
 
+        assert np.isclose(np.asarray(alpha_batch[idx]), np.arctan2(vector[0], vector[2]), atol=1e-7)
+        assert np.isclose(
+            np.asarray(beta_batch[idx]),
+            np.arctan2(vector[1], np.hypot(vector[0], vector[2])),
+            atol=1e-7,
+        )
         assert np.isclose(np.asarray(alpha_batch[idx]), np.asarray(alpha_single), atol=1e-7)
         assert np.isclose(np.asarray(beta_batch[idx]), np.asarray(beta_single), atol=1e-7)
         assert np.isclose(np.asarray(norm_batch[idx]), np.asarray(norm_single), atol=1e-7)
         assert np.isclose(np.asarray(squared_batch[idx]), np.asarray(squared_single), atol=1e-7)
 
 
-def test_trans_stab_to_body_batch_rotates_vectors_about_pitch_axis():
+def test_force_projection_resolves_drag_along_flu_air_velocity():
     alphas = jnp.array([0.0, jnp.pi / 4], dtype=jnp.float32)
     vectors = jnp.array([[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]], dtype=jnp.float32)
 
-    transformed = trans_stab_to_body_batch(alphas, vectors)
+    transformed = resolve_force_body_batch(alphas, vectors)
 
     expected = np.array(
         [
-            [1.0, 0.0, 0.0],
-            [np.cos(np.pi / 4), 0.0, np.sin(np.pi / 4)],
+            [0.0, 0.0, 1.0],
+            [np.sin(np.pi / 4), 0.0, np.cos(np.pi / 4)],
         ]
     )
     assert np.allclose(np.asarray(transformed), expected, atol=1e-6)

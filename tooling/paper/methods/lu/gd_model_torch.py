@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import torch
 import torch.jit
 
+from tooling.frame_contract import FRAME_CONVENTION
+
 from .aero_coefficients import get_torch_coefficients
 
 COEFFICIENTS = get_torch_coefficients()
@@ -346,9 +348,7 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
 
     # Force GPU usage
     if not torch.cuda.is_available():
-        raise RuntimeError(
-            "CUDA is not available. Please install PyTorch with CUDA support."
-        )
+        raise RuntimeError("CUDA is not available. Please install PyTorch with CUDA support.")
 
     device = torch.device("cuda")
     print(f"Using device: {device}")
@@ -356,9 +356,7 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     print(f"CUDA version: {torch.version.cuda}")
 
     # Generate ranges for alpha and beta on GPU directly
-    alpha_deg = torch.linspace(
-        -180, 180, 361, device=device
-    )  # 1-degree increments on GPU
+    alpha_deg = torch.linspace(-180, 180, 361, device=device)  # 1-degree increments on GPU
     beta_deg = torch.linspace(-90, 90, 361, device=device)  # 1-degree increments on GPU
 
     alpha_rad = deg2rad_batch(alpha_deg)
@@ -408,17 +406,13 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     print("Creating plots...")
     # Create figure with 2x3 subplots
     fig = plt.figure(figsize=(18, 8))
-    fig.suptitle(
-        "Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16
-    )
+    fig.suptitle("Aerodynamic Force and Moment Coefficient Wind Tunnel Curves", fontsize=16)
 
     # Row 1: C_L, C_m, C_D
     # C_L subplot (position 1)
     ax1 = fig.add_subplot(2, 3, 1, projection="3d")
     ax1.view_init(elev=30, azim=azimuth)
-    surf1 = ax1.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap="viridis", alpha=0.8
-    )
+    surf1 = ax1.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CL_np, cmap="viridis", alpha=0.8)
     ax1.set_xlabel("alpha[deg]")
     ax1.set_ylabel("beta[deg]")
     ax1.set_zlabel("C_L")
@@ -428,9 +422,7 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     # C_m subplot (position 2)
     ax2 = fig.add_subplot(2, 3, 2, projection="3d")
     ax2.view_init(elev=30, azim=azimuth)
-    surf2 = ax2.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap="viridis", alpha=0.8
-    )
+    surf2 = ax2.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CM_np, cmap="viridis", alpha=0.8)
     ax2.set_xlabel("alpha[deg]")
     ax2.set_ylabel("beta[deg]")
     ax2.set_zlabel("C_m")
@@ -440,9 +432,7 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     # C_D subplot (position 3)
     ax3 = fig.add_subplot(2, 3, 3, projection="3d")
     ax3.view_init(elev=30, azim=azimuth)
-    surf3 = ax3.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap="viridis", alpha=0.8
-    )
+    surf3 = ax3.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CD_np, cmap="viridis", alpha=0.8)
     ax3.set_xlabel("alpha[deg]")
     ax3.set_ylabel("beta[deg]")
     ax3.set_zlabel("C_D")
@@ -453,21 +443,17 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     # C_ll subplot (position 4)
     ax4 = fig.add_subplot(2, 3, 4, projection="3d")
     ax4.view_init(elev=30, azim=azimuth)
-    surf4 = ax4.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap="viridis", alpha=0.8
-    )
+    surf4 = ax4.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CLL_np, cmap="viridis", alpha=0.8)
     ax4.set_xlabel("alpha[deg]")
     ax4.set_ylabel("beta[deg]")
     ax4.set_zlabel("C_l")
-    ax4.set_title("Rolling Moment Coefficient C_l")
+    ax4.set_title("Body-Z Moment Coefficient")
     plt.colorbar(surf4, ax=ax4, shrink=0.5)
 
     # C_Y subplot (position 5)
     ax5 = fig.add_subplot(2, 3, 5, projection="3d")
     ax5.view_init(elev=30, azim=azimuth)
-    surf5 = ax5.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap="viridis", alpha=0.8
-    )
+    surf5 = ax5.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CY_np, cmap="viridis", alpha=0.8)
     ax5.set_xlabel("alpha[deg]")
     ax5.set_ylabel("beta[deg]")
     ax5.set_zlabel("C_Y")
@@ -477,13 +463,11 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     # C_n subplot (position 6)
     ax6 = fig.add_subplot(2, 3, 6, projection="3d")
     ax6.view_init(elev=30, azim=azimuth)
-    surf6 = ax6.plot_surface(
-        ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap="viridis", alpha=0.8
-    )
+    surf6 = ax6.plot_surface(ALPHA_DEG_np, BETA_DEG_np, CN_np, cmap="viridis", alpha=0.8)
     ax6.set_xlabel("alpha[deg]")
     ax6.set_ylabel("beta[deg]")
     ax6.set_zlabel("C_n")
-    ax6.set_title("Yawing Moment Coefficient C_n")
+    ax6.set_title("Body-X Moment Coefficient")
     plt.colorbar(surf6, ax=ax6, shrink=0.5)
 
     plt.tight_layout()
@@ -492,6 +476,7 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     print("PyTorch batched mesh plotting completed successfully!")
 
     return {
+        "frame_convention": FRAME_CONVENTION,
         "ALPHA_DEG": ALPHA_DEG_np,
         "BETA_DEG": BETA_DEG_np,
         "CL": CL_np,
@@ -503,9 +488,7 @@ def plot_aerodynamic_mesh_torch(azimuth=-127.5):
     }
 
 
-def generate_mesh_data_torch(
-    filename="mesh_aero_data_torch", cache_dir=None, mesh_size=361
-):
+def generate_mesh_data_torch(filename="mesh_aero_data_torch", cache_dir=None, mesh_size=361):
     """
     Generate 3D mesh data for aerodynamic coefficients using PyTorch.
     Saves data to .npy file for later plotting.
@@ -521,7 +504,7 @@ def generate_mesh_data_torch(
     print("Generating PyTorch 3D mesh data...")
 
     # Import data utilities
-    from ...plotting.data_utils import save_mesh_data
+    from ...figure.data_utils import save_mesh_data
 
     # Determine device
     if torch.cuda.is_available():
@@ -590,12 +573,11 @@ def generate_mesh_data_torch(
     )
 
     print("PyTorch mesh data generation completed!")
-    print(
-        f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}"
-    )
+    print(f"Data shape: ALPHA={ALPHA_DEG_np.shape}, BETA={BETA_DEG_np.shape}, CL={CL_np.shape}")
 
     # Return the data dictionary for immediate use
     return {
+        "frame_convention": FRAME_CONVENTION,
         "ALPHA_DEG": ALPHA_DEG_np,
         "BETA_DEG": BETA_DEG_np,
         "CL": CL_np,

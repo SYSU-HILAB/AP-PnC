@@ -1,22 +1,21 @@
-"""
-Aerodynamics ML Module.
+"""Body-FLU aerodynamic data and JAX/Flax coefficient models.
 
-Provides JAX/Flax MLP models for aerodynamic coefficient prediction.
-Supports 4 aerodynamic types: lyu, bspline, phi, advanced.
-
-Public API:
-    - load_aerodynamics_mlp(aero_type): Load trained MLP predictor
-    - predict_coefficients(aero_type, alpha): Predict (cx, cz) from alpha
+Data/frame validation does not initialize an ML runtime. Predictor entry points
+are loaded on demand; their force outputs are (Fx/V², Fz/V²) in body FLU.
 """
 
-from aerodynamics.inference.predictor import (
-    AerodynamicsMLPPredictor,
-    load_aerodynamics_mlp,
-    predict_coefficients,
-)
+from importlib import import_module
 
 __all__ = [
     "AerodynamicsMLPPredictor",
     "load_aerodynamics_mlp",
     "predict_coefficients",
 ]
+
+
+def __getattr__(name):
+    if name not in __all__:
+        raise AttributeError(name)
+    value = getattr(import_module("aerodynamics.inference.predictor"), name)
+    globals()[name] = value
+    return value

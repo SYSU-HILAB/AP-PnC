@@ -1,573 +1,177 @@
 /*
  * BSD 3-Clause License
- *
  * Copyright (c) 2025 - <YEARS>, Sun Yat-sen University.
  * All rights reserved.
- *
- * Authors:
- * Erchao Rong: rongerch@outlook.com
- * Zihao Liu: liuzh297@gmail.com
- * Junning Liang: gordonliang27@foxmail.com
- *
- * Paper:
- * Aerodynamic Prior-free Trajectory Generation and Tracking Control for a
- * Tail-sitter UAV.
+ * Authors: Erchao Rong <rongerch@outlook.com>, Zihao Liu <liuzh297@gmail.com>,
+ * Junning Liang <gordonliang27@foxmail.com>
+ * Paper: Aerodynamic Prior-free Trajectory Generation and Tracking Control
+ * for a Tail-sitter UAV.
  */
-
-/**
- * @Author: Erchao Rong
- * @Date:   2023-04-24 16:02:09
- * @Last Modified by:   Erchao Rong
- * @Last Modified time: 2023-04-24 20:24:25
- */
-//
 // Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
+// course requirements at degree granting institutions only. Not for
 // government, commercial, or other organizational use.
-// File: Aerodynamics.cpp
-//
-// MATLAB Coder version            : 5.4
-// C/C++ source code generated on  : 17-Apr-2023 05:21:59
-//
+// Derived from Aerodynamics.cpp, MATLAB Coder 5.4, 17-Apr-2023 05:21:59.
+// The fitted polars below are expressed directly in body FLU. This maintained
+// implementation is not an unmodified MATLAB-generated source file.
 
-// Include Files
 #include "Zhang/Aerodynamics.h"
 
+#include <array>
 #include <cmath>
 
-#include "rt_defines.h"
-#include "rt_nonfinite.h"
-
-// Function Declarations
-static double rt_atan2d_snf(double u0, double u1);
-
-static double rt_powd_snf(double u0, double u1);
-
-// Function Definitions
-//
-// Arguments    : double u0
-//                double u1
-// Return Type  : double
-//
-static double rt_atan2d_snf(double u0, double u1)
+namespace
 {
-  double y;
-  if (std::isnan(u0) || std::isnan(u1))
+  template <std::size_t N>
+  double dot(const std::array<double, N> &coefficients,
+             const std::array<double, N> &basis)
   {
-    y = rtNaN;
+    double result = 0.0;
+    for (std::size_t i = 0; i < N; ++i)
+      result += coefficients[i] * basis[i];
+    return result;
   }
-  else if (std::isinf(u0) && std::isinf(u1))
-  {
-    int b_u0;
-    int b_u1;
-    if (u0 > 0.0)
-    {
-      b_u0 = 1;
-    }
-    else
-    {
-      b_u0 = -1;
-    }
-    if (u1 > 0.0)
-    {
-      b_u1 = 1;
-    }
-    else
-    {
-      b_u1 = -1;
-    }
-    y = std::atan2(static_cast<double>(b_u0), static_cast<double>(b_u1));
-  }
-  else if (u1 == 0.0)
-  {
-    if (u0 > 0.0)
-    {
-      y = RT_PI / 2.0;
-    }
-    else if (u0 < 0.0)
-    {
-      y = -(RT_PI / 2.0);
-    }
-    else
-    {
-      y = 0.0;
-    }
-  }
-  else
-  {
-    y = std::atan2(u0, u1);
-  }
-  return y;
-}
+}  // namespace
 
-//
-// Arguments    : double u0
-//                double u1
-// Return Type  : double
-//
-static double rt_powd_snf(double u0, double u1)
+void AerodynamicsFlu(double speed, double alpha, double beta, double force[3],
+                     double moment[3])
 {
-  double y;
-  if (std::isnan(u0) || std::isnan(u1))
-  {
-    y = rtNaN;
-  }
-  else
-  {
-    double d;
-    double d1;
-    d  = std::abs(u0);
-    d1 = std::abs(u1);
-    if (std::isinf(u1))
-    {
-      if (d == 1.0)
-      {
-        y = 1.0;
-      }
-      else if (d > 1.0)
-      {
-        if (u1 > 0.0)
-        {
-          y = rtInf;
-        }
-        else
-        {
-          y = 0.0;
-        }
-      }
-      else if (u1 > 0.0)
-      {
-        y = 0.0;
-      }
-      else
-      {
-        y = rtInf;
-      }
-    }
-    else if (d1 == 0.0)
-    {
-      y = 1.0;
-    }
-    else if (d1 == 1.0)
-    {
-      if (u1 > 0.0)
-      {
-        y = u0;
-      }
-      else
-      {
-        y = 1.0 / u0;
-      }
-    }
-    else if (u1 == 2.0)
-    {
-      y = u0 * u0;
-    }
-    else if ((u1 == 0.5) && (u0 >= 0.0))
-    {
-      y = std::sqrt(u0);
-    }
-    else if ((u0 < 0.0) && (u1 > std::floor(u1)))
-    {
-      y = rtNaN;
-    }
-    else
-    {
-      y = std::pow(u0, u1);
-    }
-  }
-  return y;
-}
-
-//
-// compute the aerodynamic force 'f' and momentums 'm' given the air_speed
-//  in R3.
-//  input:
-//    - air_speed (V_b): the air speed vector w.r.t. body and projected onto the
-//    body frame
-//    - f(F_w): the aerodynamic force vector represented in the wind frame
-//        (i.e. drag - body Y - lift)
-//    (I think it is in the stability axis,need to conver it to body frame)
-//    - m(M_b); the aerdoynamic momentum vector represented in the body frame
-//
-// Arguments    : const double V_b[3]
-//                double F_b[3]
-//                double M_b[3]
-//                double *alpha
-//                double *beta
-// Return Type  : void
-//
-void Aerodynamics(const double V_b[3], double F_b[3], double M_b[3],
-                  double *alpha, double *beta)
-{
-  static const double dv[24]{
+  // The odd-in-sideslip fitted terms and moment coefficients use the same
+  // positive-left beta as the public FLU interface. No component-frame adapter.
+  static constexpr std::array<double, 24> drag{
       -0.5908, -1.8161, -0.2045, -0.0036, -0.2861, -0.8862, -0.059,  -0.9215,
       0.013,   -0.0035, 0.4958,  -0.0032, 0.0762,  0.1533,  -0.0009, 0.1891,
       0.0159,  0.0172,  0.251,   0.0032,  -0.1227, 0.174,   0.7917,  -4.4927};
-  static const double dv2[24]{
+  static constexpr std::array<double, 24> lift{
       -2.8465, 23.1516, -0.7335, 0.1407, 0.093,  3.8276,  -0.0006, 3.1951,
       -0.0289, 0.6425,  0.0164,  0.0031, 0.6174, -0.1286, 0.0342,  -0.5109,
       0.0982,  -0.0006, 0.1985,  -0.007, 0.041,  0.0037,  -4.3496, 14.1041};
-  static const double dv3[18]{-0.024,  0.0172,  -0.0219, -0.0085, -0.2163,
-                              -0.0143, -0.0152, -0.1874, -0.0021, -0.0065,
-                              -0.011,  0.0029,  -0.0184, -0.0028, 0.0203,
-                              -0.0158, -0.0245, -0.0068};
-  static const double dv4[18]{-1.9963, -2.5059, 0.5987,  0.012,   0.7977,
-                              0.0543,  0.631,   -0.1122, -0.0798, -0.2177,
-                              -0.1059, 0.0029,  -0.1388, 0.0132,  -0.2605,
-                              0.0015,  -0.5789, 0.7902};
-  static const double dv1[13]{-0.0678, 0.1151,  -0.1024, 0.6002,  0.5367,
-                              -0.0922, -0.8523, -0.522,  -0.1006, 0.2266,
-                              -0.0345, -0.0768, 0.0748};
-  static const double dv5[12]{0.0681,  -0.0338, 0.0054, 0.0028, -0.0052, 0.0034,
-                              -0.0048, 0.0217,  0.0111, 0.0121, 0.0685,  0.024};
-  double              b_y[24];
-  double              d_y[18];
-  double              c_y[13];
-  double              e_y[12];
-  double              c_comp_N[9];
-  double              d_comp_N[9];
-  double              b_comp_N[6];
-  double              comp_N[3];
-  double              P;
-  double              a;
-  double              a_tmp;
-  double              absxk;
-  double              b_a;
-  double              b_a_tmp;
-  double              b_comp_N_idx_0;
-  double              b_comp_N_idx_1;
-  double              b_comp_N_idx_2;
-  double              b_comp_N_tmp;
-  double              b_comp_N_tmp_tmp;
-  double              b_y_tmp;
-  double              c_a;
-  double              c_a_tmp;
-  double              c_comp_N_tmp;
-  double              c_y_tmp;
-  double              cb2_tmp;
-  double              cb_tmp;
-  double              comp_N_idx_0;
-  double              comp_N_idx_0_tmp;
-  double              comp_N_idx_1;
-  double              comp_N_idx_1_tmp;
-  double              comp_N_idx_2;
-  double              comp_N_idx_2_tmp;
-  double              comp_N_tmp;
-  double              comp_N_tmp_tmp;
-  double              d_a;
-  double              d_a_tmp;
-  double              e_a;
-  double              f_a;
-  double              g_a;
-  double              h_a;
-  double              i_a;
-  double              sb_tmp;
-  double              scale;
-  double              t;
-  double              y;
-  double              y_tmp;
-  boolean_T           b;
-  //  compute the angle of attack and sideslip angle
-  *alpha = rt_atan2d_snf(V_b[2], V_b[0]);
-  scale  = 3.3121686421112381E-170;
-  absxk  = std::abs(V_b[0]);
-  if (absxk > 3.3121686421112381E-170)
-  {
-    a     = 1.0;
-    scale = absxk;
-  }
-  else
-  {
-    t = absxk / 3.3121686421112381E-170;
-    a = t * t;
-  }
-  absxk = std::abs(V_b[1]);
-  if (absxk > scale)
-  {
-    t     = scale / absxk;
-    a     = a * t * t + 1.0;
-    scale = absxk;
-  }
-  else
-  {
-    t = absxk / scale;
-    a += t * t;
-  }
-  absxk = std::abs(V_b[2]);
-  if (absxk > scale)
-  {
-    t     = scale / absxk;
-    a     = a * t * t + 1.0;
-    scale = absxk;
-  }
-  else
-  {
-    t = absxk / scale;
-    a += t * t;
-  }
-  a = scale * std::sqrt(a);
-  if (a >= 0.0001)
-  {
-    *beta = std::asin(V_b[1] / a);
-  }
-  else
-  {
-    *beta = 0.0;
-  }
-  //  rho = 1.225;
-  //  air density in 25 degree
-  P = 0.592 * (a * a);
-  //  the aerodynamic lift
-  //  the aerodynamic drag
-  //  the aerodynamic sideslip
-  sb_tmp  = std::sin(*beta);
-  cb_tmp  = std::cos(*beta);
-  cb2_tmp = cb_tmp * cb_tmp;
-  scale   = *beta;
-  b       = std::isnan(*beta);
-  if (!b)
-  {
-    if (*beta < 0.0)
-    {
-      scale = -1.0;
-    }
-    else
-    {
-      scale = (*beta > 0.0);
-    }
-  }
-  comp_N_idx_0_tmp = sb_tmp * sb_tmp;
-  comp_N_idx_0     = scale * comp_N_idx_0_tmp;
-  absxk            = sb_tmp * cb_tmp;
-  comp_N_idx_1_tmp = std::cos(*alpha);
-  comp_N_idx_1     = absxk * comp_N_idx_1_tmp;
-  comp_N_idx_2_tmp = std::sin(*alpha);
-  comp_N_idx_2     = absxk * comp_N_idx_2_tmp;
-  y_tmp = (1.0 - 1.0 / (std::exp(*alpha - -3.3161255787892263) + 1.0)) -
-          1.0 / (std::exp(-(*alpha - -2.9670597283903604)) + 1.0);
-  a_tmp = 1.0 - 1.0 / (std::exp(*alpha - -2.9670597283903604) + 1.0);
-  a     = a_tmp - 1.0 / (std::exp(-(*alpha - -1.5707963267948966)) + 1.0);
-  b_a   = (1.0 - 1.0 / (std::exp(*alpha - -1.5707963267948966) + 1.0)) -
-        1.0 / (std::exp(-(*alpha - -0.19198621771937624)) + 1.0);
-  b_a_tmp = 1.0 / (std::exp(-(*alpha - 2.9670597283903604)) + 1.0);
-  c_a = (1.0 - 1.0 / (std::exp(*alpha - 0.3490658503988659) + 1.0)) - b_a_tmp;
-  b_y_tmp = (1.0 - 1.0 / (std::exp(*alpha - 2.9670597283903604) + 1.0)) -
-            1.0 / (std::exp(-(*alpha - 3.3161255787892263)) + 1.0);
-  //  the rolling momentum
-  scale = *beta;
-  if (!b)
-  {
-    if (*beta < 0.0)
-    {
-      scale = -1.0;
-    }
-    else
-    {
-      scale = (*beta > 0.0);
-    }
-  }
-  comp_N[0] = scale * comp_N_idx_0_tmp;
-  comp_N[1] = absxk * comp_N_idx_1_tmp;
-  comp_N[2] = absxk * comp_N_idx_2_tmp;
-  d_a = a_tmp - 1.0 / (std::exp(-5.0 * (*alpha - -1.5707963267948966)) + 1.0);
-  c_a_tmp = 1.0 / (std::exp(-0.5 * (*alpha - -0.3490658503988659)) + 1.0);
-  e_a = (1.0 - 1.0 / (std::exp(5.0 * (*alpha - -1.5707963267948966)) + 1.0)) -
-        c_a_tmp;
-  t = 1.0 / (std::exp(-10.0 * (*alpha - 0.31415926535897931)) + 1.0);
-  c_y_tmp =
-      (1.0 - 1.0 / (std::exp(20.0 * (*alpha - -0.19198621771937624)) + 1.0)) -
-      t;
-  d_a_tmp = 1.0 - 1.0 / (std::exp(10.0 * (*alpha - 0.31415926535897931)) + 1.0);
-  f_a = d_a_tmp - 1.0 / (std::exp(-5.0 * (*alpha - 1.5707963267948966)) + 1.0);
-  g_a = (1.0 - 1.0 / (std::exp(5.0 * (*alpha - 1.5707963267948966)) + 1.0)) -
-        b_a_tmp;
-  //  the pitching momentum
-  comp_N_tmp       = comp_N_idx_1_tmp * comp_N_idx_1_tmp;
-  b_comp_N[0]      = cb2_tmp * comp_N_tmp;
-  b_comp_N[1]      = comp_N_idx_0_tmp;
-  b_comp_N_tmp     = comp_N_idx_2_tmp * comp_N_idx_2_tmp;
-  b_comp_N[2]      = cb2_tmp * b_comp_N_tmp;
-  comp_N_tmp_tmp   = std::abs(sb_tmp);
-  b_comp_N_tmp_tmp = comp_N_tmp_tmp * cb_tmp;
-  b_comp_N[3]      = b_comp_N_tmp_tmp * comp_N_idx_1_tmp;
-  c_comp_N_tmp     = comp_N_idx_2_tmp * comp_N_idx_1_tmp;
-  b_comp_N[4]      = c_comp_N_tmp * cb2_tmp;
-  b_comp_N[5]      = b_comp_N_tmp_tmp * comp_N_idx_2_tmp;
-  c_a_tmp          = a_tmp - c_a_tmp;
-  d_a_tmp -= b_a_tmp;
-  //  the yawing momentum
-  scale = *beta;
-  if (!b)
-  {
-    if (*beta < 0.0)
-    {
-      scale = -1.0;
-    }
-    else
-    {
-      scale = (*beta > 0.0);
-    }
-  }
-  b_comp_N_idx_0 = scale * comp_N_idx_0_tmp;
-  b_comp_N_idx_1 = absxk * comp_N_idx_1_tmp;
-  b_comp_N_idx_2 = absxk * comp_N_idx_2_tmp;
-  h_a = a_tmp - 1.0 / (std::exp(-10.0 * (*alpha - -0.17453292519943295)) + 1.0);
-  y   = (1.0 - 1.0 / (std::exp(10.0 * (*alpha - -0.17453292519943295)) + 1.0)) -
-      t;
-  i_a = (1.0 - 1.0 / (std::exp(0.5 * *alpha) + 1.0)) - b_a_tmp;
-  //  F is in the velocity frame(wind frame)
-  //  convert to body axes
-  //  http://www.mathworks.com/help/aeroblks/aerodynamicforcesandmoments.html
-  scale       = rt_powd_snf(comp_N_idx_1_tmp, 3.0);
-  c_comp_N[0] = cb2_tmp * scale;
-  c_comp_N[1] = comp_N_idx_1_tmp * comp_N_idx_0_tmp;
-  c_comp_N[2] = comp_N_idx_1_tmp * cb2_tmp * b_comp_N_tmp;
-  c_comp_N[3] = comp_N_idx_2_tmp * comp_N_tmp * cb2_tmp;
-  c_comp_N[4] = comp_N_idx_2_tmp * comp_N_idx_0_tmp;
-  absxk       = rt_powd_snf(comp_N_idx_2_tmp, 3.0);
-  c_comp_N[5] = absxk * cb2_tmp;
-  c_comp_N[6] = comp_N_tmp_tmp * cb_tmp * comp_N_tmp;
-  c_comp_N_tmp *= cb_tmp;
-  c_comp_N[7] = c_comp_N_tmp * comp_N_tmp_tmp;
-  c_comp_N[8] = b_comp_N_tmp_tmp * b_comp_N_tmp;
-  b_a_tmp =
-      a_tmp - 1.0 / (std::exp(-0.5 * (*alpha - -0.17453292519943295)) + 1.0);
-  d_comp_N[0] = cb2_tmp * scale;
-  d_comp_N[1] = comp_N_idx_1_tmp * comp_N_idx_0_tmp;
-  d_comp_N[2] = comp_N_idx_1_tmp * cb2_tmp * b_comp_N_tmp;
-  d_comp_N[3] = comp_N_idx_2_tmp * comp_N_tmp * cb2_tmp;
-  d_comp_N[4] = comp_N_idx_2_tmp * comp_N_idx_0_tmp;
-  d_comp_N[5] = absxk * cb2_tmp;
-  d_comp_N[6] = comp_N_tmp_tmp * cb_tmp * comp_N_tmp;
-  d_comp_N[7] = c_comp_N_tmp * comp_N_tmp_tmp;
-  d_comp_N[8] = b_comp_N_tmp_tmp * b_comp_N_tmp;
-  b_y[0]      = y_tmp * cb2_tmp;
-  b_y[1]      = y_tmp * ((*alpha + 3.1415926535897931) * cb2_tmp);
-  b_y[11]     = c_y_tmp * cb2_tmp;
-  b_y[12]     = c_y_tmp * (*alpha * cb2_tmp);
-  for (int i{0}; i < 9; i++)
-  {
-    t           = c_comp_N[i];
-    b_y[i + 2]  = b_a_tmp * t;
-    b_y[i + 13] = d_a_tmp * t;
-  }
-  b_y[22] = b_y_tmp * cb2_tmp;
-  b_y[23] = b_y_tmp * ((*alpha - 3.1415926535897931) * cb2_tmp);
-  t       = 0.0;
-  for (int i{0}; i < 24; i++)
-  {
-    t += dv[i] * b_y[i];
-  }
-  c_y[0]  = y_tmp * cb2_tmp;
-  c_y[1]  = y_tmp * ((*alpha + 3.1415926535897931) * cb2_tmp);
-  c_y[2]  = a * comp_N_idx_0;
-  c_y[5]  = b_a * comp_N_idx_0;
-  c_y[8]  = c_a * comp_N_idx_0;
-  c_y[3]  = a * comp_N_idx_1;
-  c_y[6]  = b_a * comp_N_idx_1;
-  c_y[9]  = c_a * comp_N_idx_1;
-  c_y[4]  = a * comp_N_idx_2;
-  c_y[7]  = b_a * comp_N_idx_2;
-  c_y[10] = c_a * comp_N_idx_2;
-  c_y[11] = b_y_tmp * cb2_tmp;
-  c_y[12] = b_y_tmp * ((*alpha - 3.1415926535897931) * cb2_tmp);
-  scale   = 0.0;
-  for (int i{0}; i < 13; i++)
-  {
-    scale += dv1[i] * c_y[i];
-  }
-  b_y[0]  = y_tmp * cb2_tmp;
-  b_y[1]  = y_tmp * ((*alpha + 3.1415926535897931) * cb2_tmp);
-  b_y[11] = c_y_tmp * cb2_tmp;
-  b_y[12] = c_y_tmp * (*alpha * cb2_tmp);
-  for (int i{0}; i < 9; i++)
-  {
-    absxk       = d_comp_N[i];
-    b_y[i + 2]  = c_a_tmp * absxk;
-    b_y[i + 13] = d_a_tmp * absxk;
-  }
-  b_y[22] = b_y_tmp * cb2_tmp;
-  b_y[23] = b_y_tmp * ((*alpha - 3.1415926535897931) * cb2_tmp);
-  absxk   = 0.0;
-  for (int i{0}; i < 24; i++)
-  {
-    absxk += dv2[i] * b_y[i];
-  }
-  c_comp_N[0]  = comp_N_idx_1_tmp * cb_tmp;
-  c_comp_N[3]  = -comp_N_idx_1_tmp * cb_tmp;
-  c_comp_N[6]  = -comp_N_idx_2_tmp;
-  c_comp_N[1]  = sb_tmp;
-  c_comp_N[4]  = cb_tmp;
-  c_comp_N[7]  = 0.0;
-  c_comp_N[2]  = comp_N_idx_2_tmp * cb_tmp;
-  c_comp_N[5]  = -comp_N_idx_2_tmp * sb_tmp;
-  c_comp_N[8]  = comp_N_idx_1_tmp;
-  comp_N_idx_0 = -(t * P);
-  comp_N_idx_1 = scale * P;
-  comp_N_idx_2 = -(absxk * P);
-  d_y[0]       = y_tmp * cb2_tmp;
-  d_y[1]       = y_tmp * ((*alpha + 3.1415926535897931) * cb2_tmp);
-  d_y[8]       = c_y_tmp * cb2_tmp;
-  d_y[9]       = c_y_tmp * (*alpha * cb2_tmp);
-  for (int i{0}; i < 3; i++)
-  {
-    F_b[i] = (c_comp_N[i] * comp_N_idx_0 + c_comp_N[i + 3] * comp_N_idx_1) +
-             c_comp_N[i + 6] * comp_N_idx_2;
-    t           = comp_N[i];
-    d_y[i + 2]  = d_a * t;
-    d_y[i + 5]  = e_a * t;
-    d_y[i + 10] = g_a * t;
-    d_y[i + 13] = f_a * t;
-  }
-  d_y[16] = b_y_tmp * cb2_tmp;
-  d_y[17] = b_y_tmp * ((*alpha - 3.1415926535897931) * cb2_tmp);
-  t       = 0.0;
-  for (int i{0}; i < 18; i++)
-  {
-    t += dv3[i] * d_y[i];
-  }
-  d_y[0] = y_tmp * cb2_tmp;
-  d_y[1] = y_tmp * ((*alpha + 3.1415926535897931) * cb2_tmp);
-  d_y[8] = c_y_tmp * cb2_tmp;
-  d_y[9] = c_y_tmp * (*alpha * cb2_tmp);
-  for (int i{0}; i < 6; i++)
-  {
-    scale       = b_comp_N[i];
-    d_y[i + 2]  = c_a_tmp * scale;
-    d_y[i + 10] = d_a_tmp * scale;
-  }
-  d_y[16] = b_y_tmp * cb2_tmp;
-  d_y[17] = b_y_tmp * ((*alpha - 3.1415926535897931) * cb2_tmp);
-  scale   = 0.0;
-  for (int i{0}; i < 18; i++)
-  {
-    scale += dv4[i] * d_y[i];
-  }
-  e_y[0]  = y_tmp * cb2_tmp;
-  e_y[1]  = y_tmp * ((*alpha + 3.1415926535897931) * cb2_tmp);
-  e_y[5]  = y * cb2_tmp;
-  e_y[6]  = y * (*alpha * cb2_tmp);
-  e_y[2]  = h_a * b_comp_N_idx_0;
-  e_y[7]  = i_a * b_comp_N_idx_0;
-  e_y[3]  = h_a * b_comp_N_idx_1;
-  e_y[8]  = i_a * b_comp_N_idx_1;
-  e_y[4]  = h_a * b_comp_N_idx_2;
-  e_y[9]  = i_a * b_comp_N_idx_2;
-  e_y[10] = b_y_tmp * cb2_tmp;
-  e_y[11] = b_y_tmp * ((*alpha - 3.1415926535897931) * cb2_tmp);
-  absxk   = 0.0;
-  for (int i{0}; i < 12; i++)
-  {
-    absxk += dv5[i] * e_y[i];
-  }
-  M_b[0] = t * P;
-  M_b[1] = scale * P;
-  M_b[2] = absxk * P;
-}
+  static constexpr std::array<double, 13> side{
+      0.0678, -0.1151, -0.1024, 0.6002,  0.5367, -0.0922, -0.8523,
+      -0.522, -0.1006, 0.2266,  -0.0345, 0.0768, -0.0748};
+  static constexpr std::array<double, 18> moment_z{
+      -0.024, 0.0172, 0.0219,  0.0085,  0.2163,  0.0143,
+      0.0152, 0.1874, -0.0021, -0.0065, 0.011,   -0.0029,
+      0.0184, 0.0028, -0.0203, 0.0158,  -0.0245, -0.0068};
+  static constexpr std::array<double, 18> moment_y{
+      1.9963, 2.5059,  -0.5987, -0.012,  -0.7977, -0.0543,
+      -0.631, 0.1122,  0.0798,  0.2177,  0.1059,  -0.0029,
+      0.1388, -0.0132, 0.2605,  -0.0015, 0.5789,  -0.7902};
+  static constexpr std::array<double, 12> moment_x{
+      0.0681,  -0.0338, -0.0054, -0.0028, 0.0052, 0.0034,
+      -0.0048, -0.0217, -0.0111, -0.0121, 0.0685, 0.024};
 
-//
-// File trailer for Aerodynamics.cpp
-//
-// [EOF]
-//
+  constexpr double pi = 3.1415926535897931;
+  const auto       window =
+      [alpha](double low, double high, double left = 1.0, double right = 1.0)
+  {
+    return (1.0 - 1.0 / (std::exp(left * (alpha - low)) + 1.0)) -
+           1.0 / (std::exp(-right * (alpha - high)) + 1.0);
+  };
+  const double ca = std::cos(alpha), sa = std::sin(alpha);
+  const double cb = std::cos(beta), sb = std::sin(beta);
+  const double cb2 = cb * cb, sb2 = sb * sb, ca2 = ca * ca, sa2 = sa * sa;
+  const double abs_sb_cb = std::abs(sb) * cb;
+  const std::array<double, 3> odd{((beta > 0.0) - (beta < 0.0)) * sb2,
+                                  sb * cb * ca, sb * cb * sa};
+  const std::array<double, 6> even{
+      cb2 * ca2, sb2, cb2 * sa2, abs_sb_cb * ca, sa * ca * cb2, abs_sb_cb * sa};
+  const std::array<double, 9> cubic{cb2 * std::pow(ca, 3.0),
+                                    ca * sb2,
+                                    ca * cb2 * sa2,
+                                    sa * ca2 * cb2,
+                                    sa * sb2,
+                                    std::pow(sa, 3.0) * cb2,
+                                    abs_sb_cb * ca2,
+                                    sa * ca * cb * std::abs(sb),
+                                    abs_sb_cb * sa2};
+  const double lower = window(-3.3161255787892263, -2.9670597283903604);
+  const double upper = window(2.9670597283903604, 3.3161255787892263);
+  const double center =
+      window(-0.19198621771937624, 0.31415926535897931, 20, 10);
+  const double positive =
+      window(0.31415926535897931, 2.9670597283903604, 10, 1);
+  const double negative =
+      window(-2.9670597283903604, -0.3490658503988659, 1, .5);
+  const auto polar = [&](double negative_weight)
+  {
+    std::array<double, 24> b{};
+    b[0]  = lower * cb2;
+    b[1]  = lower * ((alpha + pi) * cb2);
+    b[11] = center * cb2;
+    b[12] = center * (alpha * cb2);
+    for (std::size_t i = 0; i < cubic.size(); ++i)
+    {
+      b[i + 2]  = negative_weight * cubic[i];
+      b[i + 13] = positive * cubic[i];
+    }
+    b[22] = upper * cb2;
+    b[23] = upper * ((alpha - pi) * cb2);
+    return b;
+  };
+  std::array<double, 13> side_basis{};
+  side_basis[0] = lower * cb2;
+  side_basis[1] = lower * ((alpha + pi) * cb2);
+  const std::array<double, 3> side_weights{
+      window(-2.9670597283903604, -1.5707963267948966),
+      window(-1.5707963267948966, -0.19198621771937624),
+      window(0.3490658503988659, 2.9670597283903604)};
+  for (std::size_t block = 0; block < 3; ++block)
+    for (std::size_t i = 0; i < 3; ++i)
+      side_basis[2 + 3 * block + i] = side_weights[block] * odd[i];
+  side_basis[11]        = upper * cb2;
+  side_basis[12]        = upper * ((alpha - pi) * cb2);
+  const double pressure = 0.592 * (speed * speed);
+  const double d =
+      -dot(drag,
+           polar(window(-2.9670597283903604, -0.17453292519943295, 1, .5))) *
+      pressure;
+  const double l = -dot(lift, polar(negative)) * pressure;
+  const double s = dot(side, side_basis) * pressure;
+  // Direct FLU projections, including the fitted model's side-force coupling.
+  force[0] = (sa * cb * d - sa * sb * s) + ca * l;
+  force[1] = sb * d + cb * s;
+  force[2] = (ca * cb * d + ca * cb * s) - sa * l;
+
+  std::array<double, 18> z_basis{}, y_basis{};
+  for (auto *b : {&z_basis, &y_basis})
+  {
+    (*b)[0]  = lower * cb2;
+    (*b)[1]  = lower * ((alpha + pi) * cb2);
+    (*b)[8]  = center * cb2;
+    (*b)[9]  = center * (alpha * cb2);
+    (*b)[16] = upper * cb2;
+    (*b)[17] = upper * ((alpha - pi) * cb2);
+  }
+  const std::array<double, 4> z_weights{
+      window(-2.9670597283903604, -1.5707963267948966, 1, 5),
+      window(-1.5707963267948966, -0.3490658503988659, 5, .5),
+      window(1.5707963267948966, 2.9670597283903604, 5, 1),
+      window(0.31415926535897931, 1.5707963267948966, 10, 5)};
+  for (std::size_t block = 0; block < 4; ++block)
+    for (std::size_t i = 0; i < 3; ++i)
+      z_basis[(block < 2 ? 2 + block * 3 : 10 + (block - 2) * 3) + i] =
+          z_weights[block] * odd[i];
+  for (std::size_t i = 0; i < 6; ++i)
+  {
+    y_basis[i + 2]  = negative * even[i];
+    y_basis[i + 10] = positive * even[i];
+  }
+  std::array<double, 12> x_basis{};
+  const double           x_center =
+      window(-0.17453292519943295, 0.31415926535897931, 10, 10);
+  x_basis[0]  = lower * cb2;
+  x_basis[1]  = lower * ((alpha + pi) * cb2);
+  x_basis[5]  = x_center * cb2;
+  x_basis[6]  = x_center * (alpha * cb2);
+  x_basis[10] = upper * cb2;
+  x_basis[11] = upper * ((alpha - pi) * cb2);
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    x_basis[i + 2] =
+        window(-2.9670597283903604, -0.17453292519943295, 1, 10) * odd[i];
+    x_basis[i + 7] = window(0, 2.9670597283903604, .5, 1) * odd[i];
+  }
+  moment[0] = dot(moment_x, x_basis) * pressure;
+  moment[1] = dot(moment_y, y_basis) * pressure;
+  moment[2] = dot(moment_z, z_basis) * pressure;
+}

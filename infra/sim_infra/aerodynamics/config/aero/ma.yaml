@@ -1,9 +1,9 @@
-# B-spline fitted model parameters ("ma").
-# Migrated bit-exact from the retired aero_sim_params.db (bspline_aero_config, id=1).
-# Regenerate after a new fit:
-#   bspline_aero_fit.py -> data/bspline_fit_results/*.npz -> ma_params_writer.py -> this file
+# Body-FLU B-spline force coefficients: [cx, 0, cz] * V^2 * cos(beta).
+# alpha = atan2(v_air_B.x, v_air_B.z); thrust acts along +Z.
+# Fitting outputs belong under .artifacts/aerodynamics/.
+body_frame: FLU
 scale_factor: 0.13766225063171833
-cx_coefs:
+cz_coefs:
   - -0.09209392976802744
   - -0.11628324974914352
   - -0.2227130664875133
@@ -26,7 +26,7 @@ cx_coefs:
   - -0.1952131677003412
   - -0.07751603842136269
   - -0.08832104326527565
-cx_knots:
+cz_knots:
   - -3.14159265358979
   - -3.14159265358979
   - -3.14159265358979
@@ -53,7 +53,7 @@ cx_knots:
   - 3.14159265358979
   - 3.14159265358979
   - 3.14159265358979
-cz_coefs:
+cx_coefs:
   - 0.31795166477670894
   - 0.6179783670660043
   - 1.0026181642851013
@@ -82,7 +82,7 @@ cz_coefs:
   - -0.5920806752668468
   - -0.5562114614774951
   - 0.2655845197412601
-cz_knots:
+cx_knots:
   - -3.14159265358979
   - -3.14159265358979
   - -3.14159265358979

@@ -149,9 +149,7 @@ def _container(job: Path, *args: str, with_simulator: bool = True) -> subprocess
         stack_image(),
         *args,
     ]
-    return subprocess.run(
-        command, env=setup_env(), capture_output=True, text=True, check=False
-    )
+    return subprocess.run(command, env=setup_env(), capture_output=True, text=True, check=False)
 
 
 def write_configuration(job: Path, request: JobRequest) -> None:
@@ -161,6 +159,8 @@ def write_configuration(job: Path, request: JobRequest) -> None:
     throwaway container: the result is the same and the transformation is
     reviewable.
     """
+    from tooling.actuator_profile import import_matlab_actuator
+
     config_dir = job / "config"
     simple_sim = yaml.safe_load((config_dir / "simple_sim.yaml").read_text())
     simple_sim["simple_sim"]["duration_s"] = request.duration_s
@@ -173,12 +173,11 @@ def write_configuration(job: Path, request: JobRequest) -> None:
         profile_path = job / "profile.yaml"
         if not profile_path.exists():
             raise FileNotFoundError(
-                f"the practical profile needs {profile_path}; run "
-                "'stack.sh import-matlab' first"
+                f"the practical profile needs {profile_path}; run " "'stack.sh import-matlab' first"
             )
         profile = yaml.safe_load(profile_path.read_text())
         simple_sim["simple_sim"]["plant"].update(profile["plant"])
-        simple_sim["simple_sim"]["actuator"] = profile["actuator"]
+        simple_sim["simple_sim"]["actuator"] = import_matlab_actuator(profile["actuator"])
         # Only the planner owns a mass: the NMPC model is mass-normalized.
         planning["problem_formulation"]["flatness"]["mass"] = profile["plant"]["mass"]
 
@@ -191,9 +190,7 @@ def write_configuration(job: Path, request: JobRequest) -> None:
                 {
                     "mass_kg": request.mass_kg,
                     "original_profile_mass_kg": original,
-                    "unchanged": (
-                        "inertia, motor calibration, PID, weights, bounds and timing"
-                    ),
+                    "unchanged": ("inertia, motor calibration, PID, weights, bounds and timing"),
                 },
                 indent=2,
             )
@@ -216,9 +213,7 @@ def write_configuration(job: Path, request: JobRequest) -> None:
         keys = path.split(".")
         root = keys[0]
         if root not in documents or len(keys) < 2:
-            raise ValueError(
-                f"override {path!r} must start with one of {sorted(documents)}"
-            )
+            raise ValueError(f"override {path!r} must start with one of {sorted(documents)}")
         node = documents[root][root]
         for key in keys[1:-1]:
             node = node[key]
@@ -308,26 +303,39 @@ def _image_exists(name: str) -> bool:
 
 
 def _ensure_stack_base_images(root, arch, platform, run) -> None:
-    """Build the base images the stack Dockerfile inherits, when they are missing.
+    """Ensure ROS dependencies and refresh the simulator's source/config image.
 
-    `ap-pnc build simple-sim` is the quick start's only build entry point, so it
-    has to produce everything it depends on. The two parents below used to be
-    reachable only from command groups that have since been removed, which left a
-    fresh clone unable to build the stack at all.
+    The mounted executable and image-owned aerodynamic parameters must come
+    from the same source contract. Docker's layer cache handles unchanged inputs;
+    the existence of an image tag is not evidence its model data is current.
     """
     if not _image_exists(f"ap-pnc-ros2-base:{arch}"):
-        run([
-            "docker", "build", "--platform", platform,
-            "-t", f"ap-pnc-ros2-base:{arch}",
-            "-f", str(project_path("core/docker/ros2-base.dockerfile")), str(root),
-        ])
-    if not _image_exists(f"simple-sim:{arch}"):
-        run([
-            "docker", "build", "--platform", platform,
-            "-t", f"simple-sim:{arch}",
-            "-f", str(project_path("infra/sim_infra/simple_sim/docker/simple-sim.dockerfile")),
+        run(
+            [
+                "docker",
+                "build",
+                "--platform",
+                platform,
+                "-t",
+                f"ap-pnc-ros2-base:{arch}",
+                "-f",
+                str(project_path("core/docker/ros2-base.dockerfile")),
+                str(root),
+            ]
+        )
+    run(
+        [
+            "docker",
+            "build",
+            "--platform",
+            platform,
+            "-t",
+            f"simple-sim:{arch}",
+            "-f",
+            str(project_path("infra/sim_infra/simple_sim/docker/simple-sim.dockerfile")),
             str(root),
-        ])
+        ]
+    )
 
 
 def build() -> None:
@@ -356,35 +364,92 @@ def build() -> None:
 
     _ensure_stack_base_images(root, arch, platform, run)
     run(["docker", "image", "inspect", f"simple-sim:{arch}"], quiet=True)
-    run([
-        "docker", "build", "--platform", platform, "--target", "toolchain",
-        "-t", tool, "-f", str(source / "Dockerfile"), str(root),
-    ])
-    run([
-        "docker", "run", "--rm", "--platform", platform, "--ipc=host",
-        "--entrypoint", "/bin/bash",
-        "-e", "AP_PNC_DIR=/workspace",
-        "-e", "CARGO_HOME=/workspace/.artifacts/simple-stack/cache/cargo",
-        "-v", f"{root}:/workspace:ro",
-        "-v", f"{source}:/workspace/infra/sim_infra/simple_sim/stack:rw",
-        "-v", f"{base}:/workspace/.artifacts/simple-stack/cache:rw",
-        tool, "-c", RUST_STEPS,
-    ])
-    run([
-        "docker", "run", "--rm", "--platform", platform, "--ipc=host",
-        "--network", "none", "--entrypoint", "/bin/bash",
-        "-e", "AP_PNC_DIR=/workspace",
-        "-e", "GIT_CONFIG_COUNT=1",
-        "-e", "GIT_CONFIG_KEY_0=safe.directory",
-        "-e", "GIT_CONFIG_VALUE_0=/workspace",
-        "-v", f"{root}:/workspace:ro",
-        "-v", f"{base}:/workspace/.artifacts/simple-stack/cache:rw",
-        tool, "-c", CPP_STEPS,
-    ])
-    run([
-        "docker", "build", "--platform", platform, "--target", "runtime",
-        "-t", image, "-f", str(source / "Dockerfile"), str(root),
-    ])
+    run(
+        [
+            "docker",
+            "build",
+            "--platform",
+            platform,
+            "--target",
+            "toolchain",
+            "-t",
+            tool,
+            "-f",
+            str(source / "Dockerfile"),
+            str(root),
+        ]
+    )
+    run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--platform",
+            platform,
+            "--ipc=host",
+            "--entrypoint",
+            "/bin/bash",
+            "-e",
+            "AP_PNC_DIR=/workspace",
+            "-e",
+            "CARGO_HOME=/workspace/.artifacts/simple-stack/cache/cargo",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-v",
+            f"{source}:/workspace/infra/sim_infra/simple_sim/stack:rw",
+            "-v",
+            f"{base}:/workspace/.artifacts/simple-stack/cache:rw",
+            tool,
+            "-c",
+            RUST_STEPS,
+        ]
+    )
+    run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--platform",
+            platform,
+            "--ipc=host",
+            "--network",
+            "none",
+            "--entrypoint",
+            "/bin/bash",
+            "-e",
+            "AP_PNC_DIR=/workspace",
+            "-e",
+            "GIT_CONFIG_COUNT=1",
+            "-e",
+            "GIT_CONFIG_KEY_0=safe.directory",
+            "-e",
+            "GIT_CONFIG_VALUE_0=/workspace",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-v",
+            f"{base}:/workspace/.artifacts/simple-stack/cache:rw",
+            "-v",
+            f"{base}/ctest-benchmark:/workspace/.artifacts/benchmark:rw",
+            tool,
+            "-c",
+            CPP_STEPS,
+        ]
+    )
+    run(
+        [
+            "docker",
+            "build",
+            "--platform",
+            platform,
+            "--target",
+            "runtime",
+            "-t",
+            image,
+            "-f",
+            str(source / "Dockerfile"),
+            str(root),
+        ]
+    )
 
 
 def run_job(request: JobRequest | None = None, *, job: Path | None = None) -> Path:
@@ -401,7 +466,10 @@ def run_job(request: JobRequest | None = None, *, job: Path | None = None) -> Pa
     runs = root / "runs"
     runs.mkdir(parents=True, exist_ok=True)
     if job is None:
-        job = runs / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+        job = (
+            runs
+            / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+        )
     job = artifact_path(job)
     job.mkdir(parents=True, exist_ok=False)
     (job / "benchmark").mkdir()
@@ -419,7 +487,9 @@ def run_job(request: JobRequest | None = None, *, job: Path | None = None) -> Pa
     _write_metadata(job)
 
     result = _container(
-        job, "/workspace/.artifacts/bin/ap-pnc-offline", "run",
+        job,
+        "/workspace/.artifacts/bin/ap-pnc-offline",
+        "run",
         "/workspace/core/bringup/config/simple_sim.yaml",
     )
     (job / "stack.log").write_text(result.stdout + result.stderr)

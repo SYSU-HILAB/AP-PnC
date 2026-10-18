@@ -107,9 +107,7 @@ namespace aerodynamics
     // Create a single instance of AeroParams
     AeroParams aero_params{};
 
-    bool getAeroWrenchCoefsInStabilizationFrame(
-        const double &alpha, const double &beta,
-        Eigen::Vector3d &aero_force_coefs, Eigen::Vector3d &aero_moment_coefs)
+    Eigen::Vector3d body_force_coefficients(double alpha, double beta)
     {
       // Calculate sigmoid blending function for pre/post stall
       double sigma =
@@ -157,17 +155,9 @@ namespace aerodynamics
       // Using a simple linear model with respect to sideslip angle
       double CY = aero_params.CY_beta * beta;
 
-      // Set the force coefficients in stability frame
-      // Note: In stability frame, x is drag, y is side force, z is
-      // negative lift
-      aero_force_coefs[0] = -CD;  // Drag is negative in x direction
-      aero_force_coefs[1] = CY;   // Side force in y direction
-      aero_force_coefs[2] = -CL;  // Lift is negative in z direction
-
-      // For now, set moment coefficients to zero as they're not used
-      aero_moment_coefs.setZero();
-
-      return true;
+      // Resolve drag and lift directly onto the FLU body axes.
+      return {-CD * sinAlpha - CL * cosAlpha, CY,
+              -CD * cosAlpha + CL * sinAlpha};
     }
   }  // namespace
 
@@ -181,50 +171,19 @@ namespace aerodynamics
                        Eigen::Vector3d &aero_moment_b, double &alpha,
                        double &beta)
     {
-      // Calculate airspeed magnitude
-      const double vNorm = body_speed.norm();
+      std::tie(alpha, beta) = air_angles(body_speed);
+      const double vNorm    = body_speed.norm();
       // corner case
       if (vNorm < 1e-6)
       {
         aero_force_b.setZero();
         aero_moment_b.setZero();
-        alpha = 0.0;
-        beta  = 0.0;
         return true;
       }
 
-      // Calculate alpha and beta. Clamp the asin argument: rounding can
-      // push |y|/|v| marginally above 1 and NaN the evaluation.
-      alpha = std::atan2(body_speed.z(), body_speed.x());
-      beta  = std::asin(std::clamp(body_speed.y() / vNorm, -1.0, 1.0));
-
-      Eigen::Matrix3d s_R_b = Eigen::Matrix3d::Identity();
-      s_R_b.col(0) << cos(alpha), 0, -sin(alpha);
-      s_R_b.col(1) << 0, 1, 0;
-      s_R_b.col(2) << sin(alpha), 0, cos(alpha);
-      std::stringstream ss;
-      ss << s_R_b;
-      spdlog::debug("s_R_b:\n{}", ss.str());
-      Eigen::Vector3d aero_force_coefs_in_stabilization_frame;
-      Eigen::Vector3d aero_moment_coefs_in_stabilization_frame;
-      getAeroWrenchCoefsInStabilizationFrame(
-          alpha, beta, aero_force_coefs_in_stabilization_frame,
-          aero_moment_coefs_in_stabilization_frame);
-
-      spdlog::debug("aero_force_coefs_in_stabilization_frame: {}, {}, {}",
-                    aero_force_coefs_in_stabilization_frame.x(),
-                    aero_force_coefs_in_stabilization_frame.y(),
-                    aero_force_coefs_in_stabilization_frame.z());
-      spdlog::debug("aero_moment_coefs_in_stabilization_frame: {}, {}, {}",
-                    aero_moment_coefs_in_stabilization_frame.x(),
-                    aero_moment_coefs_in_stabilization_frame.y(),
-                    aero_moment_coefs_in_stabilization_frame.z());
-      aero_force_b = s_R_b.transpose() *
-                     aero_force_coefs_in_stabilization_frame *
+      aero_force_b = body_force_coefficients(alpha, beta) *
                      body_speed.squaredNorm() * aero_params.scale_factor;
-      aero_moment_b = s_R_b.transpose() *
-                      aero_moment_coefs_in_stabilization_frame *
-                      body_speed.squaredNorm() * aero_params.scale_factor;
+      aero_moment_b.setZero();
       return true;
     }
   };

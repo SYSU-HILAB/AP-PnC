@@ -16,13 +16,13 @@
 
 #include <spdlog/spdlog.h>
 
-#include <ScopeProfiler/ScopeProfiler.hpp>
 #include <aerodynamics/advanced_lift_drag.hpp>
 #include <aerodynamics/bspline_aerodynamics.hpp>
 #include <aerodynamics/non_aerodynamics.hpp>
 #include <aerodynamics/phi_aerodynamics.hpp>
 #include <aerodynamics/project_paths.hpp>
 #include <aerodynamics/zhang_lyu_aerodynamics.hpp>
+#include <chrono>
 #include <fstream>
 using namespace aerodynamics;
 
@@ -34,7 +34,7 @@ using namespace aerodynamics;
  * @return true if test passed
  */
 bool test_aerodynamics(std::unique_ptr<AerodynamicsCreator> creator,
-                       const std::string&                   name)
+                       const std::string                   &name)
 {
   spdlog::debug("\nTesting {}", name);
 
@@ -54,7 +54,7 @@ bool test_aerodynamics(std::unique_ptr<AerodynamicsCreator> creator,
   std::ofstream outfile(output_path);
   if (!outfile)
     throw std::runtime_error("cannot write " + output_path.string());
-  outfile << "alpha_deg,cx,cz\n";  // CSV header
+  outfile << "alpha_deg,cx,cz,frame_convention\n";
 
   try
   {
@@ -67,27 +67,30 @@ bool test_aerodynamics(std::unique_ptr<AerodynamicsCreator> creator,
 
       // Compute body velocity components based on alpha
       Eigen::Vector3d body_speed;
-      body_speed.x() = speed_magnitude * cos(alpha);
+      body_speed.x() = speed_magnitude * sin(alpha);
       body_speed.y() = 0.0;  // No sideslip
-      body_speed.z() = speed_magnitude * sin(alpha);
+      body_speed.z() = speed_magnitude * cos(alpha);
 
       Eigen::Vector3d aero_force_b;
       Eigen::Vector3d aero_moment_b;
 
-      creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b, alpha,
-                             beta);
+      if (!creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b,
+                                  alpha, beta) ||
+          !aero_force_b.allFinite())
+        throw std::runtime_error("aerodynamic comparison evaluation failed");
 
       // Record angle of attack and force components
       outfile << alpha_deg << ","
               << aero_force_b.x() / (speed_magnitude * speed_magnitude) << ","
-              << aero_force_b.z() / (speed_magnitude * speed_magnitude) << "\n";
+              << aero_force_b.z() / (speed_magnitude * speed_magnitude) << ","
+              << kFrameConvention << "\n";
     }
 
     outfile.close();
     spdlog::info("Data written to {}", output_path.string());
     return true;
   }
-  catch (const std::exception& e)
+  catch (const std::exception &e)
   {
     spdlog::error("Exception in {}: {}", name, e.what());
     return false;
@@ -101,34 +104,21 @@ int main()
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
   bool all_passed = true;
 
+  const auto run =
+      [&](std::unique_ptr<AerodynamicsCreator> creator, const std::string &name)
   {
-    ScopeProfiler _("PhiAero");
-
-    all_passed &= test_aerodynamics(std::make_unique<PhiAerodynamicsCreator>(),
-                                    "PhiAero");
-  }
-  {
-    ScopeProfiler _("BSplineAero");
-    all_passed &= test_aerodynamics(
-        std::make_unique<BsplineAerodynamicsCreator>(), "BSplineAero");
-  }
-  {
-    ScopeProfiler _("AdvancedLDAero");
-    all_passed &= test_aerodynamics(std::make_unique<AdvancedLiftDragCreator>(),
-                                    "AdvancedLDAero");
-  }
-  {
-    ScopeProfiler _("ZhangLyuAero");
-    all_passed &= test_aerodynamics(std::make_unique<LyuAerodynamicsCreator>(),
-                                    "ZhangLyuAero");
-  }
-  {
-    ScopeProfiler _("NonAero");
-    all_passed &= test_aerodynamics(std::make_unique<NonAerodynamicsCreator>(),
-                                    "NonAero");
-  }
-  printScopeProfiler();
-  // Test Phi Aerodynamics
+    const auto started = std::chrono::steady_clock::now();
+    all_passed &= test_aerodynamics(std::move(creator), name);
+    const auto elapsed = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - started)
+                             .count();
+    spdlog::info("{} evaluation and CSV export elapsed: {} s", name, elapsed);
+  };
+  run(std::make_unique<PhiAerodynamicsCreator>(), "PhiAero");
+  run(std::make_unique<BsplineAerodynamicsCreator>(), "BSplineAero");
+  run(std::make_unique<AdvancedLiftDragCreator>(), "AdvancedLDAero");
+  run(std::make_unique<LyuAerodynamicsCreator>(), "ZhangLyuAero");
+  run(std::make_unique<NonAerodynamicsCreator>(), "NonAero");
 
   if (all_passed)
   {

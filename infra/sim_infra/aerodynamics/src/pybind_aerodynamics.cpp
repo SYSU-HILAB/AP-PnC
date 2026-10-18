@@ -48,16 +48,16 @@ class PyAerodynamicsModel
    *
    * @param alpha Angle of attack in radians
    * @param speed Airspeed magnitude in m/s (default: 12.0)
-   * @return Tuple of (cx, cz) force coefficients
+   * @return Body-FLU (Fx/V^2, Fz/V^2); alpha = atan2(v_B.x,v_B.z).
    */
   std::tuple<double, double> compute_coefficients(double alpha,
                                                   double speed = 12.0)
   {
-    // Compute body velocity from alpha
-    Eigen::Vector3d body_speed;
-    body_speed.x() = speed * std::cos(alpha);
-    body_speed.y() = 0.0;  // No sideslip
-    body_speed.z() = speed * std::sin(alpha);
+    if (!std::isfinite(alpha) || !std::isfinite(speed) || speed <= 0.0)
+      throw std::invalid_argument(
+          "coefficient evaluation requires finite alpha and positive speed");
+    const Eigen::Vector3d body_speed(speed * std::sin(alpha), 0.0,
+                                     speed * std::cos(alpha));
 
     Eigen::Vector3d aero_force_b;
     Eigen::Vector3d aero_moment_b;
@@ -66,8 +66,10 @@ class PyAerodynamicsModel
     double alpha_out = 0.0;
     double beta_out  = 0.0;
 
-    _creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b, alpha_out,
-                            beta_out);
+    if (!_creator->getAeroWrench(body_speed, aero_force_b, aero_moment_b,
+                                 alpha_out, beta_out) ||
+        !aero_force_b.allFinite())
+      throw std::runtime_error("aerodynamic coefficient evaluation failed");
 
     // Normalize coefficients: force / (speed^2)
     const double cx = aero_force_b.x() / (speed * speed);
@@ -84,7 +86,7 @@ class PyAerodynamicsModel
    * @return Tuple of (cx_array, cz_array) force coefficients
    */
   std::tuple<Eigen::VectorXd, Eigen::VectorXd> compute_coefficients_array(
-      const Eigen::VectorXd& alphas, double speed = 12.0)
+      const Eigen::VectorXd &alphas, double speed = 12.0)
   {
     const int       n = alphas.size();
     Eigen::VectorXd cx(n);
@@ -96,6 +98,17 @@ class PyAerodynamicsModel
     }
 
     return {cx, cz};
+  }
+
+  std::tuple<Eigen::Vector3d, Eigen::Vector3d, double, double> compute_wrench(
+      const Eigen::Vector3d &velocity_body)
+  {
+    Eigen::Vector3d force, moment;
+    double          alpha = 0.0, beta = 0.0;
+    if (!_creator->getAeroWrench(velocity_body, force, moment, alpha, beta) ||
+        !force.allFinite() || !moment.allFinite())
+      throw std::runtime_error("aerodynamic wrench evaluation failed");
+    return {force, moment, alpha, beta};
   }
 
  private:
@@ -135,10 +148,16 @@ std::shared_ptr<PyAerodynamicsModel> create_non_aerodynamics_model()
 
 PYBIND11_MODULE(aerodynamics_bindings, m)
 {
-  m.doc() = "Python bindings for AP-PnC aerodynamics models";
+  m.doc() = "Native body-FLU aerodynamics; +Z thrust, positive-left sideslip";
+  m.attr("FRAME_CONVENTION") = kFrameConvention;
 
   // Expose the PyAerodynamicsModel class
-  py::class_<PyAerodynamicsModel>(m, "AerodynamicsModel")
+  py::class_<PyAerodynamicsModel, std::shared_ptr<PyAerodynamicsModel>>(
+      m, "AerodynamicsModel")
+      .def("compute_wrench", &PyAerodynamicsModel::compute_wrench,
+           py::arg("velocity_body"),
+           "FLU air velocity [m/s] -> (FLU force [N], FLU moment [Nm], alpha, "
+           "beta [rad])")
       .def("compute_coefficients", &PyAerodynamicsModel::compute_coefficients,
            py::arg("alpha"), py::arg("speed") = 12.0,
            "Compute force coefficients (cx, cz) for a single angle of attack")

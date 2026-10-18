@@ -10,11 +10,10 @@ x = [position_W, velocity_W, body_rate_command, quaternion_WB_wxyz,
      specific_thrust_command, cx] (15).
 
 cx is the LUMPED body-X specific-force coefficient [1/m]: it is scaled by |v|^2
-to give the body-X aerodynamic specific force. Because +X_B = +Z_L, this single
-axis is the legacy wing-normal (lift) direction. It intentionally also absorbs
-any actuator body-X component measured on the IMU.
+to give body-X specific force. It intentionally also absorbs any actuator
+body-X component measured on the IMU.
 u = d[specific_thrust_command, body_rate_command]/dt (4).
-Motor dynamics, torque, the remaining wing axes and rate-loop lag belong to the
+Motor dynamics, torque, the remaining body axes and rate-loop lag belong to the
 plant, not this model. Ground speed only: zero wind is required.
 """
 
@@ -75,25 +74,19 @@ def create_tailsitter_model() -> AcadosModel:
     rotation_world_from_body = rotation_matrix_from_quaternion(attitude_wxyz)
     velocity_body = rotation_world_from_body.T @ velocity_world
     speed_squared = cs.dot(velocity_world, velocity_world)
-    # Paper Eq. 1: alpha = atan2(v_z^B, v_x^B) in the paper's body frame, which is
-    # atan2(v_x, v_z) in ours. No offset: the regularised version shifted alpha and
-    # its rate exactly where the vehicle operates (alpha near 90 deg).
-    # alpha itself is not materialised as a symbol: the coefficient rate below
-    # is the exact chain rule of atan2(v_x, v_z), so no separate expression is
-    # needed (and the regularised form shifted alpha where the vehicle flies).
+    # Body-FLU alpha = atan2(v_x, v_z), without an angular offset.
+    # Its exact chain rule drives the coefficient rate below; no additional
+    # angle state or separate approximate derivative is needed.
     aerodynamic_acceleration_body = cs.vertcat(aero_coefficient_x * speed_squared, 0, 0)
     acceleration_world = rotation_world_from_body @ (
         cs.vertcat(0, 0, specific_thrust_command) + aerodynamic_acceleration_body
     ) + cs.vertcat(0, 0, -9.81)
     acceleration_body = rotation_world_from_body.T @ acceleration_world
-    # d(v_B)/dt includes the rotating-frame term -omega_B x v_B. Without it the
-    # sign of d(alpha)/dt was wrong (a positive body-Y rotation INCREASES alpha
-    # in the legacy wing frame). Differentiate the exact atan2 above instead of
-    # re-deriving a separate approximation.
+    # Body-coordinate velocity rate includes -omega_B x v_B; positive body-Y
+    # rotation decreases alpha at zero sideslip.
     velocity_body_rate = acceleration_body - cs.cross(body_rate_command, velocity_body)
-    # Paper Eq. 28: alpha_dot = Omega_by + (a_z cos(alpha) - a_x sin(alpha)) / V,
-    # expressed in our axes. This is the exact chain rule of the atan2 above, so
-    # the sign and the -omega x v rotating-frame term are both implied.
+    # Exact FLU chain rule. At beta=0 it reduces to
+    # alpha_dot = -omega_y + (v_z*a_x - v_x*a_z)/(v_x^2 + v_z^2).
     numerator = velocity_body[2] * velocity_body_rate[0] - velocity_body[0] * velocity_body_rate[2]
     denominator = velocity_body[0] ** 2 + velocity_body[2] ** 2
     angle_of_attack_rate = numerator / denominator

@@ -18,16 +18,28 @@ def project(tmp_path, monkeypatch):
     monkeypatch.setenv("AP_PNC_DIR", str(tmp_path))
     config = tmp_path / "core/bringup/config"
     config.mkdir(parents=True)
-    for name in ("simple_sim.yaml", "planning.yaml", "nmpc.yaml", "lidar_sim.yaml", "lidar_sim_3dgs_garden.yaml"):
+    for name in (
+        "simple_sim.yaml",
+        "planning.yaml",
+        "nmpc.yaml",
+        "lidar_sim.yaml",
+        "lidar_sim_3dgs_garden.yaml",
+    ):
         shutil.copy2(ROOT / "core/bringup/config" / name, config / name)
     profiles = tmp_path / ".artifacts/vtol-matlab"
     profiles.mkdir(parents=True)
-    (profiles / "profile.yaml").write_text(yaml.safe_dump({
-        "plant": {"mass": 2.12, "inertia": [0.01, 0.02, 0.03]},
-        "actuator": {"enabled": True, "test_fixture": True},
-    }))
+    (profiles / "profile.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "plant": {"mass": 2.12, "inertia": [0.01, 0.02, 0.03]},
+                "actuator": {"body_frame": "FLU", "enabled": True, "test_fixture": True},
+            }
+        )
+    )
     (profiles / "provenance.json").write_text("{}")
-    monkeypatch.setattr(dev_sim.subprocess, "check_output", lambda *args, **kwargs: "fixture-revision")
+    monkeypatch.setattr(
+        dev_sim.subprocess, "check_output", lambda *args, **kwargs: "fixture-revision"
+    )
     return tmp_path
 
 
@@ -36,6 +48,7 @@ def test_prepared_configuration_is_practical_lyu_and_frozen(project):
     sim = yaml.safe_load((job / "config/simple_sim.yaml").read_text())["simple_sim"]
     plan = yaml.safe_load((job / "config/planning.yaml").read_text())["problem_formulation"]
     assert sim["aero"]["model"] == "lyu" and sim["actuator"]["enabled"]
+    assert sim["actuator"]["body_frame"] == "FLU"
     assert sim["controller"] == "nmpc" and sim["plant"]["mass"] == 2.12
     assert plan["flatness"]["mass"] == 2.12 and plan["basic_traj"]["height"] == 3
     assert plan["basic_traj"]["radius"] == 8 and plan["cost"]["v_max"] == 4
@@ -100,8 +113,10 @@ def test_garden_3dgs_scene_mounts_points_and_freezes_point_cloud_config(project)
     scene_dir = project / ".artifacts/dev-sim/scenes"
     scene_dir.mkdir(parents=True)
     points = scene_dir / "garden_points.ply"
-    points.write_bytes(b"ply\nformat binary_little_endian 1.0\nelement vertex 0\n"
-                       b"property float x\nproperty float y\nproperty float z\nend_header\n")
+    points.write_bytes(
+        b"ply\nformat binary_little_endian 1.0\nelement vertex 0\n"
+        b"property float x\nproperty float y\nproperty float z\nend_header\n"
+    )
     job = dev_sim.prepare(scene="garden-3dgs", output=project / ".artifacts/dev-garden", v_max=10.0)
     lidar = yaml.safe_load((job / "config/lidar_sim.yaml").read_text())["lidar_sim"]
     assert lidar["scene"]["type"] == "point_cloud"

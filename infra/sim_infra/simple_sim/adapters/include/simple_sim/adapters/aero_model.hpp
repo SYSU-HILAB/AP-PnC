@@ -24,9 +24,8 @@ namespace simple_sim
     int inject_thrust_axis = -1;
   };
 
-  // Zhang-Lyu uses the wing FRD frame: (x,y,z)_wing = (z,-y,x)_FLU.
-  // The single definition of that mapping lives in simple_sim::wing_from_flu /
-  // simple_sim::flu_from_wing (core/include/simple_sim/types.hpp).
+  // Rotate ENU air-relative velocity into body FLU; models return FLU wrenches.
+  // No model-specific body-frame conversion is performed.
   ForceModel tailsitter_aero(
       std::shared_ptr<aerodynamics::AerodynamicsInterface> model,
       AeroConfig                                           config);

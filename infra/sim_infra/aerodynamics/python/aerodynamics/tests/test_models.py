@@ -4,6 +4,7 @@ Tests for aerodynamics MLP models.
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 import pytest
 
 from aerodynamics.models.aerodynamics_mlp import AerodynamicsMLP
@@ -35,7 +36,7 @@ def test_mlp_batch_forward_pass():
     params = model.init(key, dummy_input)
 
     # Batch forward pass
-    batch_input = jnp.randn((10, 2))
+    batch_input = jax.random.normal(jax.random.PRNGKey(43), (10, 2))
     output = model.apply(params, batch_input)
 
     assert output.shape == (10, 2)
@@ -75,14 +76,14 @@ def test_aerodynamics_mlp_forward_pass():
     model = AerodynamicsMLP.create_for_aero_type("lyu", hidden_dim=64, key=key)
 
     # Forward pass
-    features = jnp.array([[0.0, 1.0]])  # cos(0), sin(0)
+    features = jnp.array([[1.0, 0.0]])  # cos(0), sin(0)
     output = model.model.apply(model.params, features)
 
     assert output.shape == (1, 2)
 
 
-def test_mlp_predict_coefs_sin():
-    """Test that MLP can learn sin/cos relationship (sanity check)."""
+def test_mlp_multiple_angles():
+    """Test batched angular features; this does not assert training accuracy."""
     model = MLP4Layer(hidden_dim=64)
     key = jax.random.PRNGKey(42)
 
@@ -103,5 +104,4 @@ def test_mlp_predict_coefs_sin():
 
 
 if __name__ == "__main__":
-    import numpy as np
     pytest.main([__file__, "-v"])

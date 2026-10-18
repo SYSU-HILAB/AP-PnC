@@ -37,7 +37,7 @@ if(NOT TARGET Eigen3::Eigen)
 endif()
 
 add_library(simple_sim_core STATIC
-  core/src/config.cpp core/src/frames.cpp core/src/plant.cpp core/src/rate_loop.cpp
+  core/src/config.cpp core/src/plant.cpp core/src/rate_loop.cpp
   core/src/runner.cpp core/src/motor_model.cpp core/src/throttle_model.cpp
 )
 target_include_directories(simple_sim_core PUBLIC core/include)
@@ -149,6 +149,9 @@ if(BUILD_TESTING)
     target_link_libraries(planner_flythrough_test PRIVATE planner_core)
     add_test(NAME planner_flythrough COMMAND planner_flythrough_test
       ${AP_PNC_DIR}/core/bringup/config/planning.yaml)
+    add_executable(simple_sim_aero_flu_test test/test_aero_flu.cpp)
+    target_link_libraries(simple_sim_aero_flu_test PRIVATE simple_sim_aero)
+    add_test(NAME simple_sim_aero_flu COMMAND simple_sim_aero_flu_test)
     add_executable(simple_sim_adapters_test test/test_adapters.cpp)
     target_link_libraries(simple_sim_adapters_test PRIVATE simple_sim_adapters)
     add_test(NAME simple_sim_adapters COMMAND simple_sim_adapters_test)

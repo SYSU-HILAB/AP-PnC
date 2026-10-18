@@ -20,17 +20,29 @@ STACK = ROOT / "infra/sim_infra/simple_sim/stack"
 
 def test_offline_pipeline_runs_stages_in_order():
     source = (STACK / "src/main.rs").read_text()
-    assert 'let run = simulate(&path)?;' in source
-    assert 'let receipt = export(&run)?;' in source
-    assert 'verify(&receipt)?;' in source
-    assert source.index('let run = simulate(&path)?;') < source.index('let receipt = export(&run)?;') < source.index('verify(&receipt)?;')
+    assert "let run = simulate(&path)?;" in source
+    assert "let receipt = export(&run)?;" in source
+    assert "verify(&receipt)?;" in source
+    assert (
+        source.index("let run = simulate(&path)?;")
+        < source.index("let receipt = export(&run)?;")
+        < source.index("verify(&receipt)?;")
+    )
     assert not (STACK / "dataflow.yml").exists()
 
 
 def test_versions_are_explicit_and_viewer_is_not_linked_into_sdk():
     manifest = tomllib.loads((STACK / "Cargo.toml").read_text())
     assert manifest["package"]["rust-version"] == "1.96"
-    assert set(manifest["dependencies"]) == {"eyre", "serde", "serde_json", "serde_yaml", "csv", "sha2", "rerun"}
+    assert set(manifest["dependencies"]) == {
+        "eyre",
+        "serde",
+        "serde_json",
+        "serde_yaml",
+        "csv",
+        "sha2",
+        "rerun",
+    }
     sdk = manifest["dependencies"]["rerun"]
     assert sdk == {"version": "=0.38.1", "default-features": False, "features": ["sdk"]}
     docker = (STACK / "Dockerfile").read_text()
@@ -77,10 +89,15 @@ def test_sweep_passes_actual_speed_and_terminal_hold(vmax, tmp_path, monkeypatch
         (tmp_path / "stack.log").write_text("complete")
         return tmp_path
 
-    monkeypatch.setattr(module, "simple_stack", SimpleNamespace(
-        JobRequest=JobRequest,
-        run_job=fake_run, run_summary=lambda job: {"run_dir": job / "run"},
-    ))
+    monkeypatch.setattr(
+        module,
+        "simple_stack",
+        SimpleNamespace(
+            JobRequest=JobRequest,
+            run_job=fake_run,
+            run_summary=lambda job: {"run_dir": job / "run"},
+        ),
+    )
     module.run(tmp_path, "practical", 0.0, vmax, 2.0, 2.0)
     index = json.loads((tmp_path / "index.json").read_text())
     assert index["v_max_setting_mps"] == vmax
@@ -88,7 +105,39 @@ def test_sweep_passes_actual_speed_and_terminal_hold(vmax, tmp_path, monkeypatch
     assert index["mass_override_kg"] == 2.0
     assert len(requests) == 3
     assert {request.aero for request in requests} == {"none", "lyu", "phi"}
-    assert all((request.v_max, request.hold_s, request.mass_kg) == (vmax, 2.0, 2.0) for request in requests)
+    assert all(
+        (request.v_max, request.hold_s, request.mass_kg) == (vmax, 2.0, 2.0) for request in requests
+    )
+
+
+def test_rebuild_refreshes_simulator_and_model_parameter_image(monkeypatch):
+    monkeypatch.setattr(simple_stack, "_image_exists", lambda name: True)
+    commands = []
+    simple_stack._ensure_stack_base_images(ROOT, "arm64", "linux/arm64", commands.append)
+    assert len(commands) == 1
+    assert commands[0][:6] == [
+        "docker",
+        "build",
+        "--platform",
+        "linux/arm64",
+        "-t",
+        "simple-sim:arm64",
+    ]
+    assert commands[0][-1] == str(ROOT)
+
+
+def test_native_build_gives_ctest_an_isolated_writable_artifact_mount(tmp_path, monkeypatch):
+    commands = []
+    monkeypatch.setattr(simple_stack, "stack_root", lambda: tmp_path)
+    monkeypatch.setattr(simple_stack, "setup_env", lambda: {})
+    monkeypatch.setattr(simple_stack, "_ensure_stack_base_images", lambda *args: None)
+    monkeypatch.setattr(
+        simple_stack.subprocess, "run", lambda command, **kwargs: commands.append(command)
+    )
+    simple_stack.build()
+    cpp = next(command for command in commands if command[-1] == simple_stack.CPP_STEPS)
+    assert f"{tmp_path}/ctest-benchmark:/workspace/.artifacts/benchmark:rw" in cpp
+    assert f"{ROOT}:/workspace:ro" in cpp
 
 
 def test_runtime_does_not_mount_over_image_install():
@@ -124,7 +173,12 @@ def test_failed_sweep_produces_error_row_instead_of_crashing(tmp_path, monkeypat
         raise RuntimeError("test fixture failure")
 
     monkeypatch.setattr(stack_sweep, "_run_once", reject)
-    rows = stack_sweep.run_matrix(aeros=("lyu",), v_maxs=(4.0,), variants=("nmpc",),
-                                  profiles=("practical",), output_dir=tmp_path)
+    rows = stack_sweep.run_matrix(
+        aeros=("lyu",),
+        v_maxs=(4.0,),
+        variants=("nmpc",),
+        profiles=("practical",),
+        output_dir=tmp_path,
+    )
     assert len(rows) == 1 and rows[0].status == "error"
     assert (tmp_path / "sweep.json").is_file()

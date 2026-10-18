@@ -51,14 +51,14 @@ The successful configuration keeps the **baseline NMPC bundle and objective**.
 The physical motor constants, 0.076 s motor lag, mixer, inertia, Lyu aerodynamics,
 INDI and authorized source profile are unchanged.
 
-The local mission overrides only **P and D gains on legacy wing X = FLU Z**, the
-nose/longitudinal roll axis, multiplying both by three. I and both other axes stay
+The local mission overrides only **P and D gains on body-FLU Z**, multiplying
+both by three (`--rate-tuning body-z-pd3`). I and both other axes stay
 unchanged. This is controller tuning, **not a new measured motor calibration**.
 The source profile is copied unchanged; the override is visible in frozen
 `config/simple_sim.yaml` and `mission-metadata.json` (`inner_rate_tuning`). It is
 not promoted into the project's global simulator or solver configuration.
 
-The baseline ring run developed growing roll-rate oscillation and stopped at
+The baseline ring run developed growing body-Z rate oscillation and stopped at
 42.28 s. The same route with the P/D override completed; its short final braking
 arc still reached 2.169 m position error and was not accepted. Extending only the
 final braking arc to 45 degrees reduced maximum error to 0.565 m. Increasing NMPC

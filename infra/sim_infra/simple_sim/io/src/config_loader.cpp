@@ -113,26 +113,29 @@ namespace simple_sim
       throw std::invalid_argument("unknown actuator model");
     if (config.actuator_model == "practical")
     {
-      const YAML::Node  actuator = sim["actuator"];
-      MotorModelConfig &motor    = config.motor_model;
-      motor.arms                 = read_vector4(actuator["arms_m"]);
-      motor.arm_angles           = read_vector4(actuator["arm_angles_rad"]);
-      motor.tilts                = read_vector4(actuator["tilts_rad"]);
-      motor.thrust_poly          = read_vector3(actuator["thrust_poly"]);
-      motor.torque_poly          = read_vector3(actuator["torque_poly"]);
-      motor.esc_poly             = read_vector3(actuator["esc_poly"]);
-      motor.damping_wing         = read_vector3(actuator["damping_wing"]);
-      motor.kp                   = read_vector3(actuator["kp"]);
-      motor.ki                   = read_vector3(actuator["ki"]);
-      motor.kd                   = read_vector3(actuator["kd"]);
-      motor.tau                  = actuator["motor_tau_s"].as<double>();
-      motor.diameter             = actuator["diameter_m"].as<double>();
-      motor.ct                   = actuator["ct"].as<double>();
-      motor.cq                   = actuator["cq"].as<double>();
-      motor.jm                   = actuator["jm"].as<double>();
-      motor.pwm_min              = actuator["pwm_min"].as<double>();
-      motor.pwm_max              = actuator["pwm_max"].as<double>();
-      motor.inner_dt_ns          = actuator["inner_dt_ns"].as<std::int64_t>();
+      const YAML::Node actuator = sim["actuator"];
+      if (actuator["body_frame"].as<std::string>("") != "FLU")
+        throw std::invalid_argument(
+            "actuator parameters require body_frame: FLU");
+      MotorModelConfig &motor = config.motor_model;
+      motor.arms              = read_vector4(actuator["arms_m"]);
+      motor.arm_angles        = read_vector4(actuator["arm_angles_rad"]);
+      motor.tilts             = read_vector4(actuator["tilts_rad"]);
+      motor.thrust_poly       = read_vector3(actuator["thrust_poly"]);
+      motor.torque_poly       = read_vector3(actuator["torque_poly"]);
+      motor.esc_poly          = read_vector3(actuator["esc_poly"]);
+      motor.damping_body      = read_vector3(actuator["damping_body"]);
+      motor.kp                = read_vector3(actuator["kp"]);
+      motor.ki                = read_vector3(actuator["ki"]);
+      motor.kd                = read_vector3(actuator["kd"]);
+      motor.tau               = actuator["motor_tau_s"].as<double>();
+      motor.diameter          = actuator["diameter_m"].as<double>();
+      motor.ct                = actuator["ct"].as<double>();
+      motor.cq                = actuator["cq"].as<double>();
+      motor.jm                = actuator["jm"].as<double>();
+      motor.pwm_min           = actuator["pwm_min"].as<double>();
+      motor.pwm_max           = actuator["pwm_max"].as<double>();
+      motor.inner_dt_ns       = actuator["inner_dt_ns"].as<std::int64_t>();
       if (actuator["mixer"].size() != 4)
         throw std::invalid_argument("expected 4x4 mixer");
       for (int row = 0; row < 4; ++row)

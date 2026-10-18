@@ -74,7 +74,7 @@ namespace simple_sim
     void observation_csv(std::ostream &out, const AeroObservation &a)
     {
       out << ',' << a.alpha_rad << ',' << a.beta_rad;
-      vector_csv(out, a.velocity_wing);
+      vector_csv(out, a.velocity_body);
       out << ',' << a.valid;
     }
     void state_csv(std::ostream &out, const State &s)
@@ -342,10 +342,10 @@ namespace simple_sim
               "rpm_sp_1,rpm_sp_2,rpm_sp_3,rpm_sp_4,duty_1,duty_2,duty_3,duty_4,"
               "applied_fx,applied_fy,applied_fz,applied_mx,applied_my,applied_"
               "mz,"
-              "aero_alpha_rad,aero_beta_rad,air_wing_v_x,air_wing_v_y,air_wing_"
+              "aero_alpha_rad,aero_beta_rad,air_body_v_x,air_body_v_y,air_body_"
               "v_z,aero_observation_valid,"
-              "next_aero_alpha_rad,next_aero_beta_rad,next_air_wing_v_x,next_"
-              "air_wing_v_y,next_air_wing_v_z,next_aero_observation_valid,"
+              "next_aero_alpha_rad,next_aero_beta_rad,next_air_body_v_x,next_"
+              "air_body_v_y,next_air_body_v_z,next_aero_observation_valid,"
               "next_aero_fx,next_aero_fy,next_aero_fz,next_aero_mx,next_aero_"
               "my,next_aero_mz,"
               "solver_status,solve_time_ms\n";
@@ -468,15 +468,12 @@ namespace simple_sim
     // Sideslip samples. The statistic is finished in finalize(), where the gate
     // is 0.8 of the run's own maximum airspeed: below that the vehicle is in
     // transition or hover, where a small lateral velocity is a large angle and
-    // the trajectory passes through a standstill. The wing-frame airspeed is
-    // the same quantity the aerodynamics adapter gives the models, so the
-    // metric and the models cannot disagree about the body frame (wind is
-    // rejected by the configuration, so ground speed is airspeed).
-    const Eigen::Vector3d air_wing =
-        wing_from_flu(s.attitude.conjugate() * s.velocity);
-    const double airspeed = air_wing.norm();
-    sideslip_rad_samples_.push_back(
-        std::atan2(air_wing.y(), std::hypot(air_wing.x(), air_wing.z())));
+    // the trajectory passes through a standstill. Use the same air-relative
+    // FLU velocity and angle definition as the aerodynamic models.
+    const Eigen::Vector3d air_body =
+        s.attitude.conjugate() * (s.velocity - config_.aero.wind_world);
+    const double airspeed = air_body.norm();
+    sideslip_rad_samples_.push_back(aerodynamics::air_angles(air_body).second);
     sideslip_speed_samples_.push_back(airspeed);
     ++samples_;
   }
@@ -543,6 +540,10 @@ namespace simple_sim
     manifest
         << std::setprecision(17) << "{\n  \"status\": " << json_string(status)
         << ",\n  \"reason\": " << json_string(reason)
+        << ",\n  \"csv_schema\": 2,\n  \"world_frame\": \"ENU\",\n  "
+           "\"body_frame\": \"FLU\""
+        << ",\n  \"thrust_axis\": \"+Z\""
+        << ",\n  \"aero_angles\": \"atan2(v_x,v_z); atan2(v_y,hypot(v_x,v_z))\""
         << ",\n  \"controller\": " << json_string(config_.controller)
         << ",\n  \"build_revision\": " << json_string(AP_PNC_BUILD_REVISION)
         << ",\n  \"build_dirty\": " << AP_PNC_BUILD_DIRTY

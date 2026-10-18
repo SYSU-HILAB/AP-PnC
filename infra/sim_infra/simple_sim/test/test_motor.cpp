@@ -19,8 +19,9 @@ namespace
     constexpr double             pi = 3.14159265358979323846;
     c.arms.setConstant(0.25);
     c.arm_angles << pi / 4, 3 * pi / 4, 5 * pi / 4, 7 * pi / 4;
-    c.tilts << 0.2, -0.2, 0.2, -0.2;
-    c.mixer << 1, -1, 1, -1, 1, 1, 1, 1, 1, -1, -1, 1, 1, 1, -1, -1;
+    c.tilts << -0.2, 0.2, -0.2, 0.2;
+    // Columns: collective, body-X roll, body-Y pitch, body-Z yaw.
+    c.mixer << 1, -1, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, -1, 1, 1;
     c.thrust_poly << -1.0, -0.5, 1.0;
     c.torque_poly << -2.0, 0.5, 1.0;
     c.esc_poly << 0, 10, -10000;
@@ -35,7 +36,7 @@ namespace
     c.kp.setConstant(0.02);
     c.ki.setConstant(0.01);
     c.kd.setConstant(0.001);
-    c.damping_wing << -0.02, -0.02, -0.02;
+    c.damping_body << -0.02, -0.02, -0.02;
     return c;
   }
   class Fixed : public simple_sim::Controller
@@ -58,25 +59,39 @@ int main()
     using namespace simple_sim;
     const MotorModel model(synthetic(), 2.0, 30.0, Eigen::Vector3d::Constant(8),
                            1000000);
-    // The frame mapping now has one definition; this test uses the same helper
-    // as the plant, so it verifies the real conversion, not a private copy.
-    Eigen::Matrix3d frame;
-    for (int axis = 0; axis < 3; ++axis)
-      frame.col(axis) = wing_from_flu(Eigen::Vector3d::Unit(axis));
-    check(
-        frame.determinant() == 1.0 && (frame.transpose() * frame).isIdentity(),
-        "frame must be a proper rotation");
-    check((wing_from_flu(Eigen::Vector3d::UnitZ()))
-                  .isApprox(Eigen::Vector3d::UnitX()) &&
-              (flu_from_wing(wing_from_flu(Eigen::Vector3d(1, 2, 3)))
-                   .isApprox(Eigen::Vector3d(1, 2, 3))),
-          "thrust axis mapping / inverse");
-    const auto trim =
+    const auto       trim =
         model.initialize(State{}, {9.81, Eigen::Vector3d::Zero()});
     const auto wrench = model.wrench(trim);
     check(std::abs(wrench.force.z() - 2 * 9.81) < 1e-10 &&
               wrench.moment.norm() < 1e-10,
           "static trim/mass");
+    for (int axis = 0; axis < 3; ++axis)
+    {
+      for (double sign : {-1.0, 1.0})
+      {
+        auto commanded = model.prepare(
+            trim, {9.81, sign * 0.1 * Eigen::Vector3d::Unit(axis)});
+        commanded.motors.rpm = commanded.motors.rpm_sp;
+        check(sign * model.wrench(commanded).moment[axis] > 0.0,
+              "FLU rate command produces opposite-axis torque");
+      }
+    }
+    auto gyro_config = synthetic();
+    gyro_config.arm_angles.setZero();
+    gyro_config.tilts.setZero();
+    gyro_config.thrust_poly.setZero();
+    gyro_config.torque_poly.setZero();
+    gyro_config.damping_body.setZero();
+    MotorModel gyro(gyro_config, 2.0, 30.0, Eigen::Vector3d::Constant(8),
+                    1000000);
+    State      spinning;
+    spinning.motors.rpm[0]    = 1000;
+    spinning.angular_velocity = Eigen::Vector3d::UnitX();
+    const auto gyroscopic     = gyro.wrench(spinning);
+    check(gyroscopic.force.isZero() &&
+              gyroscopic.moment.isApprox(
+                  Eigen::Vector3d(0, gyro_config.jm * 1000 * 2 * M_PI / 60, 0)),
+          "rotor +Z angular momentum cross +X rate must produce +Y torque");
     for (int i = 0; i < 100; ++i)
       check(model.wrench(trim).force.isApprox(wrench.force),
             "feedback mutated motor state");
@@ -88,9 +103,9 @@ int main()
           "saturation flags");
     State lag = trim;
     lag.motors.rpm_sp.array() += 1000;
-    const auto      initial_rpm = lag.motors.rpm;
-    Plant           plant(PlantConfig{}, {},
-                          [&model](const State &s) { return model.derivative(s); });
+    const auto initial_rpm = lag.motors.rpm;
+    Plant      plant(PlantConfig{}, {},
+                     [&model](const State &s) { return model.derivative(s); });
     const Actuation zero = [](const State &, const Command &)
     { return Wrench{}; };
     for (int k = 0; k < 10; ++k)

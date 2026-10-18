@@ -11,9 +11,10 @@ namespace simple_sim
   // callback. Feedback and RK4 force evaluations must never advance it.
   struct MotorState
   {
-    Eigen::Vector4d rpm            = Eigen::Vector4d::Zero();
-    Eigen::Vector4d rpm_sp         = Eigen::Vector4d::Zero();
-    Eigen::Vector4d duty           = Eigen::Vector4d::Constant(-1.0);
+    Eigen::Vector4d rpm    = Eigen::Vector4d::Zero();
+    Eigen::Vector4d rpm_sp = Eigen::Vector4d::Zero();
+    Eigen::Vector4d duty   = Eigen::Vector4d::Constant(-1.0);
+    // Inner rate-loop integral and error are body-FLU vectors.
     Eigen::Vector3d integral       = Eigen::Vector3d::Zero();
     Eigen::Vector3d previous_error = Eigen::Vector3d::Zero();
     std::int64_t    physics_ticks  = 0;
@@ -36,7 +37,8 @@ namespace simple_sim
 
   struct AeroObservation
   {
-    Eigen::Vector3d velocity_wing = Eigen::Vector3d::Zero();
+    // Aircraft-relative-to-air velocity, body FLU [m/s].
+    Eigen::Vector3d velocity_body = Eigen::Vector3d::Zero();
     double          alpha_rad = 0.0, beta_rad = 0.0;
     bool valid = false;  // actual model-returned angles; diagnostic only
   };
@@ -90,18 +92,6 @@ namespace simple_sim
     ControlResult control;
     double        solve_time_ms = 0.0;  // diagnostic wall time only
   };
-
-  // Legacy fixed component frame `L` used by the aerodynamic and motor models:
-  //   +X_L = +Z_B  (chord / thrust axis)
-  //   +Y_L = -Y_B  (right)
-  //   +Z_L = +X_B  (normal)
-  // The mapping is `(x,y,z)_L = (z,-y,x)_B`. Its matrix C_LB is a proper
-  // rotation and is symmetric (C_LB^T = C_LB), so the two helpers below are
-  // mutual inverses and each is its own inverse: applying either twice returns
-  // the original vector. Use them for velocity, force, moment and body rate.
-  // Never apply this mapping to a quaternion.
-  Eigen::Vector3d wing_from_flu(const Eigen::Vector3d &body_vector);
-  Eigen::Vector3d flu_from_wing(const Eigen::Vector3d &wing_vector);
 
   void validate_state(const State &state);
   void validate_command(const Command &command);
