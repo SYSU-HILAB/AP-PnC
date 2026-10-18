@@ -108,6 +108,14 @@ namespace sfc_gen
           valid_pc.emplace_back(p);
         }
       }
+      if (valid_pc.empty())
+      {
+        // The global map can be occupied while this local road segment is
+        // empty. Its bounded box already is a collision-free corridor; do
+        // not dereference valid_pc[0] or ask FIRI to fit absent obstacles.
+        hpolys.emplace_back(bd);
+        continue;
+      }
       Eigen::Map<const Eigen::Matrix<double, 3, -1, Eigen::ColMajor>> pc(
           valid_pc[0].data(), 3, valid_pc.size());
 

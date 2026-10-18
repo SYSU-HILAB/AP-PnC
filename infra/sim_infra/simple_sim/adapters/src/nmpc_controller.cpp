@@ -38,6 +38,13 @@ namespace simple_sim
       trace_file_ << ",solution_accepted\n" << std::setprecision(17);
     }
   }
+  void NmpcController::set_reference(
+      std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory)
+  {
+    if (!trajectory || trajectory->empty())
+      throw std::invalid_argument("empty NMPC trajectory update");
+    trajectory_ = std::move(trajectory);
+  }
   void NmpcController::reset(const State &initial)
   {
     validate_state(initial);

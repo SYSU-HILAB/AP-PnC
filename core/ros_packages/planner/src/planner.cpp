@@ -233,7 +233,8 @@ namespace planner::core
     }
 
     sfc_gen::convexCover(route, surf, map.getOrigin(), map.getCorner(),
-                         /*progress=*/6.0, /*range=*/3.0, hPolys);
+                         config_.problem.map.sfc_progress_m,
+                         config_.problem.map.sfc_range_m, hPolys);
     sfc_gen::shortCut(hPolys);
     if (hPolys.empty())
     {
@@ -255,6 +256,126 @@ namespace planner::core
       return std::nullopt;
     }
 
+    if (config_.problem.map.speed_controlled)
+    {
+      // Explicit speed-controlled fly-through mode, not a failed-optimizer
+      // fallback. Time-optimal GCOPTER does not impose constant cruise speed.
+      // Connect full PVA with a quintic and select duration for minimum speed
+      // ripple. Accept ONLY a map/SFC-checked, dynamically feasible connection.
+      const double speed    = config_.problem.cost.v_max;
+      const double distance = (finState.col(0) - iniState.col(0)).norm();
+      const bool   cruise =
+          iniState.col(1).norm() > 1e-3 && finState.col(1).norm() > 1e-3;
+      if (!iniState.allFinite() || !finState.allFinite() || distance < 1e-3 ||
+          speed <= 0)
+        return std::nullopt;
+      double base = 2.0 * distance / speed;
+      if (cruise)
+      {
+        const double angle = std::acos(std::clamp(
+            iniState.col(1).normalized().dot(finState.col(1).normalized()),
+            -1.0, 1.0));
+        base = distance / speed *
+               (angle < 1e-6 ? 1.0 : angle / (2 * std::sin(angle / 2)));
+      }
+      auto connect = [&](double t)
+      {
+        Eigen::Matrix<double, 3, 6> c;
+        const Eigen::Vector3d       dp = finState.col(0) - iniState.col(0) -
+                                         t * iniState.col(1) -
+                                         0.5 * t * t * iniState.col(2);
+        const Eigen::Vector3d       dv =
+            finState.col(1) - iniState.col(1) - t * iniState.col(2);
+        const Eigen::Vector3d da = finState.col(2) - iniState.col(2);
+        c.col(5)                 = iniState.col(0);
+        c.col(4)                 = iniState.col(1);
+        c.col(3)                 = iniState.col(2) / 2;
+        c.col(2) = 10 * dp / std::pow(t, 3) - 4 * dv / (t * t) + da / (2 * t);
+        c.col(1) =
+            -15 * dp / std::pow(t, 4) + 7 * dv / std::pow(t, 3) - da / (t * t);
+        c.col(0) = 6 * dp / std::pow(t, 5) - 3 * dv / std::pow(t, 4) +
+                   da / (2 * std::pow(t, 3));
+        TrajectoryRepresentation<5> representation;
+        representation.emplace_back(t, c);
+        return representation;
+      };
+      double duration   = base,
+             best_score = std::numeric_limits<double>::infinity();
+      for (int i = 0; i < (cruise ? 101 : 1); ++i)
+      {
+        const double t         = base * (cruise ? 0.9 + i * 0.0025 : 1.0);
+        const auto   candidate = connect(t);
+        double       score     = 0;
+        for (int j = 0; j <= 100; ++j)
+          score = std::max(
+              score, std::abs(candidate.getVel(t * j / 100).norm() - speed));
+        if (score < best_score)
+        {
+          best_score = score;
+          duration   = t;
+        }
+      }
+      ReferenceTrajectory candidate(connect(duration));
+      // The free-space A* chord is not the dynamic arc: certify the actual
+      // fly-through curve with FIRI rather than forcing it into chord boxes.
+      // Pointwise inflated-map checks below remain mandatory as well.
+      const int samples = static_cast<int>(std::ceil(duration / 0.01));
+      for (int i = 0; i <= samples; ++i)
+        if (map.query(
+                candidate.representation().getPos(duration * i / samples)))
+        {
+          log(LogLevel::Error,
+              "Speed-controlled connector intersects inflated occupancy");
+          return std::nullopt;
+        }
+      std::vector<Eigen::Vector3d> surface, curve;
+      map.getSurf(surface);
+      if (!surface.empty())
+      {
+        const int knots =
+            std::max(2, static_cast<int>(std::ceil(duration * speed / 3.0)));
+        for (int i = 0; i <= knots; ++i)
+          curve.push_back(candidate.sample(duration * i / knots).p);
+        sfc_gen::convexCover(curve, surface, map.getOrigin(), map.getCorner(),
+                             config_.problem.map.sfc_progress_m,
+                             config_.problem.map.sfc_range_m, hPolys);
+        // Do not shortcut this cover: overlap preserves connectivity, NOT
+        // containment of the already speed-constrained curved trajectory.
+      }
+      for (int i = 0; i <= samples; ++i)
+      {
+        const auto rp          = candidate.sample(duration * i / samples);
+        bool       in_corridor = false;
+        for (const auto &poly : hPolys)
+          in_corridor =
+              in_corridor ||
+              (poly.leftCols<3>() * rp.p + poly.col(3)).maxCoeff() <= 1e-6;
+        if (!in_corridor || map.query(rp.p) || rp.v.norm() > speed * 1.05 ||
+            (cruise && rp.v.norm() < speed * 0.95) ||
+            rp.a.norm() > config_.problem.cost.acc_max ||
+            rp.thrust < config_.problem.cost.thrust_min ||
+            rp.thrust > config_.problem.cost.thrust_max)
+        {
+          log(LogLevel::Error,
+              !in_corridor      ? "Speed-controlled connector leaves FIRI cover"
+              : map.query(rp.p) ? "Speed-controlled connector intersects map"
+                                : "Speed-controlled connector violates "
+                                  "speed/acceleration/thrust bounds");
+          return std::nullopt;
+        }
+      }
+      return candidate;
+    }
+
+    for (const auto &poly : hPolys)
+    {
+      Eigen::Matrix3Xd vertices;
+      if (!geo_utils::enumerateVs(poly, vertices) || vertices.cols() < 4)
+      {
+        std::cerr << "Degenerate FIRI polytope:\n" << poly << std::endl;
+        return std::nullopt;
+      }
+    }
     const int pieceN = static_cast<int>(hPolys.size()) + 1;
 
     double totalLength = 0.0;
@@ -298,8 +419,14 @@ namespace planner::core
       // shrinks) rather than near v_max (an optimistic guess it must
       // stretch): shrinking an overestimated time allocation is the
       // direction GCOPTER's line search handles reliably.
+      // A rest-to-rest seed can be slow; a fly-through boundary cannot.
+      // Seeding a 10 m/s endpoint with 1 m/s segment times induces large
+      // polynomial reversals/overshoot before the optimizer even starts.
+      const double boundary_speed =
+          std::max(iniState.col(1).norm(), finState.col(1).norm());
       const double v_max =
-          std::max(0.1, config_.problem.cost.v_max / attempt.speedDivisor);
+          std::max({0.1, config_.problem.cost.v_max / attempt.speedDivisor,
+                    boundary_speed * (attempt.speedDivisor > 4 ? 0.9 : 1.1)});
 
       Eigen::VectorXd  initTime(pieceN);
       Eigen::Matrix3Xd initPointsPos(3, pieceN - 1);
@@ -333,11 +460,25 @@ namespace planner::core
       {
         continue;
       }
-      if (std::isinf(
-              gcopter.optimize(traj, config_.problem.minco.rel_cost_tol)))
+      try
       {
+        if (!std::isfinite(
+                gcopter.optimize(traj, config_.problem.minco.rel_cost_tol)))
+          continue;
+      }
+      catch (const std::invalid_argument &)
+      {
+        // A line-search trial can overflow the flatness input. Treat that
+        // numerical seed as failed and use the next existing retry; never
+        // publish its non-finite polynomial as a valid reference.
         continue;
       }
+      bool finite = traj.getPieceNum() > 0;
+      for (const auto &piece : traj)
+        finite = finite && std::isfinite(piece.getDuration()) &&
+                 piece.getDuration() > 0.0 && piece.getCoeffMat().allFinite();
+      if (!finite)
+        continue;
       return ReferenceTrajectory(std::move(traj));
     }
 

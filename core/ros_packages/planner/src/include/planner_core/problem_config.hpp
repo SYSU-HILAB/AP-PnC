@@ -110,10 +110,13 @@ namespace planner::core
    */
   struct MapCfg
   {
-    std::string map_topic       = "/lidar_sim/map";
-    double      voxel_scale_m   = 0.2;
-    double      dilate_radius_m = 0.3;
-    double      bounds_margin_m = 1.0;
+    std::string map_topic        = "/lidar_sim/map";
+    double      voxel_scale_m    = 0.2;
+    double      sfc_progress_m   = 6.0;
+    double      sfc_range_m      = 3.0;
+    bool        speed_controlled = false;
+    double      dilate_radius_m  = 0.3;
+    double      bounds_margin_m  = 1.0;
     // Replan the front buffered segment once its remaining duration drops
     // below this lead time; must exceed one NMPC horizon.
     double replan_margin_s = 1.0;

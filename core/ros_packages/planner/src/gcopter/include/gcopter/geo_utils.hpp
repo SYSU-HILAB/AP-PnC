@@ -176,7 +176,47 @@ namespace geo_utils
     if (findInterior(hPoly, inner))
     {
       enumerateVs(hPoly, inner, vPoly, epsilon);
-      return true;
+      if (vPoly.cols() >= 4 && vPoly.allFinite() &&
+          (hPoly.leftCols<3>() * vPoly)
+                  .colwise()
+                  .operator+(hPoly.rightCols<1>())
+                  .maxCoeff() <= epsilon)
+        return true;
+      // Nearly axis-aligned FIRI planes can produce degenerate dual-hull
+      // triangles. Never feed NaN/one-vertex polytopes into MINCO. For the
+      // small local corridors, enumerate primal plane intersections instead.
+      if (hPoly.rows() > 64 || !hPoly.allFinite())
+        return false;
+      std::vector<Eigen::Vector3d> vertices;
+      const Eigen::VectorXd        norms = hPoly.leftCols<3>().rowwise().norm();
+      if ((norms.array() <= 0).any())
+        return false;
+      Eigen::MatrixX4d normalized = hPoly.array().colwise() / norms.array();
+      for (int i = 0; i < normalized.rows(); ++i)
+        for (int j = i + 1; j < normalized.rows(); ++j)
+          for (int k = j + 1; k < normalized.rows(); ++k)
+          {
+            Eigen::Matrix3d a;
+            a.row(0) = normalized.row(i).head<3>();
+            a.row(1) = normalized.row(j).head<3>();
+            a.row(2) = normalized.row(k).head<3>();
+            if (std::abs(a.determinant()) < 1e-10)
+              continue;
+            const Eigen::Vector3d b(-normalized(i, 3), -normalized(j, 3),
+                                    -normalized(k, 3));
+            const Eigen::Vector3d vertex = a.fullPivLu().solve(b);
+            if (vertex.allFinite() &&
+                (normalized.leftCols<3>() * vertex + normalized.rightCols<1>())
+                        .maxCoeff() <= epsilon)
+              vertices.push_back(vertex);
+          }
+      if (vertices.size() < 4)
+        return false;
+      Eigen::Matrix3Xd candidates(3, vertices.size());
+      for (std::size_t i = 0; i < vertices.size(); ++i)
+        candidates.col(i) = vertices[i];
+      filterVs(candidates, epsilon, vPoly);
+      return vPoly.cols() >= 4 && vPoly.allFinite();
     }
     else
     {

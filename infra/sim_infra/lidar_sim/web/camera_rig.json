@@ -1,0 +1,9 @@
+{
+  "calibration": "Assumed rigid extrinsics, not measured hardware calibration. Simulator +Z_FLU is nose/thrust; +X_FLU is belly. Camera optical forward is -Z in Three.js.",
+  "width": 640,
+  "height": 360,
+  "cameras": [
+    {"id": "nose", "label": "头顶 / 机头相机", "position_flu_m": [0, 0, 0.6], "forward_flu": [0, 0, 1], "up_flu": [-1, 0, 0], "vertical_fov_deg": 75},
+    {"id": "belly", "label": "腹部前视相机", "position_flu_m": [0.18, 0, 0.05], "forward_flu": [1, 0, 0], "up_flu": [0, 0, 1], "vertical_fov_deg": 75}
+  ]
+}

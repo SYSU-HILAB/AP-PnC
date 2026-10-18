@@ -23,6 +23,10 @@ namespace simple_sim
     Experiment(const Experiment &)            = delete;
     Experiment &operator=(const Experiment &) = delete;
     StepRecord  step();
+    // Single-threaded append of future, C2-continuous reference pieces. Does
+    // not reset plant, motor, estimator, simulation clock or NMPC command
+    // state.
+    void    append_reference(const planner::core::ReferenceTrajectory &tail);
     void    finish(const std::string &status, const std::string &reason = {});
     Runner &runner() { return *runner_; }
     const planner::core::ReferenceTrajectory &trajectory() const
@@ -61,6 +65,7 @@ namespace simple_sim
     std::int64_t        status2_count_        = 0;
     bool                finished_             = false;
     void                metrics_sample(const State &state, double t);
+    void                save_reference() const;
   };
 
 }  // namespace simple_sim

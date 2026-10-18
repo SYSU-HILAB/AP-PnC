@@ -152,36 +152,7 @@ namespace simple_sim
             std::make_shared<const planner::core::ReferenceTrajectory>(
                 std::move(*planned));
       }
-      YAML::Emitter reference;
-      reference.SetDoublePrecision(17);
-      reference << YAML::BeginMap << YAML::Key << "order" << YAML::Value << 5
-                << YAML::Key << "frame" << YAML::Value << "world_ENU"
-                << YAML::Key << "terminal_policy" << YAML::Value
-                << "hold_last_point" << YAML::Key << "pieces" << YAML::Value
-                << YAML::BeginSeq;
-      for (const auto &piece : trajectory_->representation())
-      {
-        reference << YAML::BeginMap << YAML::Key << "duration_s" << YAML::Value
-                  << piece.getDuration() << YAML::Key
-                  << "coefficients_xyz_descending" << YAML::Value
-                  << YAML::BeginSeq;
-        const auto &coefficients = piece.getCoeffMat();
-        for (int axis = 0; axis < 3; ++axis)
-        {
-          reference << YAML::Flow << YAML::BeginSeq;
-          for (int j = 0; j < 6; ++j)
-            reference << coefficients(axis, j);
-          reference << YAML::EndSeq;
-        }
-        reference << YAML::EndSeq << YAML::EndMap;
-      }
-      reference << YAML::EndSeq << YAML::EndMap;
-      if (!reference.good())
-        throw std::runtime_error("trajectory serialization failed");
-      std::ofstream reference_file(output_dir_ / "reference.yaml");
-      reference_file.exceptions(std::ios::failbit | std::ios::badbit);
-      reference_file << reference.c_str() << '\n';
-      reference_file.close();
+      save_reference();
       const bool   automatic = config_.duration_s == 0.0;
       const double requested =
           automatic ? trajectory_->duration() + config_.terminal_hold_s
@@ -387,6 +358,88 @@ namespace simple_sim
       throw;
     }
   }
+  void Experiment::save_reference() const
+  {
+    YAML::Emitter reference;
+    reference.SetDoublePrecision(17);
+    reference << YAML::BeginMap << YAML::Key << "order" << YAML::Value << 5
+              << YAML::Key << "frame" << YAML::Value << "world_ENU" << YAML::Key
+              << "terminal_policy" << YAML::Value << "hold_last_point"
+              << YAML::Key << "pieces" << YAML::Value << YAML::BeginSeq;
+    for (const auto &piece : trajectory_->representation())
+    {
+      reference << YAML::BeginMap << YAML::Key << "duration_s" << YAML::Value
+                << piece.getDuration() << YAML::Key
+                << "coefficients_xyz_descending" << YAML::Value
+                << YAML::BeginSeq;
+      for (int axis = 0; axis < 3; ++axis)
+      {
+        reference << YAML::Flow << YAML::BeginSeq;
+        for (int j = 0; j < 6; ++j)
+          reference << piece.getCoeffMat()(axis, j);
+        reference << YAML::EndSeq;
+      }
+      reference << YAML::EndSeq << YAML::EndMap;
+    }
+    reference << YAML::EndSeq << YAML::EndMap;
+    if (!reference.good())
+      throw std::runtime_error("trajectory serialization failed");
+    std::ofstream file(output_dir_ / "reference.yaml.tmp");
+    file.exceptions(std::ios::failbit | std::ios::badbit);
+    file << reference.c_str() << '\n';
+    file.close();
+    fs::rename(output_dir_ / "reference.yaml.tmp",
+               output_dir_ / "reference.yaml");
+  }
+
+  void Experiment::append_reference(
+      const planner::core::ReferenceTrajectory &tail)
+  {
+#ifdef SIMPLE_SIM_WITH_NMPC
+    auto *controller = dynamic_cast<NmpcController *>(controller_.get());
+    if (!controller || tail.empty() || finished_)
+      throw std::logic_error(
+          "reference append requires an active NMPC experiment");
+    if (!std::isfinite(tail.duration()) || tail.duration() <= 0.0)
+      throw std::invalid_argument("reference append has invalid duration");
+    for (const auto &piece : tail.representation())
+      if (!std::isfinite(piece.getDuration()) || piece.getDuration() <= 0.0 ||
+          !piece.getCoeffMat().allFinite())
+        throw std::invalid_argument(
+            "reference append has non-finite coefficients");
+    const auto   settings = YAML::LoadFile(config_.nmpc_yaml.string())["nmpc"];
+    const double now      = static_cast<double>(runner_->time_ns()) * 1e-9;
+    if (trajectory_->duration() < now + settings["horizon_s"].as<double>())
+      throw std::logic_error(
+          "reference append would alter the active NMPC horizon");
+    const auto end   = trajectory_->sample(trajectory_->duration());
+    const auto start = tail.sample(0.0);
+    if ((end.p - start.p).norm() > 1e-5 || (end.v - start.v).norm() > 1e-5 ||
+        (end.a - start.a).norm() > 1e-4)
+      throw std::invalid_argument("reference append must be C2 continuous");
+    auto joined = trajectory_->representation();
+    joined.append(tail.representation());
+    auto updated = std::make_shared<const planner::core::ReferenceTrajectory>(
+        std::move(joined));
+    // Save the exact coefficients before exposing them to the control loop.
+    auto previous = trajectory_;
+    trajectory_   = updated;
+    try
+    {
+      save_reference();
+    }
+    catch (...)
+    {
+      trajectory_ = previous;
+      throw;
+    }
+    controller->set_reference(std::move(updated));
+#else
+    (void)tail;
+    throw std::logic_error("reference append requires NMPC support");
+#endif
+  }
+
   Experiment::~Experiment()
   {
     if (!finished_)

@@ -17,6 +17,9 @@ namespace simple_sim
     NmpcController(
         std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory,
         nmpc::TrackingConfig config, std::filesystem::path trace_file = {});
+    // Reference-only update: retain solver warm start and command integration.
+    void set_reference(
+        std::shared_ptr<const planner::core::ReferenceTrajectory> trajectory);
     void          reset(const State &initial) override;
     ControlResult compute(const StepContext &, const State &,
                           const Feedback &) override;

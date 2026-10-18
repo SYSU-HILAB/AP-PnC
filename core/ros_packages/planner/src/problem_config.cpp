@@ -132,6 +132,17 @@ namespace planner::core
     const YAML::Node map_node = problem_node["map"];
     problem.map.map_topic =
         get_or<std::string>(map_node, "map_topic", problem.map.map_topic);
+    problem.map.speed_controlled =
+        get_or(map_node, "speed_controlled", problem.map.speed_controlled);
+    problem.map.sfc_progress_m =
+        get_or(map_node, "sfc_progress_m", problem.map.sfc_progress_m);
+    problem.map.sfc_range_m =
+        get_or(map_node, "sfc_range_m", problem.map.sfc_range_m);
+    if (!std::isfinite(problem.map.sfc_progress_m) ||
+        problem.map.sfc_progress_m <= 0 ||
+        !std::isfinite(problem.map.sfc_range_m) || problem.map.sfc_range_m <= 0)
+      throw std::invalid_argument(
+          "SFC progress/range must be positive and finite");
     problem.map.voxel_scale_m =
         get_or(map_node, "voxel_scale_m", problem.map.voxel_scale_m);
     problem.map.dilate_radius_m =
