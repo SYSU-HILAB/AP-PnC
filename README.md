@@ -57,8 +57,8 @@ with two body-fixed cameras—actual closed-loop simulation, not trajectory play
 [![Live NMPC flight with nose and belly cameras](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-cameras.png)](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-demo.mp4)
 
 [Watch MP4 · 86 s](https://github.com/SYSU-HILAB/AP-PnC/releases/download/demo-city-ring-20261018/city-ring-demo.mp4)
-· [Run the demo](infra/sim_infra/lidar_sim/CITY_DEMO_START.md)
-· [Media credits](infra/sim_infra/lidar_sim/CITY_DEMO_MEDIA.md)
+· [Run the demo](infra/CITY_DEMO_START.md)
+· [Media credits](infra/CITY_DEMO_MEDIA.md)
 
 ## Configuration and documentation
 
@@ -68,11 +68,9 @@ with two body-fixed cameras—actual closed-loop simulation, not trajectory play
 
 After changing solver settings, regenerate the NMPC bundle and rebuild the stack.
 
-- [Quick start](infra/sim_infra/QUICK_START.md)
-- [Simulation guide](infra/sim_infra/simple_sim/README.md)
-- [ROS2 development scene](infra/sim_infra/lidar_sim/README.md)
-- [Planner and NMPC packages](core/ros_packages/README.md)
-- [Linux development containers](core/docker/README.md)
+- [Core](core/README.md) — planner, NMPC, ROS2 interfaces and configuration.
+- [Infrastructure](infra/README.md) — simulation environments and deployment.
+- [Tooling](tooling/README.md) — CLI commands, builds and development checks.
 
 For command options, run `uv run --project "$AP_PNC_DIR" ap-pnc --help`.
 

@@ -160,7 +160,7 @@ Linux, even when both sides use ARM64.
   complex sensors, or the complete flight sequence have passed.
 - Current acceptance boundary (2026-10-05): ARM64 production core/nav
   (MAVROS 2.15.1), real solver, FastDDS SHM and QGC/noVNC are verified;
-  see the Gazebo README for evidence and rate warnings. Complete flight
+  see [the Gazebo guide](infra/GAZEBO.md) for evidence and rate warnings. Complete flight
   and native AMD64 runtime acceptance remain unverified.
 - **Temporarily do not finish the new production PX4 rebuild on this Mac.**
   Its build was stopped for disk pressure; continue that acceptance on

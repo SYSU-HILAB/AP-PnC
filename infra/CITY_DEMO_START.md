@@ -42,7 +42,7 @@ upstream assets. No checkpoint or private actuator profile is redistributed here
 See [media attribution](CITY_DEMO_MEDIA.md) for the public demonstration images.
 
 For authorized practical-profile extraction, see the
-[stack guide](../simple_sim/stack/README.md). Missing inputs are an error: do not
+[stack guide](OFFLINE_STACK.md). Missing inputs are an error: do not
 invent calibration or use the public ideal benchmark as practical acceptance.
 
 ## 2. Build and prepare the scene in native Linux Docker

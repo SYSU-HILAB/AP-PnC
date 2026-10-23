@@ -34,7 +34,7 @@
    - 轻量级监听 Pod，检测到 `SIM_TYPE` 发生变更时，自动调用 Kubernetes API 动态缩放对应 Deployment 的 `replicas`，实现零资源浪费、无缝热切换。
 3. **`ap-pnc-simple-sim`**：
    - 通过 `ros2 launch bringup simple_sim.launch.py` 运行 C++ 同步跟踪闭环；不启动 LiDAR、碰撞、PX4/MAVROS。
-   - 初始暂停，调用 `/simple_sim/resume` 开始；详见 `infra/sim_infra/simple_sim/README.md`。
+   - 初始暂停，调用 `/simple_sim/resume` 开始；详见 [simple-sim 指南](SIMPLE_SIM.md)。
 4. **`ap-pnc-gazebo`**（三容器 Pod，hostNetwork）：
    - `px4-simulator`：stock PX4 v1.17.0 + Gazebo Harmonic（`gz_x500`）。
    - `nav_infra`：基础服务网关容器（mavros2 + px4ctrl FCU 接口/控制器，

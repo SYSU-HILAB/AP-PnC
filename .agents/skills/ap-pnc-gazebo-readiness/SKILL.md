@@ -26,7 +26,7 @@ availability to public users. Check dependency availability, revisions and
 permission; report missing inputs instead of cloning private sources or
 launching an incomplete stack. `ap-pnc docker` is not a CLI group.
 
-`$AP_PNC_DIR/infra/sim_infra/gazebo/README.md` contains historical experiments
+`$AP_PNC_DIR/infra/GAZEBO.md` contains historical experiments
 and stale examples. Verify each claim against current tracked code. There is
 no tracked multiarch CI workflow to cite as acceptance evidence.
 

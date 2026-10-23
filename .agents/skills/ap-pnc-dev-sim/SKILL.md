@@ -7,7 +7,7 @@ description: Work on AP-PnC's conditional ROS2 pillar/LiDAR development simulato
 
 Read `$AP_PNC_DIR/AGENTS.md`, `$AP_PNC_DIR/tooling/dev_sim.py` and
 `$AP_PNC_DIR/tooling/commands/dev_sim.py`. The sensor guide is
-`$AP_PNC_DIR/infra/sim_infra/lidar_sim/README.md`; confirm experimental behavior
+`$AP_PNC_DIR/infra/DEV_SIM.md`; confirm experimental behavior
 against current code, not historical one-off results in that guide.
 
 ## Prerequisites: stop if missing

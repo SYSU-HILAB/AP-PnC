@@ -1,5 +1,5 @@
 # Experimental scene converted from a real-world 3D Gaussian Splatting capture
-# (Mip-NeRF360 "garden"). See infra/sim_infra/lidar_sim/README.md before using
+# (Mip-NeRF360 "garden"). See infra/DEV_SIM.md before using
 # this: it is a point-cloud-occupancy approximation, not verified LiDAR-solid
 # geometry, and is kept separate from the default pillar regression scene.
 lidar_sim:

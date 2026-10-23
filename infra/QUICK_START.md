@@ -38,10 +38,10 @@ use native Linux ARM64 by default, not emulated AMD64.
 
 ## Live 3DGS scene
 
-See [Start the 3DGS simulator](lidar_sim/CITY_DEMO_START.md) for the licensed local
+See [Start the 3DGS simulator](CITY_DEMO_START.md) for the licensed local
 checkpoint, practical profile, Docker build, mission and viewer. This demo is
-not asset-free. Its [acceptance results](lidar_sim/CITY_DEMO.md) and
-[media attribution](lidar_sim/CITY_DEMO_MEDIA.md) document the tested scope.
+not asset-free. Its [acceptance results](CITY_DEMO.md) and
+[media attribution](CITY_DEMO_MEDIA.md) document the tested scope.
 
 ## ROS2 development scene
 
@@ -55,7 +55,7 @@ JOB=$(uv run --project "$AP_PNC_DIR" ap-pnc dev-sim prepare)
 uv run --project "$AP_PNC_DIR" ap-pnc dev-sim run "$JOB"
 ```
 
-See the [development simulator guide](lidar_sim/README.md) for profile preparation,
+See the [development simulator guide](DEV_SIM.md) for profile preparation,
 ROS2 topics, RViz and experimental scene options.
 
 ## Outputs and configuration
@@ -68,13 +68,13 @@ All generated files stay under `.artifacts/`:
 Run outputs include configurations, trajectories, simulation data, metrics,
 logs and verified Rerun recordings.
 
-- [planning.yaml](../../core/bringup/config/planning.yaml) — trajectory and planning.
-- [nmpc.yaml](../../core/bringup/config/nmpc.yaml) — controller and solver.
-- [simple_sim.yaml](../../core/bringup/config/simple_sim.yaml) — plant and simulation.
+- [planning.yaml](../core/bringup/config/planning.yaml) — trajectory and planning.
+- [nmpc.yaml](../core/bringup/config/nmpc.yaml) — controller and solver.
+- [simple_sim.yaml](../core/bringup/config/simple_sim.yaml) — plant and simulation.
 
 After changing solver settings, regenerate the NMPC bundle and rebuild the stack.
 For command options, run `uv run --project "$AP_PNC_DIR" ap-pnc --help`.
 
-Further reading: [simulation guide](simple_sim/README.md),
-[planner and NMPC packages](../../core/ros_packages/README.md), and
-[Linux development containers](../../core/docker/README.md).
+Further reading: [simulation guide](SIMPLE_SIM.md),
+[planner and NMPC packages](../core/README.md#planner--nmpc-adapter-contract), and
+[Linux development containers](../core/README.md#linux-build-and-development-containers).

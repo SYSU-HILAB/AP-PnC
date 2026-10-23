@@ -7,7 +7,7 @@ problem_formulation:
   # box_sfc (default): the fixed corridor below, around basic_traj.
   # map_sfc (experimental): a corridor built from /lidar_sim/map via grid A*
   # + FIRI convex decomposition, continuously replanned leg by leg as the
-  # vehicle flies (see infra/sim_infra/lidar_sim/README.md and
+  # vehicle flies (see infra/DEV_SIM.md and
   # simple_sim::Experiment::ingest_map/replan_if_due). Never silently
   # switched on; dev-sim's CLI sets it explicitly via --corridor-source.
   corridor_source: box_sfc

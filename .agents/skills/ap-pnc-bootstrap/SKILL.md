@@ -63,5 +63,5 @@ that command currently selects the host CPU and has no architecture option.
 
 For implementation details read `$AP_PNC_DIR/tooling/simple_stack.py` and
 `$AP_PNC_DIR/tooling/paper/benchmark/stack_sweep.py`. The pipeline guide is
-`$AP_PNC_DIR/infra/sim_infra/simple_sim/stack/README.md`; verify its older helper
+`$AP_PNC_DIR/infra/OFFLINE_STACK.md`; verify its older helper
 examples against the current code before using them.

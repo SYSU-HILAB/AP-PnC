@@ -6,11 +6,11 @@ It verifies trajectory tracking, not the SITL/offboard flight procedure.
 
 ## Offline pipeline and interactive ROS2 development
 
-The [offline pipeline](stack/README.md) invokes the C++ experiment directly,
+The [offline pipeline](OFFLINE_STACK.md) invokes the C++ experiment directly,
 then exports and independently verifies a Rerun recording. It remains the
 benchmark path; the viewer opens only after completion.
 
-The separate [ROS2 development simulator](../lidar_sim/README.md) uses the same
+The separate [ROS2 development simulator](DEV_SIM.md) uses the same
 plant with a practical actuator profile and Lyu aerodynamics. It adds a pillar
 point-cloud scene and pose-dependent first-return LiDAR, with pause/step/reset.
 The tracking kernel itself still has no collision or contact dynamics.

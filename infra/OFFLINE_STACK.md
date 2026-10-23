@@ -6,7 +6,7 @@ plant. The exporter reads committed CSV and the saved reference polynomial;
 it never reruns a planner or plant. No ROS graph, PX4 or Gazebo is involved.
 
 Interactive perception development belongs to the separate
-[ROS2 pillar/LiDAR simulator](../../lidar_sim/README.md), not this benchmark path.
+[ROS2 pillar/LiDAR simulator](DEV_SIM.md), not this benchmark path.
 
 ## Build and run
 
