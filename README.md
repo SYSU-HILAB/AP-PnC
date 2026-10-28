@@ -1,6 +1,6 @@
 # AP-PnC
 
-Aerodynamic prior-free trajectory generation and tracking control for a tail-sitter UAV.
+Aerodynamic prior-free coordinated trajectory generation and tracking control for a tail-sitter UAV.
 
 ## Quick start
 
