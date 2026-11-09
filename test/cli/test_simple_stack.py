@@ -140,6 +140,23 @@ def test_native_build_gives_ctest_an_isolated_writable_artifact_mount(tmp_path, 
     assert f"{ROOT}:/workspace:ro" in cpp
 
 
+def test_build_creates_readonly_bind_mountpoints(tmp_path, monkeypatch):
+    root = tmp_path / "repo"
+    base = tmp_path / "stack"
+    monkeypatch.setattr(simple_stack, "get_git_root", lambda: root)
+    monkeypatch.setattr(simple_stack, "stack_root", lambda: base)
+    monkeypatch.setattr(simple_stack, "project_path", lambda path: root / path)
+    monkeypatch.setattr(simple_stack, "setup_env", lambda: {})
+    monkeypatch.setattr(simple_stack, "_ensure_stack_base_images", lambda *args: None)
+    monkeypatch.setattr(simple_stack.subprocess, "run", lambda command, **kwargs: None)
+
+    simple_stack.build()
+
+    assert (root / ".artifacts/simple-stack/cache").is_dir()
+    assert (root / ".artifacts/benchmark").is_dir()
+    assert (base / "ctest-benchmark").is_dir()
+
+
 def test_runtime_does_not_mount_over_image_install():
     driver = (STACK / "stack.sh").read_text()
     assert '"$job/benchmark:/workspace/.artifacts/benchmark:rw"' in driver

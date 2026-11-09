@@ -290,6 +290,19 @@ cmake --install "$dir/build"
 """
 
 
+def _prepare_bind_mountpoints(root: Path, base: Path) -> None:
+    """Create nested bind destinations before the repo is mounted read-only.
+
+    runc cannot mkdir a mountpoint on a read-only bind. ``stack.sh`` creates
+    ``.artifacts/simple-stack/cache`` for the writable cache mount. The C++
+    step also mounts ``.artifacts/benchmark``, which is not that cache directory.
+    """
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "ctest-benchmark").mkdir(parents=True, exist_ok=True)
+    (root / ".artifacts" / "simple-stack" / "cache").mkdir(parents=True, exist_ok=True)
+    (root / ".artifacts" / "benchmark").mkdir(parents=True, exist_ok=True)
+
+
 def _image_exists(name: str) -> bool:
     """True when the Docker daemon already has this image."""
     return (
@@ -352,6 +365,7 @@ def build() -> None:
     image = stack_image()
     platform = f"linux/{arch}"
     environment = setup_env()
+    _prepare_bind_mountpoints(root, base)
 
     def run(command: list[str], *, quiet: bool = False) -> None:
         subprocess.run(
