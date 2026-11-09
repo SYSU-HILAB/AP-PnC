@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 from types import SimpleNamespace
 
@@ -130,6 +131,7 @@ def test_native_build_gives_ctest_an_isolated_writable_artifact_mount(tmp_path, 
     commands = []
     monkeypatch.setattr(simple_stack, "stack_root", lambda: tmp_path)
     monkeypatch.setattr(simple_stack, "setup_env", lambda: {})
+    monkeypatch.setattr(simple_stack, "_require_buildx", lambda: None)
     monkeypatch.setattr(simple_stack, "_ensure_stack_base_images", lambda *args: None)
     monkeypatch.setattr(
         simple_stack.subprocess, "run", lambda command, **kwargs: commands.append(command)
@@ -145,6 +147,7 @@ def test_build_creates_readonly_bind_mountpoints(tmp_path, monkeypatch):
     base = tmp_path / "stack"
     monkeypatch.setattr(simple_stack, "get_git_root", lambda: root)
     monkeypatch.setattr(simple_stack, "stack_root", lambda: base)
+    monkeypatch.setattr(simple_stack, "_require_buildx", lambda: None)
     monkeypatch.setattr(simple_stack, "project_path", lambda path: root / path)
     monkeypatch.setattr(simple_stack, "setup_env", lambda: {})
     monkeypatch.setattr(simple_stack, "_ensure_stack_base_images", lambda *args: None)
@@ -166,8 +169,22 @@ def test_runtime_does_not_mount_over_image_install():
     assert '"verified.json"' in (STACK / "src/main.rs").read_text()
 
 
-def test_same_second_jobs_never_overwrite_scientific_data(tmp_path, monkeypatch):
-    monkeypatch.setattr(simple_stack, "stack_root", lambda: tmp_path)
+def test_build_requires_buildx(monkeypatch):
+    def missing(command, **kwargs):
+        assert command[:3] == ["docker", "buildx", "version"]
+        return SimpleNamespace(returncode=1, stdout="", stderr="unknown command: docker buildx")
+
+    monkeypatch.setattr(simple_stack.subprocess, "run", missing)
+    with pytest.raises(RuntimeError, match="Docker Buildx is required"):
+        simple_stack.build()
+
+
+def test_same_second_jobs_never_overwrite_scientific_data(monkeypatch):
+    stack = ROOT / ".artifacts" / "tests" / "simple-stack-same-second"
+    if stack.exists():
+        shutil.rmtree(stack)
+    stack.mkdir(parents=True)
+    monkeypatch.setattr(simple_stack, "stack_root", lambda: stack)
     monkeypatch.setattr(simple_stack.time, "strftime", lambda *args: "same-second")
     monkeypatch.setattr(simple_stack, "_write_metadata", lambda job: None)
 

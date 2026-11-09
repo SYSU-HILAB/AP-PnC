@@ -290,6 +290,30 @@ cmake --install "$dir/build"
 """
 
 
+def _require_buildx() -> None:
+    """Stop before the legacy builder treats an empty TARGETARCH as an image name."""
+    try:
+        result = subprocess.run(
+            ["docker", "buildx", "version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as error:
+        raise RuntimeError(
+            "Docker Buildx is required. Install Docker with the buildx plugin "
+            "(Ubuntu's docker.io package also needs docker-buildx). Without Buildx, "
+            "docker build fails with 'invalid reference format' because TARGETARCH is empty."
+        ) from error
+    if result.returncode == 0:
+        return
+    raise RuntimeError(
+        "Docker Buildx is required. Install Docker with the buildx plugin "
+        "(Ubuntu's docker.io package also needs docker-buildx). Without Buildx, "
+        "docker build fails with 'invalid reference format' because TARGETARCH is empty."
+    )
+
+
 def _prepare_bind_mountpoints(root: Path, base: Path) -> None:
     """Create nested bind destinations before the repo is mounted read-only.
 
@@ -357,6 +381,7 @@ def build() -> None:
     The five steps the shell used, owned by the tooling so `ap-pnc build simple-sim`
     is the single entry point and no shell script is needed.
     """
+    _require_buildx()
     root = get_git_root()
     base = stack_root()
     source = project_path(_STACK_DIR)
