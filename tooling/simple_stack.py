@@ -290,6 +290,43 @@ cmake --install "$dir/build"
 """
 
 
+def _require_buildx() -> None:
+    """Stop before the legacy builder treats an empty TARGETARCH as an image name."""
+    try:
+        result = subprocess.run(
+            ["docker", "buildx", "version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as error:
+        raise RuntimeError(
+            "Docker Buildx is required. Install Docker with the buildx plugin "
+            "(Ubuntu's docker.io package also needs docker-buildx). Without Buildx, "
+            "docker build fails with 'invalid reference format' because TARGETARCH is empty."
+        ) from error
+    if result.returncode == 0:
+        return
+    raise RuntimeError(
+        "Docker Buildx is required. Install Docker with the buildx plugin "
+        "(Ubuntu's docker.io package also needs docker-buildx). Without Buildx, "
+        "docker build fails with 'invalid reference format' because TARGETARCH is empty."
+    )
+
+
+def _prepare_bind_mountpoints(root: Path, base: Path) -> None:
+    """Create nested bind destinations before the repo is mounted read-only.
+
+    runc cannot mkdir a mountpoint on a read-only bind. ``stack.sh`` creates
+    ``.artifacts/simple-stack/cache`` for the writable cache mount. The C++
+    step also mounts ``.artifacts/benchmark``, which is not that cache directory.
+    """
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "ctest-benchmark").mkdir(parents=True, exist_ok=True)
+    (root / ".artifacts" / "simple-stack" / "cache").mkdir(parents=True, exist_ok=True)
+    (root / ".artifacts" / "benchmark").mkdir(parents=True, exist_ok=True)
+
+
 def _image_exists(name: str) -> bool:
     """True when the Docker daemon already has this image."""
     return (
@@ -344,6 +381,7 @@ def build() -> None:
     The five steps the shell used, owned by the tooling so `ap-pnc build simple-sim`
     is the single entry point and no shell script is needed.
     """
+    _require_buildx()
     root = get_git_root()
     base = stack_root()
     source = project_path(_STACK_DIR)
@@ -352,6 +390,7 @@ def build() -> None:
     image = stack_image()
     platform = f"linux/{arch}"
     environment = setup_env()
+    _prepare_bind_mountpoints(root, base)
 
     def run(command: list[str], *, quiet: bool = False) -> None:
         subprocess.run(

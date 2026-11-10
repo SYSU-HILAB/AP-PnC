@@ -5,7 +5,10 @@ Aerodynamic prior-free coordinated trajectory generation and tracking control fo
 ## Quick start
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and
-[Docker](https://docs.docker.com/get-started/get-docker/).
+[Docker](https://docs.docker.com/get-started/get-docker/) with
+[Buildx](https://docs.docker.com/build/architecture/) (BuildKit).
+Ubuntu's `docker.io` package does not include the Buildx plugin; install
+`docker-buildx` as well. The image builds use BuildKit's `TARGETARCH`.
 Set your checkout location, build, and run:
 
 ```bash

@@ -18,16 +18,18 @@ int main()
 {
   try
   {
-    // Public fitted-model regression at v_air_B=[2,.49,-2] m/s. These are
-    // physical FLU wrenches, independently captured before the implementation
-    // refactor. All three moment axes are checked, not only the pitch axis.
+    // Public regression at v_air_B=[2,.49,-2] m/s. lyu/phi/ma/none are
+    // physical FLU wrenches captured before the frame refactor. advanced is
+    // the same sample from body_force_coefficients: drag and lift are both
+    // resolved onto FLU (alpha measured from +Z). A lift-only X/Z pair drops
+    // the drag term and is not this model. All three moment axes are checked.
     const std::array<Eigen::Vector3d, 5> forces{
         Eigen::Vector3d(-1.5050342040399931, -.21021405032314355,
                         -.048402581427783038),
         Eigen::Vector3d(-1.6540263722304152, 0, .16540263722304155),
         Eigen::Vector3d(-1.3752711872715011, 0, -.25430145867372517),
-        Eigen::Vector3d(-.80433511075311626, -.014002967927807586,
-                        -.8043351107531076),
+        Eigen::Vector3d(-1.8492195081055613, -.014002967927807582,
+                        .24054928659933708),
         Eigen::Vector3d::Zero()};
     const Eigen::Vector3d lyu_moment(.015302854651535242, .16771525213907904,
                                      .023181314851439112);
